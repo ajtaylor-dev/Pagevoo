@@ -1,0 +1,9 @@
+# D:/backend/public/.htaccess
+RewriteEngine On
+
+# If the requested file or directory doesn't exist…
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# …route everything to index.php (your router)
+RewriteRule ^ index.php [QSA,L]
