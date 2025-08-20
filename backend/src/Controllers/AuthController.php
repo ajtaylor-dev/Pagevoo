@@ -20,36 +20,26 @@ class AuthController {
 
     public function login(): void {
         $input = json_decode(file_get_contents('php://input'), true) ?? [];
-        foreach (['email','password'] as $r) if (empty($input[$r])) { Response::json(['error'=>"Missing $r"], 422); return; }
+        $email = $input['email'] ?? '';
+        $password = $input['password'] ?? '';
+        $code = $input['code'] ?? null;
+        if (!$email || !$password) { Response::json(['error'=>'Email and password required'], 422); return; }
         try {
-            $res = AuthService::login($input['email'], $input['password']);
-            if (!($_SESSION['requires_2fa'] ?? false)) {
-                AuthService::completeLogin((int)$res['user']['id']);
-            } else {
-                if (!empty($input['code'])) {
-                    if (($_ENV['APP_ENV'] ?? 'development') !== 'production' || preg_match('/^\\d{6}$/', $input['code'])) {
-                        AuthService::completeLogin((int)$res['user']['id']);
-                    } else {
-                        Response::json(['error'=>'Invalid 2FA code'], 401);
-                        return;
-                    }
-                }
-            }
-            Response::json(['ok'=>true]);
+            $res = AuthService::login($email, $password, $code);
+            Response::json($res);
         } catch (\Exception $e) {
             Response::json(['error'=>$e->getMessage()], 401);
         }
     }
 
     public function me(): void {
-        if (!isset($_SESSION['uid'])) { Response::json(['user'=>null]); return; }
-        $user = \Models\User::findById((int)$_SESSION['uid']);
-        if ($user) unset($user['password'], $user['secret_answer'], $user['secret_question']);
-        Response::json(['user'=>$user]);
+        $uid = $_SESSION['uid'] ?? null;
+        $res = AuthService::me($uid ? (int)$uid : null);
+        Response::json($res);
     }
 
     public function logout(): void {
-        \Services\AuthService::logout();
+        AuthService::logout();
         Response::json(['ok'=>true]);
     }
 
@@ -62,5 +52,28 @@ class AuthController {
         \Models\User::setEmailVerified((int)$row['user_id']);
         \Models\Token::consumeEmailVerification((int)$row['id']);
         Response::json(['ok'=>true]);
+    }
+
+    public function verify2fa(): void {
+        $input = json_decode(file_get_contents('php://input'), true) ?? [];
+        $code = $input['code'] ?? null;
+        if (!$code) { Response::json(['error'=>'Code required'], 422); return; }
+        try {
+            $res = AuthService::verifyPending2FA($code);
+            Response::json($res);
+        } catch (\Exception $e) {
+            Response::json(['error'=>$e->getMessage()], 401);
+        }
+    }
+
+    public function twofaSetup(): void {
+        $uid = $_SESSION['uid'] ?? null;
+        if (!$uid) { Response::json(['error'=>'Unauthorized'], 401); return; }
+        try {
+            $res = AuthService::twoFASetupData((int)$uid);
+            Response::json($res);
+        } catch (\Exception $e) {
+            Response::json(['error'=>$e->getMessage()], 400);
+        }
     }
 }
