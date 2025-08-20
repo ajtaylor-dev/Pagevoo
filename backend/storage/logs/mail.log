@@ -1,0 +1,27 @@
+TO: oknechpils86@gmail.com
+SUBJECT: Pagevoo 2FA setup (dev)
+
+Add this account to your authenticator app:
+
+Secret: M2RIZOHMYI2IJYLCCOPYJ5DSLVVANGQL
+OTPAuth: otpauth://totp/Pagevoo:oknechpils86%40gmail.com?secret=M2RIZOHMYI2IJYLCCOPYJ5DSLVVANGQL&issuer=Pagevoo&digits=6&period=30
+
+---
+TO: admin@pagevoo.com
+SUBJECT: Pagevoo 2FA setup (dev)
+
+Add this account to your authenticator app:
+
+Secret: 24M6SQFATZ7IEHAZ3D4CC2OWVV75SXEV
+OTPAuth: otpauth://totp/Pagevoo:admin%40pagevoo.com?secret=24M6SQFATZ7IEHAZ3D4CC2OWVV75SXEV&issuer=Pagevoo&digits=6&period=30
+
+---
+TO: birra@morreti.com
+SUBJECT: Pagevoo 2FA setup (dev)
+
+Add this account to your authenticator app:
+
+Secret: 3IDNUDMTA44ZRMYWNA5NJB4ROCMSMXA5
+OTPAuth: otpauth://totp/Pagevoo:birra%40morreti.com?secret=3IDNUDMTA44ZRMYWNA5NJB4ROCMSMXA5&issuer=Pagevoo&digits=6&period=30
+
+---

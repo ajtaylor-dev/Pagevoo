@@ -1,0 +1,19 @@
+CREATE TABLE IF NOT EXISTS sites (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id INT UNSIGNED NOT NULL,
+  type ENUM('demo','paid') NOT NULL DEFAULT 'demo',
+  name VARCHAR(255) NOT NULL,
+  subdomain VARCHAR(190) DEFAULT NULL,
+  template_id INT UNSIGNED DEFAULT NULL,
+  db_name VARCHAR(64) NOT NULL,
+  db_user VARCHAR(64) DEFAULT NULL,
+  db_pass VARCHAR(128) DEFAULT NULL,
+  status ENUM('active','archived','deleted') NOT NULL DEFAULT 'active',
+  expires_at DATETIME DEFAULT NULL,
+  archived_until DATETIME DEFAULT NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user_id (user_id),
+  INDEX idx_status (status),
+  INDEX idx_type (type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
