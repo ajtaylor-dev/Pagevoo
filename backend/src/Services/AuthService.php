@@ -6,7 +6,8 @@ use Models\Token;
 use Utils\Email;
 use Utils\TOTP;
 use Services\SiteService;
-
+use Services\SiteProvisioner;
+use Models\Site;
 
 class AuthService {
 
@@ -64,9 +65,10 @@ class AuthService {
             User::setEmailVerified($userId);
         }
         
-        // Auto-create demo site on registration
+// Auto-create demo site on registration
 try {
-    SiteService::createDemoForUser($userId);
+    $dbName = SiteProvisioner::createDemoDatabase($userId);
+    Site::create($userId, 'demo', 'active', $dbName);
 } catch (\Throwable $e) {
     // Non-fatal: user account exists even if site creation fails
     error_log('Demo site creation failed for user '.$userId.': '.$e->getMessage());

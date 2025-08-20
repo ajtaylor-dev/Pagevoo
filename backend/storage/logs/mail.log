@@ -25,3 +25,12 @@ Secret: 3IDNUDMTA44ZRMYWNA5NJB4ROCMSMXA5
 OTPAuth: otpauth://totp/Pagevoo:birra%40morreti.com?secret=3IDNUDMTA44ZRMYWNA5NJB4ROCMSMXA5&issuer=Pagevoo&digits=6&period=30
 
 ---
+TO: kate@kate.com
+SUBJECT: Pagevoo 2FA setup (dev)
+
+Add this account to your authenticator app:
+
+Secret: RUVV3KE5D3B3ARXRKZYBUHUPRXUQBZKS
+OTPAuth: otpauth://totp/Pagevoo:kate%40kate.com?secret=RUVV3KE5D3B3ARXRKZYBUHUPRXUQBZKS&issuer=Pagevoo&digits=6&period=30
+
+---

@@ -51,6 +51,12 @@ class AuthController {
         if (strtotime($row['expires_at']) < time()) { Response::json(['error'=>'Token expired'], 400); return; }
         \Models\User::setEmailVerified((int)$row['user_id']);
         \Models\Token::consumeEmailVerification((int)$row['id']);
+        try {
+    $dbName = \Services\SiteProvisioner::createDemoDatabase((int)$row['user_id']);
+    \Models\Site::create((int)$row['user_id'], 'demo', 'active', $dbName);
+} catch (\Throwable $e) {
+    error_log('Demo site creation (post-verify) failed for user '.$row['user_id'].': '.$e->getMessage());
+}
         Response::json(['ok'=>true]);
     }
 
