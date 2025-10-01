@@ -102,6 +102,84 @@ class ApiService {
     const response = await this.client.delete(url);
     return response.data;
   }
+
+  /**
+   * Authentication Methods
+   */
+
+  async login(email: string, password: string): Promise<ApiResponse<{ user: any; token: string }>> {
+    const response = await this.client.post('/v1/login', { email, password });
+    if (response.data.success && response.data.data.token) {
+      localStorage.setItem('auth_token', response.data.data.token);
+    }
+    return response.data;
+  }
+
+  async register(data: {
+    name: string;
+    email: string;
+    password: string;
+    business_name: string;
+    business_type: string;
+    phone_number?: string;
+  }): Promise<ApiResponse<{ user: any; token: string }>> {
+    const response = await this.client.post('/v1/register', data);
+    if (response.data.success && response.data.data.token) {
+      localStorage.setItem('auth_token', response.data.data.token);
+    }
+    return response.data;
+  }
+
+  async logout(): Promise<ApiResponse> {
+    const response = await this.client.post('/v1/logout');
+    localStorage.removeItem('auth_token');
+    return response.data;
+  }
+
+  async getUser(): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/v1/me');
+    return response.data;
+  }
+
+  /**
+   * User Management Methods
+   */
+
+  async getAllUsers(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/users');
+    return response.data;
+  }
+
+  async createUser(data: {
+    name: string;
+    email: string;
+    password: string;
+    business_name: string;
+    business_type: string;
+    phone_number?: string;
+    role: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/users', data);
+    return response.data;
+  }
+
+  async updateUser(id: number, data: {
+    name: string;
+    email: string;
+    password?: string;
+    business_name: string;
+    business_type: string;
+    phone_number?: string;
+    role: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/users/${id}`, data);
+    return response.data;
+  }
+
+  async deleteUser(id: number): Promise<ApiResponse> {
+    const response = await this.client.delete(`/v1/users/${id}`);
+    return response.data;
+  }
 }
 
 // Export singleton instance

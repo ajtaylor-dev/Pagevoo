@@ -1,11 +1,13 @@
 import { Button } from '@/components/ui/button'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Header() {
   const [showAccountButton, setShowAccountButton] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const isLoggedIn = false // TODO: Replace with actual auth state
+  const { isAuthenticated } = useAuth()
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -20,6 +22,10 @@ export default function Header() {
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
   }, [])
+
+  const scrollToAccountBox = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
 
   return (
     <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-6 py-4 z-50">
@@ -50,16 +56,14 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             {/* User Icon - Shows when scrolled past account box */}
             {showAccountButton && (
-              <button className="w-9 h-9 bg-[#98b290] rounded-full flex items-center justify-center hover:bg-[#88a280] transition">
+              <button
+                onClick={scrollToAccountBox}
+                className="w-9 h-9 bg-[#98b290] rounded-full flex items-center justify-center hover:bg-[#88a280] transition"
+              >
                 <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                 </svg>
               </button>
-            )}
-            {isLoggedIn && (
-              <Button className="hidden md:flex bg-[#98b290] hover:bg-[#88a280] text-white">
-                Create New
-              </Button>
             )}
 
             {/* Mobile Menu Icon */}
@@ -95,11 +99,6 @@ export default function Header() {
             <Link to="/support" className="text-gray-600 hover:text-gray-900 transition" onClick={() => setMobileMenuOpen(false)}>
               Support
             </Link>
-            {isLoggedIn && (
-              <Button className="bg-[#98b290] hover:bg-[#88a280] text-white w-full">
-                Create New
-              </Button>
-            )}
           </nav>
         </div>
       )}

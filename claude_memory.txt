@@ -18,7 +18,8 @@ Pagevoo is a website builder platform for niche local businesses (pizza shops, b
 
 ### Backend
 - Laravel 12 (PHP framework)
-- MySQL database (database name: pagevoo)
+- MySQL database (database name: pagevoo_core)
+- Laravel Sanctum (API token authentication)
 - RESTful API (versioned under /api/v1/)
 - Running on: http://localhost:8000
 
@@ -52,8 +53,19 @@ Pagevoo/
 ```
 
 ## Current API Endpoints
+
+**Public Endpoints:**
 - GET /api/v1/health - Health check endpoint
-  - Returns: { success: true, message: "Pagevoo API is running", data: {...} }
+- POST /api/v1/register - User registration
+- POST /api/v1/login - User login
+
+**Protected Endpoints (require auth:sanctum):**
+- POST /api/v1/logout - User logout
+- GET /api/v1/me - Get authenticated user
+- GET /api/v1/users - Get all users (admin)
+- POST /api/v1/users - Create new user (admin)
+- PUT /api/v1/users/{id} - Update user (admin)
+- DELETE /api/v1/users/{id} - Delete user (admin)
 
 ## Development Setup
 
@@ -169,16 +181,111 @@ The website scaffolding has been mostly put together. So far we have created the
 - System fonts maintained for performance (no custom font imports)
 - All corporate colors (#98b290, #4b4b4b, #171717) applied consistently across new pages
 
+### Session 4 - Date: 10/1/2025 (Authentication & Admin Dashboard)
+
+**User Authentication System:**
+- **Backend Implementation:**
+  - Installed and configured Laravel Sanctum for API token authentication
+  - Created AuthController with endpoints: register, login, logout, me
+  - Modified users migration to include: business_name, business_type, phone_number, role
+  - Created AdminUserSeeder (username: AJ, email: admin@pagevoo.com, password: 1qaz2wsx!QAZ"WSX)
+  - Database: pagevoo_core (updated from pagevoo)
+  - BaseController methods: sendSuccess(), sendError()
+
+- **Frontend Implementation:**
+  - Created AuthContext for global authentication state management
+  - Updated API service with authentication methods (login, register, logout, getUser)
+  - Token storage in localStorage with automatic header injection
+  - Connected Login page to backend API with error handling
+  - Connected Register page to backend API with Zod validation
+  - Updated Hero account box with real authentication state:
+    - Shows login form when not authenticated
+    - Shows user name, Dashboard button, and Logout when authenticated
+    - Functional login/logout
+  - Updated Header component:
+    - Account icon smooth scrolls to top
+    - Dashboard button removed from header (kept only in account box)
+  - All login flows redirect to /dashboard on success
+
+**Admin Dashboard:**
+- Created dedicated Dashboard page (no public header/footer)
+- Dashboard header with Pagevoo logo (links to home), admin name/role, and logout
+- Navigation sections:
+  1. User Management (active by default)
+  2. Website Settings
+  3. Promos and Advertising
+  4. Package Settings
+  5. Template Manager (green button, right-aligned)
+
+**User Management System:**
+- **Backend API (UserController):**
+  - GET /api/v1/users - List all users
+  - POST /api/v1/users - Create new user
+  - PUT /api/v1/users/{id} - Update user
+  - DELETE /api/v1/users/{id} - Delete user (protected: cannot delete admins)
+  - Full validation on all endpoints
+  - Password optional on update (only updates if provided)
+
+- **Frontend Features:**
+  - Search bar with real-time filtering (name, email, business name)
+  - Users table displaying: name, email, business, type, role (color-coded badges)
+  - Add User modal:
+    - Full form with validation
+    - Fields: name, email, password, business_name, business_type, phone_number, role
+    - Creates user via API
+    - Loading states and error handling
+  - Edit User modal:
+    - Pre-populated with existing user data
+    - Password optional (leave blank to keep current)
+    - Updates user via API
+    - Loading states and error handling
+  - Delete functionality:
+    - Confirmation dialog
+    - Deletes via API
+    - List auto-refreshes after deletion
+  - Admin users locked (actions column shows "Locked" instead of Edit/Delete)
+  - All CRUD operations fully connected to backend API
+
+**Pages Created:**
+- /dashboard - Admin dashboard with user management
+- /login - Standalone login page (account box style)
+- /register - Full registration form with validation
+
+**Technical Implementations:**
+- React Hook Form + Zod for form validation
+- Axios interceptors for automatic token management
+- AuthContext with useAuth hook for global state
+- Modal overlays for Add/Edit users
+- Responsive design for all new components
+- Loading states on all async operations
+- Error handling with user-friendly messages
+
+**Route Configuration:**
+- Dashboard route separate from public routes (no header/footer)
+- All other routes include Header and Footer components
+- Protected routes require authentication
+
 ## Next Steps / TODO
-- [ ] Implement user authentication system
+- [ ] Add admin middleware to user management endpoints
 - [ ] Create template management system
 - [ ] Build CMS functionality
 - [ ] Add booking/appointment system
 - [ ] Develop online shop features
-- [ ] Implement state management with Zustand
+- [ ] Implement package settings management
+- [ ] Build website settings interface
+- [ ] Create promos and advertising management
+- [x] Implement user authentication system ✓
 - [x] Add routing with React Router ✓
-- [ ] Create form validation with Zod + React Hook Form
-- [ ] Design and build user dashboard (package-dependent)
+- [x] Create form validation with Zod + React Hook Form ✓
+- [x] Design and build admin dashboard ✓
+- [x] Implement user management (CRUD) ✓
+
+## Credentials
+**Admin User:**
+- Email: admin@pagevoo.com
+- Password: 1qaz2wsx!QAZ"WSX
+- Name: AJ
+- Role: admin
 
 ## Last Updated
 2025-10-01

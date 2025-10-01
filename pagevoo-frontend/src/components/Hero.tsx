@@ -1,7 +1,35 @@
 import { useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { useAuth } from '@/contexts/AuthContext'
 
 export default function Hero() {
   const [isLoginExpanded, setIsLoginExpanded] = useState(false)
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const { user, isAuthenticated, login, logout } = useAuth()
+  const navigate = useNavigate()
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
+
+    try {
+      await login(email, password)
+      navigate('/dashboard')
+    } catch (err: any) {
+      setError('Invalid credentials')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleLogout = async () => {
+    await logout()
+    setIsLoginExpanded(false)
+  }
 
   return (
     <section className="bg-gradient-to-b from-[#4b4b4b] to-[#3a3a3a] py-6 md:py-24 px-6 relative">
@@ -22,38 +50,74 @@ export default function Hero() {
               </svg>
             </div>
 
+            {/* Logged In State */}
+            {isAuthenticated && !isLoginExpanded && (
+              <>
+                <p className="text-sm font-medium text-[#4b4b4b]">{user?.name}</p>
+                <button
+                  onClick={() => navigate('/dashboard')}
+                  className="w-full bg-[#98b290] hover:bg-[#88a280] text-white px-4 py-2 rounded-md text-sm font-medium transition"
+                >
+                  Dashboard
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 px-4 py-2 rounded-md text-sm font-medium transition"
+                >
+                  Logout
+                </button>
+              </>
+            )}
+
             {/* Login Form - Shows when expanded */}
-            {isLoginExpanded && (
-              <div className="w-full space-y-3 animate-in fade-in duration-300">
+            {!isAuthenticated && isLoginExpanded && (
+              <form onSubmit={handleLogin} className="w-full space-y-3 animate-in fade-in duration-300">
+                {error && (
+                  <p className="text-red-600 text-xs text-center">{error}</p>
+                )}
                 <input
-                  type="text"
-                  placeholder="Username"
+                  type="email"
+                  placeholder="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                 />
                 <input
                   type="password"
                   placeholder="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                 />
-                <button className="w-full bg-[#98b290] hover:bg-[#88a280] text-white px-4 py-2 rounded-md text-sm font-medium transition">
-                  Sign In
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-[#98b290] hover:bg-[#88a280] text-white px-4 py-2 rounded-md text-sm font-medium transition disabled:opacity-50"
+                >
+                  {isLoading ? 'Signing In...' : 'Sign In'}
                 </button>
                 <div className="flex justify-between items-center text-xs">
-                  <button className="text-[#98b290] hover:text-[#88a280] transition">
+                  <button type="button" className="text-[#98b290] hover:text-[#88a280] transition">
                     Forgot?
                   </button>
                   <button
-                    onClick={() => setIsLoginExpanded(false)}
+                    type="button"
+                    onClick={() => {
+                      setIsLoginExpanded(false)
+                      setError('')
+                    }}
                     className="text-gray-600 hover:text-gray-900 transition"
                   >
                     Cancel
                   </button>
                 </div>
-              </div>
+              </form>
             )}
 
-            {/* Initial Buttons - Shows when not expanded */}
-            {!isLoginExpanded && (
+            {/* Initial Buttons - Shows when not expanded and not logged in */}
+            {!isAuthenticated && !isLoginExpanded && (
               <>
                 <button
                   onClick={() => setIsLoginExpanded(true)}
@@ -61,9 +125,12 @@ export default function Hero() {
                 >
                   Login
                 </button>
-                <button className="w-full border border-[#98b290] text-[#98b290] hover:bg-[#98b290] hover:text-white px-4 py-2 rounded-md text-sm font-medium transition">
+                <Link
+                  to="/register"
+                  className="w-full border border-[#98b290] text-[#98b290] hover:bg-[#98b290] hover:text-white px-4 py-2 rounded-md text-sm font-medium transition text-center block"
+                >
                   Sign Up
-                </button>
+                </Link>
               </>
             )}
           </div>
