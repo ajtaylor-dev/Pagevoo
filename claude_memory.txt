@@ -1,0 +1,101 @@
+# Claude Memory - Pagevoo Project
+
+## Project Overview
+Pagevoo is a website builder platform for niche local businesses (pizza shops, barbers, restaurants, etc.) with pre-built templates, CMS, and integrated features like bookings, online shops, forums, blogs, and galleries.
+
+## Tech Stack
+
+### Frontend
+- React 19 + TypeScript + Vite
+- Tailwind CSS v4 (via @tailwindcss/postcss)
+- shadcn/ui (Radix-based UI components)
+- Axios (API communication)
+- Path aliases configured (@ → src/)
+- Running on: http://localhost:5173
+
+### Backend
+- Laravel 12 (PHP framework)
+- MySQL database (database name: pagevoo)
+- RESTful API (versioned under /api/v1/)
+- Running on: http://localhost:8000
+
+### Planned Features
+- Zustand (state management)
+- React Router v6 (navigation)
+- Zod + React Hook Form (form validation)
+
+## Project Structure
+```
+Pagevoo/
+├── pagevoo-frontend/        # React frontend
+│   ├── src/
+│   │   ├── components/ui/   # shadcn components
+│   │   ├── services/        # API service layer
+│   │   │   └── api.ts       # Axios API client
+│   │   ├── lib/             # Utilities
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── .env.local
+│   └── package.json
+│
+└── pagevoo-backend/         # Laravel backend
+    ├── app/Http/Controllers/Api/V1/
+    │   ├── BaseController.php
+    │   └── HealthController.php
+    ├── routes/api.php
+    ├── config/cors.php
+    ├── .env
+    └── composer.json
+```
+
+## Current API Endpoints
+- GET /api/v1/health - Health check endpoint
+  - Returns: { success: true, message: "Pagevoo API is running", data: {...} }
+
+## Development Setup
+
+### Backend
+```bash
+cd pagevoo-backend
+composer install
+php artisan migrate
+php artisan serve  # Runs on http://localhost:8000
+```
+
+### Frontend
+```bash
+cd pagevoo-frontend
+pnpm install
+pnpm run dev  # Runs on http://localhost:5173
+```
+
+## Git Status
+- Current branch: main
+- Modified files: .claude/settings.local.json
+- Recent commits:
+  - 9c2c893 Add Laravel backend and API integration
+  - c4653fd Tailwind and shadcn installed
+  - 10d4959 Tailwind install
+  - 27097a5 First commit
+
+## Development Notes
+- CORS configured to allow requests from localhost:5173
+- API responses follow consistent format: { success, message, data }
+- Code must be clean, object-oriented, and secure
+- Database: MySQL (configurable in pagevoo-backend/.env)
+
+## Next Steps / TODO
+- [ ] Implement user authentication system
+- [ ] Create template management system
+- [ ] Build CMS functionality
+- [ ] Add booking/appointment system
+- [ ] Develop online shop features
+- [ ] Implement state management with Zustand
+- [ ] Add routing with React Router
+- [ ] Create form validation with Zod + React Hook Form
+
+## Last Updated
+2025-10-01
+
+---
+Note: Update this file at the end of each session to track progress and current work.
