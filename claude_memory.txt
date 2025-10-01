@@ -1,4 +1,7 @@
 # Claude Memory - Pagevoo Project
+-
+Message to Claude:
+This file is used for you to remember where we left off. At the end of each session (I will tell you when) I would like you to update this page by appending what has been completed thus far.
 
 ## Project Overview
 Pagevoo is a website builder platform for niche local businesses (pizza shops, barbers, restaurants, etc.) with pre-built templates, CMS, and integrated features like bookings, online shops, forums, blogs, and galleries.
@@ -84,6 +87,88 @@ pnpm run dev  # Runs on http://localhost:5173
 - Code must be clean, object-oriented, and secure
 - Database: MySQL (configurable in pagevoo-backend/.env)
 
+WORK COMPLETED:
+
+### Session 1 - Date: 10/1/2025 (Early)
+The website scaffolding has been mostly put together. So far we have created the react/vite/typescript frontend and php/mysql project with an API interface tested.
+
+### Session 2 - Date: 10/1/2025 (Homepage Design)
+**Design System Implemented:**
+- Corporate colors established: #98b290 (light green) and #4b4b4b (grey)
+- Added Pagevoo logos (standard 500x200 and wide version) to public folder
+- Dark footer color: #171717
+
+**Components Created:**
+1. **Header Component** (fixed/sticky navigation)
+   - Logo integration (Pagevoo_logo_500x200.png)
+   - Navigation links (Features, Templates, Pricing, About) - all aligned right
+   - User icon (circular green button) - appears when scrolled past account box
+   - Conditional "Create New" button (shows only when user is logged in)
+   - Mobile hamburger menu (green circular button) with dropdown
+   - Scroll-aware behavior for account button visibility
+
+2. **Hero Component**
+   - Wide logo image (Pagevoo_logo_wide.png) as main heading
+   - Corporate color gradient background (grey)
+   - Account box with expandable login form:
+     - Positioned top-right on desktop, centered above content on mobile
+     - Animated expansion on "Login" click (full width on mobile, 320px on desktop)
+     - Login/Sign Up buttons (collapsed state)
+     - Username/Password inputs (expanded state)
+     - "Forgot?" and "Cancel" links
+     - User icon with green circular background
+
+3. **FeatureSections Component**
+   - "What is Pagevoo?" section with corporate colors
+   - "PLATFORM 1.0" section with feature list
+   - "Get Started" call-to-action section
+   - All updated to use corporate color scheme
+
+4. **Footer Component**
+   - Dark background (#171717)
+   - Copyright text: "Pagevoo © 2025 - All Rights Reserved."
+
+**Responsive Design Features:**
+- Fixed header with proper content padding
+- Account box switches from absolute positioning (desktop) to centered layout (mobile)
+- Mobile navigation menu with hamburger icon
+- Corporate colors and styling consistent across all breakpoints
+
+**Git Status:**
+- Latest commit: 18d7d24 "Work to the homepage"
+- All changes pushed to origin/main
+
+### Session 3 - Date: 10/1/2025 (Routing & Brand Repositioning)
+**Routing Implementation:**
+- Installed React Router v7.9.3
+- Set up BrowserRouter with route structure
+- Created 5 pages: Home, Solutions, What's Included, Pricing, Support
+- Updated Header component with Link components for navigation
+- Mobile menu closes on navigation link click
+
+**Brand Repositioning (Business Solution vs Website Builder):**
+- Changed messaging to emphasize "turnkey business solution" not DIY website builder
+- Updated navigation: Solutions (not Templates), What's Included (not Features)
+- Hero section updated:
+  - Main headline: "Launch your business website in minutes, not months"
+  - Subheadline: "Industry-specific websites with booking, ordering, CMS, and everything your business needs — ready to go"
+- Feature sections repositioned:
+  - "What is Pagevoo?" - Emphasizes no coding, ready-to-launch
+  - "Everything Included" (was "PLATFORM 1.0") - Focus on complete business solution
+  - Call-to-action: "Get Started Today" (was "Get Started Free")
+  - Removed unverifiable "thousands of businesses" claim
+
+**Pages Created:**
+1. **Solutions Page** - Industry-specific solutions (Restaurants, Barbershops, Pizza Shops, Cafes, Gyms, Salons)
+2. **What's Included Page** - All built-in features (Booking, Ordering, CMS, Galleries, Customer Management, Blog/Forums)
+3. **Pricing Page** - Three tiers: Brochure (£19/mo), Niche (£39/mo), Pro (£59/mo)
+4. **Support Page** - Contact, documentation, video tutorials
+
+**Technical Details:**
+- Routes: /, /solutions, /whats-included, /pricing, /support
+- System fonts maintained for performance (no custom font imports)
+- All corporate colors (#98b290, #4b4b4b, #171717) applied consistently across new pages
+
 ## Next Steps / TODO
 - [ ] Implement user authentication system
 - [ ] Create template management system
@@ -91,8 +176,9 @@ pnpm run dev  # Runs on http://localhost:5173
 - [ ] Add booking/appointment system
 - [ ] Develop online shop features
 - [ ] Implement state management with Zustand
-- [ ] Add routing with React Router
+- [x] Add routing with React Router ✓
 - [ ] Create form validation with Zod + React Hook Form
+- [ ] Design and build user dashboard (package-dependent)
 
 ## Last Updated
 2025-10-01

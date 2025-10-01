@@ -1,4 +1,5 @@
 import { Button } from '@/components/ui/button'
+import { Link } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 
 export default function Header() {
@@ -24,25 +25,25 @@ export default function Header() {
     <header className="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 px-6 py-4 z-50">
       <div className="max-w-7xl mx-auto flex items-center justify-between">
         {/* Logo */}
-        <div className="flex items-center">
+        <Link to="/" className="flex items-center">
           <img src="/Pagevoo_logo_500x200.png" alt="Pagevoo" className="h-10" />
-        </div>
+        </Link>
 
         {/* Navigation Links and User Menu - All aligned to the right */}
         <div className="flex items-center space-x-8">
           <nav className="hidden md:flex items-center space-x-8">
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
-              Features
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
-              Templates
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
+            <Link to="/solutions" className="text-gray-600 hover:text-gray-900 transition">
+              Solutions
+            </Link>
+            <Link to="/whats-included" className="text-gray-600 hover:text-gray-900 transition">
+              What's Included
+            </Link>
+            <Link to="/pricing" className="text-gray-600 hover:text-gray-900 transition">
               Pricing
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
-              About
-            </a>
+            </Link>
+            <Link to="/support" className="text-gray-600 hover:text-gray-900 transition">
+              Support
+            </Link>
           </nav>
 
           {/* User Menu */}
@@ -82,18 +83,18 @@ export default function Header() {
       {mobileMenuOpen && (
         <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-gray-200 shadow-lg">
           <nav className="flex flex-col py-4 px-6 space-y-4">
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
-              Features
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
-              Templates
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
+            <Link to="/solutions" className="text-gray-600 hover:text-gray-900 transition" onClick={() => setMobileMenuOpen(false)}>
+              Solutions
+            </Link>
+            <Link to="/whats-included" className="text-gray-600 hover:text-gray-900 transition" onClick={() => setMobileMenuOpen(false)}>
+              What's Included
+            </Link>
+            <Link to="/pricing" className="text-gray-600 hover:text-gray-900 transition" onClick={() => setMobileMenuOpen(false)}>
               Pricing
-            </a>
-            <a href="#" className="text-gray-600 hover:text-gray-900 transition">
-              About
-            </a>
+            </Link>
+            <Link to="/support" className="text-gray-600 hover:text-gray-900 transition" onClick={() => setMobileMenuOpen(false)}>
+              Support
+            </Link>
             {isLoggedIn && (
               <Button className="bg-[#98b290] hover:bg-[#88a280] text-white w-full">
                 Create New

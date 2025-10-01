@@ -76,8 +76,11 @@ export default function Hero() {
             alt="Pagevoo"
             className="mx-auto mb-6 max-w-md md:max-w-2xl w-full"
           />
-          <p className="text-xl text-gray-300 max-w-2xl mx-auto">
-            Beautiful websites and content management is our forte.
+          <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-4">
+            Launch your business website in minutes, not months
+          </p>
+          <p className="text-lg text-gray-400 max-w-2xl mx-auto">
+            Industry-specific websites with booking, ordering, CMS, and everything your business needs — ready to go.
           </p>
         </div>
       </div>
