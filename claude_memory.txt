@@ -631,6 +631,95 @@ users table:
 3. After 30 days of inactivity → Admin can bulk delete via "Delete Inactive Users" button
 4. User upgrades package → status changes to 'active'
 
+### Session 7 - Date: 10/2/2025 (Journal System & UI Improvements)
+
+**Journal/Notes System (Niche & Pro Users):**
+- **Database Schema:**
+  - Created `notes` table (id, user_id, title, content, timestamps)
+  - Created `note_shares` table (polymorphic sharing with users/groups)
+  - Migrations: 2025_10_02_161858_create_notes_table.php, 2025_10_02_161900_create_note_shares_table.php
+- **Backend Implementation:**
+  - Note Model with relationships (user, sharedWithUsers, sharedWithGroups)
+  - Updated User model with `canAccessJournal()` method (checks Niche/Pro packages)
+  - Updated Group model with journal sharing relationship
+  - NoteController with full CRUD operations:
+    - index() - Get all notes (owned + shared)
+    - store() - Create notes with sharing
+    - update() - Edit notes and update sharing
+    - destroy() - Delete notes
+  - Routes: GET/POST /api/v1/notes, PUT/DELETE /api/v1/notes/{id}
+  - Pro users can share notes with individual collaborators or groups
+- **Frontend Implementation:**
+  - Added "Journal" tab to UserDashboard (visible to Niche/Pro users)
+  - Two-column layout: note list (left) + detail view (right)
+  - Add/Edit Note modals with sharing controls (Pro users only)
+  - Checkboxes to share with collaborators and groups
+  - Visual indicators showing who notes are shared with
+  - Shared notes display owner's name
+- **Group Permissions Enhancement:**
+  - Added journal permissions to groups: `can_view_journal`, `can_edit_journal`
+  - Updated Add/Edit Group modals with journal permission checkboxes
+  - Group cards display journal permissions as green badges
+
+**Collaborator Management Fixes:**
+- Fixed group member count update when collaborator is deleted (now reloads groups)
+- Fixed checkbox state in Manage Members modal (properly updates selectedGroupForMembers)
+- Default Group auto-creation:
+  - Creates "Default Group" when first collaborator is added
+  - Default permissions: view journal only (all others false)
+  - New collaborators automatically join Default Group
+  - Uses database transactions for data integrity
+
+**Website Manager Enhancements:**
+- **URL Fields Added:**
+  - Migration: 2025_10_02_165642_add_urls_to_users_table.php
+  - Added `internal_url` and `external_url` fields to users table
+  - Updated User model fillable array
+  - Website Manager cards now display:
+    - Internal URL: Shows stored value or auto-generates from business name (e.g., "mybusiness.pagevoo.com")
+    - External URL: Shows stored value or "N/A"
+
+**Admin Dashboard UI Changes:**
+- Renamed "Template Manager" button to "Create New" (green button, right-aligned)
+- Added "Template Manager" to left navigation (after Package Settings)
+- "Create New" opens /template-builder in new tab
+- "Template Manager" is now a navigation section
+
+**Routing Enhancement:**
+- Added catch-all route for invalid URLs
+- Any unrecognized URL redirects to homepage using Navigate component
+
+**API Endpoints Added:**
+- GET /api/v1/notes - Get all user's notes (owned + shared)
+- POST /api/v1/notes - Create note with optional sharing
+- PUT /api/v1/notes/{id} - Update note
+- DELETE /api/v1/notes/{id} - Delete note
+
+**Files Created This Session:**
+- pagevoo-backend/database/migrations/2025_10_02_161858_create_notes_table.php
+- pagevoo-backend/database/migrations/2025_10_02_161900_create_note_shares_table.php
+- pagevoo-backend/database/migrations/2025_10_02_165642_add_urls_to_users_table.php
+- pagevoo-backend/app/Models/Note.php
+- pagevoo-backend/app/Http/Controllers/Api/V1/NoteController.php
+
+**Files Modified This Session:**
+- pagevoo-backend/app/Models/User.php (added journal methods, URL fields)
+- pagevoo-backend/app/Models/Group.php (added journal relationship)
+- pagevoo-backend/app/Http/Controllers/Api/V1/CollaboratorController.php (Default Group logic)
+- pagevoo-backend/routes/api.php (note routes)
+- pagevoo-frontend/src/services/api.ts (note API methods)
+- pagevoo-frontend/src/pages/UserDashboard.tsx (Journal tab, note CRUD UI, permission updates)
+- pagevoo-frontend/src/pages/Dashboard.tsx (URL display, navigation changes)
+- pagevoo-frontend/src/App.tsx (catch-all route)
+
+**Key Features Summary:**
+✅ Journal system for Niche/Pro users with note sharing (Pro only)
+✅ Default Group auto-creation with view journal permission
+✅ Website URLs displayed in admin Website Manager
+✅ Improved collaborator management UX
+✅ Reorganized admin navigation (Template Manager as tab, Create New as button)
+✅ Invalid URL handling (redirect to homepage)
+
 ## Last Updated
 2025-10-02
 

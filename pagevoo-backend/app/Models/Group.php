@@ -32,4 +32,12 @@ class Group extends Model
     {
         return $this->belongsToMany(User::class, 'group_user')->withTimestamps();
     }
+
+    /**
+     * Get all notes shared with this group.
+     */
+    public function sharedNotes()
+    {
+        return $this->morphToMany(Note::class, 'shareable', 'note_shares');
+    }
 }

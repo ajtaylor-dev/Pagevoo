@@ -19,6 +19,18 @@ interface Group {
   users?: Collaborator[]
 }
 
+interface Note {
+  id: number
+  user_id: number
+  title: string
+  content?: string
+  created_at: string
+  updated_at: string
+  user?: any
+  shared_with_users?: Collaborator[]
+  shared_with_groups?: Group[]
+}
+
 export default function UserDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
@@ -49,13 +61,29 @@ export default function UserDashboard() {
       can_edit_content: false,
       can_manage_pages: false,
       can_view_analytics: false,
-      can_manage_media: false
+      can_manage_media: false,
+      can_view_journal: false,
+      can_edit_journal: false
     }
   })
   const [selectedGroupForMembers, setSelectedGroupForMembers] = useState<Group | null>(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  // Note/Journal state
+  const [notes, setNotes] = useState<Note[]>([])
+  const [isAddNoteOpen, setIsAddNoteOpen] = useState(false)
+  const [isEditNoteOpen, setIsEditNoteOpen] = useState(false)
+  const [editingNote, setEditingNote] = useState<Note | null>(null)
+  const [noteFormData, setNoteFormData] = useState({
+    title: '',
+    content: '',
+    share_with_users: [] as number[],
+    share_with_groups: [] as number[]
+  })
+  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
+
   const isProUser = user?.package === 'pro' && (user?.account_status === 'active' || user?.account_status === 'trial')
+  const hasJournalAccess = user?.package === 'niche' || user?.package === 'pro'
 
   // Load collaborators
   useEffect(() => {
@@ -64,6 +92,17 @@ export default function UserDashboard() {
       loadGroups()
     }
   }, [activeSection, isProUser])
+
+  // Load notes
+  useEffect(() => {
+    if (hasJournalAccess && activeSection === 'journal') {
+      loadNotes()
+      if (isProUser) {
+        loadCollaborators()
+        loadGroups()
+      }
+    }
+  }, [activeSection, hasJournalAccess, isProUser])
 
   const loadCollaborators = async () => {
     try {
@@ -109,7 +148,9 @@ export default function UserDashboard() {
         can_edit_content: false,
         can_manage_pages: false,
         can_view_analytics: false,
-        can_manage_media: false
+        can_manage_media: false,
+        can_view_journal: false,
+        can_edit_journal: false
       }
     })
   }
@@ -170,6 +211,7 @@ export default function UserDashboard() {
       const response = await api.deleteCollaborator(id)
       if (response.success) {
         await loadCollaborators()
+        await loadGroups() // Reload groups to update member counts
       }
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to delete collaborator')
@@ -253,7 +295,9 @@ export default function UserDashboard() {
         can_edit_content: false,
         can_manage_pages: false,
         can_view_analytics: false,
-        can_manage_media: false
+        can_manage_media: false,
+        can_view_journal: false,
+        can_edit_journal: false
       }
     })
     setIsEditGroupOpen(true)
@@ -267,12 +311,108 @@ export default function UserDashboard() {
       } else {
         await api.addUsersToGroup(groupId, [userId])
       }
-      await loadGroups()
+      const response = await api.getAllGroups()
+      if (response.success && response.data) {
+        setGroups(response.data)
+        // Update selectedGroupForMembers with the fresh data
+        const updatedGroup = response.data.find((g: Group) => g.id === groupId)
+        if (updatedGroup) {
+          setSelectedGroupForMembers(updatedGroup)
+        }
+      }
     } catch (error: any) {
       alert(error.response?.data?.message || 'Failed to update group membership')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  // Note/Journal functions
+  const loadNotes = async () => {
+    try {
+      const response = await api.getAllNotes()
+      if (response.success && response.data) {
+        setNotes(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading notes:', error)
+    }
+  }
+
+  const resetNoteForm = () => {
+    setNoteFormData({
+      title: '',
+      content: '',
+      share_with_users: [],
+      share_with_groups: []
+    })
+  }
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      setIsLoading(true)
+      const response = await api.createNote(noteFormData)
+      if (response.success) {
+        await loadNotes()
+        setIsAddNoteOpen(false)
+        resetNoteForm()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to create note')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEditNote = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingNote) return
+
+    try {
+      setIsLoading(true)
+      const response = await api.updateNote(editingNote.id, noteFormData)
+      if (response.success) {
+        await loadNotes()
+        setIsEditNoteOpen(false)
+        setEditingNote(null)
+        resetNoteForm()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update note')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteNote = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this note?')) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      const response = await api.deleteNote(id)
+      if (response.success) {
+        await loadNotes()
+        setSelectedNote(null)
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete note')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const openEditNote = (note: Note) => {
+    setEditingNote(note)
+    setNoteFormData({
+      title: note.title,
+      content: note.content || '',
+      share_with_users: note.shared_with_users?.map(u => u.id) || [],
+      share_with_groups: note.shared_with_groups?.map(g => g.id) || []
+    })
+    setIsEditNoteOpen(true)
   }
 
   return (
@@ -337,6 +477,18 @@ export default function UserDashboard() {
                 }`}
               >
                 Collaborators
+              </button>
+            )}
+            {hasJournalAccess && (
+              <button
+                onClick={() => setActiveSection('journal')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                  activeSection === 'journal'
+                    ? 'bg-gray-100 text-[#4b4b4b]'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Journal
               </button>
             )}
             <a
@@ -738,6 +890,12 @@ export default function UserDashboard() {
                                 {group.permissions.can_manage_media && (
                                   <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Manage Media</span>
                                 )}
+                                {group.permissions.can_view_journal && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">View Journal</span>
+                                )}
+                                {group.permissions.can_edit_journal && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Edit Journal</span>
+                                )}
                               </div>
                             </div>
                           )}
@@ -758,6 +916,132 @@ export default function UserDashboard() {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Journal Section */}
+          {activeSection === 'journal' && hasJournalAccess && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-[#4b4b4b]">Journal</h2>
+                <button
+                  onClick={() => {
+                    resetNoteForm()
+                    setIsAddNoteOpen(true)
+                  }}
+                  className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
+                >
+                  Add Note
+                </button>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6">
+                {/* Notes List */}
+                <div className="md:col-span-1 space-y-3">
+                  {notes.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      No notes yet. Create your first note!
+                    </div>
+                  ) : (
+                    notes.map((note) => (
+                      <div
+                        key={note.id}
+                        onClick={() => setSelectedNote(note)}
+                        className={`p-4 border rounded-lg cursor-pointer transition ${
+                          selectedNote?.id === note.id
+                            ? 'border-[#98b290] bg-green-50'
+                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                        }`}
+                      >
+                        <h3 className="font-medium text-gray-900 mb-1">{note.title}</h3>
+                        <p className="text-xs text-gray-500">
+                          {new Date(note.created_at).toLocaleDateString()}
+                        </p>
+                        {note.user_id !== user?.id && note.user && (
+                          <p className="text-xs text-indigo-600 mt-1">Shared by {note.user.name}</p>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+
+                {/* Note Detail View */}
+                <div className="md:col-span-2">
+                  {selectedNote ? (
+                    <div className="border border-gray-200 rounded-lg p-6">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <h2 className="text-2xl font-bold text-[#4b4b4b] mb-2">{selectedNote.title}</h2>
+                          <p className="text-sm text-gray-500">
+                            Created: {new Date(selectedNote.created_at).toLocaleString()}
+                          </p>
+                          {selectedNote.user_id !== user?.id && selectedNote.user && (
+                            <p className="text-sm text-indigo-600 mt-1">Shared by {selectedNote.user.name}</p>
+                          )}
+                        </div>
+                        {selectedNote.user_id === user?.id && (
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => openEditNote(selectedNote)}
+                              className="text-[#98b290] hover:text-[#88a280] font-medium transition text-sm"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteNote(selectedNote.id)}
+                              className="text-red-600 hover:text-red-700 font-medium transition text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <div className="prose max-w-none">
+                        <p className="text-gray-700 whitespace-pre-wrap">{selectedNote.content || 'No content'}</p>
+                      </div>
+                      {isProUser && selectedNote.user_id === user?.id && (
+                        <div className="mt-6 pt-6 border-t border-gray-200">
+                          <h3 className="text-sm font-semibold text-gray-700 mb-3">Shared With:</h3>
+                          <div className="space-y-2">
+                            {selectedNote.shared_with_users && selectedNote.shared_with_users.length > 0 && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Collaborators:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedNote.shared_with_users.map(u => (
+                                    <span key={u.id} className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs">
+                                      {u.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {selectedNote.shared_with_groups && selectedNote.shared_with_groups.length > 0 && (
+                              <div>
+                                <p className="text-xs text-gray-500 mb-1">Groups:</p>
+                                <div className="flex flex-wrap gap-1">
+                                  {selectedNote.shared_with_groups.map(g => (
+                                    <span key={g.id} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs">
+                                      {g.name}
+                                    </span>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                            {(!selectedNote.shared_with_users || selectedNote.shared_with_users.length === 0) &&
+                             (!selectedNote.shared_with_groups || selectedNote.shared_with_groups.length === 0) && (
+                              <p className="text-sm text-gray-500">This note is private</p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="border border-gray-200 rounded-lg p-12 text-center text-gray-500">
+                      Select a note to view its contents
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
@@ -990,6 +1274,30 @@ export default function UserDashboard() {
                       />
                       <span className="ml-2 text-sm text-gray-700">Can manage media</span>
                     </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={groupFormData.permissions.can_view_journal}
+                        onChange={(e) => setGroupFormData({
+                          ...groupFormData,
+                          permissions: { ...groupFormData.permissions, can_view_journal: e.target.checked }
+                        })}
+                        className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Can view journal</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={groupFormData.permissions.can_edit_journal}
+                        onChange={(e) => setGroupFormData({
+                          ...groupFormData,
+                          permissions: { ...groupFormData.permissions, can_edit_journal: e.target.checked }
+                        })}
+                        className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Can edit journal</span>
+                    </label>
                   </div>
                 </div>
               </div>
@@ -1059,6 +1367,134 @@ export default function UserDashboard() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Note Modal */}
+      {(isAddNoteOpen || isEditNoteOpen) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-[#4b4b4b]">
+                {isEditNoteOpen ? 'Edit Note' : 'Add Note'}
+              </h3>
+            </div>
+            <form onSubmit={isEditNoteOpen ? handleEditNote : handleAddNote} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                  <input
+                    type="text"
+                    value={noteFormData.title}
+                    onChange={(e) => setNoteFormData({ ...noteFormData, title: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+                  <textarea
+                    value={noteFormData.content}
+                    onChange={(e) => setNoteFormData({ ...noteFormData, content: e.target.value })}
+                    rows={10}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+
+                {isProUser && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Share with Collaborators</label>
+                      <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-3">
+                        {collaborators.length === 0 ? (
+                          <p className="text-sm text-gray-500">No collaborators available</p>
+                        ) : (
+                          collaborators.map((collab) => (
+                            <label key={collab.id} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={noteFormData.share_with_users.includes(collab.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNoteFormData({
+                                      ...noteFormData,
+                                      share_with_users: [...noteFormData.share_with_users, collab.id]
+                                    })
+                                  } else {
+                                    setNoteFormData({
+                                      ...noteFormData,
+                                      share_with_users: noteFormData.share_with_users.filter(id => id !== collab.id)
+                                    })
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">{collab.name}</span>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Share with Groups</label>
+                      <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-200 rounded-md p-3">
+                        {groups.length === 0 ? (
+                          <p className="text-sm text-gray-500">No groups available</p>
+                        ) : (
+                          groups.map((group) => (
+                            <label key={group.id} className="flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={noteFormData.share_with_groups.includes(group.id)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    setNoteFormData({
+                                      ...noteFormData,
+                                      share_with_groups: [...noteFormData.share_with_groups, group.id]
+                                    })
+                                  } else {
+                                    setNoteFormData({
+                                      ...noteFormData,
+                                      share_with_groups: noteFormData.share_with_groups.filter(id => id !== group.id)
+                                    })
+                                  }
+                                }}
+                                className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                              />
+                              <span className="ml-2 text-sm text-gray-700">{group.name}</span>
+                            </label>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddNoteOpen(false)
+                    setIsEditNoteOpen(false)
+                    setEditingNote(null)
+                    resetNoteForm()
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md transition disabled:opacity-50"
+                >
+                  {isLoading ? 'Saving...' : isEditNoteOpen ? 'Update Note' : 'Add Note'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

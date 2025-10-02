@@ -13,6 +13,8 @@ interface User {
   account_status: string
   package?: string
   owner_id?: number
+  internal_url?: string
+  external_url?: string
 }
 
 export default function Dashboard() {
@@ -320,13 +322,23 @@ export default function Dashboard() {
             >
               Package Settings
             </button>
+            <button
+              onClick={() => setActiveSection('template-manager')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                activeSection === 'template-manager'
+                  ? 'bg-gray-100 text-[#4b4b4b]'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Template Manager
+            </button>
             <a
               href="/template-builder"
               target="_blank"
               rel="noopener noreferrer"
               className="ml-auto px-6 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition inline-block"
             >
-              Template Manager
+              Create New
             </a>
           </div>
         </nav>
@@ -364,7 +376,20 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-gray-500 capitalize mb-4">{u.business_type}</p>
+                      <p className="text-xs text-gray-500 capitalize mb-3">{u.business_type}</p>
+
+                      {/* URLs */}
+                      <div className="space-y-1 mb-4">
+                        <div className="text-xs">
+                          <span className="text-gray-500 font-medium">Internal: </span>
+                          <span className="text-gray-700">{u.internal_url || `${u.business_name.toLowerCase().replace(/\s+/g, '')}.pagevoo.com`}</span>
+                        </div>
+                        <div className="text-xs">
+                          <span className="text-gray-500 font-medium">External: </span>
+                          <span className="text-gray-700">{u.external_url || 'N/A'}</span>
+                        </div>
+                      </div>
+
                       <a
                         href="/website-builder"
                         target="_blank"

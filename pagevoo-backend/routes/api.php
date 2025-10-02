@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\CollaboratorController;
 use App\Http\Controllers\Api\V1\GroupController;
+use App\Http\Controllers\Api\V1\NoteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -59,6 +60,14 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', [GroupController::class, 'destroy']);
             Route::post('/{id}/add-users', [GroupController::class, 'addUsers']);
             Route::post('/{id}/remove-users', [GroupController::class, 'removeUsers']);
+        });
+
+        // Journal/Notes management (Niche and Pro users only)
+        Route::prefix('notes')->group(function () {
+            Route::get('/', [NoteController::class, 'index']);
+            Route::post('/', [NoteController::class, 'store']);
+            Route::put('/{id}', [NoteController::class, 'update']);
+            Route::delete('/{id}', [NoteController::class, 'destroy']);
         });
     });
 

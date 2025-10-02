@@ -29,6 +29,8 @@ class User extends Authenticatable
         'account_status',
         'package',
         'owner_id',
+        'internal_url',
+        'external_url',
     ];
 
     /**
@@ -109,6 +111,32 @@ class User extends Authenticatable
     {
         return $this->role === 'user'
             && $this->package === 'pro'
+            && in_array($this->account_status, ['active', 'trial']);
+    }
+
+    /**
+     * Get all notes owned by this user.
+     */
+    public function notes()
+    {
+        return $this->hasMany(Note::class);
+    }
+
+    /**
+     * Get all notes shared with this user.
+     */
+    public function sharedNotes()
+    {
+        return $this->morphToMany(Note::class, 'shareable', 'note_shares');
+    }
+
+    /**
+     * Check if user can access journal (Niche or Pro).
+     */
+    public function canAccessJournal(): bool
+    {
+        return $this->role === 'user'
+            && in_array($this->package, ['niche', 'pro'])
             && in_array($this->account_status, ['active', 'trial']);
     }
 }

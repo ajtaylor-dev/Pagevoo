@@ -3,9 +3,11 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Models\User;
+use App\Models\Group;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\DB;
 
 class CollaboratorController extends BaseController
 {
@@ -45,19 +47,52 @@ class CollaboratorController extends BaseController
             return $this->sendError('Validation Error', 422, $validator->errors());
         }
 
-        $collaborator = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'business_name' => $user->business_name,
-            'business_type' => $user->business_type,
-            'phone_number' => $request->phone_number,
-            'role' => 'collaborator',
-            'account_status' => $user->account_status,
-            'owner_id' => $user->id,
-        ]);
+        DB::beginTransaction();
+        try {
+            $collaborator = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'business_name' => $user->business_name,
+                'business_type' => $user->business_type,
+                'phone_number' => $request->phone_number,
+                'role' => 'collaborator',
+                'account_status' => $user->account_status,
+                'owner_id' => $user->id,
+            ]);
 
-        return $this->sendSuccess($collaborator, 'Collaborator created successfully', 201);
+            // Find or create the Default Group
+            $defaultGroup = Group::firstOrCreate(
+                [
+                    'owner_id' => $user->id,
+                    'name' => 'Default Group'
+                ],
+                [
+                    'description' => 'Default group for all collaborators',
+                    'permissions' => [
+                        'can_edit_content' => false,
+                        'can_manage_pages' => false,
+                        'can_view_analytics' => false,
+                        'can_manage_media' => false,
+                        'can_view_journal' => true,
+                        'can_edit_journal' => false
+                    ]
+                ]
+            );
+
+            // Add collaborator to the Default Group
+            $defaultGroup->users()->attach($collaborator->id);
+
+            DB::commit();
+
+            // Load the collaborator with groups relationship
+            $collaborator->load('groups');
+
+            return $this->sendSuccess($collaborator, 'Collaborator created successfully', 201);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->sendError('Failed to create collaborator', 500);
+        }
     }
 
     /**

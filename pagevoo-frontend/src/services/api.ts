@@ -261,6 +261,40 @@ class ApiService {
     const response = await this.client.post(`/v1/groups/${groupId}/remove-users`, { user_ids: userIds });
     return response.data;
   }
+
+  /**
+   * Note/Journal Management Methods
+   */
+
+  async getAllNotes(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/notes');
+    return response.data;
+  }
+
+  async createNote(data: {
+    title: string;
+    content?: string;
+    share_with_users?: number[];
+    share_with_groups?: number[];
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/notes', data);
+    return response.data;
+  }
+
+  async updateNote(id: number, data: {
+    title: string;
+    content?: string;
+    share_with_users?: number[];
+    share_with_groups?: number[];
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/notes/${id}`, data);
+    return response.data;
+  }
+
+  async deleteNote(id: number): Promise<ApiResponse> {
+    const response = await this.client.delete(`/v1/notes/${id}`);
+    return response.data;
+  }
 }
 
 // Export singleton instance
