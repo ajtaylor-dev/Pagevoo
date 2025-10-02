@@ -84,6 +84,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/', [TemplateController::class, 'store']);
                 Route::put('/{id}', [TemplateController::class, 'update']);
                 Route::delete('/{id}', [TemplateController::class, 'destroy']);
+                Route::post('/{id}/upload-image', [TemplateController::class, 'uploadImage']);
             });
         });
 

@@ -354,6 +354,15 @@ class ApiService {
     return response.data;
   }
 
+  async uploadTemplateImage(id: number, formData: FormData): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/v1/templates/${id}/upload-image`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
   /**
    * User Website Management Methods
    */

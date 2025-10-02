@@ -50,6 +50,9 @@ class TemplateSeeder extends Seeder
             'business_type' => 'restaurant',
             'is_active' => true,
             'created_by' => $adminId,
+            'exclusive_to' => 'pro',
+            'technologies' => ['html5'],
+            'features' => ['booking', 'contact-form', 'blog'],
         ]);
 
         // Home Page
@@ -151,6 +154,9 @@ class TemplateSeeder extends Seeder
             'business_type' => 'barber',
             'is_active' => true,
             'created_by' => $adminId,
+            'exclusive_to' => 'niche',
+            'technologies' => ['react'],
+            'features' => ['booking', 'contact-form'],
         ]);
 
         $homePage = TemplatePage::create([
@@ -213,6 +219,9 @@ class TemplateSeeder extends Seeder
             'business_type' => 'pizza',
             'is_active' => true,
             'created_by' => $adminId,
+            'exclusive_to' => 'pro',
+            'technologies' => ['react'],
+            'features' => ['shopping-cart', 'contact-form'],
         ]);
 
         $homePage = TemplatePage::create([
@@ -252,6 +261,9 @@ class TemplateSeeder extends Seeder
             'business_type' => 'cafe',
             'is_active' => true,
             'created_by' => $adminId,
+            'exclusive_to' => null,
+            'technologies' => ['html5'],
+            'features' => ['contact-form', 'blog'],
         ]);
 
         $homePage = TemplatePage::create([
@@ -283,6 +295,9 @@ class TemplateSeeder extends Seeder
             'business_type' => 'gym',
             'is_active' => true,
             'created_by' => $adminId,
+            'exclusive_to' => 'niche',
+            'technologies' => ['html5'],
+            'features' => ['booking', 'marketplace', 'forum'],
         ]);
 
         $homePage = TemplatePage::create([
@@ -321,6 +336,9 @@ class TemplateSeeder extends Seeder
             'business_type' => 'salon',
             'is_active' => true,
             'created_by' => $adminId,
+            'exclusive_to' => null,
+            'technologies' => ['html5'],
+            'features' => ['booking', 'shopping-cart', 'contact-form'],
         ]);
 
         $homePage = TemplatePage::create([

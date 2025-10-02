@@ -878,6 +878,80 @@ users table:
 ✅ Publish/unpublish functionality
 ✅ Fixed API response structure bug
 
+## Session 9 (2025-10-02) - Template Enhancements & Metadata System
+
+**What We Built:**
+1. Template preview images with upload functionality
+2. Pro/Niche exclusive badges on templates
+3. Technology and feature icon system with tooltips
+4. Fixed template creation workflow
+5. Enhanced template builder for new templates
+
+**Changes Made:**
+
+1. **Backend - Database & Models:**
+   - Added `preview_image` storage system with symlink
+   - Migration: `2025_10_02_213256_add_features_to_templates_table.php`
+     - `exclusive_to` enum ('pro', 'niche', null)
+     - `technologies` JSON array
+     - `features` JSON array
+   - Updated Template model with new fillable fields and casts
+
+2. **Backend - Controllers:**
+   - TemplateController: Added `uploadImage()` method for preview uploads
+   - Updated store() and update() to handle new fields
+   - Route: POST `/api/v1/templates/{id}/upload-image` (admin only)
+
+3. **Frontend - TemplateManager:**
+   - Created TechIcon component (HTML5, CSS3, React, PHP, MySQL)
+   - Created FeatureIcon component (Shopping Cart, Booking, Blog, Marketplace, Forum, Contact Form)
+   - Added Pro/Niche exclusive badges (top-right of preview images)
+   - Icons row with tooltips below description
+   - Preview image display with placeholder
+
+4. **Frontend - TemplateBuilder:**
+   - Fixed template creation workflow (was showing "No template selected" error)
+   - Now initializes blank template when no ID present
+   - "Create Template" vs "Save Template" button text
+   - Edit menu includes:
+     - Preview image upload
+     - Exclusive To dropdown
+     - Technologies checkboxes
+     - Features checkboxes
+   - Validation to save template before uploading image
+
+5. **Data Seeding:**
+   - Updated TemplateSeeder with metadata for all 6 templates
+   - Fixed DatabaseSeeder to call TemplateSeeder
+   - Templates now have varied tech stacks and features
+
+**Files Modified This Session:**
+- pagevoo-backend/database/seeders/DatabaseSeeder.php (Added TemplateSeeder)
+- pagevoo-backend/database/seeders/TemplateSeeder.php (Added metadata)
+- pagevoo-backend/app/Models/Template.php (New fields)
+- pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php (Upload & validation)
+- pagevoo-backend/routes/api.php (Upload route)
+- pagevoo-frontend/src/components/TemplateManager.tsx (Icons & badges)
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx (Creation workflow)
+- pagevoo-frontend/src/services/api.ts (Upload method)
+
+**Current Template Metadata (Updated):**
+- Classic Restaurant: Pro exclusive, HTML5, Booking/Contact/Blog
+- Barber Shop: Niche exclusive, React, Booking/Contact
+- Pizza Parlor: Pro exclusive, React, Shopping Cart/Contact
+- Cafe: No exclusive, HTML5, Contact/Blog
+- Gym: Niche exclusive, HTML5, Booking/Marketplace/Forum
+- Salon: No exclusive, HTML5, Booking/Shopping Cart/Contact
+
+**Tech Stack Simplification:**
+- Changed from multiple tech icons (HTML5, CSS3, React, PHP, MySQL) to single icon
+- Templates now show either HTML5 or React icon only
+- TemplateManager: Displays single tech icon based on `template.technologies.includes('react') ? 'react' : 'html5'`
+- TemplateBuilder Edit menu: Changed from checkboxes to dropdown selector (HTML5 or React)
+- TemplateSeeder: Updated all 6 templates to use single technology value in array
+- Database re-seeded with simplified technology values
+- Features icons remain unchanged (Shopping Cart, Booking, Blog, Marketplace, Forum, Contact Form)
+
 ## Last Updated
 2025-10-02
 

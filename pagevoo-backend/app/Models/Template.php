@@ -12,11 +12,16 @@ class Template extends Model
         'business_type',
         'preview_image',
         'is_active',
-        'created_by'
+        'created_by',
+        'exclusive_to',
+        'technologies',
+        'features'
     ];
 
     protected $casts = [
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'technologies' => 'array',
+        'features' => 'array'
     ];
 
     public function creator()
