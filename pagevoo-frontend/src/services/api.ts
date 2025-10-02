@@ -180,6 +180,87 @@ class ApiService {
     const response = await this.client.delete(`/v1/users/${id}`);
     return response.data;
   }
+
+  async deleteInactiveUsers(): Promise<ApiResponse<{ deleted_count: number; deleted_users: string[] }>> {
+    const response = await this.client.post('/v1/users/delete-inactive');
+    return response.data;
+  }
+
+  /**
+   * Collaborator Management Methods
+   */
+
+  async getAllCollaborators(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/collaborators');
+    return response.data;
+  }
+
+  async createCollaborator(data: {
+    name: string;
+    email: string;
+    password: string;
+    phone_number?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/collaborators', data);
+    return response.data;
+  }
+
+  async updateCollaborator(id: number, data: {
+    name: string;
+    email: string;
+    password?: string;
+    phone_number?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/collaborators/${id}`, data);
+    return response.data;
+  }
+
+  async deleteCollaborator(id: number): Promise<ApiResponse> {
+    const response = await this.client.delete(`/v1/collaborators/${id}`);
+    return response.data;
+  }
+
+  /**
+   * Group Management Methods
+   */
+
+  async getAllGroups(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/groups');
+    return response.data;
+  }
+
+  async createGroup(data: {
+    name: string;
+    description?: string;
+    permissions?: any;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/groups', data);
+    return response.data;
+  }
+
+  async updateGroup(id: number, data: {
+    name: string;
+    description?: string;
+    permissions?: any;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/groups/${id}`, data);
+    return response.data;
+  }
+
+  async deleteGroup(id: number): Promise<ApiResponse> {
+    const response = await this.client.delete(`/v1/groups/${id}`);
+    return response.data;
+  }
+
+  async addUsersToGroup(groupId: number, userIds: number[]): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/v1/groups/${groupId}/add-users`, { user_ids: userIds });
+    return response.data;
+  }
+
+  async removeUsersFromGroup(groupId: number, userIds: number[]): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/v1/groups/${groupId}/remove-users`, { user_ids: userIds });
+    return response.data;
+  }
 }
 
 // Export singleton instance

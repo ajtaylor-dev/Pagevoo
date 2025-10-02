@@ -1,15 +1,278 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
+import { api } from '@/services/api'
+
+interface Collaborator {
+  id: number
+  name: string
+  email: string
+  phone_number?: string
+  groups?: Group[]
+}
+
+interface Group {
+  id: number
+  name: string
+  description?: string
+  permissions?: any
+  users?: Collaborator[]
+}
 
 export default function UserDashboard() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [activeSection, setActiveSection] = useState('overview')
 
+  // Collaborator state
+  const [collaborators, setCollaborators] = useState<Collaborator[]>([])
+  const [isAddCollaboratorOpen, setIsAddCollaboratorOpen] = useState(false)
+  const [isEditCollaboratorOpen, setIsEditCollaboratorOpen] = useState(false)
+  const [editingCollaborator, setEditingCollaborator] = useState<Collaborator | null>(null)
+  const [collaboratorFormData, setCollaboratorFormData] = useState({
+    name: '',
+    email: '',
+    password: '',
+    phone_number: ''
+  })
+
+  // Group state
+  const [groups, setGroups] = useState<Group[]>([])
+  const [activeTab, setActiveTab] = useState<'collaborators' | 'groups'>('collaborators')
+  const [isAddGroupOpen, setIsAddGroupOpen] = useState(false)
+  const [isEditGroupOpen, setIsEditGroupOpen] = useState(false)
+  const [editingGroup, setEditingGroup] = useState<Group | null>(null)
+  const [groupFormData, setGroupFormData] = useState({
+    name: '',
+    description: '',
+    permissions: {
+      can_edit_content: false,
+      can_manage_pages: false,
+      can_view_analytics: false,
+      can_manage_media: false
+    }
+  })
+  const [selectedGroupForMembers, setSelectedGroupForMembers] = useState<Group | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+
+  const isProUser = user?.package === 'pro' && (user?.account_status === 'active' || user?.account_status === 'trial')
+
+  // Load collaborators
+  useEffect(() => {
+    if (isProUser && activeSection === 'collaborators') {
+      loadCollaborators()
+      loadGroups()
+    }
+  }, [activeSection, isProUser])
+
+  const loadCollaborators = async () => {
+    try {
+      const response = await api.getAllCollaborators()
+      if (response.success && response.data) {
+        setCollaborators(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading collaborators:', error)
+    }
+  }
+
+  const loadGroups = async () => {
+    try {
+      const response = await api.getAllGroups()
+      if (response.success && response.data) {
+        setGroups(response.data)
+      }
+    } catch (error) {
+      console.error('Error loading groups:', error)
+    }
+  }
+
   const handleLogout = async () => {
     await logout()
     navigate('/')
+  }
+
+  const resetCollaboratorForm = () => {
+    setCollaboratorFormData({
+      name: '',
+      email: '',
+      password: '',
+      phone_number: ''
+    })
+  }
+
+  const resetGroupForm = () => {
+    setGroupFormData({
+      name: '',
+      description: '',
+      permissions: {
+        can_edit_content: false,
+        can_manage_pages: false,
+        can_view_analytics: false,
+        can_manage_media: false
+      }
+    })
+  }
+
+  const handleAddCollaborator = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      setIsLoading(true)
+      const response = await api.createCollaborator(collaboratorFormData)
+      if (response.success) {
+        await loadCollaborators()
+        setIsAddCollaboratorOpen(false)
+        resetCollaboratorForm()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to create collaborator')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEditCollaborator = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingCollaborator) return
+
+    try {
+      setIsLoading(true)
+      const updateData: any = {
+        name: collaboratorFormData.name,
+        email: collaboratorFormData.email,
+        phone_number: collaboratorFormData.phone_number
+      }
+      if (collaboratorFormData.password) {
+        updateData.password = collaboratorFormData.password
+      }
+
+      const response = await api.updateCollaborator(editingCollaborator.id, updateData)
+      if (response.success) {
+        await loadCollaborators()
+        setIsEditCollaboratorOpen(false)
+        setEditingCollaborator(null)
+        resetCollaboratorForm()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update collaborator')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteCollaborator = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this collaborator?')) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      const response = await api.deleteCollaborator(id)
+      if (response.success) {
+        await loadCollaborators()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete collaborator')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const openEditCollaborator = (collaborator: Collaborator) => {
+    setEditingCollaborator(collaborator)
+    setCollaboratorFormData({
+      name: collaborator.name,
+      email: collaborator.email,
+      password: '',
+      phone_number: collaborator.phone_number || ''
+    })
+    setIsEditCollaboratorOpen(true)
+  }
+
+  const handleAddGroup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      setIsLoading(true)
+      const response = await api.createGroup(groupFormData)
+      if (response.success) {
+        await loadGroups()
+        setIsAddGroupOpen(false)
+        resetGroupForm()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to create group')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleEditGroup = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingGroup) return
+
+    try {
+      setIsLoading(true)
+      const response = await api.updateGroup(editingGroup.id, groupFormData)
+      if (response.success) {
+        await loadGroups()
+        setIsEditGroupOpen(false)
+        setEditingGroup(null)
+        resetGroupForm()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update group')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleDeleteGroup = async (id: number) => {
+    if (!window.confirm('Are you sure you want to delete this group?')) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      const response = await api.deleteGroup(id)
+      if (response.success) {
+        await loadGroups()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete group')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const openEditGroup = (group: Group) => {
+    setEditingGroup(group)
+    setGroupFormData({
+      name: group.name,
+      description: group.description || '',
+      permissions: group.permissions || {
+        can_edit_content: false,
+        can_manage_pages: false,
+        can_view_analytics: false,
+        can_manage_media: false
+      }
+    })
+    setIsEditGroupOpen(true)
+  }
+
+  const handleToggleGroupMember = async (groupId: number, userId: number, isCurrentlyMember: boolean) => {
+    try {
+      setIsLoading(true)
+      if (isCurrentlyMember) {
+        await api.removeUsersFromGroup(groupId, [userId])
+      } else {
+        await api.addUsersToGroup(groupId, [userId])
+      }
+      await loadGroups()
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to update group membership')
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -64,6 +327,18 @@ export default function UserDashboard() {
             >
               Account Settings
             </button>
+            {isProUser && (
+              <button
+                onClick={() => setActiveSection('collaborators')}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                  activeSection === 'collaborators'
+                    ? 'bg-gray-100 text-[#4b4b4b]'
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Collaborators
+              </button>
+            )}
             <a
               href="/website-builder"
               target="_blank"
@@ -120,6 +395,26 @@ export default function UserDashboard() {
                         {user?.account_status}
                       </span>
                     </div>
+                    {user?.package && (
+                      <div>
+                        <p className="text-xs text-gray-500 uppercase">Package</p>
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
+                          {user.package}
+                        </span>
+                      </div>
+                    )}
+                    {user?.account_status === 'trial' && !user?.package && (
+                      <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm font-semibold text-red-700 mb-1">⚠️ Features limited!</p>
+                        <p className="text-sm text-red-600 mb-3">Upgrade your trial account to unlock the full features of Pagevoo.</p>
+                        <Link
+                          to="/pricing"
+                          className="inline-block px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
+                        >
+                          Upgrade Now
+                        </Link>
+                      </div>
+                    )}
                     {user?.account_status === 'inactive' && (
                       <div className="mt-4">
                         <p className="text-sm text-gray-600 mb-3">Activate your account to start building your website</p>
@@ -268,8 +563,505 @@ export default function UserDashboard() {
               </div>
             </div>
           )}
+
+          {activeSection === 'collaborators' && isProUser && (
+            <div>
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-[#4b4b4b]">Collaborator Management</h2>
+              </div>
+
+              {/* Tabs */}
+              <div className="border-b border-gray-200 mb-6">
+                <div className="flex space-x-8">
+                  <button
+                    onClick={() => setActiveTab('collaborators')}
+                    className={`pb-4 px-1 border-b-2 font-medium text-sm transition ${
+                      activeTab === 'collaborators'
+                        ? 'border-[#98b290] text-[#98b290]'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Collaborators
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('groups')}
+                    className={`pb-4 px-1 border-b-2 font-medium text-sm transition ${
+                      activeTab === 'groups'
+                        ? 'border-[#98b290] text-[#98b290]'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Groups
+                  </button>
+                </div>
+              </div>
+
+              {/* Collaborators Tab */}
+              {activeTab === 'collaborators' && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <p className="text-sm text-gray-600">Manage team members who can help manage your website</p>
+                    <button
+                      onClick={() => {
+                        resetCollaboratorForm()
+                        setIsAddCollaboratorOpen(true)
+                      }}
+                      className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
+                    >
+                      Add Collaborator
+                    </button>
+                  </div>
+
+                  {/* Collaborators List */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200 bg-gray-50">
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Name</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Email</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Phone</th>
+                          <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Groups</th>
+                          <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {collaborators.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                              No collaborators yet. Add your first team member!
+                            </td>
+                          </tr>
+                        ) : (
+                          collaborators.map((collab) => (
+                            <tr key={collab.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
+                              <td className="px-4 py-3 text-sm text-gray-900">{collab.name}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{collab.email}</td>
+                              <td className="px-4 py-3 text-sm text-gray-600">{collab.phone_number || '-'}</td>
+                              <td className="px-4 py-3 text-sm">
+                                {collab.groups && collab.groups.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {collab.groups.map((group) => (
+                                      <span key={group.id} className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded text-xs">
+                                        {group.name}
+                                      </span>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <span className="text-gray-400">No groups</span>
+                                )}
+                              </td>
+                              <td className="px-4 py-3 text-sm text-right space-x-2">
+                                <button
+                                  onClick={() => openEditCollaborator(collab)}
+                                  className="text-[#98b290] hover:text-[#88a280] font-medium transition"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteCollaborator(collab.id)}
+                                  className="text-red-600 hover:text-red-700 font-medium transition"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Groups Tab */}
+              {activeTab === 'groups' && (
+                <div>
+                  <div className="flex items-center justify-between mb-6">
+                    <p className="text-sm text-gray-600">Organize collaborators into groups with specific permissions</p>
+                    <button
+                      onClick={() => {
+                        resetGroupForm()
+                        setIsAddGroupOpen(true)
+                      }}
+                      className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
+                    >
+                      Create Group
+                    </button>
+                  </div>
+
+                  {/* Groups List */}
+                  <div className="grid md:grid-cols-2 gap-6">
+                    {groups.length === 0 ? (
+                      <div className="col-span-2 text-center py-8 text-gray-500">
+                        No groups yet. Create your first group to organize collaborators!
+                      </div>
+                    ) : (
+                      groups.map((group) => (
+                        <div key={group.id} className="border border-gray-200 rounded-lg p-6">
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <h3 className="font-semibold text-[#4b4b4b] text-lg">{group.name}</h3>
+                              {group.description && (
+                                <p className="text-sm text-gray-600 mt-1">{group.description}</p>
+                              )}
+                            </div>
+                            <div className="flex space-x-2">
+                              <button
+                                onClick={() => openEditGroup(group)}
+                                className="text-[#98b290] hover:text-[#88a280] text-sm font-medium"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteGroup(group.id)}
+                                className="text-red-600 hover:text-red-700 text-sm font-medium"
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </div>
+
+                          {/* Permissions */}
+                          {group.permissions && (
+                            <div className="mb-4">
+                              <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Permissions</p>
+                              <div className="flex flex-wrap gap-2">
+                                {group.permissions.can_edit_content && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Edit Content</span>
+                                )}
+                                {group.permissions.can_manage_pages && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Manage Pages</span>
+                                )}
+                                {group.permissions.can_view_analytics && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">View Analytics</span>
+                                )}
+                                {group.permissions.can_manage_media && (
+                                  <span className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">Manage Media</span>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Members */}
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500 uppercase mb-2">Members ({group.users?.length || 0})</p>
+                            <button
+                              onClick={() => setSelectedGroupForMembers(group)}
+                              className="text-sm text-[#98b290] hover:text-[#88a280] font-medium"
+                            >
+                              Manage Members
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Add Collaborator Modal */}
+      {isAddCollaboratorOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-[#4b4b4b]">Add Collaborator</h3>
+            </div>
+            <form onSubmit={handleAddCollaborator} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={collaboratorFormData.name}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, name: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={collaboratorFormData.email}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, email: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password *</label>
+                  <input
+                    type="password"
+                    value={collaboratorFormData.password}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, password: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={collaboratorFormData.phone_number}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, phone_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddCollaboratorOpen(false)
+                    resetCollaboratorForm()
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md transition disabled:opacity-50"
+                >
+                  {isLoading ? 'Adding...' : 'Add Collaborator'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Collaborator Modal */}
+      {isEditCollaboratorOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-[#4b4b4b]">Edit Collaborator</h3>
+            </div>
+            <form onSubmit={handleEditCollaborator} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                  <input
+                    type="text"
+                    value={collaboratorFormData.name}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, name: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                  <input
+                    type="email"
+                    value={collaboratorFormData.email}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, email: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Password <span className="text-gray-500 text-xs">(leave blank to keep current)</span>
+                  </label>
+                  <input
+                    type="password"
+                    value={collaboratorFormData.password}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, password: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    value={collaboratorFormData.phone_number}
+                    onChange={(e) => setCollaboratorFormData({ ...collaboratorFormData, phone_number: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditCollaboratorOpen(false)
+                    setEditingCollaborator(null)
+                    resetCollaboratorForm()
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md transition disabled:opacity-50"
+                >
+                  {isLoading ? 'Updating...' : 'Update Collaborator'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Group Modal */}
+      {(isAddGroupOpen || isEditGroupOpen) && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-[#4b4b4b]">{isAddGroupOpen ? 'Create Group' : 'Edit Group'}</h3>
+            </div>
+            <form onSubmit={isAddGroupOpen ? handleAddGroup : handleEditGroup} className="p-6">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Group Name *</label>
+                  <input
+                    type="text"
+                    value={groupFormData.name}
+                    onChange={(e) => setGroupFormData({ ...groupFormData, name: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={groupFormData.description}
+                    onChange={(e) => setGroupFormData({ ...groupFormData, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Permissions</label>
+                  <div className="space-y-2">
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={groupFormData.permissions.can_edit_content}
+                        onChange={(e) => setGroupFormData({
+                          ...groupFormData,
+                          permissions: { ...groupFormData.permissions, can_edit_content: e.target.checked }
+                        })}
+                        className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Can edit content</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={groupFormData.permissions.can_manage_pages}
+                        onChange={(e) => setGroupFormData({
+                          ...groupFormData,
+                          permissions: { ...groupFormData.permissions, can_manage_pages: e.target.checked }
+                        })}
+                        className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Can manage pages</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={groupFormData.permissions.can_view_analytics}
+                        onChange={(e) => setGroupFormData({
+                          ...groupFormData,
+                          permissions: { ...groupFormData.permissions, can_view_analytics: e.target.checked }
+                        })}
+                        className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Can view analytics</span>
+                    </label>
+                    <label className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={groupFormData.permissions.can_manage_media}
+                        onChange={(e) => setGroupFormData({
+                          ...groupFormData,
+                          permissions: { ...groupFormData.permissions, can_manage_media: e.target.checked }
+                        })}
+                        className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                      />
+                      <span className="ml-2 text-sm text-gray-700">Can manage media</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAddGroupOpen(false)
+                    setIsEditGroupOpen(false)
+                    setEditingGroup(null)
+                    resetGroupForm()
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md transition disabled:opacity-50"
+                >
+                  {isLoading ? (isAddGroupOpen ? 'Creating...' : 'Updating...') : (isAddGroupOpen ? 'Create Group' : 'Update Group')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Group Members Modal */}
+      {selectedGroupForMembers && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h3 className="text-2xl font-bold text-[#4b4b4b]">Manage Members - {selectedGroupForMembers.name}</h3>
+            </div>
+            <div className="p-6">
+              <p className="text-sm text-gray-600 mb-4">Select collaborators to add to this group</p>
+              <div className="space-y-2">
+                {collaborators.map((collab) => {
+                  const isMember = selectedGroupForMembers.users?.some(u => u.id === collab.id) || false
+                  return (
+                    <label key={collab.id} className="flex items-center p-3 border border-gray-200 rounded-md hover:bg-gray-50 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={isMember}
+                        onChange={() => handleToggleGroupMember(selectedGroupForMembers.id, collab.id, isMember)}
+                        className="rounded border-gray-300 text-[#98b290] focus:ring-[#98b290]"
+                      />
+                      <div className="ml-3">
+                        <p className="text-sm font-medium text-gray-900">{collab.name}</p>
+                        <p className="text-xs text-gray-500">{collab.email}</p>
+                      </div>
+                    </label>
+                  )
+                })}
+                {collaborators.length === 0 && (
+                  <p className="text-center text-gray-500 py-4">No collaborators available. Add collaborators first!</p>
+                )}
+              </div>
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => setSelectedGroupForMembers(null)}
+                  className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md transition"
+                >
+                  Done
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

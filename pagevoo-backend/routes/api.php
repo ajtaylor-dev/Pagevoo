@@ -4,6 +4,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\UserController;
+use App\Http\Controllers\Api\V1\CollaboratorController;
+use App\Http\Controllers\Api\V1\GroupController;
 
 /*
 |--------------------------------------------------------------------------
@@ -38,6 +40,25 @@ Route::prefix('v1')->group(function () {
             Route::post('/users', [UserController::class, 'store']);
             Route::put('/users/{id}', [UserController::class, 'update']);
             Route::delete('/users/{id}', [UserController::class, 'destroy']);
+            Route::post('/users/delete-inactive', [UserController::class, 'deleteInactiveUsers']);
+        });
+
+        // Collaborator management (Pro users only)
+        Route::prefix('collaborators')->group(function () {
+            Route::get('/', [CollaboratorController::class, 'index']);
+            Route::post('/', [CollaboratorController::class, 'store']);
+            Route::put('/{id}', [CollaboratorController::class, 'update']);
+            Route::delete('/{id}', [CollaboratorController::class, 'destroy']);
+        });
+
+        // Group management (Pro users only)
+        Route::prefix('groups')->group(function () {
+            Route::get('/', [GroupController::class, 'index']);
+            Route::post('/', [GroupController::class, 'store']);
+            Route::put('/{id}', [GroupController::class, 'update']);
+            Route::delete('/{id}', [GroupController::class, 'destroy']);
+            Route::post('/{id}/add-users', [GroupController::class, 'addUsers']);
+            Route::post('/{id}/remove-users', [GroupController::class, 'removeUsers']);
         });
     });
 

@@ -11,6 +11,7 @@ interface User {
   business_type: string
   role: string
   account_status: string
+  package?: string
   owner_id?: number
 }
 
@@ -33,7 +34,8 @@ export default function Dashboard() {
     business_type: '',
     phone_number: '',
     role: 'user',
-    account_status: 'inactive',
+    account_status: 'trial',
+    package: '',
     owner_id: ''
   })
   const [potentialOwners, setPotentialOwners] = useState<User[]>([])
@@ -86,7 +88,8 @@ export default function Dashboard() {
       business_type: '',
       phone_number: '',
       role: 'user',
-      account_status: 'inactive',
+      account_status: 'trial',
+      package: '',
       owner_id: ''
     })
   }
@@ -109,6 +112,26 @@ export default function Dashboard() {
     }
   }
 
+  const handleDeleteInactiveUsers = async () => {
+    if (!window.confirm('This will delete all trial users who haven\'t logged in for 30 days. Are you sure?')) {
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      const response = await api.deleteInactiveUsers()
+      if (response.success && response.data) {
+        const count = response.data.deleted_count
+        alert(`Successfully deleted ${count} inactive user(s)`)
+        await loadUsers()
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to delete inactive users')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleEditUser = (userId: number) => {
     const userToEdit = users.find(u => u.id === userId)
     if (userToEdit) {
@@ -122,6 +145,7 @@ export default function Dashboard() {
         phone_number: '',
         role: userToEdit.role,
         account_status: userToEdit.account_status,
+        package: userToEdit.package || '',
         owner_id: userToEdit.owner_id?.toString() || ''
       })
       setIsEditModalOpen(true)
@@ -147,6 +171,7 @@ export default function Dashboard() {
         phone_number: formData.phone_number,
         role: formData.role,
         account_status: formData.account_status,
+        package: formData.package || undefined,
         owner_id: formData.owner_id ? parseInt(formData.owner_id) : undefined
       })
 
@@ -177,6 +202,7 @@ export default function Dashboard() {
         phone_number: formData.phone_number,
         role: formData.role,
         account_status: formData.account_status,
+        package: formData.package || null,
         owner_id: formData.owner_id ? parseInt(formData.owner_id) : null
       }
 
@@ -311,26 +337,32 @@ export default function Dashboard() {
             <div>
               <h2 className="text-2xl font-bold text-[#4b4b4b] mb-6">Website Manager</h2>
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {/* User Websites List - will be populated from API */}
-                {users.map((u) => (
-                  u.role !== 'admin' && (
+                {/* User Websites List - Only show users (not admins or collaborators) */}
+                {users.map((u) => {
+                  if (u.role !== 'user') return null
+
+                  // Count collaborators for this user
+                  const collaboratorCount = users.filter(collab =>
+                    collab.role === 'collaborator' && collab.owner_id === u.id
+                  ).length
+
+                  return (
                     <div key={u.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
                       <div className="flex items-start justify-between mb-3">
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-semibold text-gray-900">{u.business_name}</h3>
                           <p className="text-sm text-gray-500">{u.name}</p>
+                          {collaboratorCount > 0 && (
+                            <p className="text-xs text-gray-400 mt-1">
+                              + {collaboratorCount} collaborator{collaboratorCount !== 1 ? 's' : ''}
+                            </p>
+                          )}
                         </div>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            u.account_status === 'active'
-                              ? 'bg-green-100 text-green-700'
-                              : u.account_status === 'trial'
-                              ? 'bg-yellow-100 text-yellow-700'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}
-                        >
-                          {u.account_status}
-                        </span>
+                        {u.package && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
+                            {u.package}
+                          </span>
+                        )}
                       </div>
                       <p className="text-xs text-gray-500 capitalize mb-4">{u.business_type}</p>
                       <a
@@ -343,7 +375,7 @@ export default function Dashboard() {
                       </a>
                     </div>
                   )
-                ))}
+                })}
               </div>
             </div>
           )}
@@ -352,12 +384,20 @@ export default function Dashboard() {
             <div>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-[#4b4b4b]">User Management</h2>
-                <button
-                  onClick={handleAddUser}
-                  className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
-                >
-                  + Add User
-                </button>
+                <div className="flex items-center space-x-3">
+                  <button
+                    onClick={handleDeleteInactiveUsers}
+                    className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-medium transition"
+                  >
+                    Delete Inactive Users
+                  </button>
+                  <button
+                    onClick={handleAddUser}
+                    className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
+                  >
+                    + Add User
+                  </button>
+                </div>
               </div>
 
               {/* Search Bar */}
@@ -397,13 +437,14 @@ export default function Dashboard() {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Package</th>
                       <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={8} className="px-4 py-8 text-center text-gray-500">
                           No users found
                         </td>
                       </tr>
@@ -441,6 +482,15 @@ export default function Dashboard() {
                             >
                               {u.account_status}
                             </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            {u.package ? (
+                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
+                                {u.package}
+                              </span>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
                           </td>
                           <td className="px-4 py-3 text-sm text-right space-x-2">
                             {u.role === 'admin' ? (
@@ -593,12 +643,25 @@ export default function Dashboard() {
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                   >
-                    <option value="inactive">Inactive</option>
-                    <option value="active">Active</option>
                     <option value="trial">Trial</option>
+                    <option value="active">Active</option>
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Package</label>
+                <select
+                  name="package"
+                  value={formData.package}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                >
+                  <option value="">None</option>
+                  <option value="brochure">Brochure - £19/mo</option>
+                  <option value="niche">Niche - £39/mo</option>
+                  <option value="pro">Pro - £59/mo</option>
+                </select>
               </div>
               {formData.role === 'collaborator' && (
                 <div className="mb-6">
@@ -746,12 +809,25 @@ export default function Dashboard() {
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                   >
-                    <option value="inactive">Inactive</option>
-                    <option value="active">Active</option>
                     <option value="trial">Trial</option>
+                    <option value="active">Active</option>
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
+              </div>
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Package (Upgrade/Downgrade)</label>
+                <select
+                  name="package"
+                  value={formData.package}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                >
+                  <option value="">None</option>
+                  <option value="brochure">Brochure - £19/mo</option>
+                  <option value="niche">Niche - £39/mo</option>
+                  <option value="pro">Pro - £59/mo</option>
+                </select>
               </div>
               {formData.role === 'collaborator' && (
                 <div className="mb-6">

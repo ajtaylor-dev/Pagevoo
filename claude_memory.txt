@@ -443,6 +443,194 @@ users table:
 - Latest commit: dd60109 "Add authentication system and admin dashboard"
 - Working tree clean
 
+### Session 6 - Date: 10/2/2025 (Package System, Collaborator Management & Trial Status)
+
+**Package Management System:**
+- **Database Updates:**
+  - Added 'package' enum field to users table (brochure, niche, pro)
+  - Migration: Added nullable package column to support users without packages
+- **Backend Updates:**
+  - User model: Added package to fillable array
+  - UserController: Updated validation to include package field
+  - AdminUserSeeder: No default package (nullable)
+- **Frontend Updates:**
+  - Dashboard.tsx:
+    - Added Package dropdown to Create User modal (Brochure/Niche/Pro)
+    - Added Package dropdown to Edit User modal (labeled "Upgrade/Downgrade")
+    - Added Package column to users table with indigo badges
+    - Website Manager section updates:
+      - Filters to show only users (not collaborators/admins)
+      - Displays collaborator count per user (e.g., "User name + 2 collaborators")
+      - Shows package badge (removed status badge from here)
+  - WebsiteBuilder.tsx:
+    - Added package badge to header (replacing status badge)
+  - TemplateBuilder.tsx:
+    - Changed entire color scheme from dark gray/green to white/gold (amber)
+    - Updated all backgrounds, buttons, hover states to corporate gold theme
+  - AuthContext.tsx: Added package field to User interface
+
+**Collaborator Management System (Pro Users Only):**
+- **Database Schema:**
+  - Created groups table:
+    - id, name, description, owner_id (foreign key to users)
+    - permissions (JSON field for storing group permissions)
+    - timestamps
+  - Created group_user pivot table:
+    - id, group_id, user_id (both foreign keys with cascade delete)
+    - unique constraint on (group_id, user_id)
+    - timestamps
+  - Migration files:
+    - 2025_10_02_114023_create_groups_table.php
+    - 2025_10_02_114034_create_group_user_table.php
+- **Backend Implementation:**
+  - Group Model (app/Models/Group.php):
+    - Relationships: owner (belongsTo User), users (belongsToMany User)
+    - Casts: permissions to array
+  - User Model Updates:
+    - Added groups() relationship (belongsToMany Group)
+    - Added ownedGroups() relationship (hasMany Group)
+    - Created canManageCollaborators() method:
+      - Checks: role === 'user' && package === 'pro' && status in ['active', 'trial']
+  - CollaboratorController (app/Http/Controllers/Api/V1/CollaboratorController.php):
+    - index(): Get all collaborators for authenticated user
+    - store(): Create new collaborator with role='collaborator'
+    - update(): Update existing collaborator (password optional)
+    - destroy(): Delete collaborator
+    - All methods protected by canManageCollaborators() check
+  - GroupController (app/Http/Controllers/Api/V1/GroupController.php):
+    - index(): Get all groups owned by authenticated user (includes users)
+    - store(): Create new group with permissions
+    - update(): Update group details and permissions
+    - destroy(): Delete group
+    - addUsers(): Add multiple users to group
+    - removeUsers(): Remove multiple users from group
+    - All methods protected by canManageCollaborators() check
+  - Routes (api.php):
+    - /api/v1/collaborators (GET, POST)
+    - /api/v1/collaborators/{id} (PUT, DELETE)
+    - /api/v1/groups (GET, POST)
+    - /api/v1/groups/{id} (PUT, DELETE)
+    - /api/v1/groups/{groupId}/add-users (POST)
+    - /api/v1/groups/{groupId}/remove-users (POST)
+- **Frontend Implementation (UserDashboard.tsx):**
+  - Completely rewrote with collaborator management (1056 lines total)
+  - New "Collaborators" tab visible only to Pro users (package === 'pro')
+  - Two sub-tabs: Collaborators and Groups
+  - **Collaborators Sub-Tab:**
+    - Table view: Name, Email, Phone, Groups (badges), Actions
+    - Add Collaborator modal with form (name, email, password, phone)
+    - Edit Collaborator modal (password optional)
+    - Delete functionality with confirmation
+    - Real-time loading states
+  - **Groups Sub-Tab:**
+    - Card grid layout showing all groups
+    - Each card displays:
+      - Group name and description
+      - Permission badges (Edit Content, Manage Pages, View Analytics, Manage Media)
+      - Member count with "Manage Members" button
+    - Add Group modal:
+      - Name, description fields
+      - Permission checkboxes (4 permissions)
+    - Edit Group modal (same as Add)
+    - Delete functionality with confirmation
+    - Manage Members modal:
+      - Checkbox list of all collaborators
+      - Add/remove members from group
+      - Real-time updates via API
+  - API Service Methods (api.ts):
+    - getAllCollaborators(), createCollaborator(), updateCollaborator(), deleteCollaborator()
+    - getAllGroups(), createGroup(), updateGroup(), deleteGroup()
+    - addUsersToGroup(), removeUsersFromGroup()
+
+**Trial Status & Package Selection Prompts:**
+- **Backend:**
+  - AuthController: Updated register() to default account_status to 'trial'
+  - New users automatically start with trial status
+- **Frontend:**
+  - UserDashboard.tsx Overview section:
+    - Added prominent amber-colored call-to-action box for trial users without packages
+    - Message: "🎉 Trial Account Active - Choose a package to unlock the full features of Pagevoo"
+    - "Choose a Package" button linking to /pricing
+    - Only shows for users with status === 'trial' && !package
+  - Existing inactive users still see "View Packages" option
+
+**Permission System:**
+- Group permissions stored as JSON with boolean flags:
+  - can_edit_content
+  - can_manage_pages
+  - can_view_analytics
+  - can_manage_media
+- Visual indicators: Green badges for enabled permissions in UI
+
+**Access Control:**
+- Collaborator management only accessible to:
+  - Users (not admins)
+  - With Pro package
+  - With active or trial status
+- Frontend: Tab hidden from non-Pro users
+- Backend: All endpoints verify canManageCollaborators()
+
+**Components Modified/Created:**
+- pagevoo-frontend/src/pages/Dashboard.tsx (Package management, Website Manager updates)
+- pagevoo-frontend/src/pages/UserDashboard.tsx (Complete rewrite with collaborator system)
+- pagevoo-frontend/src/pages/WebsiteBuilder.tsx (Package badge in header)
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx (Gold/white color scheme)
+- pagevoo-frontend/src/services/api.ts (Collaborator and group methods)
+- pagevoo-frontend/src/contexts/AuthContext.tsx (Package field)
+- pagevoo-backend/app/Http/Controllers/Api/V1/AuthController.php (Trial default)
+- pagevoo-backend/app/Http/Controllers/Api/V1/UserController.php (Package validation)
+- pagevoo-backend/app/Http/Controllers/Api/V1/CollaboratorController.php (NEW)
+- pagevoo-backend/app/Http/Controllers/Api/V1/GroupController.php (NEW)
+- pagevoo-backend/app/Models/User.php (Package, groups, canManageCollaborators)
+- pagevoo-backend/app/Models/Group.php (NEW)
+- pagevoo-backend/database/migrations/0001_01_01_000000_create_users_table.php (Package field)
+- pagevoo-backend/database/migrations/2025_10_02_114023_create_groups_table.php (NEW)
+- pagevoo-backend/database/migrations/2025_10_02_114034_create_group_user_table.php (NEW)
+- pagevoo-backend/routes/api.php (Collaborator and group routes)
+
+**Pricing Tiers:**
+- Brochure (£19/mo): Basic website features
+- Niche (£39/mo): Enhanced features
+- Pro (£59/mo): Full features including collaborator management
+
+**Files Created This Session:**
+- app/Http/Controllers/Api/V1/CollaboratorController.php
+- app/Http/Controllers/Api/V1/GroupController.php
+- app/Models/Group.php
+- database/migrations/2025_10_02_114023_create_groups_table.php
+- database/migrations/2025_10_02_114034_create_group_user_table.php
+- database/migrations/2025_10_02_121642_add_last_login_at_to_users_table.php
+
+**Inactive User Management System:**
+- **Problem Solved:** Removed confusion around "inactive" status - it's now a system-determined state, not a manual selection
+- **Database Changes:**
+  - Added `last_login_at` timestamp field to users table (migration 2025_10_02_121642)
+  - Tracks when each user last logged in
+- **Backend Logic:**
+  - AuthController: Updates `last_login_at` on every successful login
+  - UserController:
+    - Removed 'inactive' from validation rules (only trial/active/suspended allowed)
+    - Added `deleteInactiveUsers()` method to delete trial users inactive for 30+ days
+  - New endpoint: POST /api/v1/users/delete-inactive (admin-only)
+  - Inactive definition: Trial users with no login in 30 days OR never logged in
+- **Frontend Changes:**
+  - Dashboard.tsx:
+    - Default account_status changed to 'trial' (not 'inactive')
+    - Removed 'Inactive' option from Create/Edit user status dropdowns
+    - Added red "Delete Inactive Users" button in User Management
+    - Shows confirmation dialog with count of deleted users
+  - UserDashboard.tsx:
+    - Trial user warning changed to red alert style
+    - Message: "⚠️ Features limited! Upgrade your trial account to unlock the full features of Pagevoo."
+    - Red "Upgrade Now" button instead of amber "Choose a Package"
+  - api.ts: Added deleteInactiveUsers() method
+
+**User Lifecycle:**
+1. User registers → status: 'trial', last_login_at: null
+2. User logs in → last_login_at updated to current timestamp
+3. After 30 days of inactivity → Admin can bulk delete via "Delete Inactive Users" button
+4. User upgrades package → status changes to 'active'
+
 ## Last Updated
 2025-10-02
 

@@ -36,6 +36,7 @@ class AuthController extends BaseController
             'business_type' => $request->business_type,
             'phone_number' => $request->phone_number,
             'role' => 'user',
+            'account_status' => 'trial',
         ]);
 
         $token = $user->createToken('auth_token')->plainTextToken;
@@ -65,6 +66,11 @@ class AuthController extends BaseController
         }
 
         $user = Auth::user();
+
+        // Update last login timestamp
+        $user->last_login_at = now();
+        $user->save();
+
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return $this->sendSuccess([

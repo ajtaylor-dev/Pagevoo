@@ -30,7 +30,8 @@ class UserController extends BaseController
             'business_name' => 'required|string|min:2|max:255',
             'business_type' => 'required|string',
             'role' => 'required|string|in:user,admin,collaborator',
-            'account_status' => 'required|string|in:inactive,active,trial,suspended',
+            'account_status' => 'required|string|in:active,trial,suspended',
+            'package' => 'nullable|string|in:brochure,niche,pro',
             'owner_id' => 'nullable|exists:users,id',
         ]);
 
@@ -47,6 +48,7 @@ class UserController extends BaseController
             'phone_number' => $request->phone_number,
             'role' => $request->role,
             'account_status' => $request->account_status,
+            'package' => $request->package,
             'owner_id' => $request->owner_id,
         ]);
 
@@ -71,7 +73,8 @@ class UserController extends BaseController
             'business_name' => 'required|string|min:2|max:255',
             'business_type' => 'required|string',
             'role' => 'required|string|in:user,admin,collaborator',
-            'account_status' => 'required|string|in:inactive,active,trial,suspended',
+            'account_status' => 'required|string|in:active,trial,suspended',
+            'package' => 'nullable|string|in:brochure,niche,pro',
             'owner_id' => 'nullable|exists:users,id',
         ]);
 
@@ -86,6 +89,7 @@ class UserController extends BaseController
         $user->phone_number = $request->phone_number;
         $user->role = $request->role;
         $user->account_status = $request->account_status;
+        $user->package = $request->package;
         $user->owner_id = $request->owner_id;
 
         // Only update password if provided
@@ -117,5 +121,34 @@ class UserController extends BaseController
         $user->delete();
 
         return $this->sendSuccess([], 'User deleted successfully');
+    }
+
+    /**
+     * Delete inactive users (trial users who haven't logged in for 30 days)
+     */
+    public function deleteInactiveUsers()
+    {
+        // Find trial users who haven't logged in for 30 days
+        $thirtyDaysAgo = now()->subDays(30);
+
+        $inactiveUsers = User::where('account_status', 'trial')
+            ->where(function ($query) use ($thirtyDaysAgo) {
+                $query->whereNull('last_login_at')
+                    ->orWhere('last_login_at', '<', $thirtyDaysAgo);
+            })
+            ->where('role', '!=', 'admin') // Never delete admins
+            ->get();
+
+        $count = $inactiveUsers->count();
+
+        // Delete each inactive user
+        foreach ($inactiveUsers as $user) {
+            $user->delete();
+        }
+
+        return $this->sendSuccess([
+            'deleted_count' => $count,
+            'deleted_users' => $inactiveUsers->pluck('email')
+        ], "Successfully deleted {$count} inactive user(s)");
     }
 }

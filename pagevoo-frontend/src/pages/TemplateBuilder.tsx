@@ -46,23 +46,23 @@ export default function TemplateBuilder() {
 
   return (
     <div
-      className="h-screen flex flex-col bg-gray-900 text-white select-none"
+      className="h-screen flex flex-col bg-gray-50 text-gray-900 select-none"
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
     >
       {/* Compact VSCode-style Header */}
-      <header className="bg-gray-800 border-b border-gray-700 flex items-center h-9">
+      <header className="bg-white border-b border-gray-200 flex items-center h-9 shadow-sm">
         {/* Left Section - Logo & Menus */}
         <div className="flex items-center h-full">
-          <div className="px-3 flex items-center space-x-2 border-r border-gray-700 h-full">
+          <div className="px-3 flex items-center space-x-2 border-r border-gray-200 h-full">
             <img src="/Pagevoo_logo_500x200.png" alt="Pagevoo" className="h-4" />
           </div>
           <div className="flex items-center h-full text-xs">
-            <button className="px-3 h-full hover:bg-gray-700 transition">File</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">Edit</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">View</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">Insert</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">Help</button>
+            <button className="px-3 h-full hover:bg-amber-50 transition">File</button>
+            <button className="px-3 h-full hover:bg-amber-50 transition">Edit</button>
+            <button className="px-3 h-full hover:bg-amber-50 transition">View</button>
+            <button className="px-3 h-full hover:bg-amber-50 transition">Insert</button>
+            <button className="px-3 h-full hover:bg-amber-50 transition">Help</button>
           </div>
         </div>
 
@@ -72,31 +72,31 @@ export default function TemplateBuilder() {
             type="text"
             value={templateName}
             onChange={(e) => setTemplateName(e.target.value)}
-            className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64"
+            className="px-2 py-0.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-center w-64"
           />
         </div>
 
         {/* Right Section - Actions & User */}
         <div className="flex items-center h-full text-xs space-x-1 pr-2">
-          <button className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition">
+          <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition">
             Preview
           </button>
-          <button className="px-3 py-1 bg-[#98b290] hover:bg-[#88a280] rounded transition">
+          <button className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded transition">
             Save Template
           </button>
-          <div className="ml-2 px-2 text-gray-400 border-l border-gray-700">
+          <div className="ml-2 px-2 text-gray-600 border-l border-gray-200">
             {user?.name}
           </div>
         </div>
       </header>
 
       {/* Toolbar */}
-      <div className="bg-gray-800 border-b border-gray-700 px-2 py-1 flex items-center justify-between h-10">
+      <div className="bg-white border-b border-gray-200 px-2 py-1 flex items-center justify-between h-10">
         {/* Left Controls */}
         <div className="flex items-center space-x-1">
           <button
             onClick={() => setShowLeftSidebar(!showLeftSidebar)}
-            className={`p-1.5 rounded transition ${showLeftSidebar ? 'bg-gray-700' : 'bg-gray-800 hover:bg-gray-700'}`}
+            className={`p-1.5 rounded transition ${showLeftSidebar ? 'bg-amber-100 text-amber-700' : 'bg-white hover:bg-gray-100 text-gray-600'}`}
             title="Toggle Components Panel"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +105,7 @@ export default function TemplateBuilder() {
           </button>
           <button
             onClick={() => setShowRightSidebar(!showRightSidebar)}
-            className={`p-1.5 rounded transition ${showRightSidebar ? 'bg-gray-700' : 'bg-gray-800 hover:bg-gray-700'}`}
+            className={`p-1.5 rounded transition ${showRightSidebar ? 'bg-amber-100 text-amber-700' : 'bg-white hover:bg-gray-100 text-gray-600'}`}
             title="Toggle Properties Panel"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,10 +115,10 @@ export default function TemplateBuilder() {
         </div>
 
         {/* Center - Viewport Switcher */}
-        <div className="flex items-center space-x-1 bg-gray-700 rounded p-0.5">
+        <div className="flex items-center space-x-1 bg-gray-100 rounded p-0.5">
           <button
             onClick={() => setViewport('desktop')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'desktop' ? 'bg-gray-600' : 'hover:bg-gray-600'}`}
+            className={`px-3 py-1 rounded text-xs transition ${viewport === 'desktop' ? 'bg-amber-500 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
             title="Desktop View"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -127,7 +127,7 @@ export default function TemplateBuilder() {
           </button>
           <button
             onClick={() => setViewport('tablet')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'tablet' ? 'bg-gray-600' : 'hover:bg-gray-600'}`}
+            className={`px-3 py-1 rounded text-xs transition ${viewport === 'tablet' ? 'bg-amber-500 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
             title="Tablet View"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -136,7 +136,7 @@ export default function TemplateBuilder() {
           </button>
           <button
             onClick={() => setViewport('mobile')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'mobile' ? 'bg-gray-600' : 'hover:bg-gray-600'}`}
+            className={`px-3 py-1 rounded text-xs transition ${viewport === 'mobile' ? 'bg-amber-500 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
             title="Mobile View"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -147,7 +147,7 @@ export default function TemplateBuilder() {
 
         {/* Right Controls */}
         <div className="flex items-center space-x-1">
-          <span className="text-xs text-gray-400">Zoom: 100%</span>
+          <span className="text-xs text-gray-600">Zoom: 100%</span>
         </div>
       </div>
 
@@ -159,13 +159,13 @@ export default function TemplateBuilder() {
             <aside
               ref={leftSidebarRef}
               style={{ width: leftWidth }}
-              className="bg-gray-800 border-r border-gray-700 overflow-y-auto flex-shrink-0"
+              className="bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
             >
               <div className="p-3">
-                <h2 className="text-xs font-semibold text-gray-400 uppercase mb-3">Components</h2>
+                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Components</h2>
                 <div className="space-y-1">
                   {['Header', 'Hero Section', 'Text Block', 'Image', 'Gallery', 'Contact Form', 'Booking Widget', 'Menu/Products', 'Footer'].map((component) => (
-                    <button key={component} className="w-full text-left px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-xs transition">
+                    <button key={component} className="w-full text-left px-3 py-2 bg-gray-50 hover:bg-amber-50 text-gray-700 hover:text-amber-700 rounded text-xs transition border border-gray-200 hover:border-amber-300">
                       {component}
                     </button>
                   ))}
@@ -176,20 +176,20 @@ export default function TemplateBuilder() {
             {/* Left Resize Handle */}
             <div
               onMouseDown={handleLeftMouseDown}
-              className="w-1 bg-gray-700 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
+              className="w-1 bg-gray-200 hover:bg-amber-400 cursor-col-resize transition flex-shrink-0"
             />
           </>
         )}
 
         {/* Center - Canvas */}
-        <main className="flex-1 overflow-auto bg-gray-900 flex items-start justify-center p-8">
+        <main className="flex-1 overflow-auto bg-gray-100 flex items-start justify-center p-8">
           <div
             style={{
               width: getCanvasWidth(),
               maxWidth: '100%',
               transition: 'width 0.3s ease'
             }}
-            className="bg-white min-h-full shadow-2xl mx-auto"
+            className="bg-white min-h-full shadow-xl mx-auto ring-1 ring-gray-200"
           >
             {/* Canvas Preview Area */}
             <div className="p-8 text-gray-900">
@@ -208,16 +208,16 @@ export default function TemplateBuilder() {
             {/* Right Resize Handle */}
             <div
               onMouseDown={handleRightMouseDown}
-              className="w-1 bg-gray-700 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
+              className="w-1 bg-gray-200 hover:bg-amber-400 cursor-col-resize transition flex-shrink-0"
             />
 
             <aside
               ref={rightSidebarRef}
               style={{ width: rightWidth }}
-              className="bg-gray-800 border-l border-gray-700 overflow-y-auto flex-shrink-0"
+              className="bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0"
             >
               <div className="p-3">
-                <h2 className="text-xs font-semibold text-gray-400 uppercase mb-3">Properties</h2>
+                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Properties</h2>
                 <div className="text-xs text-gray-500 text-center py-8">
                   Select a component to edit its properties
                 </div>

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->string('phone_number')->nullable();
             $table->enum('role', ['admin', 'user', 'collaborator'])->default('user');
             $table->enum('account_status', ['inactive', 'active', 'trial', 'suspended'])->default('inactive');
+            $table->enum('package', ['brochure', 'niche', 'pro'])->nullable();
             $table->foreignId('owner_id')->nullable()->constrained('users')->onDelete('cascade');
             $table->rememberToken();
             $table->timestamps();

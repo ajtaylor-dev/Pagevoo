@@ -27,6 +27,7 @@ class User extends Authenticatable
         'phone_number',
         'role',
         'account_status',
+        'package',
         'owner_id',
     ];
 
@@ -70,6 +71,22 @@ class User extends Authenticatable
     }
 
     /**
+     * Get all groups owned by this user.
+     */
+    public function ownedGroups()
+    {
+        return $this->hasMany(Group::class, 'owner_id');
+    }
+
+    /**
+     * Get all groups this user belongs to.
+     */
+    public function groups()
+    {
+        return $this->belongsToMany(Group::class, 'group_user')->withTimestamps();
+    }
+
+    /**
      * Check if user is an admin.
      */
     public function isAdmin(): bool
@@ -90,8 +107,8 @@ class User extends Authenticatable
      */
     public function canManageCollaborators(): bool
     {
-        // TODO: Check if user has pro subscription
-        // For now, just check if they have active/trial status
-        return $this->role === 'user' && in_array($this->account_status, ['active', 'trial']);
+        return $this->role === 'user'
+            && $this->package === 'pro'
+            && in_array($this->account_status, ['active', 'trial']);
     }
 }

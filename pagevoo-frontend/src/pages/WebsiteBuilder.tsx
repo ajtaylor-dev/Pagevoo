@@ -92,13 +92,11 @@ export default function WebsiteBuilder() {
           </button>
           <div className="ml-2 px-2 text-gray-400 border-l border-gray-700 flex items-center space-x-1">
             <span>{user?.name}</span>
-            <span className={`px-1.5 py-0.5 rounded text-[10px] ${
-              user?.account_status === 'active' ? 'bg-green-900/50 text-green-400' :
-              user?.account_status === 'trial' ? 'bg-yellow-900/50 text-yellow-400' :
-              'bg-gray-700 text-gray-400'
-            }`}>
-              {user?.account_status}
-            </span>
+            {user?.package && (
+              <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/50 text-indigo-400 capitalize">
+                {user.package}
+              </span>
+            )}
           </div>
         </div>
       </header>

@@ -10,6 +10,7 @@ interface User {
   phone_number?: string;
   role: string;
   account_status: string;
+  package?: string;
   owner_id?: number;
 }
 
