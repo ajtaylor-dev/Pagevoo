@@ -18,7 +18,16 @@ export default function Hero() {
 
     try {
       await login(email, password)
-      navigate('/dashboard')
+      // Redirect based on user role - need to get fresh user data
+      const response = await fetch('http://localhost:8000/api/v1/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+      const data = await response.json()
+      if (data.success && data.data) {
+        navigate(data.data.role === 'admin' ? '/dashboard' : '/my-dashboard')
+      }
     } catch (err: any) {
       setError('Invalid credentials')
     } finally {
@@ -55,7 +64,7 @@ export default function Hero() {
               <>
                 <p className="text-sm font-medium text-[#4b4b4b]">{user?.name}</p>
                 <button
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => navigate(user?.role === 'admin' ? '/dashboard' : '/my-dashboard')}
                   className="w-full bg-[#98b290] hover:bg-[#88a280] text-white px-4 py-2 rounded-md text-sm font-medium transition"
                 >
                   Dashboard
@@ -144,7 +153,7 @@ export default function Hero() {
             className="mx-auto mb-6 max-w-md md:max-w-2xl w-full"
           />
           <p className="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-4">
-            Launch your business website in minutes, not months
+            Your complete business solution, ready to launch
           </p>
           <p className="text-lg text-gray-400 max-w-2xl mx-auto">
             Industry-specific websites with booking, ordering, CMS, and everything your business needs — ready to go.

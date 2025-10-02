@@ -29,7 +29,9 @@ class UserController extends BaseController
             'password' => 'required|string|min:8',
             'business_name' => 'required|string|min:2|max:255',
             'business_type' => 'required|string',
-            'role' => 'required|string|in:user,admin',
+            'role' => 'required|string|in:user,admin,collaborator',
+            'account_status' => 'required|string|in:inactive,active,trial,suspended',
+            'owner_id' => 'nullable|exists:users,id',
         ]);
 
         if ($validator->fails()) {
@@ -44,6 +46,8 @@ class UserController extends BaseController
             'business_type' => $request->business_type,
             'phone_number' => $request->phone_number,
             'role' => $request->role,
+            'account_status' => $request->account_status,
+            'owner_id' => $request->owner_id,
         ]);
 
         return $this->sendSuccess($user, 'User created successfully', 201);
@@ -66,7 +70,9 @@ class UserController extends BaseController
             'password' => 'nullable|string|min:8',
             'business_name' => 'required|string|min:2|max:255',
             'business_type' => 'required|string',
-            'role' => 'required|string|in:user,admin',
+            'role' => 'required|string|in:user,admin,collaborator',
+            'account_status' => 'required|string|in:inactive,active,trial,suspended',
+            'owner_id' => 'nullable|exists:users,id',
         ]);
 
         if ($validator->fails()) {
@@ -79,6 +85,8 @@ class UserController extends BaseController
         $user->business_type = $request->business_type;
         $user->phone_number = $request->phone_number;
         $user->role = $request->role;
+        $user->account_status = $request->account_status;
+        $user->owner_id = $request->owner_id;
 
         // Only update password if provided
         if ($request->filled('password')) {

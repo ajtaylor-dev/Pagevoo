@@ -9,6 +9,8 @@ interface User {
   business_type: string;
   phone_number?: string;
   role: string;
+  account_status: string;
+  owner_id?: number;
 }
 
 interface AuthContextType {

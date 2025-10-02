@@ -287,8 +287,164 @@ The website scaffolding has been mostly put together. So far we have created the
 - Name: AJ
 - Role: admin
 
+### Session 5 - Date: 10/2/2025 (Builders, Security & Collaborator System)
+
+**Hero Section Update:**
+- Changed slogan from "Launch your business website in minutes, not months" to "Your complete business solution, ready to launch"
+- Updated login redirect logic to route users based on role (admins → /dashboard, users → /my-dashboard)
+
+**Admin Dashboard Enhancements:**
+- Added "Website Manager" section between User Management and Website Settings
+- Website Manager displays grid of all user businesses with "Open Builder" buttons
+- Shows business name, owner name, business type, and account status badges
+- Template Manager moved to external link (opens in new tab)
+- Added account_status field to user table display with color-coded badges
+- Added account_status dropdown to Add/Edit user forms (inactive, active, trial, suspended)
+- Fixed bug: account_status now properly saves when creating/editing users
+
+**Template Builder (Admin Tool):**
+- Created standalone VSCode-inspired builder interface
+- Opens in new window (http://localhost:5173/template-builder)
+- Protected by AdminRoute guard (admin access only)
+- Features:
+  - Compact header (36px) with File/Edit/View/Insert/Help menus
+  - Toolbar with sidebar toggles and viewport switcher
+  - Resizable left sidebar (200-500px) with drag handle - Components/Layers sections
+  - Resizable right sidebar (250-600px) with drag handle - Properties/Settings sections
+  - Canvas area with viewport switching (Desktop/Tablet/Mobile)
+  - Smooth transitions and professional IDE aesthetic
+  - Pagevoo corporate colors maintained throughout
+
+**Website Builder (User Tool):**
+- Identical VSCode-style interface to Template Builder
+- Opens in new window (http://localhost:5173/website-builder)
+- Protected by ActiveCustomerRoute guard (requires active or trial status)
+- Shows business name and account status badge in header
+- Includes Pages section in left sidebar for page management
+- "Choose a Template" button in empty state
+
+**User Dashboard Implementation:**
+- Created separate UserDashboard component for non-admin users
+- Route: /my-dashboard
+- Features:
+  - Overview section with business info and account status cards
+  - Quick action cards: Build Website, Account Settings, Support
+  - Account Settings section with profile editing form
+  - Replaced Unicode emoji icons with Heroicons SVG icons:
+    - Archive icon for "Build Website"
+    - Gear icon for "Account Settings"
+    - Support icon for "Support"
+  - All cards styled with Pagevoo corporate colors
+
+**Role-Based Routing:**
+- Created AdminRoute guard component (checks user.role === 'admin')
+- Created ActiveCustomerRoute guard (checks account_status === 'active' or 'trial')
+- Updated login flows across all pages:
+  - Hero.tsx: Routes based on role after login
+  - Login.tsx: Routes to correct dashboard based on role
+  - Register.tsx: Routes new users to /my-dashboard
+- Admin dashboard wrapped with AdminRoute protection
+- Builders wrapped with appropriate route guards
+- Shows "Access Denied" or upgrade messages for unauthorized access
+
+**Security Implementation - Backend:**
+- Created EnsureUserIsAdmin middleware:
+  - Checks authentication status
+  - Verifies user.role === 'admin'
+  - Returns 401 for unauthenticated, 403 for non-admins
+- Registered middleware alias 'admin' in app.php
+- Applied admin middleware to all user management endpoints:
+  - GET /api/v1/users
+  - POST /api/v1/users
+  - PUT /api/v1/users/{id}
+  - DELETE /api/v1/users/{id}
+- Protected routes structure: auth:sanctum → admin → user endpoints
+
+**Collaborator Role System - Backend:**
+- Database Updates:
+  - Added 'collaborator' to role enum in users migration
+  - Added owner_id foreign key with cascade delete
+  - Migration re-run to apply schema changes
+- User Model Updates:
+  - Added owner_id to fillable array
+  - Created owner() relationship (belongsTo User)
+  - Created collaborators() relationship (hasMany User)
+  - Added isAdmin() helper method
+  - Added isCollaborator() helper method
+  - Added canManageCollaborators() method (checks for Pro subscription)
+- UserController Updates:
+  - Updated validation rules to include 'collaborator' role
+  - Added owner_id validation (nullable, exists:users,id)
+  - Included owner_id in create and update operations
+
+**Collaborator Role System - Frontend:**
+- Updated User interface in Dashboard.tsx and AuthContext.tsx to include owner_id
+- Enhanced Add User Modal:
+  - Added "Collaborator" option to role dropdown
+  - Conditional "Owner" dropdown (appears when role === 'collaborator')
+  - Owner dropdown populated with users who have active/trial status
+  - Help text: "Only users with active or trial subscriptions can manage collaborators"
+  - Form data includes owner_id in API calls
+- Enhanced Edit User Modal:
+  - Same collaborator role support as Add User
+  - Loads existing owner_id when editing collaborators
+  - Updates owner_id via API
+- User Table Updates:
+  - Role badge shows orange for collaborators (purple for admin, blue for user)
+  - All user data includes owner_id field
+- State Management:
+  - Added potentialOwners state (filtered list of eligible owners)
+  - Auto-updates when users list changes
+  - Filters for role === 'user' && (status === 'active' || status === 'trial')
+
+**Components Created:**
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+- pagevoo-frontend/src/pages/WebsiteBuilder.tsx
+- pagevoo-frontend/src/pages/UserDashboard.tsx
+- pagevoo-frontend/src/components/guards/AdminRoute.tsx
+- pagevoo-frontend/src/components/guards/ActiveCustomerRoute.tsx
+- pagevoo-backend/app/Http/Middleware/EnsureUserIsAdmin.php
+
+**Database Schema:**
+```
+users table:
+├── id
+├── name
+├── email
+├── password
+├── business_name
+├── business_type
+├── phone_number (nullable)
+├── role (enum: admin, user, collaborator) - default: user
+├── account_status (enum: inactive, active, trial, suspended) - default: inactive
+├── owner_id (nullable, foreign key → users.id, cascade delete)
+└── timestamps
+```
+
+**User Roles Hierarchy:**
+- **Admin**: Full system access, user management, template creation
+- **User**: Can create/edit their own website, manage collaborators (if Pro)
+- **Collaborator**: Limited access to owner's business account
+
+**Files Modified:**
+- pagevoo-frontend/src/components/Hero.tsx
+- pagevoo-frontend/src/pages/Dashboard.tsx
+- pagevoo-frontend/src/pages/Login.tsx
+- pagevoo-frontend/src/pages/Register.tsx
+- pagevoo-frontend/src/contexts/AuthContext.tsx
+- pagevoo-frontend/src/App.tsx
+- pagevoo-backend/app/Http/Controllers/Api/V1/UserController.php
+- pagevoo-backend/app/Models/User.php
+- pagevoo-backend/routes/api.php
+- pagevoo-backend/bootstrap/app.php
+- pagevoo-backend/database/migrations/0001_01_01_000000_create_users_table.php
+
+**Git Status:**
+- Latest commit: dd60109 "Add authentication system and admin dashboard"
+- Working tree clean
+
 ## Last Updated
-2025-10-01
+2025-10-02
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

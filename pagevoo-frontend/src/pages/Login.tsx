@@ -17,7 +17,16 @@ export default function Login() {
 
     try {
       await login(email, password)
-      navigate('/dashboard')
+      // Redirect based on user role
+      const response = await fetch('http://localhost:8000/api/v1/me', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
+        }
+      })
+      const data = await response.json()
+      if (data.success && data.data) {
+        navigate(data.data.role === 'admin' ? '/dashboard' : '/my-dashboard')
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Login failed. Please check your credentials.')
     } finally {

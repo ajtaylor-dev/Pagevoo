@@ -47,7 +47,8 @@ export default function Register() {
         business_type: data.businessType,
         phone_number: data.phoneNumber,
       })
-      navigate('/dashboard')
+      // New users are always regular users, redirect to user dashboard
+      navigate('/my-dashboard')
     } catch (err: any) {
       setError(err.response?.data?.message || 'Registration failed. Please try again.')
     }

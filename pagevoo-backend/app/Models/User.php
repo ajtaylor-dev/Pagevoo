@@ -26,6 +26,8 @@ class User extends Authenticatable
         'business_type',
         'phone_number',
         'role',
+        'account_status',
+        'owner_id',
     ];
 
     /**
@@ -49,5 +51,47 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Get the owner (parent user) of this collaborator.
+     */
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'owner_id');
+    }
+
+    /**
+     * Get all collaborators for this user.
+     */
+    public function collaborators()
+    {
+        return $this->hasMany(User::class, 'owner_id');
+    }
+
+    /**
+     * Check if user is an admin.
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if user is a collaborator.
+     */
+    public function isCollaborator(): bool
+    {
+        return $this->role === 'collaborator';
+    }
+
+    /**
+     * Check if user can manage collaborators (Pro subscription).
+     */
+    public function canManageCollaborators(): bool
+    {
+        // TODO: Check if user has pro subscription
+        // For now, just check if they have active/trial status
+        return $this->role === 'user' && in_array($this->account_status, ['active', 'trial']);
     }
 }

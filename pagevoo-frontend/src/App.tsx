@@ -10,14 +10,36 @@ import Support from '@/pages/Support'
 import Register from '@/pages/Register'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
+import UserDashboard from '@/pages/UserDashboard'
+import TemplateBuilder from '@/pages/TemplateBuilder'
+import WebsiteBuilder from '@/pages/WebsiteBuilder'
+import AdminRoute from '@/components/guards/AdminRoute'
+import ActiveCustomerRoute from '@/components/guards/ActiveCustomerRoute'
 
 export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Dashboard route - no header/footer */}
-          <Route path="/dashboard" element={<Dashboard />} />
+          {/* Dashboard routes - no header/footer */}
+          <Route path="/dashboard" element={
+            <AdminRoute>
+              <Dashboard />
+            </AdminRoute>
+          } />
+          <Route path="/my-dashboard" element={<UserDashboard />} />
+
+          {/* Builder routes - no header/footer, protected */}
+          <Route path="/template-builder" element={
+            <AdminRoute>
+              <TemplateBuilder />
+            </AdminRoute>
+          } />
+          <Route path="/website-builder" element={
+            <ActiveCustomerRoute>
+              <WebsiteBuilder />
+            </ActiveCustomerRoute>
+          } />
 
           {/* Public routes - with header/footer */}
           <Route path="*" element={

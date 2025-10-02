@@ -21,6 +21,7 @@ class AdminUserSeeder extends Seeder
             'business_type' => 'other',
             'phone_number' => null,
             'role' => 'admin',
+            'account_status' => 'active',
             'email_verified_at' => now(),
         ]);
     }

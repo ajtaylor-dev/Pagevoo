@@ -10,6 +10,8 @@ interface User {
   business_name: string
   business_type: string
   role: string
+  account_status: string
+  owner_id?: number
 }
 
 export default function Dashboard() {
@@ -30,8 +32,11 @@ export default function Dashboard() {
     business_name: '',
     business_type: '',
     phone_number: '',
-    role: 'user'
+    role: 'user',
+    account_status: 'inactive',
+    owner_id: ''
   })
+  const [potentialOwners, setPotentialOwners] = useState<User[]>([])
 
   // Fetch users from API
   useEffect(() => {
@@ -64,6 +69,14 @@ export default function Dashboard() {
     }
   }, [searchQuery, users])
 
+  // Update potential owners when users change
+  useEffect(() => {
+    const owners = users.filter(u =>
+      u.role === 'user' && (u.account_status === 'active' || u.account_status === 'trial')
+    )
+    setPotentialOwners(owners)
+  }, [users])
+
   const resetForm = () => {
     setFormData({
       name: '',
@@ -72,7 +85,9 @@ export default function Dashboard() {
       business_name: '',
       business_type: '',
       phone_number: '',
-      role: 'user'
+      role: 'user',
+      account_status: 'inactive',
+      owner_id: ''
     })
   }
 
@@ -105,7 +120,9 @@ export default function Dashboard() {
         business_name: userToEdit.business_name,
         business_type: userToEdit.business_type,
         phone_number: '',
-        role: userToEdit.role
+        role: userToEdit.role,
+        account_status: userToEdit.account_status,
+        owner_id: userToEdit.owner_id?.toString() || ''
       })
       setIsEditModalOpen(true)
     }
@@ -128,7 +145,9 @@ export default function Dashboard() {
         business_name: formData.business_name,
         business_type: formData.business_type,
         phone_number: formData.phone_number,
-        role: formData.role
+        role: formData.role,
+        account_status: formData.account_status,
+        owner_id: formData.owner_id ? parseInt(formData.owner_id) : undefined
       })
 
       if (response.success) {
@@ -156,7 +175,9 @@ export default function Dashboard() {
         business_name: formData.business_name,
         business_type: formData.business_type,
         phone_number: formData.phone_number,
-        role: formData.role
+        role: formData.role,
+        account_status: formData.account_status,
+        owner_id: formData.owner_id ? parseInt(formData.owner_id) : null
       }
 
       // Only include password if it was changed
@@ -234,6 +255,16 @@ export default function Dashboard() {
               User Management
             </button>
             <button
+              onClick={() => setActiveSection('website-manager')}
+              className={`px-4 py-2 rounded-md text-sm font-medium transition ${
+                activeSection === 'website-manager'
+                  ? 'bg-gray-100 text-[#4b4b4b]'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Website Manager
+            </button>
+            <button
               onClick={() => setActiveSection('website-settings')}
               className={`px-4 py-2 rounded-md text-sm font-medium transition ${
                 activeSection === 'website-settings'
@@ -263,17 +294,60 @@ export default function Dashboard() {
             >
               Package Settings
             </button>
-            <button
-              onClick={() => setActiveSection('template-manager')}
-              className="ml-auto px-6 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
+            <a
+              href="/template-builder"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-auto px-6 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition inline-block"
             >
               Template Manager
-            </button>
+            </a>
           </div>
         </nav>
 
         {/* Content Area */}
         <div className="bg-white rounded-lg shadow-sm p-6">
+          {activeSection === 'website-manager' && (
+            <div>
+              <h2 className="text-2xl font-bold text-[#4b4b4b] mb-6">Website Manager</h2>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* User Websites List - will be populated from API */}
+                {users.map((u) => (
+                  u.role !== 'admin' && (
+                    <div key={u.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-gray-900">{u.business_name}</h3>
+                          <p className="text-sm text-gray-500">{u.name}</p>
+                        </div>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            u.account_status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : u.account_status === 'trial'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-gray-100 text-gray-700'
+                          }`}
+                        >
+                          {u.account_status}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 capitalize mb-4">{u.business_type}</p>
+                      <a
+                        href="/website-builder"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block w-full text-center px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
+                      >
+                        Open Builder
+                      </a>
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          )}
+
           {activeSection === 'user-management' && (
             <div>
               <div className="flex items-center justify-between mb-6">
@@ -322,13 +396,14 @@ export default function Dashboard() {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Business</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
                       <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredUsers.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                        <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                           No users found
                         </td>
                       </tr>
@@ -344,10 +419,27 @@ export default function Dashboard() {
                               className={`px-2 py-1 rounded-full text-xs font-medium ${
                                 u.role === 'admin'
                                   ? 'bg-purple-100 text-purple-700'
+                                  : u.role === 'collaborator'
+                                  ? 'bg-orange-100 text-orange-700'
                                   : 'bg-blue-100 text-blue-700'
                               }`}
                             >
                               {u.role}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-sm">
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                u.account_status === 'active'
+                                  ? 'bg-green-100 text-green-700'
+                                  : u.account_status === 'trial'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : u.account_status === 'suspended'
+                                  ? 'bg-red-100 text-red-700'
+                                  : 'bg-gray-100 text-gray-700'
+                              }`}
+                            >
+                              {u.account_status}
                             </span>
                           </td>
                           <td className="px-4 py-3 text-sm text-right space-x-2">
@@ -397,13 +489,6 @@ export default function Dashboard() {
             <div>
               <h2 className="text-2xl font-bold text-[#4b4b4b] mb-4">Package Settings</h2>
               <p className="text-gray-600">Configure package settings here...</p>
-            </div>
-          )}
-
-          {activeSection === 'template-manager' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#4b4b4b] mb-4">Template Manager</h2>
-              <p className="text-gray-600">Manage templates here...</p>
             </div>
           )}
         </div>
@@ -484,19 +569,59 @@ export default function Dashboard() {
                   </select>
                 </div>
               </div>
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    <option value="collaborator">Collaborator</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Status *</label>
+                  <select
+                    name="account_status"
+                    value={formData.account_status}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="inactive">Inactive</option>
+                    <option value="active">Active</option>
+                    <option value="trial">Trial</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
               </div>
+              {formData.role === 'collaborator' && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner *</label>
+                  <select
+                    name="owner_id"
+                    value={formData.owner_id}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="">Select owner</option>
+                    {potentialOwners.map(owner => (
+                      <option key={owner.id} value={owner.id}>
+                        {owner.name} ({owner.business_name})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only users with active or trial subscriptions can manage collaborators
+                  </p>
+                </div>
+              )}
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
@@ -597,19 +722,59 @@ export default function Dashboard() {
                   </select>
                 </div>
               </div>
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
-                <select
-                  name="role"
-                  value={formData.role}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                >
-                  <option value="user">User</option>
-                  <option value="admin">Admin</option>
-                </select>
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Role *</label>
+                  <select
+                    name="role"
+                    value={formData.role}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="user">User</option>
+                    <option value="admin">Admin</option>
+                    <option value="collaborator">Collaborator</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Status *</label>
+                  <select
+                    name="account_status"
+                    value={formData.account_status}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="inactive">Inactive</option>
+                    <option value="active">Active</option>
+                    <option value="trial">Trial</option>
+                    <option value="suspended">Suspended</option>
+                  </select>
+                </div>
               </div>
+              {formData.role === 'collaborator' && (
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Owner *</label>
+                  <select
+                    name="owner_id"
+                    value={formData.owner_id}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="">Select owner</option>
+                    {potentialOwners.map(owner => (
+                      <option key={owner.id} value={owner.id}>
+                        {owner.name} ({owner.business_name})
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only users with active or trial subscriptions can manage collaborators
+                  </p>
+                </div>
+              )}
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
