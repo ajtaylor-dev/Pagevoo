@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '@/services/api'
+import { TemplateManager } from '@/components/TemplateManager'
 
 interface User {
   id: number
@@ -566,6 +567,8 @@ export default function Dashboard() {
               <p className="text-gray-600">Configure package settings here...</p>
             </div>
           )}
+
+          {activeSection === 'template-manager' && <TemplateManager />}
         </div>
       </div>
 

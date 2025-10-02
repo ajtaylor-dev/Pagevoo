@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '@/services/api'
+import { TemplateSelector } from '@/components/TemplateSelector'
 
 interface Collaborator {
   id: number
@@ -82,8 +83,57 @@ export default function UserDashboard() {
   })
   const [selectedNote, setSelectedNote] = useState<Note | null>(null)
 
+  // Website state
+  const [userWebsite, setUserWebsite] = useState<any | null>(null)
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
+  const [initializingWebsite, setInitializingWebsite] = useState(false)
+
   const isProUser = user?.package === 'pro' && (user?.account_status === 'active' || user?.account_status === 'trial')
   const hasJournalAccess = user?.package === 'niche' || user?.package === 'pro'
+
+  // Load user website
+  useEffect(() => {
+    loadUserWebsite()
+  }, [])
+
+  const loadUserWebsite = async () => {
+    try {
+      const response = await api.getUserWebsite()
+      if (response.success) {
+        setUserWebsite(response.data)
+      }
+    } catch (error) {
+      // Website doesn't exist yet
+      setUserWebsite(null)
+    }
+  }
+
+  const handleBuildWebsite = () => {
+    if (userWebsite) {
+      // User has website, open builder
+      window.open('/website-builder', '_blank')
+    } else {
+      // User doesn't have website, show template selector
+      setShowTemplateSelector(true)
+    }
+  }
+
+  const handleTemplateSelect = async (templateId: number) => {
+    setInitializingWebsite(true)
+    try {
+      const response = await api.initializeWebsiteFromTemplate(templateId)
+      if (response.success) {
+        setUserWebsite(response.data)
+        setShowTemplateSelector(false)
+        // Open website builder
+        window.open('/website-builder', '_blank')
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to initialize website')
+    } finally {
+      setInitializingWebsite(false)
+    }
+  }
 
   // Load collaborators
   useEffect(() => {
@@ -586,11 +636,9 @@ export default function UserDashboard() {
               <div>
                 <h3 className="text-lg font-semibold text-[#4b4b4b] mb-4">Quick Actions</h3>
                 <div className="grid md:grid-cols-3 gap-4">
-                  <a
-                    href="/website-builder"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block p-6 border border-gray-200 rounded-lg hover:border-[#98b290] hover:shadow-md transition text-center"
+                  <button
+                    onClick={handleBuildWebsite}
+                    className="block w-full p-6 border border-gray-200 rounded-lg hover:border-[#98b290] hover:shadow-md transition text-center"
                   >
                     <div className="flex justify-center mb-3">
                       <svg className="w-12 h-12 text-[#98b290]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -598,8 +646,10 @@ export default function UserDashboard() {
                       </svg>
                     </div>
                     <h4 className="font-semibold text-[#4b4b4b] mb-1">Build Website</h4>
-                    <p className="text-xs text-gray-600">Create and edit your website</p>
-                  </a>
+                    <p className="text-xs text-gray-600">
+                      {userWebsite ? 'Edit your website' : 'Choose a template to get started'}
+                    </p>
+                  </button>
                   <button
                     onClick={() => setActiveSection('account-settings')}
                     className="block p-6 border border-gray-200 rounded-lg hover:border-[#98b290] hover:shadow-md transition text-center"
@@ -1497,6 +1547,14 @@ export default function UserDashboard() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Template Selector Modal */}
+      {showTemplateSelector && (
+        <TemplateSelector
+          onSelect={handleTemplateSelect}
+          onCancel={() => setShowTemplateSelector(false)}
+        />
       )}
     </div>
   )

@@ -295,6 +295,90 @@ class ApiService {
     const response = await this.client.delete(`/v1/notes/${id}`);
     return response.data;
   }
+
+  /**
+   * Template Management Methods
+   */
+
+  async getAllTemplates(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/templates');
+    return response.data;
+  }
+
+  async getAllTemplatesAdmin(): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/templates/admin/all');
+    return response.data;
+  }
+
+  async getTemplate(id: number): Promise<ApiResponse<any>> {
+    const response = await this.client.get(`/v1/templates/${id}`);
+    return response.data;
+  }
+
+  async createTemplate(data: {
+    name: string;
+    description?: string;
+    business_type: string;
+    preview_image?: string;
+    is_active?: boolean;
+    pages: Array<{
+      name: string;
+      slug: string;
+      is_homepage?: boolean;
+      order?: number;
+      sections?: Array<{
+        name: string;
+        type: string;
+        content?: any;
+        order?: number;
+      }>;
+    }>;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/templates', data);
+    return response.data;
+  }
+
+  async updateTemplate(id: number, data: {
+    name?: string;
+    description?: string;
+    business_type?: string;
+    preview_image?: string;
+    is_active?: boolean;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/templates/${id}`, data);
+    return response.data;
+  }
+
+  async deleteTemplate(id: number): Promise<ApiResponse> {
+    const response = await this.client.delete(`/v1/templates/${id}`);
+    return response.data;
+  }
+
+  /**
+   * User Website Management Methods
+   */
+
+  async getUserWebsite(): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/v1/user-website');
+    return response.data;
+  }
+
+  async initializeWebsiteFromTemplate(templateId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/user-website/initialize', {
+      template_id: templateId
+    });
+    return response.data;
+  }
+
+  async publishWebsite(): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/user-website/publish');
+    return response.data;
+  }
+
+  async unpublishWebsite(): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/user-website/unpublish');
+    return response.data;
+  }
 }
 
 // Export singleton instance

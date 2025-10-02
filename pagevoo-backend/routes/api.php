@@ -7,6 +7,8 @@ use App\Http\Controllers\Api\V1\UserController;
 use App\Http\Controllers\Api\V1\CollaboratorController;
 use App\Http\Controllers\Api\V1\GroupController;
 use App\Http\Controllers\Api\V1\NoteController;
+use App\Http\Controllers\Api\V1\TemplateController;
+use App\Http\Controllers\Api\V1\UserWebsiteController;
 
 /*
 |--------------------------------------------------------------------------
@@ -68,6 +70,30 @@ Route::prefix('v1')->group(function () {
             Route::post('/', [NoteController::class, 'store']);
             Route::put('/{id}', [NoteController::class, 'update']);
             Route::delete('/{id}', [NoteController::class, 'destroy']);
+        });
+
+        // Template management
+        Route::prefix('templates')->group(function () {
+            // Public routes (active templates only)
+            Route::get('/', [TemplateController::class, 'index']);
+            Route::get('/{id}', [TemplateController::class, 'show']);
+
+            // Admin-only routes
+            Route::middleware('admin')->group(function () {
+                Route::get('/admin/all', [TemplateController::class, 'adminIndex']);
+                Route::post('/', [TemplateController::class, 'store']);
+                Route::put('/{id}', [TemplateController::class, 'update']);
+                Route::delete('/{id}', [TemplateController::class, 'destroy']);
+            });
+        });
+
+        // User Website management
+        Route::prefix('user-website')->group(function () {
+            Route::get('/', [UserWebsiteController::class, 'show']);
+            Route::post('/initialize', [UserWebsiteController::class, 'initializeFromTemplate']);
+            Route::put('/content', [UserWebsiteController::class, 'updateContent']);
+            Route::post('/publish', [UserWebsiteController::class, 'publish']);
+            Route::post('/unpublish', [UserWebsiteController::class, 'unpublish']);
         });
     });
 
