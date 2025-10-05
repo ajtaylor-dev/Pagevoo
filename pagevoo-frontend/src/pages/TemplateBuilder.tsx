@@ -43,6 +43,15 @@ export default function TemplateBuilder() {
   const [loading, setLoading] = useState(true)
   const [showEditMenu, setShowEditMenu] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [showAddPageModal, setShowAddPageModal] = useState(false)
+  const [newPageName, setNewPageName] = useState('')
+  const [showExportSectionModal, setShowExportSectionModal] = useState(false)
+  const [showExportPageModal, setShowExportPageModal] = useState(false)
+  const [sectionToExport, setSectionToExport] = useState<TemplateSection | null>(null)
+  const [exportedSections, setExportedSections] = useState<any[]>([])
+  const [exportedPages, setExportedPages] = useState<any[]>([])
+  const [showFileMenu, setShowFileMenu] = useState(false)
+  const [hoveredSection, setHoveredSection] = useState<number | null>(null)
 
   const [leftWidth, setLeftWidth] = useState(280)
   const [rightWidth, setRightWidth] = useState(320)
@@ -105,7 +114,7 @@ export default function TemplateBuilder() {
     setLoading(true)
     try {
       if (template.id === 0) {
-        // Create new template
+        // Create new template with pages and sections
         const response = await api.createTemplate({
           name: template.name,
           description: template.description,
@@ -114,7 +123,17 @@ export default function TemplateBuilder() {
           exclusive_to: template.exclusive_to,
           technologies: template.technologies,
           features: template.features,
-          pages: []
+          pages: template.pages.map(page => ({
+            name: page.name,
+            slug: page.slug,
+            is_homepage: page.is_homepage,
+            order: page.order,
+            sections: page.sections.map(section => ({
+              type: section.type,
+              content: section.content,
+              order: section.order
+            }))
+          }))
         })
         if (response.success && response.data) {
           alert('Template created successfully!')
@@ -122,7 +141,7 @@ export default function TemplateBuilder() {
           window.location.href = `/template-builder?id=${response.data.id}`
         }
       } else {
-        // Update existing template
+        // Update existing template (metadata and pages/sections)
         const response = await api.updateTemplate(template.id, {
           name: template.name,
           description: template.description,
@@ -130,9 +149,24 @@ export default function TemplateBuilder() {
           exclusive_to: template.exclusive_to,
           technologies: template.technologies,
           features: template.features,
+          pages: template.pages.map(page => ({
+            id: page.id > 1000000000000 ? undefined : page.id, // Don't send temporary IDs (from Date.now())
+            name: page.name,
+            slug: page.slug,
+            is_homepage: page.is_homepage,
+            order: page.order,
+            sections: page.sections.map(section => ({
+              id: section.id > 1000000000000 ? undefined : section.id,
+              type: section.type,
+              content: section.content,
+              order: section.order
+            }))
+          }))
         })
         if (response.success) {
-          alert('Template updated successfully')
+          alert('Template saved successfully!')
+          // Reload to get proper IDs from server
+          window.location.reload()
         }
       }
     } catch (error) {
@@ -183,17 +217,446 @@ export default function TemplateBuilder() {
     }
   }
 
-  const renderSection = (section: TemplateSection) => {
+  // Page Management Functions
+  const handleAddPage = () => {
+    if (!template || !newPageName.trim()) return
+
+    const slug = newPageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+    const newPage: TemplatePage = {
+      id: Date.now(), // Temporary ID
+      name: newPageName,
+      slug: slug,
+      is_homepage: template.pages.length === 0, // First page is homepage
+      order: template.pages.length,
+      sections: []
+    }
+
+    setTemplate({
+      ...template,
+      pages: [...template.pages, newPage]
+    })
+    setCurrentPage(newPage)
+    setNewPageName('')
+    setShowAddPageModal(false)
+  }
+
+  const handleDeletePage = (pageId: number) => {
+    if (!template) return
+    if (template.pages.length === 1) {
+      alert('Cannot delete the only page')
+      return
+    }
+    if (!confirm('Are you sure you want to delete this page?')) return
+
+    const updatedPages = template.pages.filter(p => p.id !== pageId)
+    setTemplate({ ...template, pages: updatedPages })
+
+    // If current page was deleted, switch to first page
+    if (currentPage?.id === pageId) {
+      setCurrentPage(updatedPages[0] || null)
+    }
+  }
+
+  const handleMovePage = (pageId: number, direction: 'up' | 'down') => {
+    if (!template) return
+
+    const index = template.pages.findIndex(p => p.id === pageId)
+    if (index === -1) return
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === template.pages.length - 1) return
+
+    const newPages = [...template.pages]
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+
+    // Swap
+    ;[newPages[index], newPages[swapIndex]] = [newPages[swapIndex], newPages[index]]
+
+    // Update order values
+    newPages.forEach((page, idx) => {
+      page.order = idx
+    })
+
+    setTemplate({ ...template, pages: newPages })
+  }
+
+  const handleSetHomepage = (pageId: number) => {
+    if (!template) return
+
+    const updatedPages = template.pages.map(p => ({
+      ...p,
+      is_homepage: p.id === pageId
+    }))
+
+    setTemplate({ ...template, pages: updatedPages })
+  }
+
+  // Section Management Functions
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['core'])
+
+  const toggleCategory = (category: string) => {
+    if (expandedCategories.includes(category)) {
+      setExpandedCategories(expandedCategories.filter(c => c !== category))
+    } else {
+      setExpandedCategories([...expandedCategories, category])
+    }
+  }
+
+  const coreSections = [
+    { type: 'grid-1x1', label: '1 Column', description: 'Single full-width column for content', cols: 1, rows: 1, defaultContent: { columns: [{ content: 'Column content' }] } },
+    { type: 'grid-2x1', label: '2 Columns', description: 'Two equal columns side by side', cols: 2, rows: 1, defaultContent: { columns: [{ content: 'Column 1' }, { content: 'Column 2' }] } },
+    { type: 'grid-3x1', label: '3 Columns', description: 'Three equal columns in a row', cols: 3, rows: 1, defaultContent: { columns: [{ content: 'Column 1' }, { content: 'Column 2' }, { content: 'Column 3' }] } },
+    { type: 'grid-4x1', label: '4 Columns', description: 'Four equal columns in a row', cols: 4, rows: 1, defaultContent: { columns: [{ content: 'Col 1' }, { content: 'Col 2' }, { content: 'Col 3' }, { content: 'Col 4' }] } },
+    { type: 'grid-2x2', label: '2x2 Grid', description: 'Four boxes in a 2x2 grid layout', cols: 2, rows: 2, defaultContent: { columns: [{ content: 'Box 1' }, { content: 'Box 2' }, { content: 'Box 3' }, { content: 'Box 4' }] } },
+    { type: 'grid-3x2', label: '3x2 Grid', description: 'Six boxes in a 3x2 grid layout', cols: 3, rows: 2, defaultContent: { columns: Array(6).fill(null).map((_, i) => ({ content: `Box ${i + 1}` })) } },
+  ]
+
+  const navigationSections = [
+    { type: 'navbar-basic', label: 'Basic Navbar', description: 'Simple horizontal navigation bar with links', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] } },
+    { type: 'navbar-dropdown', label: 'Dropdown Nav', description: 'Navigation bar with dropdown menus', defaultContent: { logo: 'Logo', links: ['Home', 'Services', 'About', 'Contact'] } },
+    { type: 'navbar-sticky', label: 'Sticky Navbar', description: 'Navigation that sticks to top on scroll', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
+    { type: 'sidebar-nav', label: 'Sidebar Nav', description: 'Vertical sidebar navigation menu', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'] } },
+  ]
+
+  const headerSections = [
+    { type: 'header-simple', label: 'Simple Header', description: 'Clean header with logo and tagline', defaultContent: { logo: 'Company Name', tagline: 'Your tagline here' } },
+    { type: 'header-centered', label: 'Centered Header', description: 'Centered logo with navigation below', defaultContent: { logo: 'Brand', navigation: true } },
+    { type: 'header-split', label: 'Split Header', description: 'Logo left, navigation right layout', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
+  ]
+
+  const footerSections = [
+    { type: 'footer-simple', label: 'Simple Footer', description: 'Basic footer with copyright text', defaultContent: { text: '© 2025 Company Name. All rights reserved.' } },
+    { type: 'footer-columns', label: 'Column Footer', description: 'Multi-column footer with links', defaultContent: { columns: [{ title: 'Company', links: ['About', 'Contact'] }, { title: 'Services', links: ['Service 1', 'Service 2'] }] } },
+    { type: 'footer-social', label: 'Social Footer', description: 'Footer with social media icons', defaultContent: { text: '© 2025 Company', socials: ['Facebook', 'Twitter', 'Instagram'] } },
+  ]
+
+  const specialSections = [
+    { type: 'hero', label: 'Hero Banner', description: 'Large banner with heading and call-to-action', defaultContent: { title: 'Welcome', subtitle: 'Your subtitle here', cta_text: 'Get Started' } },
+    { type: 'gallery', label: 'Image Gallery', description: 'Grid of images with lightbox', defaultContent: { heading: 'Gallery', images: [] } },
+    { type: 'contact-form', label: 'Contact Form', description: 'Form with name, email, and message fields', defaultContent: { heading: 'Contact Us', fields: ['name', 'email', 'message'] } },
+    { type: 'booking-form', label: 'Booking Form', description: 'Appointment booking form with date/time', defaultContent: { heading: 'Book Now', fields: ['name', 'date', 'time'] } },
+    { type: 'login-box', label: 'Login Box', description: 'User authentication login form', defaultContent: { heading: 'Sign In' } },
+    { type: 'testimonials', label: 'Testimonials', description: 'Customer reviews and feedback display', defaultContent: { heading: 'What Our Customers Say', testimonials: [] } },
+  ]
+
+  const predefinedPages = [
+    { name: 'About Us', description: 'Standard about page with company info', sections: [{ type: 'hero', content: { title: 'About Us', subtitle: 'Learn more about our company' } }, { type: 'grid-2x1', content: { columns: [{ content: 'Our Story' }, { content: 'Our Mission' }] } }] },
+    { name: 'Contact', description: 'Contact page with form and info', sections: [{ type: 'hero', content: { title: 'Contact Us', subtitle: 'Get in touch' } }, { type: 'contact-form', content: { heading: 'Send us a message' } }] },
+    { name: 'Services', description: 'Services overview page', sections: [{ type: 'hero', content: { title: 'Our Services', subtitle: 'What we offer' } }, { type: 'grid-3x1', content: { columns: [{ content: 'Service 1' }, { content: 'Service 2' }, { content: 'Service 3' }] } }] },
+  ]
+
+  const renderSectionThumbnail = (section: any) => {
+    if (section.cols) {
+      // Core grid section - render visual thumbnail
+      const gridItems = Array(section.cols * section.rows).fill(null)
+      return (
+        <div className="w-full aspect-video bg-white rounded border border-gray-300 p-1 flex items-center justify-center">
+          <div
+            className="grid gap-0.5 w-full h-full"
+            style={{ gridTemplateColumns: `repeat(${section.cols}, 1fr)` }}
+          >
+            {gridItems.map((_, idx) => (
+              <div key={idx} className="bg-amber-100 rounded-sm border border-amber-200"></div>
+            ))}
+          </div>
+        </div>
+      )
+    } else {
+      // Special section - show icon placeholder
+      return (
+        <div className="w-full aspect-video bg-gradient-to-br from-amber-50 to-amber-100 rounded border border-amber-200 flex items-center justify-center">
+          <div className="text-2xl font-bold text-amber-600">
+            {section.label.charAt(0)}
+          </div>
+        </div>
+      )
+    }
+  }
+
+  const handleExportSection = () => {
+    if (!selectedSection) return
+    setSectionToExport(selectedSection)
+    setShowExportSectionModal(true)
+  }
+
+  const handleSaveExportedSection = (name: string, description: string, thumbnail: string | null) => {
+    if (!sectionToExport) return
+
+    const exportedSection = {
+      id: Date.now(),
+      name,
+      description,
+      thumbnail,
+      type: sectionToExport.type,
+      content: sectionToExport.content,
+      label: name,
+      defaultContent: sectionToExport.content
+    }
+
+    setExportedSections([...exportedSections, exportedSection])
+    setShowExportSectionModal(false)
+    setSectionToExport(null)
+    alert('Section exported successfully!')
+  }
+
+  const handleExportPage = () => {
+    if (!currentPage) return
+    setShowExportPageModal(true)
+  }
+
+  const handleSaveExportedPage = (name: string, description: string, thumbnail: string | null) => {
+    if (!currentPage) return
+
+    const exportedPage = {
+      id: Date.now(),
+      name,
+      description,
+      thumbnail,
+      sections: currentPage.sections.map(s => ({
+        type: s.type,
+        content: s.content
+      }))
+    }
+
+    setExportedPages([...exportedPages, exportedPage])
+    setShowExportPageModal(false)
+    alert('Page exported successfully!')
+  }
+
+  const handleAddPredefinedPage = (pageConfig: any) => {
+    if (!template) return
+
+    const slug = pageConfig.name.toLowerCase().replace(/\s+/g, '-')
+    const newPage: TemplatePage = {
+      id: Date.now(),
+      name: pageConfig.name,
+      slug: slug,
+      is_homepage: template.pages.length === 0,
+      order: template.pages.length,
+      sections: pageConfig.sections.map((s: any, idx: number) => ({
+        id: Date.now() + idx,
+        type: s.type,
+        content: s.content,
+        order: idx
+      }))
+    }
+
+    setTemplate({
+      ...template,
+      pages: [...template.pages, newPage]
+    })
+    setCurrentPage(newPage)
+  }
+
+  const handleAddSection = (sectionConfig: any) => {
+    if (!template || !currentPage) {
+      alert('Please create a page first')
+      return
+    }
+
+    const newSection: TemplateSection = {
+      id: Date.now(),
+      type: sectionConfig.type,
+      content: sectionConfig.defaultContent,
+      order: currentPage.sections.length
+    }
+
+    const updatedPages = template.pages.map(p => {
+      if (p.id === currentPage.id) {
+        return {
+          ...p,
+          sections: [...p.sections, newSection]
+        }
+      }
+      return p
+    })
+
+    setTemplate({ ...template, pages: updatedPages })
+    setCurrentPage({ ...currentPage, sections: [...currentPage.sections, newSection] })
+    setSelectedSection(newSection)
+  }
+
+  const handleDeleteSection = (sectionId: number) => {
+    if (!template || !currentPage) return
+    if (!confirm('Are you sure you want to delete this section?')) return
+
+    const updatedSections = currentPage.sections.filter(s => s.id !== sectionId)
+    const updatedPages = template.pages.map(p => {
+      if (p.id === currentPage.id) {
+        return { ...p, sections: updatedSections }
+      }
+      return p
+    })
+
+    setTemplate({ ...template, pages: updatedPages })
+    setCurrentPage({ ...currentPage, sections: updatedSections })
+    if (selectedSection?.id === sectionId) {
+      setSelectedSection(null)
+    }
+  }
+
+  const handleMoveSection = (sectionId: number, direction: 'up' | 'down') => {
+    if (!template || !currentPage) return
+
+    const index = currentPage.sections.findIndex(s => s.id === sectionId)
+    if (index === -1) return
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === currentPage.sections.length - 1) return
+
+    const newSections = [...currentPage.sections]
+    const swapIndex = direction === 'up' ? index - 1 : index + 1
+
+    // Swap
+    ;[newSections[index], newSections[swapIndex]] = [newSections[swapIndex], newSections[index]]
+
+    // Update order values
+    newSections.forEach((section, idx) => {
+      section.order = idx
+    })
+
+    const updatedPages = template.pages.map(p => {
+      if (p.id === currentPage.id) {
+        return { ...p, sections: newSections }
+      }
+      return p
+    })
+
+    setTemplate({ ...template, pages: updatedPages })
+    setCurrentPage({ ...currentPage, sections: newSections })
+  }
+
+  const handleUpdateSectionContent = (sectionId: number, newContent: any) => {
+    if (!template || !currentPage) return
+
+    const updatedSections = currentPage.sections.map(s => {
+      if (s.id === sectionId) {
+        return { ...s, content: newContent }
+      }
+      return s
+    })
+
+    const updatedPages = template.pages.map(p => {
+      if (p.id === currentPage.id) {
+        return { ...p, sections: updatedSections }
+      }
+      return p
+    })
+
+    setTemplate({ ...template, pages: updatedPages })
+    setCurrentPage({ ...currentPage, sections: updatedSections })
+    setSelectedSection({ ...selectedSection!, content: newContent })
+  }
+
+  const renderSection = (section: TemplateSection, index: number) => {
     const content = section.content || {}
+    const isNavigationOrFooter = section.type.startsWith('navbar-') || section.type.startsWith('sidebar-') || section.type.startsWith('header-') || section.type.startsWith('footer-')
+    const isHovered = hoveredSection === section.id
+
+    const sectionWrapper = (children: React.ReactNode) => (
+      <div
+        key={section.id}
+        className="relative group"
+        onMouseEnter={() => setHoveredSection(section.id)}
+        onMouseLeave={() => setHoveredSection(null)}
+        onClick={() => setSelectedSection(section)}
+      >
+        {children}
+
+        {/* Hover Overlay */}
+        {isHovered && (
+          <div className="absolute top-2 right-2 bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-10">
+            <span className="text-xs font-medium text-gray-700 mr-2 capitalize">{section.type}</span>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                setSelectedSection(section)
+              }}
+              className="p-1 hover:bg-amber-50 rounded transition"
+              title="Properties"
+            >
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+              </svg>
+            </button>
+
+            {!isNavigationOrFooter && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleMoveSection(section.id, 'up')
+                  }}
+                  disabled={index === 0}
+                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  title="Move Up"
+                >
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleMoveSection(section.id, 'down')
+                  }}
+                  disabled={index === (currentPage?.sections.length || 0) - 1}
+                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  title="Move Down"
+                >
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+              </>
+            )}
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDeleteSection(section.id)
+              }}
+              className="p-1 hover:bg-red-50 rounded transition ml-1"
+              title="Delete"
+            >
+              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+    )
+
+    // Grid sections (1x1, 2x1, 3x1, etc.)
+    if (section.type.startsWith('grid-')) {
+      const [_, gridConfig] = section.type.split('-')
+      const [cols, rows] = gridConfig.split('x').map(Number)
+      const columns = content.columns || []
+
+      return sectionWrapper(
+        <div className={`p-8 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div
+            className="grid gap-4 w-full"
+            style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
+          >
+            {columns.map((col: any, idx: number) => (
+              <div
+                key={idx}
+                className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex items-center justify-center"
+              >
+                <p className="text-gray-500 text-sm text-center">{col.content || `Column ${idx + 1}`}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
 
     switch (section.type) {
       case 'hero':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`relative min-h-[400px] bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-          >
+        return sectionWrapper(
+          <div className={`relative min-h-[400px] bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
             <div className="text-center max-w-3xl">
               <h1 className="text-5xl font-bold mb-4">{content.title || 'Welcome'}</h1>
               <p className="text-xl mb-6">{content.subtitle || 'Your subtitle here'}</p>
@@ -206,58 +669,76 @@ export default function TemplateBuilder() {
           </div>
         )
 
-      case 'about':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-          >
-            <h2 className="text-3xl font-bold mb-4">{content.heading || 'About Us'}</h2>
-            <p className="text-gray-600">{content.text || 'Your about text here...'}</p>
-          </div>
-        )
-
-      case 'features':
-      case 'services':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-          >
-            <h2 className="text-3xl font-bold mb-8 text-center">{content.heading || 'Features'}</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {(content.features || content.services || []).map((item: any, idx: number) => (
-                <div key={idx} className="text-center p-6 bg-white rounded-lg">
-                  <h3 className="font-semibold mb-2">{item.title || item.name}</h3>
-                  <p className="text-sm text-gray-600">{item.text || item.price}</p>
+      case 'gallery':
+        return sectionWrapper(
+          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <h2 className="text-3xl font-bold mb-6 text-center">{content.heading || 'Gallery'}</h2>
+            <div className="grid grid-cols-3 gap-4">
+              {Array(6).fill(null).map((_, idx) => (
+                <div key={idx} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
+                  <span className="text-gray-400 text-sm">Image {idx + 1}</span>
                 </div>
               ))}
             </div>
           </div>
         )
 
-      case 'contact':
-      case 'menu':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-          >
-            <h2 className="text-3xl font-bold mb-6">{content.heading || section.type.charAt(0).toUpperCase() + section.type.slice(1)}</h2>
-            <p className="text-gray-500">Section content will render here...</p>
+      case 'contact-form':
+      case 'booking-form':
+        return sectionWrapper(
+          <div className={`p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <h2 className="text-3xl font-bold mb-6 text-center">{content.heading || section.type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</h2>
+            <div className="max-w-md mx-auto space-y-4">
+              {(content.fields || ['name', 'email', 'message']).map((field: string, idx: number) => (
+                <div key={idx} className="border-2 border-gray-300 rounded p-3 bg-gray-50">
+                  <span className="text-sm text-gray-600 capitalize">{field}</span>
+                </div>
+              ))}
+              <button className="w-full px-6 py-3 bg-amber-500 text-white rounded-lg font-semibold">
+                Submit
+              </button>
+            </div>
+          </div>
+        )
+
+      case 'login-box':
+        return sectionWrapper(
+          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <div className="max-w-sm mx-auto bg-white rounded-lg shadow-lg p-8">
+              <h2 className="text-2xl font-bold mb-6 text-center">{content.heading || 'Sign In'}</h2>
+              <div className="space-y-4">
+                <div className="border-2 border-gray-300 rounded p-3">
+                  <span className="text-sm text-gray-600">Email</span>
+                </div>
+                <div className="border-2 border-gray-300 rounded p-3">
+                  <span className="text-sm text-gray-600">Password</span>
+                </div>
+                <button className="w-full px-6 py-3 bg-amber-500 text-white rounded-lg font-semibold">
+                  Login
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'testimonials':
+        return sectionWrapper(
+          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <h2 className="text-3xl font-bold mb-8 text-center">{content.heading || 'What Our Customers Say'}</h2>
+            <div className="grid md:grid-cols-2 gap-6">
+              {Array(2).fill(null).map((_, idx) => (
+                <div key={idx} className="bg-white p-6 rounded-lg shadow">
+                  <p className="text-gray-600 italic mb-4">"Great service and experience!"</p>
+                  <p className="font-semibold">Customer {idx + 1}</p>
+                </div>
+              ))}
+            </div>
           </div>
         )
 
       default:
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-amber-500 transition ${selectedSection?.id === section.id ? 'border-amber-500' : ''}`}
-          >
+        return sectionWrapper(
+          <div className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-amber-500 transition ${selectedSection?.id === section.id ? 'border-amber-500' : ''}`}>
             <p className="text-gray-500 text-center">Section: {section.type}</p>
           </div>
         )
@@ -329,7 +810,34 @@ export default function TemplateBuilder() {
             <img src="/Pagevoo_logo_500x200.png" alt="Pagevoo" className="h-4" />
           </div>
           <div className="flex items-center h-full text-xs relative">
-            <button className="px-3 h-full hover:bg-amber-50 transition">File</button>
+            <div className="relative">
+              <button
+                onClick={() => setShowFileMenu(!showFileMenu)}
+                className="px-3 h-full hover:bg-amber-50 transition"
+              >
+                File
+              </button>
+              {showFileMenu && (
+                <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
+                  <button
+                    onClick={() => {
+                      handleExportPage()
+                      setShowFileMenu(false)
+                    }}
+                    disabled={!currentPage}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Export Current Page
+                  </button>
+                  <button
+                    onClick={() => setShowFileMenu(false)}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs border-t border-gray-200"
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
             <div className="relative">
               <button
                 onClick={() => setShowEditMenu(!showEditMenu)}
@@ -571,50 +1079,315 @@ export default function TemplateBuilder() {
               className="bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
             >
               <div className="p-3">
-                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Sections</h2>
-                <div className="space-y-1">
-                  {currentPage?.sections && currentPage.sections.length > 0 ? (
-                    currentPage.sections.map((section) => (
-                      <button
-                        key={section.id}
-                        onClick={() => setSelectedSection(section)}
-                        className={`w-full text-left px-3 py-2 rounded text-xs transition ${
-                          selectedSection?.id === section.id
-                            ? 'bg-amber-500 text-white'
-                            : 'bg-gray-50 hover:bg-amber-50 text-gray-700 hover:text-amber-700'
-                        }`}
-                      >
-                        {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-xs text-gray-500 text-center py-4">No sections yet</div>
+                {/* Section Library */}
+                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Section Library</h2>
+
+                {/* Core Sections */}
+                <div className="mb-3">
+                  <button
+                    onClick={() => toggleCategory('core')}
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                  >
+                    <span>Core Sections</span>
+                    <svg
+                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {expandedCategories.includes('core') && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {coreSections.map((section) => (
+                        <button
+                          key={section.type}
+                          onClick={() => handleAddSection(section)}
+                          className="group relative"
+                          title={section.description}
+                        >
+                          {renderSectionThumbnail(section)}
+                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            {section.label}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
                   )}
                 </div>
 
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Pages</h2>
-                  <div className="space-y-1">
-                    {template.pages && template.pages.length > 0 ? (
-                      template.pages.map((page) => (
-                        <div
-                          key={page.id}
-                          onClick={() => setCurrentPage(page)}
-                          className={`px-3 py-2 rounded text-xs flex items-center justify-between cursor-pointer transition ${
-                            currentPage?.id === page.id
-                              ? 'bg-gray-200 text-gray-900'
-                              : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                          }`}
+                {/* Navigation Sections */}
+                <div className="mb-3">
+                  <button
+                    onClick={() => toggleCategory('navigation')}
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                  >
+                    <span>Navigation</span>
+                    <svg
+                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('navigation') ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {expandedCategories.includes('navigation') && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {navigationSections.map((section) => (
+                        <button
+                          key={section.type}
+                          onClick={() => handleAddSection(section)}
+                          className="group relative"
+                          title={section.description}
                         >
-                          <span>{page.name}</span>
-                          {page.is_homepage && <span className="text-amber-600 text-xs">●</span>}
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-xs text-gray-500 text-center py-4">No pages yet</div>
+                          {renderSectionThumbnail(section)}
+                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            {section.label}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Header Sections */}
+                <div className="mb-3">
+                  <button
+                    onClick={() => toggleCategory('headers')}
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                  >
+                    <span>Headers</span>
+                    <svg
+                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('headers') ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {expandedCategories.includes('headers') && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {headerSections.map((section) => (
+                        <button
+                          key={section.type}
+                          onClick={() => handleAddSection(section)}
+                          className="group relative"
+                          title={section.description}
+                        >
+                          {renderSectionThumbnail(section)}
+                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            {section.label}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Sections */}
+                <div className="mb-3">
+                  <button
+                    onClick={() => toggleCategory('footers')}
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                  >
+                    <span>Footers</span>
+                    <svg
+                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {expandedCategories.includes('footers') && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {footerSections.map((section) => (
+                        <button
+                          key={section.type}
+                          onClick={() => handleAddSection(section)}
+                          className="group relative"
+                          title={section.description}
+                        >
+                          {renderSectionThumbnail(section)}
+                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            {section.label}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Special Sections */}
+                <div className="mb-3">
+                  <button
+                    onClick={() => toggleCategory('special')}
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                  >
+                    <span>Special Sections</span>
+                    <svg
+                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('special') ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+
+                  {expandedCategories.includes('special') && (
+                    <div className="grid grid-cols-2 gap-2 mt-2">
+                      {specialSections.map((section) => (
+                        <button
+                          key={section.type}
+                          onClick={() => handleAddSection(section)}
+                          className="group relative"
+                          title={section.description}
+                        >
+                          {renderSectionThumbnail(section)}
+                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            {section.label}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Exported Sections */}
+                {exportedSections.length > 0 && (
+                  <div className="mb-3">
+                    <button
+                      onClick={() => toggleCategory('exported')}
+                      className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                    >
+                      <span>Exported Sections</span>
+                      <svg
+                        className={`w-3 h-3 transition-transform ${expandedCategories.includes('exported') ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+
+                    {expandedCategories.includes('exported') && (
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        {exportedSections.map((section) => (
+                          <button
+                            key={section.id}
+                            onClick={() => handleAddSection(section)}
+                            className="group relative"
+                            title={section.description}
+                          >
+                            {section.thumbnail ? (
+                              <img src={section.thumbnail} alt={section.name} className="w-full aspect-video object-cover rounded border border-gray-300" />
+                            ) : (
+                              renderSectionThumbnail(section)
+                            )}
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                              {section.label}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     )}
                   </div>
+                )}
+
+                {/* Export Section Button */}
+                {selectedSection && (
+                  <div className="border-t border-gray-200 pt-3 mt-3">
+                    <button
+                      onClick={handleExportSection}
+                      className="w-full px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded transition text-xs font-medium"
+                    >
+                      Export Selected Section
+                    </button>
+                  </div>
+                )}
+
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Page Library</h2>
+
+                  {/* Predefined Pages */}
+                  <div className="mb-3">
+                    <button
+                      onClick={() => toggleCategory('predefined-pages')}
+                      className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                    >
+                      <span>Ready-to-Go Pages</span>
+                      <svg
+                        className={`w-3 h-3 transition-transform ${expandedCategories.includes('predefined-pages') ? 'rotate-90' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+
+                    {expandedCategories.includes('predefined-pages') && (
+                      <div className="space-y-1 mt-2">
+                        {predefinedPages.map((page) => (
+                          <button
+                            key={page.name}
+                            onClick={() => handleAddPredefinedPage(page)}
+                            className="w-full text-left px-2 py-1.5 bg-gray-50 hover:bg-amber-50 rounded text-[10px] transition"
+                            title={page.description}
+                          >
+                            {page.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Exported Pages */}
+                  {exportedPages.length > 0 && (
+                    <div className="mb-3">
+                      <button
+                        onClick={() => toggleCategory('exported-pages')}
+                        className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                      >
+                        <span>Exported Pages</span>
+                        <svg
+                          className={`w-3 h-3 transition-transform ${expandedCategories.includes('exported-pages') ? 'rotate-90' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      {expandedCategories.includes('exported-pages') && (
+                        <div className="space-y-1 mt-2">
+                          {exportedPages.map((page) => (
+                            <button
+                              key={page.id}
+                              onClick={() => handleAddPredefinedPage(page)}
+                              className="w-full text-left px-2 py-1.5 bg-gray-50 hover:bg-amber-50 rounded text-[10px] transition"
+                              title={page.description}
+                            >
+                              {page.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
+
               </div>
             </aside>
 
@@ -636,17 +1409,65 @@ export default function TemplateBuilder() {
             }}
             className="bg-white min-h-full shadow-xl mx-auto ring-1 ring-gray-200"
           >
+            {/* Page Selector */}
+            <div className="border-b border-gray-200 bg-gray-50 px-4 py-2 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-gray-600">Viewing page:</span>
+                <select
+                  value={currentPage?.id || ''}
+                  onChange={(e) => {
+                    const selectedPage = template.pages.find(p => p.id === parseInt(e.target.value))
+                    if (selectedPage) setCurrentPage(selectedPage)
+                  }}
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                >
+                  {template.pages.map((page) => (
+                    <option key={page.id} value={page.id}>
+                      {page.name} {page.is_homepage ? '(Home)' : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                {currentPage && !currentPage.is_homepage && (
+                  <button
+                    onClick={() => handleSetHomepage(currentPage.id)}
+                    className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
+                    title="Set as Homepage"
+                  >
+                    Set as Home
+                  </button>
+                )}
+                {currentPage && template.pages.length > 1 && (
+                  <button
+                    onClick={() => handleDeletePage(currentPage.id)}
+                    className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
+                    title="Delete Page"
+                  >
+                    Delete Page
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowAddPageModal(true)}
+                  className="px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white rounded transition"
+                  title="Add New Page"
+                >
+                  + Add Page
+                </button>
+              </div>
+            </div>
+
             {/* Canvas Preview Area */}
             <div className="text-gray-900">
               {currentPage && currentPage.sections && currentPage.sections.length > 0 ? (
                 currentPage.sections
                   .sort((a, b) => a.order - b.order)
-                  .map((section) => renderSection(section))
+                  .map((section, index) => renderSection(section, index))
               ) : (
                 <div className="text-center py-20 p-8">
                   <div className="text-6xl mb-4">📄</div>
                   <h2 className="text-2xl font-bold text-gray-800 mb-2">Empty Page</h2>
-                  <p className="text-gray-600">This page has no sections yet</p>
+                  <p className="text-gray-600">This page has no sections yet. Add sections from the left sidebar!</p>
                 </div>
               )}
             </div>
@@ -670,32 +1491,89 @@ export default function TemplateBuilder() {
               <div className="p-3">
                 <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Properties</h2>
                 {selectedSection ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <div>
                       <label className="text-xs text-gray-500 block mb-1">Section Type</label>
-                      <div className="px-3 py-2 bg-gray-50 rounded text-xs capitalize">
+                      <div className="px-2 py-1.5 bg-gray-50 rounded text-xs capitalize font-medium">
                         {selectedSection.type}
                       </div>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Order</label>
-                      <div className="px-3 py-2 bg-gray-50 rounded text-xs">
-                        {selectedSection.order}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Content</label>
-                      <div className="px-3 py-2 bg-gray-50 rounded text-xs max-h-64 overflow-auto">
-                        <pre className="text-[10px] text-gray-700 whitespace-pre-wrap">
-                          {JSON.stringify(selectedSection.content, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                    <div className="pt-4 border-t border-gray-200">
-                      <button className="w-full px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded text-xs transition">
-                        Edit Content
-                      </button>
-                    </div>
+
+                    {/* Grid Section Fields */}
+                    {selectedSection.type.startsWith('grid-') && (
+                      <>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Column Content</label>
+                          <div className="space-y-2">
+                            {(selectedSection.content?.columns || []).map((col: any, idx: number) => (
+                              <div key={idx}>
+                                <label className="text-[10px] text-gray-500 block mb-1">Column {idx + 1}</label>
+                                <textarea
+                                  value={col.content || ''}
+                                  onChange={(e) => {
+                                    const newColumns = [...(selectedSection.content?.columns || [])]
+                                    newColumns[idx] = { ...newColumns[idx], content: e.target.value }
+                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, columns: newColumns })
+                                  }}
+                                  rows={2}
+                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                  placeholder={`Content for column ${idx + 1}`}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Hero Section Fields */}
+                    {selectedSection.type === 'hero' && (
+                      <>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">Title</label>
+                          <input
+                            type="text"
+                            value={selectedSection.content?.title || ''}
+                            onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, title: e.target.value })}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">Subtitle</label>
+                          <textarea
+                            value={selectedSection.content?.subtitle || ''}
+                            onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, subtitle: e.target.value })}
+                            rows={2}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">Button Text</label>
+                          <input
+                            type="text"
+                            value={selectedSection.content?.cta_text || ''}
+                            onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, cta_text: e.target.value })}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                      </>
+                    )}
+
+                    {/* Gallery, Contact Form, Booking Form, Login, Testimonials */}
+                    {(selectedSection.type === 'gallery' || selectedSection.type === 'contact-form' || selectedSection.type === 'booking-form' || selectedSection.type === 'login-box' || selectedSection.type === 'testimonials') && (
+                      <>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">Heading</label>
+                          <input
+                            type="text"
+                            value={selectedSection.content?.heading || ''}
+                            onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, heading: e.target.value })}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          />
+                        </div>
+                        <p className="text-xs text-gray-500 italic">Advanced configuration coming soon</p>
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="text-xs text-gray-500 text-center py-8">
@@ -706,6 +1584,166 @@ export default function TemplateBuilder() {
             </aside>
           </>
         )}
+      </div>
+
+      {/* Add Page Modal */}
+      {showAddPageModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Page</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Page Name
+                </label>
+                <input
+                  type="text"
+                  value={newPageName}
+                  onChange={(e) => setNewPageName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddPage()}
+                  placeholder="e.g., About Us, Services, Contact"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  autoFocus
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Slug will be auto-generated: {newPageName ? newPageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : 'page-slug'}
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setShowAddPageModal(false)
+                    setNewPageName('')
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleAddPage}
+                  disabled={!newPageName.trim()}
+                  className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Add Page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Export Section Modal */}
+      {showExportSectionModal && (
+        <ExportModal
+          title="Export Section"
+          onSave={handleSaveExportedSection}
+          onClose={() => {
+            setShowExportSectionModal(false)
+            setSectionToExport(null)
+          }}
+        />
+      )}
+
+      {/* Export Page Modal */}
+      {showExportPageModal && (
+        <ExportModal
+          title="Export Page"
+          onSave={handleSaveExportedPage}
+          onClose={() => setShowExportPageModal(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// Export Modal Component
+function ExportModal({ title, onSave, onClose }: { title: string, onSave: (name: string, description: string, thumbnail: string | null) => void, onClose: () => void }) {
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [thumbnail, setThumbnail] = useState<string | null>(null)
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file')
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = (event) => {
+      setThumbnail(event.target?.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">{title}</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g., My Custom Section"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+              autoFocus
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description of this item"
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail (Optional)</label>
+            {thumbnail && (
+              <div className="mb-2">
+                <img src={thumbnail} alt="Preview" className="w-full h-32 object-cover rounded border border-gray-300" />
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+            />
+            <p className="text-xs text-gray-500 mt-1">Recommended: 800x600px or similar aspect ratio</p>
+          </div>
+          <div className="flex gap-2 pt-2">
+            <button
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => {
+                if (!name.trim()) {
+                  alert('Please enter a name')
+                  return
+                }
+                onSave(name, description, thumbnail)
+                setName('')
+                setDescription('')
+                setThumbnail(null)
+              }}
+              disabled={!name.trim()}
+              className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Export
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   )

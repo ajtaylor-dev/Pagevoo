@@ -70,7 +70,7 @@ class TemplateController extends BaseController
             'pages.*.is_homepage' => 'boolean',
             'pages.*.order' => 'integer',
             'pages.*.sections' => 'array',
-            'pages.*.sections.*.name' => 'required|string',
+            'pages.*.sections.*.name' => 'nullable|string',
             'pages.*.sections.*.type' => 'required|string',
             'pages.*.sections.*.content' => 'nullable|array',
             'pages.*.sections.*.order' => 'integer',
@@ -106,7 +106,7 @@ class TemplateController extends BaseController
                 foreach ($pageData['sections'] as $sectionData) {
                     TemplateSection::create([
                         'template_page_id' => $page->id,
-                        'name' => $sectionData['name'],
+                        'name' => $sectionData['name'] ?? ucfirst($sectionData['type']),
                         'type' => $sectionData['type'],
                         'content' => $sectionData['content'] ?? null,
                         'order' => $sectionData['order'] ?? 0,
@@ -140,6 +140,16 @@ class TemplateController extends BaseController
             'exclusive_to' => 'nullable|in:pro,niche',
             'technologies' => 'nullable|array',
             'features' => 'nullable|array',
+            'pages' => 'nullable|array',
+            'pages.*.name' => 'required|string',
+            'pages.*.slug' => 'required|string',
+            'pages.*.is_homepage' => 'boolean',
+            'pages.*.order' => 'integer',
+            'pages.*.sections' => 'array',
+            'pages.*.sections.*.name' => 'nullable|string',
+            'pages.*.sections.*.type' => 'required|string',
+            'pages.*.sections.*.content' => 'nullable|array',
+            'pages.*.sections.*.order' => 'integer',
         ]);
 
         if ($validator->fails()) {
@@ -156,6 +166,35 @@ class TemplateController extends BaseController
             'technologies',
             'features'
         ]));
+
+        // If pages data is provided, update pages and sections
+        if ($request->has('pages')) {
+            // Delete existing pages (cascade will delete sections)
+            $template->pages()->delete();
+
+            // Create new pages and sections
+            foreach ($request->pages as $pageData) {
+                $page = TemplatePage::create([
+                    'template_id' => $template->id,
+                    'name' => $pageData['name'],
+                    'slug' => $pageData['slug'],
+                    'is_homepage' => $pageData['is_homepage'] ?? false,
+                    'order' => $pageData['order'] ?? 0,
+                ]);
+
+                if (isset($pageData['sections'])) {
+                    foreach ($pageData['sections'] as $sectionData) {
+                        TemplateSection::create([
+                            'template_page_id' => $page->id,
+                            'name' => $sectionData['name'] ?? ucfirst($sectionData['type']),
+                            'type' => $sectionData['type'],
+                            'content' => $sectionData['content'] ?? null,
+                            'order' => $sectionData['order'] ?? 0,
+                        ]);
+                    }
+                }
+            }
+        }
 
         $template->load(['pages.sections', 'creator']);
 
