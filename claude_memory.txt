@@ -1191,7 +1191,8 @@ User Dashboard → Pagevoo API (Laravel) → Plesk REST API → IONOS VPS
   - New migration for custom_css column
 
 **Git Commit:**
-- Pending commit with Edit menu sub-tabs, custom CSS, and VSCode navigation
+- Commit: 251112c "Add Edit menu sub-tabs, custom CSS support, and VSCode-style navigation"
+- Pushed to origin/main
 
 ## Last Updated
 2025-10-05
