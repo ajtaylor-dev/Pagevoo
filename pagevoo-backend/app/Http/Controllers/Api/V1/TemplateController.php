@@ -90,6 +90,7 @@ class TemplateController extends BaseController
             'exclusive_to' => $request->exclusive_to,
             'technologies' => $request->technologies,
             'features' => $request->features,
+            'custom_css' => $request->custom_css,
         ]);
 
         // Create pages and sections
@@ -164,7 +165,8 @@ class TemplateController extends BaseController
             'is_active',
             'exclusive_to',
             'technologies',
-            'features'
+            'features',
+            'custom_css'
         ]));
 
         // If pages data is provided, update pages and sections

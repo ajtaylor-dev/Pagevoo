@@ -1118,6 +1118,81 @@ User Dashboard → Pagevoo API (Laravel) → Plesk REST API → IONOS VPS
 - Commit: 417016c "Enhance template builder with section library and full page management"
 - Pushed to origin/main
 
+## Session 11 (2025-10-05) - Navigation System, Edit Menu Sub-tabs & Custom CSS
+**What We Built:**
+1. Header/Navigation Section Consolidation
+   - Merged navbar and header sections into unified "Header & Navigation" category
+   - 6 top-locked navigation options (navbar-basic, navbar-dropdown, navbar-sticky, header-simple, header-centered, header-split)
+   - 2 sidebar navigation options (sidebar-nav-left, sidebar-nav-right) with position toggles
+   - Position types: menu-click, permanently-fixed, static
+   - Full-height toggle for sidebars (100vh option)
+
+2. Section Movement Restrictions
+   - Navigation sections cannot be moved below regular sections
+   - Regular sections cannot move above navigation sections
+   - Footer sections cannot move above regular sections
+   - Regular sections cannot move below footer sections
+   - Enforced three-tier structure: Navigation → Content → Footer
+
+3. Auto-Insertion Logic
+   - Navigation/Header/Sidebar sections auto-insert at top
+   - New navigation sections insert after existing navigation
+   - Footer sections insert before existing footers
+   - Regular sections insert before footers (middle zone)
+
+4. Sidebar Enhancements
+   - Left/Right position toggle buttons in hover controls
+   - Fixed z-index layering (sidebar: z-20/z-30, controls: z-50)
+   - Clickable controls positioned correctly for both sides
+   - fullHeight property with checkbox toggle
+
+5. Edit Menu Sub-Navigation System
+   - "Template Settings" tab: All existing template configuration
+     - Preview image upload
+     - Description, Business Type, Exclusive To
+     - Template Type (HTML5/React)
+     - Features checkboxes
+   - "Site CSS" tab: Custom CSS editor
+     - Textarea for custom CSS code
+     - Monospace font for code editing
+     - Placeholder with CSS example
+
+6. Custom CSS Backend Support
+   - Migration: 2025_10_05_093134_add_custom_css_to_templates_table.php
+   - Added custom_css column (text, nullable) to templates table
+   - Updated Template model fillable array
+   - Updated TemplateController store/update methods
+   - Frontend sends custom_css in API calls
+
+7. VSCode-Style Navigation Behavior
+   - Click to open menu (File/Edit)
+   - Click outside to close menu
+   - Hover to switch between menus automatically
+   - Hover over View/Insert/Help closes any open menu
+   - Uses refs and event listeners for click-outside detection
+
+**Files Modified:**
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  - Added editSubTab state and sub-navigation UI
+  - Implemented VSCode-style menu behavior with refs
+  - Added custom_css to Template interface
+  - Merged header/navigation sections array
+  - Enhanced sidebar controls and positioning
+  - Movement restriction logic for sections
+
+- pagevoo-backend/app/Models/Template.php
+  - Added 'custom_css' to fillable array
+
+- pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php
+  - Added custom_css handling in store() method
+  - Added custom_css handling in update() method
+
+- pagevoo-backend/database/migrations/2025_10_05_093134_add_custom_css_to_templates_table.php
+  - New migration for custom_css column
+
+**Git Commit:**
+- Pending commit with Edit menu sub-tabs, custom CSS, and VSCode navigation
+
 ## Last Updated
 2025-10-05
 

@@ -15,7 +15,8 @@ class Template extends Model
         'created_by',
         'exclusive_to',
         'technologies',
-        'features'
+        'features',
+        'custom_css'
     ];
 
     protected $casts = [

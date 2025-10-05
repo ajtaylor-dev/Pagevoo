@@ -30,6 +30,7 @@ interface Template {
   exclusive_to: 'pro' | 'niche' | null
   technologies: string[]
   features: string[]
+  custom_css?: string
 }
 
 export default function TemplateBuilder() {
@@ -43,6 +44,7 @@ export default function TemplateBuilder() {
   const [loading, setLoading] = useState(true)
   const [showEditMenu, setShowEditMenu] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [editSubTab, setEditSubTab] = useState<'settings' | 'css'>('settings')
   const [showAddPageModal, setShowAddPageModal] = useState(false)
   const [newPageName, setNewPageName] = useState('')
   const [showExportSectionModal, setShowExportSectionModal] = useState(false)
@@ -63,6 +65,8 @@ export default function TemplateBuilder() {
 
   const leftSidebarRef = useRef<HTMLDivElement>(null)
   const rightSidebarRef = useRef<HTMLDivElement>(null)
+  const fileMenuRef = useRef<HTMLDivElement>(null)
+  const editMenuRef = useRef<HTMLDivElement>(null)
 
   // Load template data if ID is present, or create blank template
   useEffect(() => {
@@ -105,6 +109,25 @@ export default function TemplateBuilder() {
     loadTemplate()
   }, [templateId])
 
+  // VSCode-style menu behavior: click outside to close
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node
+
+      if (fileMenuRef.current && !fileMenuRef.current.contains(target)) {
+        setShowFileMenu(false)
+      }
+      if (editMenuRef.current && !editMenuRef.current.contains(target)) {
+        setShowEditMenu(false)
+      }
+    }
+
+    if (showFileMenu || showEditMenu) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [showFileMenu, showEditMenu])
+
   const handleSaveTemplate = async () => {
     if (!template) {
       alert('No template loaded')
@@ -123,6 +146,7 @@ export default function TemplateBuilder() {
           exclusive_to: template.exclusive_to,
           technologies: template.technologies,
           features: template.features,
+          custom_css: template.custom_css,
           pages: template.pages.map(page => ({
             name: page.name,
             slug: page.slug,
@@ -149,6 +173,7 @@ export default function TemplateBuilder() {
           exclusive_to: template.exclusive_to,
           technologies: template.technologies,
           features: template.features,
+          custom_css: template.custom_css,
           pages: template.pages.map(page => ({
             id: page.id > 1000000000000 ? undefined : page.id, // Don't send temporary IDs (from Date.now())
             name: page.name,
@@ -310,23 +335,23 @@ export default function TemplateBuilder() {
     { type: 'grid-3x2', label: '3x2 Grid', description: 'Six boxes in a 3x2 grid layout', cols: 3, rows: 2, defaultContent: { columns: Array(6).fill(null).map((_, i) => ({ content: `Box ${i + 1}` })) } },
   ]
 
-  const navigationSections = [
-    { type: 'navbar-basic', label: 'Basic Navbar', description: 'Simple horizontal navigation bar with links', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] } },
-    { type: 'navbar-dropdown', label: 'Dropdown Nav', description: 'Navigation bar with dropdown menus', defaultContent: { logo: 'Logo', links: ['Home', 'Services', 'About', 'Contact'] } },
-    { type: 'navbar-sticky', label: 'Sticky Navbar', description: 'Navigation that sticks to top on scroll', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
-    { type: 'sidebar-nav', label: 'Sidebar Nav', description: 'Vertical sidebar navigation menu', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'] } },
-  ]
-
-  const headerSections = [
-    { type: 'header-simple', label: 'Simple Header', description: 'Clean header with logo and tagline', defaultContent: { logo: 'Company Name', tagline: 'Your tagline here' } },
-    { type: 'header-centered', label: 'Centered Header', description: 'Centered logo with navigation below', defaultContent: { logo: 'Brand', navigation: true } },
-    { type: 'header-split', label: 'Split Header', description: 'Logo left, navigation right layout', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
+  const headerNavigationSections = [
+    // Top-locked navigation bars
+    { type: 'navbar-basic', label: 'Basic Navbar', description: 'Simple horizontal navigation bar with links', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] } },
+    { type: 'navbar-dropdown', label: 'Dropdown Nav', description: 'Navigation bar with dropdown menus', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'Services', 'About', 'Contact'] } },
+    { type: 'navbar-sticky', label: 'Sticky Navbar', description: 'Navigation that sticks to top on scroll', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
+    { type: 'header-simple', label: 'Simple Header', description: 'Clean header with logo and tagline', position: 'top', defaultContent: { logo: 'Company Name', tagline: 'Your tagline here' } },
+    { type: 'header-centered', label: 'Centered Header', description: 'Centered logo with navigation below', position: 'top', defaultContent: { logo: 'Brand', navigation: true } },
+    { type: 'header-split', label: 'Split Header', description: 'Logo left, navigation right layout', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
+    // Sidebar navigation (can move left/right)
+    { type: 'sidebar-nav-left', label: 'Sidebar Nav (Left)', description: 'Left-side vertical navigation menu', position: 'left', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'], positioned: 'permanently-fixed', fullHeight: true } },
+    { type: 'sidebar-nav-right', label: 'Sidebar Nav (Right)', description: 'Right-side vertical navigation menu', position: 'right', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'], positioned: 'permanently-fixed', fullHeight: true } },
   ]
 
   const footerSections = [
-    { type: 'footer-simple', label: 'Simple Footer', description: 'Basic footer with copyright text', defaultContent: { text: '© 2025 Company Name. All rights reserved.' } },
-    { type: 'footer-columns', label: 'Column Footer', description: 'Multi-column footer with links', defaultContent: { columns: [{ title: 'Company', links: ['About', 'Contact'] }, { title: 'Services', links: ['Service 1', 'Service 2'] }] } },
-    { type: 'footer-social', label: 'Social Footer', description: 'Footer with social media icons', defaultContent: { text: '© 2025 Company', socials: ['Facebook', 'Twitter', 'Instagram'] } },
+    { type: 'footer-simple', label: 'Simple Footer', description: 'Basic footer with copyright text', position: 'bottom', defaultContent: { text: '© 2025 Company Name. All rights reserved.' } },
+    { type: 'footer-columns', label: 'Column Footer', description: 'Multi-column footer with links', position: 'bottom', defaultContent: { columns: [{ title: 'Company', links: ['About', 'Contact'] }, { title: 'Services', links: ['Service 1', 'Service 2'] }] } },
+    { type: 'footer-social', label: 'Social Footer', description: 'Footer with social media icons', position: 'bottom', defaultContent: { text: '© 2025 Company', socials: ['Facebook', 'Twitter', 'Instagram'] } },
   ]
 
   const specialSections = [
@@ -453,26 +478,117 @@ export default function TemplateBuilder() {
       return
     }
 
+    // Check if this is a top-positioned section (navbar/header/sidebar)
+    const isTopSection = sectionConfig.type.startsWith('navbar-') ||
+                        sectionConfig.type.startsWith('header-') ||
+                        sectionConfig.type.startsWith('sidebar-nav-')
+
+    // Check if this is a footer section
+    const isFooterSection = sectionConfig.type.startsWith('footer-')
+
     const newSection: TemplateSection = {
       id: Date.now(),
       type: sectionConfig.type,
       content: sectionConfig.defaultContent,
-      order: currentPage.sections.length
+      order: isTopSection ? 0 : currentPage.sections.length
     }
 
     const updatedPages = template.pages.map(p => {
       if (p.id === currentPage.id) {
-        return {
-          ...p,
-          sections: [...p.sections, newSection]
+        if (isTopSection) {
+          // Find the position after existing navbars/headers/sidebars
+          let insertPosition = 0
+          for (let i = 0; i < p.sections.length; i++) {
+            const section = p.sections[i]
+            if (section.type.startsWith('navbar-') ||
+                section.type.startsWith('header-') ||
+                section.type.startsWith('sidebar-nav-')) {
+              insertPosition = i + 1
+            } else {
+              break
+            }
+          }
+
+          // Insert at the calculated position
+          const newSections = [
+            ...p.sections.slice(0, insertPosition),
+            newSection,
+            ...p.sections.slice(insertPosition)
+          ]
+
+          // Reorder all sections
+          newSections.forEach((section, idx) => {
+            section.order = idx
+          })
+
+          return {
+            ...p,
+            sections: newSections
+          }
+        } else if (isFooterSection) {
+          // Find the position before existing footers (to insert at end but before other footers)
+          let insertPosition = p.sections.length
+          for (let i = p.sections.length - 1; i >= 0; i--) {
+            const section = p.sections[i]
+            if (section.type.startsWith('footer-')) {
+              insertPosition = i
+            } else {
+              break
+            }
+          }
+
+          // Insert at the calculated position
+          const newSections = [
+            ...p.sections.slice(0, insertPosition),
+            newSection,
+            ...p.sections.slice(insertPosition)
+          ]
+
+          // Reorder all sections
+          newSections.forEach((section, idx) => {
+            section.order = idx
+          })
+
+          return {
+            ...p,
+            sections: newSections
+          }
+        } else {
+          // Insert before footers for regular sections
+          let insertPosition = p.sections.length
+          for (let i = 0; i < p.sections.length; i++) {
+            const section = p.sections[i]
+            if (section.type.startsWith('footer-')) {
+              insertPosition = i
+              break
+            }
+          }
+
+          const newSections = [
+            ...p.sections.slice(0, insertPosition),
+            newSection,
+            ...p.sections.slice(insertPosition)
+          ]
+
+          newSections.forEach((section, idx) => {
+            section.order = idx
+          })
+
+          return {
+            ...p,
+            sections: newSections
+          }
         }
       }
       return p
     })
 
-    setTemplate({ ...template, pages: updatedPages })
-    setCurrentPage({ ...currentPage, sections: [...currentPage.sections, newSection] })
-    setSelectedSection(newSection)
+    const updatedCurrentPage = updatedPages.find(p => p.id === currentPage.id)
+    if (updatedCurrentPage) {
+      setTemplate({ ...template, pages: updatedPages })
+      setCurrentPage(updatedCurrentPage)
+      setSelectedSection(newSection)
+    }
   }
 
   const handleDeleteSection = (sectionId: number) => {
@@ -502,8 +618,51 @@ export default function TemplateBuilder() {
     if (direction === 'up' && index === 0) return
     if (direction === 'down' && index === currentPage.sections.length - 1) return
 
-    const newSections = [...currentPage.sections]
+    const currentSection = currentPage.sections[index]
     const swapIndex = direction === 'up' ? index - 1 : index + 1
+    const targetSection = currentPage.sections[swapIndex]
+
+    // Check if current section is a navigation section
+    const isCurrentNavSection = currentSection.type.startsWith('navbar-') ||
+                                currentSection.type.startsWith('header-') ||
+                                currentSection.type.startsWith('sidebar-nav-')
+
+    // Check if target section is a navigation section
+    const isTargetNavSection = targetSection.type.startsWith('navbar-') ||
+                               targetSection.type.startsWith('header-') ||
+                               targetSection.type.startsWith('sidebar-nav-')
+
+    // Check if current section is a footer section
+    const isCurrentFooterSection = currentSection.type.startsWith('footer-')
+
+    // Check if target section is a footer section
+    const isTargetFooterSection = targetSection.type.startsWith('footer-')
+
+    // Prevent non-nav sections from moving above nav sections
+    if (direction === 'up' && !isCurrentNavSection && isTargetNavSection) {
+      alert('Regular sections cannot be moved above navigation sections')
+      return
+    }
+
+    // Prevent nav sections from moving below non-nav sections
+    if (direction === 'down' && isCurrentNavSection && !isTargetNavSection && !isTargetFooterSection) {
+      alert('Navigation sections cannot be moved below regular sections')
+      return
+    }
+
+    // Prevent non-footer sections from moving below footer sections
+    if (direction === 'down' && !isCurrentFooterSection && isTargetFooterSection) {
+      alert('Regular sections cannot be moved below footer sections')
+      return
+    }
+
+    // Prevent footer sections from moving above non-footer sections
+    if (direction === 'up' && isCurrentFooterSection && !isTargetFooterSection) {
+      alert('Footer sections cannot be moved above regular sections')
+      return
+    }
+
+    const newSections = [...currentPage.sections]
 
     // Swap
     ;[newSections[index], newSections[swapIndex]] = [newSections[swapIndex], newSections[index]]
@@ -522,6 +681,37 @@ export default function TemplateBuilder() {
 
     setTemplate({ ...template, pages: updatedPages })
     setCurrentPage({ ...currentPage, sections: newSections })
+  }
+
+  const handleMoveSidebar = (sectionId: number, direction: 'left' | 'right') => {
+    if (!template || !currentPage) return
+
+    const updatedSections = currentPage.sections.map(s => {
+      if (s.id === sectionId) {
+        // Toggle sidebar position
+        const newType = direction === 'left' ? 'sidebar-nav-left' : 'sidebar-nav-right'
+        return { ...s, type: newType }
+      }
+      return s
+    })
+
+    const updatedPages = template.pages.map(p => {
+      if (p.id === currentPage.id) {
+        return { ...p, sections: updatedSections }
+      }
+      return p
+    })
+
+    setTemplate({ ...template, pages: updatedPages })
+    setCurrentPage({ ...currentPage, sections: updatedSections })
+
+    // Update selected section if this was the selected one
+    if (selectedSection?.id === sectionId) {
+      const updatedSection = updatedSections.find(s => s.id === sectionId)
+      if (updatedSection) {
+        setSelectedSection(updatedSection)
+      }
+    }
   }
 
   const handleUpdateSectionContent = (sectionId: number, newContent: any) => {
@@ -548,13 +738,20 @@ export default function TemplateBuilder() {
 
   const renderSection = (section: TemplateSection, index: number) => {
     const content = section.content || {}
-    const isNavigationOrFooter = section.type.startsWith('navbar-') || section.type.startsWith('sidebar-') || section.type.startsWith('header-') || section.type.startsWith('footer-')
+
+    // Determine section behavior based on type
+    const isTopLocked = section.type.startsWith('navbar-') || section.type.startsWith('header-')
+    const isBottomLocked = section.type.startsWith('footer-')
+    const isSidebar = section.type.startsWith('sidebar-nav-')
+    const isLeftSidebar = section.type === 'sidebar-nav-left'
+    const isRightSidebar = section.type === 'sidebar-nav-right'
+    const isPositionLocked = isTopLocked || isBottomLocked
     const isHovered = hoveredSection === section.id
 
     const sectionWrapper = (children: React.ReactNode) => (
       <div
         key={section.id}
-        className="relative group"
+        className={`relative group ${isSidebar ? 'z-20' : ''}`}
         onMouseEnter={() => setHoveredSection(section.id)}
         onMouseLeave={() => setHoveredSection(null)}
         onClick={() => setSelectedSection(section)}
@@ -563,7 +760,7 @@ export default function TemplateBuilder() {
 
         {/* Hover Overlay */}
         {isHovered && (
-          <div className="absolute top-2 right-2 bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-10">
+          <div className={`absolute top-2 ${isLeftSidebar ? 'left-2' : 'right-2'} bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-50`}>
             <span className="text-xs font-medium text-gray-700 mr-2 capitalize">{section.type}</span>
 
             <button
@@ -579,7 +776,41 @@ export default function TemplateBuilder() {
               </svg>
             </button>
 
-            {!isNavigationOrFooter && (
+            {/* Sidebar sections: show left/right controls */}
+            {isSidebar && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleMoveSidebar(section.id, 'left')
+                  }}
+                  disabled={isLeftSidebar}
+                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  title="Move to Left"
+                >
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleMoveSidebar(section.id, 'right')
+                  }}
+                  disabled={isRightSidebar}
+                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  title="Move to Right"
+                >
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </button>
+              </>
+            )}
+
+            {/* Normal sections: show up/down controls */}
+            {!isPositionLocked && !isSidebar && (
               <>
                 <button
                   onClick={(e) => {
@@ -609,6 +840,15 @@ export default function TemplateBuilder() {
                   </svg>
                 </button>
               </>
+            )}
+
+            {/* Position-locked sections: show lock icon */}
+            {isPositionLocked && (
+              <div className="p-1 text-gray-400" title="Position locked">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+              </div>
             )}
 
             <button
@@ -736,6 +976,159 @@ export default function TemplateBuilder() {
           </div>
         )
 
+      // Navigation and Header sections
+      case 'navbar-basic':
+      case 'navbar-dropdown':
+      case 'navbar-sticky':
+        return sectionWrapper(
+          <div className={`bg-white border-b-2 border-gray-200 p-4 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <div className="text-xl font-bold text-amber-600">{content.logo || 'Logo'}</div>
+              <div className="flex gap-6">
+                {(content.links || []).map((link: string, idx: number) => (
+                  <span key={idx} className="text-gray-700 hover:text-amber-600 transition">{link}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'header-simple':
+        return sectionWrapper(
+          <div className={`bg-gradient-to-r from-amber-50 to-amber-100 p-12 text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <h1 className="text-4xl font-bold text-gray-800 mb-2">{content.logo || 'Company Name'}</h1>
+            <p className="text-gray-600">{content.tagline || 'Your tagline here'}</p>
+          </div>
+        )
+
+      case 'header-centered':
+        return sectionWrapper(
+          <div className={`bg-white p-8 text-center border-b-2 border-gray-200 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <h1 className="text-3xl font-bold text-amber-600 mb-4">{content.logo || 'Brand'}</h1>
+            {content.navigation && (
+              <div className="flex gap-6 justify-center">
+                {['Home', 'About', 'Services', 'Contact'].map((link, idx) => (
+                  <span key={idx} className="text-gray-700">{link}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+
+      case 'header-split':
+        return sectionWrapper(
+          <div className={`bg-white p-6 border-b-2 border-gray-200 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <h1 className="text-2xl font-bold text-amber-600">{content.logo || 'Logo'}</h1>
+              <div className="flex gap-6">
+                {(content.links || []).map((link: string, idx: number) => (
+                  <span key={idx} className="text-gray-700">{link}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+
+      // Footer sections
+      case 'footer-simple':
+        return sectionWrapper(
+          <div className={`bg-gray-800 text-white p-8 text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <p className="text-sm">{content.text || '© 2025 Company Name. All rights reserved.'}</p>
+          </div>
+        )
+
+      case 'footer-columns':
+        return sectionWrapper(
+          <div className={`bg-gray-800 text-white p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <div className="grid grid-cols-4 gap-8 max-w-7xl mx-auto">
+              {(content.columns || []).map((col: any, idx: number) => (
+                <div key={idx}>
+                  <h3 className="font-bold mb-3">{col.title}</h3>
+                  {col.links?.map((link: string, linkIdx: number) => (
+                    <p key={linkIdx} className="text-sm text-gray-400 mb-1">{link}</p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+
+      case 'footer-social':
+        return sectionWrapper(
+          <div className={`bg-gray-800 text-white p-8 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <div className="text-center">
+              <p className="text-sm mb-4">{content.text || '© 2025 Company'}</p>
+              <div className="flex gap-4 justify-center">
+                {(content.socials || []).map((social: string, idx: number) => (
+                  <span key={idx} className="text-amber-500 hover:text-amber-400 cursor-pointer">{social}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+
+      // Sidebar navigation sections
+      case 'sidebar-nav-left':
+      case 'sidebar-nav-right':
+        const sidebarPosition = section.type === 'sidebar-nav-left' ? 'left' : 'right'
+        const positionType = content.positioned || 'permanently-fixed'
+        const fullHeight = content.fullHeight !== false
+        const heightClass = fullHeight ? 'min-h-[600px]' : 'min-h-[300px]'
+
+        // Different visual indicators based on position type
+        if (positionType === 'menu-click') {
+          return sectionWrapper(
+            <div className={`relative ${sidebarPosition === 'left' ? 'float-left mr-4' : 'float-right ml-4'} w-64 bg-gray-100 border-2 border-amber-400 border-dashed rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''} ${heightClass} z-30`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg text-gray-800">Navigation</h3>
+                <button className="px-2 py-1 bg-amber-500 text-white text-xs rounded">☰</button>
+              </div>
+              <div className="text-xs text-amber-600 mb-2 font-medium">Appears on menu click</div>
+              {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
+              <div className="space-y-2">
+                {(content.links || []).map((link: string, idx: number) => (
+                  <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
+                    <span className="text-gray-700">{link}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        } else if (positionType === 'permanently-fixed') {
+          return sectionWrapper(
+            <div className={`relative ${sidebarPosition === 'left' ? 'float-left mr-4' : 'float-right ml-4'} w-64 bg-gray-100 border-2 border-blue-400 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''} ${heightClass} z-30`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-bold text-lg text-gray-800">Navigation</h3>
+                <div className="text-xs text-blue-600 font-medium">📌 Fixed</div>
+              </div>
+              {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height (100vh)</div>}
+              <div className="space-y-2">
+                {(content.links || []).map((link: string, idx: number) => (
+                  <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
+                    <span className="text-gray-700">{link}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        } else {
+          // static
+          return sectionWrapper(
+            <div className={`relative ${sidebarPosition === 'left' ? 'float-left mr-4' : 'float-right ml-4'} w-64 bg-gray-100 border-2 border-gray-300 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''} ${heightClass} z-30`}>
+              <h3 className="font-bold text-lg mb-4 text-gray-800">Navigation</h3>
+              <div className="text-xs text-gray-600 mb-2">Static position</div>
+              {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
+              <div className="space-y-2">
+                {(content.links || []).map((link: string, idx: number) => (
+                  <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
+                    <span className="text-gray-700">{link}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
+        }
+
       default:
         return sectionWrapper(
           <div className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-amber-500 transition ${selectedSection?.id === section.id ? 'border-amber-500' : ''}`}>
@@ -810,9 +1203,15 @@ export default function TemplateBuilder() {
             <img src="/Pagevoo_logo_500x200.png" alt="Pagevoo" className="h-4" />
           </div>
           <div className="flex items-center h-full text-xs relative">
-            <div className="relative">
+            <div className="relative" ref={fileMenuRef}>
               <button
                 onClick={() => setShowFileMenu(!showFileMenu)}
+                onMouseEnter={() => {
+                  if (showEditMenu) {
+                    setShowEditMenu(false)
+                    setShowFileMenu(true)
+                  }
+                }}
                 className="px-3 h-full hover:bg-amber-50 transition"
               >
                 File
@@ -838,16 +1237,48 @@ export default function TemplateBuilder() {
                 </div>
               )}
             </div>
-            <div className="relative">
+            <div className="relative" ref={editMenuRef}>
               <button
                 onClick={() => setShowEditMenu(!showEditMenu)}
+                onMouseEnter={() => {
+                  if (showFileMenu) {
+                    setShowFileMenu(false)
+                    setShowEditMenu(true)
+                  }
+                }}
                 className="px-3 h-full hover:bg-amber-50 transition"
               >
                 Edit
               </button>
               {showEditMenu && template && (
                 <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-80">
+                  {/* Sub-navigation Tabs */}
+                  <div className="flex border-b border-gray-200">
+                    <button
+                      onClick={() => setEditSubTab('settings')}
+                      className={`flex-1 px-4 py-2 text-xs font-medium transition ${
+                        editSubTab === 'settings'
+                          ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Template Settings
+                    </button>
+                    <button
+                      onClick={() => setEditSubTab('css')}
+                      className={`flex-1 px-4 py-2 text-xs font-medium transition ${
+                        editSubTab === 'css'
+                          ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Site CSS
+                    </button>
+                  </div>
+
                   <div className="p-4 space-y-3">
+                    {editSubTab === 'settings' ? (
+                    <>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
                         Preview Image
@@ -963,9 +1394,31 @@ export default function TemplateBuilder() {
                         ))}
                       </div>
                     </div>
+                    </>
+                  ) : (
+                    <>
+                      {/* Site CSS Tab */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Custom CSS
+                        </label>
+                        <p className="text-[10px] text-gray-500 mb-2">
+                          Add custom CSS styles for your template. This CSS will be applied to all pages.
+                        </p>
+                        <textarea
+                          value={template.custom_css || ''}
+                          onChange={(e) => setTemplate({ ...template, custom_css: e.target.value })}
+                          rows={12}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          placeholder="/* Enter your CSS here */&#10;.my-class {&#10;  color: #000;&#10;}"
+                        />
+                      </div>
+                    </>
+                  )}
+
                     <button
                       onClick={() => setShowEditMenu(false)}
-                      className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition"
+                      className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition mt-3"
                     >
                       Close
                     </button>
@@ -973,9 +1426,39 @@ export default function TemplateBuilder() {
                 </div>
               )}
             </div>
-            <button className="px-3 h-full hover:bg-amber-50 transition">View</button>
-            <button className="px-3 h-full hover:bg-amber-50 transition">Insert</button>
-            <button className="px-3 h-full hover:bg-amber-50 transition">Help</button>
+            <button
+              className="px-3 h-full hover:bg-amber-50 transition"
+              onMouseEnter={() => {
+                if (showFileMenu || showEditMenu) {
+                  setShowFileMenu(false)
+                  setShowEditMenu(false)
+                }
+              }}
+            >
+              View
+            </button>
+            <button
+              className="px-3 h-full hover:bg-amber-50 transition"
+              onMouseEnter={() => {
+                if (showFileMenu || showEditMenu) {
+                  setShowFileMenu(false)
+                  setShowEditMenu(false)
+                }
+              }}
+            >
+              Insert
+            </button>
+            <button
+              className="px-3 h-full hover:bg-amber-50 transition"
+              onMouseEnter={() => {
+                if (showFileMenu || showEditMenu) {
+                  setShowFileMenu(false)
+                  setShowEditMenu(false)
+                }
+              }}
+            >
+              Help
+            </button>
           </div>
         </div>
 
@@ -1118,15 +1601,15 @@ export default function TemplateBuilder() {
                   )}
                 </div>
 
-                {/* Navigation Sections */}
+                {/* Header & Navigation Sections */}
                 <div className="mb-3">
                   <button
-                    onClick={() => toggleCategory('navigation')}
+                    onClick={() => toggleCategory('headerNav')}
                     className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
                   >
-                    <span>Navigation</span>
+                    <span>Header & Navigation</span>
                     <svg
-                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('navigation') ? 'rotate-90' : ''}`}
+                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -1135,45 +1618,9 @@ export default function TemplateBuilder() {
                     </svg>
                   </button>
 
-                  {expandedCategories.includes('navigation') && (
+                  {expandedCategories.includes('headerNav') && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
-                      {navigationSections.map((section) => (
-                        <button
-                          key={section.type}
-                          onClick={() => handleAddSection(section)}
-                          className="group relative"
-                          title={section.description}
-                        >
-                          {renderSectionThumbnail(section)}
-                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                            {section.label}
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Header Sections */}
-                <div className="mb-3">
-                  <button
-                    onClick={() => toggleCategory('headers')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
-                  >
-                    <span>Headers</span>
-                    <svg
-                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('headers') ? 'rotate-90' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-
-                  {expandedCategories.includes('headers') && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {headerSections.map((section) => (
+                      {headerNavigationSections.map((section) => (
                         <button
                           key={section.type}
                           onClick={() => handleAddSection(section)}
@@ -1572,6 +2019,66 @@ export default function TemplateBuilder() {
                           />
                         </div>
                         <p className="text-xs text-gray-500 italic">Advanced configuration coming soon</p>
+                      </>
+                    )}
+
+                    {/* Sidebar Navigation Fields */}
+                    {(selectedSection.type === 'sidebar-nav-left' || selectedSection.type === 'sidebar-nav-right') && (
+                      <>
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 block mb-1">Position Behavior</label>
+                          <select
+                            value={selectedSection.content?.positioned || 'permanently-fixed'}
+                            onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, positioned: e.target.value })}
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          >
+                            <option value="menu-click">Appear on menu click</option>
+                            <option value="permanently-fixed">Permanently fixed</option>
+                            <option value="static">Static</option>
+                          </select>
+                          <p className="text-[10px] text-gray-500 mt-1 leading-tight">
+                            {selectedSection.content?.positioned === 'menu-click' && 'Sidebar appears when user clicks menu button'}
+                            {selectedSection.content?.positioned === 'permanently-fixed' && 'Sidebar stays visible and fixed to viewport'}
+                            {selectedSection.content?.positioned === 'static' && 'Sidebar scrolls with page content'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 flex items-center gap-2 mb-1">
+                            <input
+                              type="checkbox"
+                              checked={selectedSection.content?.fullHeight !== false}
+                              onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, fullHeight: e.target.checked })}
+                              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                            />
+                            <span>Full Height (100vh)</span>
+                          </label>
+                          <p className="text-[10px] text-gray-500 ml-5 leading-tight">
+                            {selectedSection.content?.fullHeight !== false
+                              ? 'Sidebar extends to full viewport height'
+                              : 'Sidebar height adjusts to content'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Navigation Links</label>
+                          <div className="space-y-2">
+                            {(selectedSection.content?.links || []).map((link: string, idx: number) => (
+                              <input
+                                key={idx}
+                                type="text"
+                                value={link}
+                                onChange={(e) => {
+                                  const newLinks = [...(selectedSection.content?.links || [])]
+                                  newLinks[idx] = e.target.value
+                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                }}
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                placeholder={`Link ${idx + 1}`}
+                              />
+                            ))}
+                          </div>
+                        </div>
                       </>
                     )}
                   </div>
