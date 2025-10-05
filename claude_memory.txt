@@ -952,8 +952,174 @@ users table:
 - Database re-seeded with simplified technology values
 - Features icons remain unchanged (Shopping Cart, Booking, Blog, Marketplace, Forum, Contact Form)
 
+## Important Development Notes
+
+**Template Builder vs Website Builder:**
+- Both builders are essentially the same interface/codebase
+- Template Builder: Admin-exclusive, has advanced/technical features
+- Website Builder: For regular users, simplified interface
+- Key difference: Template Builder creates reusable templates → Website Builder uses those templates to create user websites
+- Both ultimately create websites, but Template Builder outputs are templates that seed the Website Builder
+
+**Website Output Architecture (The Final Product):**
+
+Pagevoo produces two types of websites:
+
+1. **HTML5/CSS3/PHP (Static/SEO-focused):**
+   - Plain HTML templates with PHP includes
+   - Best for: Brochure sites, restaurants, salons, local businesses
+   - Benefits: Better SEO, faster load times, simpler hosting
+   - PHP handles: Contact forms, basic CMS functionality
+
+2. **React/Vite/TypeScript (SPA/App-like):**
+   - Builder exports to Vite project that compiles to static assets
+   - Best for: Booking systems, complex interactions, customer dashboards
+   - Benefits: Smooth UX, no page reloads, modern feel
+   - Can be SEO-friendly with proper meta tags
+
+**Hosting & Infrastructure:**
+- **Server:** IONOS VPS with Plesk control panel
+- **Databases:** Each customer website gets its own MySQL database
+- **Domains:** Subdomain hosting (businessname.pagevoo.com) + custom domain support
+- **Email:** Managed through Plesk (email@customerdomain.com)
+- **SSL:** Let's Encrypt via Plesk API
+
+**Plesk API Integration:**
+
+Plesk REST API manages everything programmatically:
+- Domain Management: Create domains/subdomains, configure DNS, SSL certificates
+- Email Management: Create/delete accounts, set quotas, forwarding, webmail access
+- Hosting Operations: Create subscriptions, databases, FTP accounts, file deployment
+- Backup & Security: Automated backups, spam filters
+
+**Deployment Workflow:**
+```
+User Dashboard → Pagevoo API (Laravel) → Plesk REST API → IONOS VPS
+                      ↓
+                 Generate website files (HTML or React build)
+                      ↓
+                 Deploy via SFTP/Plesk API
+```
+
+**Publishing Process:**
+1. User builds website in Website Builder
+2. Clicks "Publish" button
+3. Laravel backend generates HTML5 or React build files
+4. Via Plesk API:
+   - Create domain (businessname.pagevoo.com or custom)
+   - Create MySQL database for customer
+   - Deploy website files to server
+   - Configure SSL certificate (Let's Encrypt)
+5. Website goes live instantly
+
+**User Dashboard Features (Domain & Email):**
+- "Domain & Email" tab in User Dashboard
+- Connect custom domain (with nameserver instructions)
+- Create/manage email accounts (email@theirbusiness.com)
+- View webmail link
+- DNS management
+- All operations call Plesk API through Laravel backend (no direct Plesk access needed)
+
+**Implementation Phases:**
+
+**Phase 1 (Start Here):**
+1. HTML5 output (simpler, SEO-friendly)
+2. Subdomain hosting (businessname.pagevoo.com)
+3. Basic Plesk API integration (create domain, database, deploy files)
+
+**Phase 2 (Later):**
+4. React/Vite export option
+5. Custom domain connection
+6. Email account management
+7. Advanced features (SSL automation, backups, analytics)
+
+**Technical Notes:**
+- Use `plesk/api-php-lib` PHP package or Guzzle for Plesk REST API calls
+- Laravel handles all Plesk API communication (users never access Plesk directly)
+- Website files stored in user-specific directories on VPS
+- Database credentials stored securely in Laravel and injected into customer websites
+
+## Session 10 (2025-10-05) - Template Builder Section Library & Page Management
+
+**What We Built:**
+1. Complete section library with visual thumbnails
+2. Full page management system (add, delete, reorder, set homepage)
+3. Section hover controls with move/delete/properties
+4. Predefined page templates
+5. Enhanced backend to support full template updates
+
+**Backend Changes:**
+- TemplateController.php:
+  - Made section names nullable with auto-generation from type (ucfirst)
+  - Enhanced update() method to accept full pages/sections array
+  - Templates can now update metadata + complete page/section structure in single API call
+  - Delete and recreate pages/sections on update for simplicity
+
+**Frontend Changes - TemplateBuilder.tsx:**
+
+1. **Section Library with Categories:**
+   - Core Grids: 1x1, 2x1, 3x1, 4x1, 2x2, 3x2 (visual grid thumbnails)
+   - Navigation: Basic navbar, dropdown nav, sticky navbar, sidebar nav
+   - Headers: Simple, centered, split
+   - Footers: Simple, columns, social
+   - Special: Hero, gallery, contact form, booking form, login box, testimonials
+   - Visual thumbnails for all sections (grid layouts show actual grid preview)
+   - Expandable categories in sidebar
+
+2. **Page Management:**
+   - Add Page modal with auto-slug generation
+   - Delete page with confirmation (prevents deleting only page)
+   - Move page up/down (reorders)
+   - Set homepage designation
+   - Predefined page templates (About Us, Contact, Services)
+
+3. **Section Controls:**
+   - Hover overlay with action buttons (appears on mouse over)
+   - Move section up/down buttons
+   - Delete section with confirmation
+   - Properties button to select section
+   - Section type label shown on hover
+   - Navigation/Header/Footer sections locked from reordering
+
+4. **Enhanced Rendering:**
+   - Grid sections dynamically render based on type (grid-2x1, grid-3x1, etc.)
+   - Visual placeholders for all section types with proper styling
+   - Gallery sections show 6 image placeholders
+   - Form sections show field previews
+   - Login box shows modal-style preview
+   - Testimonials show card grid layout
+
+5. **Template Save/Update:**
+   - Create sends full structure (pages + sections)
+   - Update sends full structure (pages + sections)
+   - Temporary IDs filtered out (Date.now() IDs > 1000000000000)
+   - Page reload after save to get proper server IDs
+
+6. **Export System (Foundation):**
+   - Export section modal setup (for future custom section library)
+   - Export page modal setup
+   - State management for exported sections/pages
+   - Will allow users to save custom sections/pages to library
+
+**Files Modified:**
+- pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+
+**Key Features:**
+✅ Drag-free visual builder with click-to-add sections
+✅ Full page and section management
+✅ Visual section library with 25+ section types
+✅ Hover controls for intuitive editing
+✅ Grid-based layouts with configurable columns/rows
+✅ Predefined page templates for quick starts
+✅ Complete save/load workflow with proper ID management
+
+**Git Commit:**
+- Commit: 417016c "Enhance template builder with section library and full page management"
+- Pushed to origin/main
+
 ## Last Updated
-2025-10-02
+2025-10-05
 
 ---
 Note: Update this file at the end of each session to track progress and current work.
