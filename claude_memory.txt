@@ -1194,8 +1194,152 @@ User Dashboard → Pagevoo API (Laravel) → Plesk REST API → IONOS VPS
 - Commit: 251112c "Add Edit menu sub-tabs, custom CSS support, and VSCode-style navigation"
 - Pushed to origin/main
 
+## Session 12 (2025-10-07) - Drag & Drop System and Navigation Link Management
+
+**What We Built:**
+1. @dnd-kit drag-and-drop system for sections
+2. Comprehensive navigation link manager with page/URL selection
+3. Visual drop indicators and section positioning badges
+4. Link migration system for old string-based links
+
+**1. Drag & Drop Implementation:**
+- **Libraries Installed:**
+  - @dnd-kit/core (DndContext, useDraggable, useDroppable, useSensor)
+  - @dnd-kit/sortable (SortableContext, useSortable, arrayMove)
+  - @dnd-kit/utilities (CSS utilities for transforms)
+
+- **Drag Functionality:**
+  - Drag sections from library onto canvas (DraggableSectionItem component)
+  - Reorder sections on canvas up/down (SortableSectionItem component)
+  - Left/right movement for sidebar sections
+  - 8px activation constraint to prevent accidental drags
+  - Visual feedback with opacity changes during drag
+
+- **Drop Zones:**
+  - Between-section drop zones with "↓ Insert here" indicator
+  - Bottom drop zone for inserting after last section
+  - Amber pulse animation on active drop zones
+  - Real-time position preview
+
+- **Smart Insertion Logic:**
+  - Navigation/header sections ALWAYS insert at top (auto-positioning)
+  - Footer sections insert before existing footers
+  - Regular sections respect exact drop position
+  - Maintains three-tier structure (Nav → Content → Footer)
+
+- **Visual Indicators:**
+  - STICKY badge (purple) for navbar-sticky
+  - FIXED TOP badge (blue) for headers/navbars
+  - FIXED BOTTOM badge (green) for footers
+  - Drag handle appears on hover (amber with grip icon)
+  - Drop indicator line with amber background
+
+- **User Experience Improvements:**
+  - Removed click-to-add functionality (drag-only insertion)
+  - Changed library items from buttons to divs with cursor-grab
+  - Sidebar menu toggle moved to section controls (not floating)
+  - Dropdown toggle icon changed to menu lines (☰) to avoid confusion
+
+**2. Navigation Link Manager:**
+- **Properties Panel Integration:**
+  - Full CRUD for navigation links (Add, Edit, Remove)
+  - Available for: navbar-*, header-*, sidebar-nav-* sections
+  - "+ Add Link" button creates new links
+  - "⚡ Convert" button migrates old string links
+
+- **Link Structure:**
+  - Label input (displayed text)
+  - Link type selector:
+    - "Link to Page" - Internal page navigation
+    - "External URL" - External website links
+  - Page selector dropdown (shows all template pages with homepage indicator)
+  - URL input field (for external links)
+
+- **Dropdown Navigation Support:**
+  - Sub-items for navbar-dropdown type
+  - Nested structure with "+ Sub" button
+  - Each sub-item has same page/URL options
+  - Visual hierarchy with left border and indentation
+
+- **Link Rendering:**
+  - Helper functions: getLinkHref() and getLinkLabel()
+  - Internal page links: `/{page-slug}` (or `/` for homepage)
+  - External URLs: exact URL provided
+  - Proper anchor tags with href attributes
+  - Click prevention in builder mode (preventDefault)
+  - Dropdown chevron only shows if sub-items exist
+
+- **Migration System:**
+  - "⚡ Convert" button appears when string links detected
+  - One-click conversion of all old links to new format
+  - Preserves label text, sets linkType to 'page', pageId to null
+  - Automatic subItems array for dropdown navigation
+
+**3. Sidebar Navigation Rendering:**
+- Updated all three sidebar position types:
+  - menu-click: Toggle overlay with expand/collapse
+  - permanently-fixed: Always visible with content margin
+  - static: Standard position beside content
+- All render links with proper href attributes
+- Block-level links in sidebar cards
+
+**4. Enhanced Section Rendering:**
+- navbar-basic/sticky: Horizontal link navigation
+- navbar-dropdown: Main links + expandable sub-menus
+- header-centered: Centered navigation with links
+- header-split: Logo left, links right
+- All navigation sections use getLinkHref/getLinkLabel helpers
+
+**Files Modified:**
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  - Added @dnd-kit imports and sensors
+  - Created DraggableSectionItem component
+  - Created SortableSectionItem component
+  - Created BottomDropZone component
+  - Added drag state management (activeId, activeDragData, overId)
+  - Implemented handleDragStart, handleDragOver, handleDragEnd
+  - Added getLinkHref() and getLinkLabel() helper functions
+  - Enhanced navigation link manager in properties panel
+  - Updated all navigation section rendering
+  - Added "Convert" button for link migration
+  - Added visual position badges
+  - Removed click-to-add from library items
+
+**Backend:**
+- No backend changes (all frontend enhancements)
+
+**Technical Details:**
+- PointerSensor with 8px distance activation constraint
+- closestCenter collision detection
+- verticalListSortingStrategy for sortable sections
+- CSS transforms for smooth drag animations
+- React useState for drag state and sidebar visibility
+- Link data structure: { label, linkType, pageId, url, subItems? }
+
+**Key Features:**
+✅ Full drag-and-drop from library to canvas
+✅ Section reordering with visual feedback
+✅ Smart auto-positioning for navigation/footer sections
+✅ Comprehensive link management with page/URL selection
+✅ Dropdown navigation with nested sub-items
+✅ Link migration system for backward compatibility
+✅ All navigation sections render with proper hrefs
+✅ Visual badges for section positioning
+
+**User Workflow:**
+1. Drag section from library onto canvas
+2. Drop between sections with "Insert here" indicator
+3. Reorder sections by dragging up/down
+4. Select navigation section to edit links
+5. Click "+ Add Link" to create new link
+6. Choose link type (page or URL)
+7. Select page or enter URL
+8. Add sub-items for dropdown menus (navbar-dropdown)
+9. Convert old string links with "⚡ Convert" button
+10. Links render with proper navigation in preview
+
 ## Last Updated
-2025-10-05
+2025-10-07
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

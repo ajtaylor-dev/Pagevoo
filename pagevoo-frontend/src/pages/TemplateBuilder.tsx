@@ -2,6 +2,24 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  closestCenter,
+  useDroppable,
+  useDraggable,
+} from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface TemplateSection {
   id: number
@@ -55,6 +73,11 @@ export default function TemplateBuilder() {
   const [showFileMenu, setShowFileMenu] = useState(false)
   const [hoveredSection, setHoveredSection] = useState<number | null>(null)
 
+  // Drag and Drop state
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeDragData, setActiveDragData] = useState<any>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
   const [leftWidth, setLeftWidth] = useState(280)
   const [rightWidth, setRightWidth] = useState(320)
   const [showLeftSidebar, setShowLeftSidebar] = useState(true)
@@ -68,23 +91,42 @@ export default function TemplateBuilder() {
   const fileMenuRef = useRef<HTMLDivElement>(null)
   const editMenuRef = useRef<HTMLDivElement>(null)
 
+  // Configure drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  )
+
   // Load template data if ID is present, or create blank template
   useEffect(() => {
     const loadTemplate = async () => {
       if (!templateId) {
-        // Create a blank template for new template creation
-        setTemplate({
+        // Create a blank template for new template creation with a default homepage
+        const defaultHomepage: TemplatePage = {
+          id: Date.now(),
+          name: 'Home',
+          slug: 'home',
+          is_homepage: true,
+          order: 0,
+          sections: []
+        }
+        const newTemplate = {
           id: 0,
           name: 'Untitled Template',
           description: '',
           business_type: 'restaurant',
           is_active: true,
-          pages: [],
+          pages: [defaultHomepage],
           preview_image: null,
           exclusive_to: null,
           technologies: [],
           features: []
-        })
+        }
+        setTemplate(newTemplate)
+        setCurrentPage(defaultHomepage)
         setLoading(false)
         return
       }
@@ -93,10 +135,32 @@ export default function TemplateBuilder() {
       try {
         const response = await api.getTemplate(parseInt(templateId))
         if (response.success && response.data) {
-          setTemplate(response.data)
+          const templateData = response.data
+
+          // Ensure there's always at least one page and a homepage is designated
+          if (!templateData.pages || templateData.pages.length === 0) {
+            // No pages exist, create a default homepage
+            templateData.pages = [{
+              id: Date.now(),
+              name: 'Home',
+              slug: 'home',
+              is_homepage: true,
+              order: 0,
+              sections: []
+            }]
+          } else {
+            // Pages exist, ensure one is designated as homepage
+            const hasHomepage = templateData.pages.some((p: TemplatePage) => p.is_homepage)
+            if (!hasHomepage) {
+              // No homepage designated, make the first page the homepage
+              templateData.pages[0].is_homepage = true
+            }
+          }
+
+          setTemplate(templateData)
           // Set current page to homepage or first page
-          const homepage = response.data.pages?.find((p: TemplatePage) => p.is_homepage) || response.data.pages?.[0]
-          setCurrentPage(homepage || null)
+          const homepage = templateData.pages.find((p: TemplatePage) => p.is_homepage) || templateData.pages[0]
+          setCurrentPage(homepage)
         }
       } catch (error) {
         console.error('Failed to load template:', error)
@@ -268,12 +332,18 @@ export default function TemplateBuilder() {
   const handleDeletePage = (pageId: number) => {
     if (!template) return
     if (template.pages.length === 1) {
-      alert('Cannot delete the only page')
+      alert('Cannot delete the only page. Templates must have at least one homepage.')
       return
     }
     if (!confirm('Are you sure you want to delete this page?')) return
 
+    const pageToDelete = template.pages.find(p => p.id === pageId)
     const updatedPages = template.pages.filter(p => p.id !== pageId)
+
+    // If deleting the homepage, set the first remaining page as the new homepage
+    if (pageToDelete?.is_homepage && updatedPages.length > 0) {
+      updatedPages[0].is_homepage = true
+    }
     setTemplate({ ...template, pages: updatedPages })
 
     // If current page was deleted, switch to first page
@@ -736,6 +806,351 @@ export default function TemplateBuilder() {
     setSelectedSection({ ...selectedSection!, content: newContent })
   }
 
+  // Drag and Drop Event Handlers
+  const handleDragStart = (event: DragStartEvent) => {
+    const { active } = event
+    setActiveId(active.id as string)
+    setActiveDragData(active.data.current)
+  }
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { over } = event
+    setOverId(over ? String(over.id) : null)
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    setActiveId(null)
+    setActiveDragData(null)
+    setOverId(null)
+
+    if (!currentPage || !template) return
+
+    const activeData = active.data.current
+
+    // Case 1: Dragging from library to canvas
+    if (activeData?.source === 'library') {
+      const sectionConfig = activeData.section
+
+      // Check if this is a top-positioned section (navbar/header/sidebar)
+      const isTopSection = sectionConfig.type.startsWith('navbar-') ||
+                          sectionConfig.type.startsWith('header-') ||
+                          sectionConfig.type.startsWith('sidebar-nav-')
+
+      // Check if this is a footer section
+      const isFooterSection = sectionConfig.type.startsWith('footer-')
+
+      const newSection: TemplateSection = {
+        id: Date.now(),
+        type: sectionConfig.type,
+        content: sectionConfig.defaultContent,
+        order: 0
+      }
+
+      let insertPosition = currentPage.sections.length // Default: end of list
+
+      // Headers and nav ALWAYS insert at top, regardless of drop position
+      if (isTopSection) {
+        // Find the position after existing navbars/headers/sidebars
+        insertPosition = 0
+        for (let i = 0; i < currentPage.sections.length; i++) {
+          const section = currentPage.sections[i]
+          if (section.type.startsWith('navbar-') ||
+              section.type.startsWith('header-') ||
+              section.type.startsWith('sidebar-nav-')) {
+            insertPosition = i + 1
+          } else {
+            break
+          }
+        }
+      } else if (isFooterSection) {
+        // Find the position before existing footers
+        insertPosition = currentPage.sections.length
+        for (let i = currentPage.sections.length - 1; i >= 0; i--) {
+          const section = currentPage.sections[i]
+          if (section.type.startsWith('footer-')) {
+            insertPosition = i
+          } else {
+            break
+          }
+        }
+      } else {
+        // Regular sections: respect drop position
+        if (over && over.data.current?.source === 'canvas') {
+          const overIndex = over.data.current.index
+          insertPosition = overIndex
+        } else if (over && over.data.current?.type === 'bottom') {
+          // Dropping on bottom drop zone - insert at end
+          insertPosition = currentPage.sections.length
+        }
+      }
+
+      // Insert the new section at the calculated position
+      const newSections = [
+        ...currentPage.sections.slice(0, insertPosition),
+        newSection,
+        ...currentPage.sections.slice(insertPosition)
+      ]
+
+      // Update order values
+      newSections.forEach((section, idx) => {
+        section.order = idx
+      })
+
+      const updatedPages = template.pages.map(p => {
+        if (p.id === currentPage.id) {
+          return { ...p, sections: newSections }
+        }
+        return p
+      })
+
+      setTemplate({ ...template, pages: updatedPages })
+      setCurrentPage({ ...currentPage, sections: newSections })
+      setSelectedSection(newSection)
+      return
+    }
+
+    // If no over target for reordering, return
+    if (!over) return
+
+    const overData = over.data.current
+
+    // Case 2: Reordering sections on canvas
+    if (activeData?.source === 'canvas' && overData?.source === 'canvas') {
+      const oldIndex = activeData.index
+      const newIndex = overData.index
+
+      if (oldIndex === newIndex) return
+
+      const section = activeData.section
+      const targetSection = overData.section
+
+      // Check movement restrictions
+      const isNavSection = section.type.startsWith('navbar-') ||
+                          section.type.startsWith('header-') ||
+                          section.type.startsWith('sidebar-nav-')
+      const isTargetNavSection = targetSection.type.startsWith('navbar-') ||
+                                 targetSection.type.startsWith('header-') ||
+                                 targetSection.type.startsWith('sidebar-nav-')
+      const isFooterSection = section.type.startsWith('footer-')
+      const isTargetFooterSection = targetSection.type.startsWith('footer-')
+
+      // Prevent non-nav sections from moving into nav area
+      if (!isNavSection && isTargetNavSection) {
+        alert('Regular sections cannot be moved into the navigation area')
+        return
+      }
+
+      // Prevent nav sections from moving into content area
+      if (isNavSection && !isTargetNavSection && !isTargetFooterSection) {
+        alert('Navigation sections cannot be moved into the content area')
+        return
+      }
+
+      // Prevent non-footer sections from moving into footer area
+      if (!isFooterSection && isTargetFooterSection) {
+        alert('Regular sections cannot be moved into the footer area')
+        return
+      }
+
+      // Prevent footer sections from moving into content area
+      if (isFooterSection && !isTargetFooterSection) {
+        alert('Footer sections cannot be moved into the content area')
+        return
+      }
+
+      // Perform the reorder
+      const newSections = arrayMove(currentPage.sections, oldIndex, newIndex)
+
+      // Update order values
+      newSections.forEach((section, idx) => {
+        section.order = idx
+      })
+
+      const updatedPages = template.pages.map(p => {
+        if (p.id === currentPage.id) {
+          return { ...p, sections: newSections }
+        }
+        return p
+      })
+
+      setTemplate({ ...template, pages: updatedPages })
+      setCurrentPage({ ...currentPage, sections: newSections })
+    }
+
+    // Case 3: Sidebar left/right drag (handled by modifier keys or special zones)
+    // This is handled separately by the existing handleMoveSidebar function
+  }
+
+  const handleDragCancel = () => {
+    setActiveId(null)
+    setActiveDragData(null)
+    setOverId(null)
+  }
+
+  // Helper component for draggable section library items
+  const DraggableSectionItem = ({ section, children }: { section: any; children: React.ReactNode }) => {
+    const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+      id: `library-${section.type}`,
+      data: { section, source: 'library' },
+    })
+
+    return (
+      <div
+        ref={setNodeRef}
+        {...listeners}
+        {...attributes}
+        className={`cursor-grab active:cursor-grabbing ${isDragging ? 'opacity-50' : ''}`}
+      >
+        {children}
+      </div>
+    )
+  }
+
+  // Helper component for sortable canvas sections
+  const SortableSectionItem = ({ section, index, children }: { section: TemplateSection; index: number; children: React.ReactNode }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+      isDragging,
+    } = useSortable({
+      id: section.id,
+      data: { section, index, source: 'canvas' },
+    })
+
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+      opacity: isDragging ? 0.5 : 1,
+    }
+
+    // Check if this is a sidebar section for special drag handling
+    const isSidebar = section.type.startsWith('sidebar-nav-')
+
+    // Check if this section is being hovered over during drag
+    const isOver = overId === String(section.id)
+
+    return (
+      <div ref={setNodeRef} style={style} className="relative group">
+        {/* Drop indicator - shows where item will be inserted */}
+        {isOver && activeId && (
+          <div className="relative h-2 -mb-2">
+            <div className="absolute inset-0 bg-amber-400 rounded-full animate-pulse"></div>
+            <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-lg z-50">
+              ↓ Insert here
+            </div>
+          </div>
+        )}
+        {/* Drag handle overlay for canvas sections */}
+        <div
+          {...listeners}
+          {...attributes}
+          className="absolute top-2 left-2 z-40 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
+        >
+          <div className="bg-amber-500 text-white p-1.5 rounded shadow-lg">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+            </svg>
+          </div>
+        </div>
+        {children}
+      </div>
+    )
+  }
+
+  // Bottom Drop Zone Component for inserting after last section
+  const BottomDropZone = () => {
+    const { setNodeRef, isOver } = useDroppable({
+      id: 'bottom-drop-zone',
+      data: { type: 'bottom', index: currentPage?.sections.length || 0 }
+    })
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={`min-h-[60px] transition-all ${activeId && activeDragData?.source === 'library' ? 'border-2 border-dashed border-amber-300' : ''} ${isOver ? 'bg-amber-50' : ''}`}
+      >
+        {isOver && activeId && (
+          <div className="relative h-2">
+            <div className="absolute inset-0 bg-amber-400 rounded-full animate-pulse"></div>
+            <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-lg z-50">
+              ↓ Insert here
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Canvas Drop Zone Component
+  const CanvasDropZone = ({ currentPage, activeId, activeDragData, renderSection }: any) => {
+    const { setNodeRef, isOver } = useDroppable({
+      id: 'canvas-drop-zone',
+      data: { type: 'canvas' }
+    })
+
+    return (
+      <div
+        ref={setNodeRef}
+        className={`text-gray-900 min-h-[200px] ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-amber-400 ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-amber-50' : ''}`}
+      >
+        {currentPage && currentPage.sections && currentPage.sections.length > 0 ? (
+          <>
+            <SortableContext
+              items={currentPage.sections.map((s: any) => s.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {currentPage.sections
+                .sort((a: any, b: any) => a.order - b.order)
+                .map((section: any, index: number) => (
+                  <SortableSectionItem key={section.id} section={section} index={index}>
+                    {renderSection(section, index)}
+                  </SortableSectionItem>
+                ))
+              }
+            </SortableContext>
+            <BottomDropZone />
+          </>
+        ) : (
+          <div className={`text-center py-20 p-8 ${activeId && activeDragData?.source === 'library' ? 'bg-amber-50' : ''}`}>
+            <div className="text-6xl mb-4">📄</div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Empty Page</h2>
+            <p className="text-gray-600">
+              {activeId && activeDragData?.source === 'library'
+                ? 'Drop section here to add it to the page'
+                : 'This page has no sections yet. Drag sections from the left sidebar!'}
+            </p>
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Helper to generate link href based on link data
+  const getLinkHref = (link: any): string => {
+    // Handle old string format
+    if (typeof link === 'string') return '#'
+
+    // Handle new object format
+    if (link.linkType === 'url') {
+      return link.url || '#'
+    } else if (link.linkType === 'page' && link.pageId) {
+      const page = template?.pages.find(p => p.id === link.pageId)
+      if (page) {
+        return page.is_homepage ? '/' : `/${page.slug || page.name.toLowerCase().replace(/\s+/g, '-')}`
+      }
+    }
+    return '#'
+  }
+
+  // Helper to get link label
+  const getLinkLabel = (link: any): string => {
+    return typeof link === 'string' ? link : (link.label || 'Link')
+  }
+
   const renderSection = (section: TemplateSection, index: number) => {
     const content = section.content || {}
 
@@ -748,6 +1163,9 @@ export default function TemplateBuilder() {
     const isPositionLocked = isTopLocked || isBottomLocked
     const isHovered = hoveredSection === section.id
 
+    // Track sidebar visibility for menu-click mode
+    const [sidebarVisible, setSidebarVisible] = useState(content.positioned !== 'menu-click')
+
     const sectionWrapper = (children: React.ReactNode) => (
       <div
         key={section.id}
@@ -756,6 +1174,27 @@ export default function TemplateBuilder() {
         onMouseLeave={() => setHoveredSection(null)}
         onClick={() => setSelectedSection(section)}
       >
+        {/* Position Indicator Badge */}
+        {(section.type === 'navbar-sticky' || isTopLocked || isBottomLocked) && (
+          <div className="absolute top-1 left-1 z-30 flex gap-1">
+            {section.type === 'navbar-sticky' && (
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full border border-purple-300">
+                STICKY
+              </span>
+            )}
+            {isTopLocked && section.type !== 'navbar-sticky' && (
+              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full border border-blue-300">
+                FIXED TOP
+              </span>
+            )}
+            {isBottomLocked && (
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-300">
+                FIXED BOTTOM
+              </span>
+            )}
+          </div>
+        )}
+
         {children}
 
         {/* Hover Overlay */}
@@ -776,9 +1215,52 @@ export default function TemplateBuilder() {
               </svg>
             </button>
 
+            {/* Dropdown nav: show expanded toggle */}
+            {section.type === 'navbar-dropdown' && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleUpdateSectionContent(section.id, {
+                    ...content,
+                    expanded: !content.expanded
+                  })
+                }}
+                className={`p-1 hover:bg-amber-50 rounded transition ${content.expanded ? 'bg-amber-100' : ''}`}
+                title={content.expanded ? 'Collapse Dropdowns' : 'Expand Dropdowns'}
+              >
+                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {content.expanded ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  )}
+                </svg>
+              </button>
+            )}
+
             {/* Sidebar sections: show left/right controls */}
             {isSidebar && (
               <>
+                {/* Menu-click mode: show expand/collapse toggle */}
+                {content.positioned === 'menu-click' && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSidebarVisible(!sidebarVisible)
+                    }}
+                    className={`p-1 hover:bg-amber-50 rounded transition ${sidebarVisible ? 'bg-amber-100' : ''}`}
+                    title={sidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'}
+                  >
+                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      {sidebarVisible ? (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      ) : (
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      )}
+                    </svg>
+                  </button>
+                )}
+
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
@@ -978,16 +1460,66 @@ export default function TemplateBuilder() {
 
       // Navigation and Header sections
       case 'navbar-basic':
-      case 'navbar-dropdown':
       case 'navbar-sticky':
         return sectionWrapper(
           <div className={`bg-white border-b-2 border-gray-200 p-4 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <div className="text-xl font-bold text-amber-600">{content.logo || 'Logo'}</div>
               <div className="flex gap-6">
-                {(content.links || []).map((link: string, idx: number) => (
-                  <span key={idx} className="text-gray-700 hover:text-amber-600 transition">{link}</span>
+                {(content.links || []).map((link: any, idx: number) => (
+                  <a
+                    key={idx}
+                    href={getLinkHref(link)}
+                    className="text-gray-700 hover:text-amber-600 transition"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    {getLinkLabel(link)}
+                  </a>
                 ))}
+              </div>
+            </div>
+          </div>
+        )
+
+      case 'navbar-dropdown':
+        return sectionWrapper(
+          <div className={`bg-white border-b-2 border-gray-200 p-4 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <div className="text-xl font-bold text-amber-600">{content.logo || 'Logo'}</div>
+              <div className="flex gap-6">
+                {(content.links || []).map((link: any, idx: number) => {
+                  const hasSubItems = typeof link === 'object' && link.subItems && link.subItems.length > 0
+                  return (
+                    <div key={idx} className="relative">
+                      <a
+                        href={getLinkHref(link)}
+                        className="text-gray-700 hover:text-amber-600 transition cursor-pointer flex items-center gap-1"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        {getLinkLabel(link)}
+                        {hasSubItems && (
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        )}
+                      </a>
+                      {content.expanded && hasSubItems && (
+                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg p-2 min-w-[120px] z-10">
+                          {link.subItems.map((subItem: any, subIdx: number) => (
+                            <a
+                              key={subIdx}
+                              href={getLinkHref(subItem)}
+                              className="block text-xs text-gray-600 hover:text-amber-600 hover:bg-amber-50 py-1 px-2 rounded transition"
+                              onClick={(e) => e.preventDefault()}
+                            >
+                              {getLinkLabel(subItem)}
+                            </a>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -1007,8 +1539,15 @@ export default function TemplateBuilder() {
             <h1 className="text-3xl font-bold text-amber-600 mb-4">{content.logo || 'Brand'}</h1>
             {content.navigation && (
               <div className="flex gap-6 justify-center">
-                {['Home', 'About', 'Services', 'Contact'].map((link, idx) => (
-                  <span key={idx} className="text-gray-700">{link}</span>
+                {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => (
+                  <a
+                    key={idx}
+                    href={getLinkHref(link)}
+                    className="text-gray-700 hover:text-amber-600 transition"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    {getLinkLabel(link)}
+                  </a>
                 ))}
               </div>
             )}
@@ -1021,8 +1560,15 @@ export default function TemplateBuilder() {
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <h1 className="text-2xl font-bold text-amber-600">{content.logo || 'Logo'}</h1>
               <div className="flex gap-6">
-                {(content.links || []).map((link: string, idx: number) => (
-                  <span key={idx} className="text-gray-700">{link}</span>
+                {(content.links || []).map((link: any, idx: number) => (
+                  <a
+                    key={idx}
+                    href={getLinkHref(link)}
+                    className="text-gray-700 hover:text-amber-600 transition"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    {getLinkLabel(link)}
+                  </a>
                 ))}
               </div>
             </div>
@@ -1078,52 +1624,101 @@ export default function TemplateBuilder() {
         // Different visual indicators based on position type
         if (positionType === 'menu-click') {
           return sectionWrapper(
-            <div className={`relative ${sidebarPosition === 'left' ? 'float-left mr-4' : 'float-right ml-4'} w-64 bg-gray-100 border-2 border-amber-400 border-dashed rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''} ${heightClass} z-30`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg text-gray-800">Navigation</h3>
-                <button className="px-2 py-1 bg-amber-500 text-white text-xs rounded">☰</button>
-              </div>
-              <div className="text-xs text-amber-600 mb-2 font-medium">Appears on menu click</div>
-              {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
-              <div className="space-y-2">
-                {(content.links || []).map((link: string, idx: number) => (
-                  <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
-                    <span className="text-gray-700">{link}</span>
+            <div className="relative min-h-[100px]">
+              {/* Sidebar panel (shown when visible in builder) */}
+              {sidebarVisible && (
+                <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-100 border-2 border-amber-400 border-dashed rounded-lg p-6 shadow-xl ${heightClass}`} style={{zIndex: 35}}>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-lg text-gray-800">Navigation</h3>
+                    <div className="text-xs text-amber-600 font-medium">Menu-click mode</div>
                   </div>
-                ))}
+                  {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
+                  <div className="space-y-2">
+                    {(content.links || []).map((link: any, idx: number) => (
+                      <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
+                        <a
+                          href={getLinkHref(link)}
+                          className="text-gray-700 block"
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          {getLinkLabel(link)}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Content placeholder */}
+              <div className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition border-2 border-dashed border-gray-300 rounded-lg p-8 min-h-[120px] ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+                <p className="text-sm text-gray-500 text-center">
+                  {sidebarVisible ? 'Content appears here (sidebar visible in overlay)' : 'Hover section and click menu icon to show sidebar'}
+                </p>
               </div>
             </div>
           )
         } else if (positionType === 'permanently-fixed') {
           return sectionWrapper(
-            <div className={`relative ${sidebarPosition === 'left' ? 'float-left mr-4' : 'float-right ml-4'} w-64 bg-gray-100 border-2 border-blue-400 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''} ${heightClass} z-30`}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-bold text-lg text-gray-800">Navigation</h3>
-                <div className="text-xs text-blue-600 font-medium">📌 Fixed</div>
+            <div className="relative min-h-[400px]">
+              {/* Fixed sidebar */}
+              <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-800 text-white p-6 shadow-xl ${heightClass}`} style={{zIndex: 30}}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-lg">Navigation</h3>
+                  <div className="text-xs text-blue-400 font-medium">📌 Fixed</div>
+                </div>
+                {fullHeight && <div className="text-[10px] text-gray-400 mb-2">Full height (100vh)</div>}
+                <div className="space-y-2">
+                  {(content.links || []).map((link: any, idx: number) => (
+                    <div key={idx} className="p-2 bg-gray-700 rounded hover:bg-gray-600 transition">
+                      <a
+                        href={getLinkHref(link)}
+                        className="text-gray-200 block"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        {getLinkLabel(link)}
+                      </a>
+                    </div>
+                  ))}
+                </div>
               </div>
-              {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height (100vh)</div>}
-              <div className="space-y-2">
-                {(content.links || []).map((link: string, idx: number) => (
-                  <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
-                    <span className="text-gray-700">{link}</span>
-                  </div>
-                ))}
+
+              {/* Content area with margin */}
+              <div className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+                <p className="text-sm text-gray-500 text-center">
+                  Content appears beside the permanently fixed sidebar
+                </p>
               </div>
             </div>
           )
         } else {
           // static
           return sectionWrapper(
-            <div className={`relative ${sidebarPosition === 'left' ? 'float-left mr-4' : 'float-right ml-4'} w-64 bg-gray-100 border-2 border-gray-300 rounded-lg p-6 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''} ${heightClass} z-30`}>
-              <h3 className="font-bold text-lg mb-4 text-gray-800">Navigation</h3>
-              <div className="text-xs text-gray-600 mb-2">Static position</div>
-              {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
-              <div className="space-y-2">
-                {(content.links || []).map((link: string, idx: number) => (
-                  <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
-                    <span className="text-gray-700">{link}</span>
-                  </div>
-                ))}
+            <div className="relative min-h-[400px]">
+              {/* Static sidebar */}
+              <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-200 border-l-4 border-amber-500 p-6 ${heightClass}`} style={{zIndex: 30}}>
+                <h3 className="font-bold text-lg mb-4 text-gray-800">Navigation</h3>
+                <div className="text-xs text-gray-600 mb-2">Static position</div>
+                {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
+                <div className="space-y-2">
+                  {(content.links || []).map((link: any, idx: number) => (
+                    <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
+                      <a
+                        href={getLinkHref(link)}
+                        className="text-gray-700 block"
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        {getLinkLabel(link)}
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content area with margin */}
+              <div className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+                <p className="text-sm text-gray-500 text-center">
+                  Content appears beside the static sidebar
+                </p>
               </div>
             </div>
           )
@@ -1190,11 +1785,19 @@ export default function TemplateBuilder() {
   }
 
   return (
-    <div
-      className="h-screen flex flex-col bg-gray-50 text-gray-900 select-none"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
+      <div
+        className="h-screen flex flex-col bg-gray-50 text-gray-900 select-none"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
       {/* Compact VSCode-style Header */}
       <header className="bg-white border-b border-gray-200 flex items-center h-9 shadow-sm">
         {/* Left Section - Logo & Menus */}
@@ -1585,17 +2188,17 @@ export default function TemplateBuilder() {
                   {expandedCategories.includes('core') && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       {coreSections.map((section) => (
-                        <button
-                          key={section.type}
-                          onClick={() => handleAddSection(section)}
-                          className="group relative"
-                          title={section.description}
-                        >
-                          {renderSectionThumbnail(section)}
-                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                            {section.label}
+                        <DraggableSectionItem key={section.type} section={section}>
+                          <div
+                            className="group relative w-full cursor-grab active:cursor-grabbing"
+                            title={section.description}
+                          >
+                            {renderSectionThumbnail(section)}
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                              {section.label}
+                            </div>
                           </div>
-                        </button>
+                        </DraggableSectionItem>
                       ))}
                     </div>
                   )}
@@ -1621,17 +2224,17 @@ export default function TemplateBuilder() {
                   {expandedCategories.includes('headerNav') && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       {headerNavigationSections.map((section) => (
-                        <button
-                          key={section.type}
-                          onClick={() => handleAddSection(section)}
-                          className="group relative"
-                          title={section.description}
-                        >
-                          {renderSectionThumbnail(section)}
-                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                            {section.label}
+                        <DraggableSectionItem key={section.type} section={section}>
+                          <div
+                            className="group relative w-full cursor-grab active:cursor-grabbing"
+                            title={section.description}
+                          >
+                            {renderSectionThumbnail(section)}
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                              {section.label}
+                            </div>
                           </div>
-                        </button>
+                        </DraggableSectionItem>
                       ))}
                     </div>
                   )}
@@ -1657,17 +2260,17 @@ export default function TemplateBuilder() {
                   {expandedCategories.includes('footers') && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       {footerSections.map((section) => (
-                        <button
-                          key={section.type}
-                          onClick={() => handleAddSection(section)}
-                          className="group relative"
-                          title={section.description}
-                        >
-                          {renderSectionThumbnail(section)}
-                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                            {section.label}
+                        <DraggableSectionItem key={section.type} section={section}>
+                          <div
+                            className="group relative w-full cursor-grab active:cursor-grabbing"
+                            title={section.description}
+                          >
+                            {renderSectionThumbnail(section)}
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                              {section.label}
+                            </div>
                           </div>
-                        </button>
+                        </DraggableSectionItem>
                       ))}
                     </div>
                   )}
@@ -1693,17 +2296,17 @@ export default function TemplateBuilder() {
                   {expandedCategories.includes('special') && (
                     <div className="grid grid-cols-2 gap-2 mt-2">
                       {specialSections.map((section) => (
-                        <button
-                          key={section.type}
-                          onClick={() => handleAddSection(section)}
-                          className="group relative"
-                          title={section.description}
-                        >
-                          {renderSectionThumbnail(section)}
-                          <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                            {section.label}
+                        <DraggableSectionItem key={section.type} section={section}>
+                          <div
+                            className="group relative w-full cursor-grab active:cursor-grabbing"
+                            title={section.description}
+                          >
+                            {renderSectionThumbnail(section)}
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                              {section.label}
+                            </div>
                           </div>
-                        </button>
+                        </DraggableSectionItem>
                       ))}
                     </div>
                   )}
@@ -1730,21 +2333,21 @@ export default function TemplateBuilder() {
                     {expandedCategories.includes('exported') && (
                       <div className="grid grid-cols-2 gap-2 mt-2">
                         {exportedSections.map((section) => (
-                          <button
-                            key={section.id}
-                            onClick={() => handleAddSection(section)}
-                            className="group relative"
-                            title={section.description}
-                          >
-                            {section.thumbnail ? (
-                              <img src={section.thumbnail} alt={section.name} className="w-full aspect-video object-cover rounded border border-gray-300" />
-                            ) : (
-                              renderSectionThumbnail(section)
-                            )}
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                              {section.label}
+                          <DraggableSectionItem key={section.id} section={section}>
+                            <div
+                              className="group relative w-full cursor-grab active:cursor-grabbing"
+                              title={section.description}
+                            >
+                              {section.thumbnail ? (
+                                <img src={section.thumbnail} alt={section.name} className="w-full aspect-video object-cover rounded border border-gray-300" />
+                              ) : (
+                                renderSectionThumbnail(section)
+                              )}
+                              <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                                {section.label}
+                              </div>
                             </div>
-                          </button>
+                          </DraggableSectionItem>
                         ))}
                       </div>
                     )}
@@ -1905,19 +2508,12 @@ export default function TemplateBuilder() {
             </div>
 
             {/* Canvas Preview Area */}
-            <div className="text-gray-900">
-              {currentPage && currentPage.sections && currentPage.sections.length > 0 ? (
-                currentPage.sections
-                  .sort((a, b) => a.order - b.order)
-                  .map((section, index) => renderSection(section, index))
-              ) : (
-                <div className="text-center py-20 p-8">
-                  <div className="text-6xl mb-4">📄</div>
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Empty Page</h2>
-                  <p className="text-gray-600">This page has no sections yet. Add sections from the left sidebar!</p>
-                </div>
-              )}
-            </div>
+            <CanvasDropZone
+              currentPage={currentPage}
+              activeId={activeId}
+              activeDragData={activeDragData}
+              renderSection={renderSection}
+            />
           </div>
         </main>
 
@@ -1966,6 +2562,285 @@ export default function TemplateBuilder() {
                                   className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                                   placeholder={`Content for column ${idx + 1}`}
                                 />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Navigation Section Fields */}
+                    {(selectedSection.type.startsWith('navbar-') || selectedSection.type.startsWith('header-') || selectedSection.type.startsWith('sidebar-nav-')) && (
+                      <>
+                        {/* Logo/Brand Name */}
+                        {selectedSection.content?.logo !== undefined && (
+                          <div>
+                            <label className="text-xs font-medium text-gray-700 block mb-1">Logo / Brand Name</label>
+                            <input
+                              type="text"
+                              value={selectedSection.content?.logo || ''}
+                              onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, logo: e.target.value })}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              placeholder="Enter brand name"
+                            />
+                          </div>
+                        )}
+
+                        {/* Tagline (for header sections) */}
+                        {selectedSection.content?.tagline !== undefined && (
+                          <div>
+                            <label className="text-xs font-medium text-gray-700 block mb-1">Tagline</label>
+                            <input
+                              type="text"
+                              value={selectedSection.content?.tagline || ''}
+                              onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, tagline: e.target.value })}
+                              className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                              placeholder="Enter tagline"
+                            />
+                          </div>
+                        )}
+
+                        {/* Navigation Links Manager */}
+                        <div>
+                          <div className="flex items-center justify-between mb-2">
+                            <label className="text-xs font-medium text-gray-700">Navigation Links</label>
+                            <div className="flex gap-1">
+                              {/* Convert old links button */}
+                              {selectedSection.content?.links?.some((link: any) => typeof link === 'string') && (
+                                <button
+                                  onClick={() => {
+                                    const currentLinks = selectedSection.content?.links || []
+                                    const convertedLinks = currentLinks.map((link: any) => {
+                                      if (typeof link === 'string') {
+                                        return selectedSection.type === 'navbar-dropdown'
+                                          ? { label: link, linkType: 'page', pageId: null, url: '', subItems: [] }
+                                          : { label: link, linkType: 'page', pageId: null, url: '' }
+                                      }
+                                      return link
+                                    })
+                                    handleUpdateSectionContent(selectedSection.id, {
+                                      ...selectedSection.content,
+                                      links: convertedLinks
+                                    })
+                                  }}
+                                  className="px-2 py-0.5 bg-blue-500 text-white text-[10px] rounded hover:bg-blue-600 transition"
+                                  title="Convert old links to new format"
+                                >
+                                  ⚡ Convert
+                                </button>
+                              )}
+                              <button
+                                onClick={() => {
+                                  const currentLinks = selectedSection.content?.links || []
+                                  const newLink = selectedSection.type === 'navbar-dropdown'
+                                    ? { label: 'New Link', linkType: 'page', pageId: null, url: '', subItems: [] }
+                                    : { label: 'New Link', linkType: 'page', pageId: null, url: '' }
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    links: [...currentLinks, newLink]
+                                  })
+                                }}
+                                className="px-2 py-0.5 bg-amber-500 text-white text-[10px] rounded hover:bg-amber-600 transition"
+                              >
+                                + Add Link
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="space-y-3 max-h-96 overflow-y-auto">
+                            {((selectedSection.content?.links || []) as any[]).map((link: any, idx: number) => (
+                              <div key={idx} className="border border-gray-200 rounded-lg p-2 bg-gray-50">
+                                {/* Link Label */}
+                                <div className="mb-2">
+                                  <label className="text-[10px] text-gray-500 block mb-1">Label</label>
+                                  <input
+                                    type="text"
+                                    value={typeof link === 'string' ? link : link.label || ''}
+                                    onChange={(e) => {
+                                      const newLinks = [...(selectedSection.content?.links || [])]
+                                      if (typeof newLinks[idx] === 'string') {
+                                        newLinks[idx] = { label: e.target.value, linkType: 'page', pageId: null, url: '' }
+                                      } else {
+                                        newLinks[idx] = { ...newLinks[idx], label: e.target.value }
+                                      }
+                                      handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                    }}
+                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                    placeholder="Link text"
+                                  />
+                                </div>
+
+                                {/* Link Type Selection */}
+                                {typeof link === 'object' && (
+                                  <>
+                                    <div className="mb-2">
+                                      <label className="text-[10px] text-gray-500 block mb-1">Link Type</label>
+                                      <select
+                                        value={link.linkType || 'page'}
+                                        onChange={(e) => {
+                                          const newLinks = [...(selectedSection.content?.links || [])]
+                                          newLinks[idx] = { ...newLinks[idx], linkType: e.target.value, pageId: null, url: '' }
+                                          handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                        }}
+                                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                      >
+                                        <option value="page">Link to Page</option>
+                                        <option value="url">External URL</option>
+                                      </select>
+                                    </div>
+
+                                    {/* Page Selector */}
+                                    {link.linkType === 'page' && (
+                                      <div className="mb-2">
+                                        <label className="text-[10px] text-gray-500 block mb-1">Select Page</label>
+                                        <select
+                                          value={link.pageId || ''}
+                                          onChange={(e) => {
+                                            const newLinks = [...(selectedSection.content?.links || [])]
+                                            newLinks[idx] = { ...newLinks[idx], pageId: e.target.value ? parseInt(e.target.value) : null }
+                                            handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                          }}
+                                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                        >
+                                          <option value="">Select a page...</option>
+                                          {template?.pages.map(page => (
+                                            <option key={page.id} value={page.id}>
+                                              {page.name} {page.is_homepage ? '(Home)' : ''}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+                                    )}
+
+                                    {/* URL Input */}
+                                    {link.linkType === 'url' && (
+                                      <div className="mb-2">
+                                        <label className="text-[10px] text-gray-500 block mb-1">URL</label>
+                                        <input
+                                          type="text"
+                                          value={link.url || ''}
+                                          onChange={(e) => {
+                                            const newLinks = [...(selectedSection.content?.links || [])]
+                                            newLinks[idx] = { ...newLinks[idx], url: e.target.value }
+                                            handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                          }}
+                                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                          placeholder="https://example.com"
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Sub-items for dropdown nav */}
+                                    {selectedSection.type === 'navbar-dropdown' && link.subItems !== undefined && (
+                                      <div className="mb-2 pl-2 border-l-2 border-amber-300">
+                                        <div className="flex items-center justify-between mb-1">
+                                          <label className="text-[10px] text-gray-500">Sub-items</label>
+                                          <button
+                                            onClick={() => {
+                                              const newLinks = [...(selectedSection.content?.links || [])]
+                                              const newSubItem = { label: 'Sub-item', linkType: 'page', pageId: null, url: '' }
+                                              newLinks[idx] = {
+                                                ...newLinks[idx],
+                                                subItems: [...(newLinks[idx].subItems || []), newSubItem]
+                                              }
+                                              handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                            }}
+                                            className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] rounded hover:bg-amber-200 transition"
+                                          >
+                                            + Sub
+                                          </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                          {(link.subItems || []).map((subItem: any, subIdx: number) => (
+                                            <div key={subIdx} className="bg-white border border-gray-200 rounded p-1.5">
+                                              <input
+                                                type="text"
+                                                value={subItem.label || ''}
+                                                onChange={(e) => {
+                                                  const newLinks = [...(selectedSection.content?.links || [])]
+                                                  const newSubItems = [...(newLinks[idx].subItems || [])]
+                                                  newSubItems[subIdx] = { ...newSubItems[subIdx], label: e.target.value }
+                                                  newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
+                                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                                }}
+                                                className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
+                                                placeholder="Sub-item label"
+                                              />
+                                              <select
+                                                value={subItem.linkType || 'page'}
+                                                onChange={(e) => {
+                                                  const newLinks = [...(selectedSection.content?.links || [])]
+                                                  const newSubItems = [...(newLinks[idx].subItems || [])]
+                                                  newSubItems[subIdx] = { ...newSubItems[subIdx], linkType: e.target.value }
+                                                  newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
+                                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                                }}
+                                                className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
+                                              >
+                                                <option value="page">Page</option>
+                                                <option value="url">URL</option>
+                                              </select>
+                                              {subItem.linkType === 'page' ? (
+                                                <select
+                                                  value={subItem.pageId || ''}
+                                                  onChange={(e) => {
+                                                    const newLinks = [...(selectedSection.content?.links || [])]
+                                                    const newSubItems = [...(newLinks[idx].subItems || [])]
+                                                    newSubItems[subIdx] = { ...newSubItems[subIdx], pageId: e.target.value ? parseInt(e.target.value) : null }
+                                                    newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
+                                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                                  }}
+                                                  className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
+                                                >
+                                                  <option value="">Select page...</option>
+                                                  {template?.pages.map(page => (
+                                                    <option key={page.id} value={page.id}>{page.name}</option>
+                                                  ))}
+                                                </select>
+                                              ) : (
+                                                <input
+                                                  type="text"
+                                                  value={subItem.url || ''}
+                                                  onChange={(e) => {
+                                                    const newLinks = [...(selectedSection.content?.links || [])]
+                                                    const newSubItems = [...(newLinks[idx].subItems || [])]
+                                                    newSubItems[subIdx] = { ...newSubItems[subIdx], url: e.target.value }
+                                                    newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
+                                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                                  }}
+                                                  className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
+                                                  placeholder="URL"
+                                                />
+                                              )}
+                                              <button
+                                                onClick={() => {
+                                                  const newLinks = [...(selectedSection.content?.links || [])]
+                                                  const newSubItems = (newLinks[idx].subItems || []).filter((_: any, i: number) => i !== subIdx)
+                                                  newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
+                                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                                }}
+                                                className="w-full px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] rounded hover:bg-red-100 transition"
+                                              >
+                                                Remove
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+                                  </>
+                                )}
+
+                                {/* Remove Link Button */}
+                                <button
+                                  onClick={() => {
+                                    const newLinks = (selectedSection.content?.links || []).filter((_: any, i: number) => i !== idx)
+                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
+                                  }}
+                                  className="w-full mt-1 px-2 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 transition"
+                                >
+                                  Remove Link
+                                </button>
                               </div>
                             ))}
                           </div>
@@ -2160,6 +3035,21 @@ export default function TemplateBuilder() {
         />
       )}
     </div>
+
+    {/* Drag Overlay - Shows preview of dragged item */}
+    <DragOverlay>
+      {activeId && activeDragData ? (
+        <div className="bg-white shadow-2xl rounded-lg p-4 border-2 border-amber-500 opacity-90">
+          <div className="text-sm font-semibold text-gray-700 capitalize">
+            {activeDragData.source === 'library'
+              ? `Adding: ${activeDragData.section.label || activeDragData.section.type}`
+              : `Moving: ${activeDragData.section.type}`
+            }
+          </div>
+        </div>
+      ) : null}
+    </DragOverlay>
+  </DndContext>
   )
 }
 

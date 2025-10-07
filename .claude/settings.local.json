@@ -10,7 +10,10 @@
       "Bash(git push:*)",
       "Bash(pnpm add:*)",
       "Bash(mysql:*)",
-      "Bash(composer:*)"
+      "Bash(composer:*)",
+      "Bash(git log:*)",
+      "Bash(npm run build:*)",
+      "Bash(npx tsc:*)"
     ],
     "deny": [],
     "ask": []
