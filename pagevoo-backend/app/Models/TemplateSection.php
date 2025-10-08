@@ -10,6 +10,8 @@ class TemplateSection extends Model
         'template_page_id',
         'name',
         'type',
+        'section_name',
+        'section_id',
         'content',
         'order'
     ];

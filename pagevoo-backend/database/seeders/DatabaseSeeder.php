@@ -15,7 +15,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             AdminUserSeeder::class,
-            TemplateSeeder::class,
+            // TemplateSeeder::class, // Commented out - templates now created via Template Builder
         ]);
     }
 }

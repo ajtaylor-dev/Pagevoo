@@ -26,6 +26,8 @@ interface TemplateSection {
   type: string
   content: any
   order: number
+  section_name?: string
+  section_id?: string
 }
 
 interface TemplatePage {
@@ -35,6 +37,9 @@ interface TemplatePage {
   is_homepage: boolean
   order: number
   sections: TemplateSection[]
+  meta_description?: string
+  page_css?: string
+  page_id?: string
 }
 
 interface Template {
@@ -51,6 +56,32 @@ interface Template {
   custom_css?: string
 }
 
+// Helper function to generate random string
+const generateRandomString = (length: number = 6): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+// Helper function to sanitize name for identifier
+const sanitizeName = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .trim()
+}
+
+// Helper function to generate unique identifier
+const generateIdentifier = (name: string): string => {
+  const sanitized = sanitizeName(name)
+  const random = generateRandomString(6)
+  return `${sanitized}_${random}`
+}
+
 export default function TemplateBuilder() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
@@ -62,7 +93,7 @@ export default function TemplateBuilder() {
   const [loading, setLoading] = useState(true)
   const [showEditMenu, setShowEditMenu] = useState(false)
   const [uploadingImage, setUploadingImage] = useState(false)
-  const [editSubTab, setEditSubTab] = useState<'settings' | 'css'>('settings')
+  const [editSubTab, setEditSubTab] = useState<'settings' | 'css' | 'page'>('settings')
   const [showAddPageModal, setShowAddPageModal] = useState(false)
   const [newPageName, setNewPageName] = useState('')
   const [showExportSectionModal, setShowExportSectionModal] = useState(false)
@@ -71,6 +102,14 @@ export default function TemplateBuilder() {
   const [exportedSections, setExportedSections] = useState<any[]>([])
   const [exportedPages, setExportedPages] = useState<any[]>([])
   const [showFileMenu, setShowFileMenu] = useState(false)
+  const [showInsertMenu, setShowInsertMenu] = useState(false)
+  const [showEditPageModal, setShowEditPageModal] = useState(false)
+  const [editPageName, setEditPageName] = useState('')
+  const [editPageSlug, setEditPageSlug] = useState('')
+  const [editPageMetaDescription, setEditPageMetaDescription] = useState('')
+  const [showCSSPanel, setShowCSSPanel] = useState(false)
+  const [cssTab, setCssTab] = useState<'site' | 'page'>('site')
+  const [showSectionCSS, setShowSectionCSS] = useState(false)
   const [hoveredSection, setHoveredSection] = useState<number | null>(null)
 
   // Drag and Drop state
@@ -90,6 +129,7 @@ export default function TemplateBuilder() {
   const rightSidebarRef = useRef<HTMLDivElement>(null)
   const fileMenuRef = useRef<HTMLDivElement>(null)
   const editMenuRef = useRef<HTMLDivElement>(null)
+  const insertMenuRef = useRef<HTMLDivElement>(null)
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -184,13 +224,21 @@ export default function TemplateBuilder() {
       if (editMenuRef.current && !editMenuRef.current.contains(target)) {
         setShowEditMenu(false)
       }
+      if (insertMenuRef.current && !insertMenuRef.current.contains(target)) {
+        setShowInsertMenu(false)
+      }
     }
 
-    if (showFileMenu || showEditMenu) {
+    if (showFileMenu || showEditMenu || showInsertMenu) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showFileMenu, showEditMenu])
+  }, [showFileMenu, showEditMenu, showInsertMenu])
+
+  // Reset CSS views when section changes
+  useEffect(() => {
+    setShowSectionCSS(false)
+  }, [selectedSection?.id])
 
   const handleSaveTemplate = async () => {
     if (!template) {
@@ -214,6 +262,8 @@ export default function TemplateBuilder() {
           pages: template.pages.map(page => ({
             name: page.name,
             slug: page.slug,
+            meta_description: page.meta_description,
+            page_css: page.page_css,
             is_homepage: page.is_homepage,
             order: page.order,
             sections: page.sections.map(section => ({
@@ -242,6 +292,8 @@ export default function TemplateBuilder() {
             id: page.id > 1000000000000 ? undefined : page.id, // Don't send temporary IDs (from Date.now())
             name: page.name,
             slug: page.slug,
+            meta_description: page.meta_description,
+            page_css: page.page_css,
             is_homepage: page.is_homepage,
             order: page.order,
             sections: page.sections.map(section => ({
@@ -315,6 +367,7 @@ export default function TemplateBuilder() {
       id: Date.now(), // Temporary ID
       name: newPageName,
       slug: slug,
+      page_id: generateIdentifier(newPageName),
       is_homepage: template.pages.length === 0, // First page is homepage
       order: template.pages.length,
       sections: []
@@ -383,6 +436,112 @@ export default function TemplateBuilder() {
     }))
 
     setTemplate({ ...template, pages: updatedPages })
+  }
+
+  const handleOpenEditPageModal = () => {
+    if (!currentPage) return
+    setEditPageName(currentPage.name)
+    setEditPageSlug(currentPage.slug)
+    setEditPageMetaDescription(currentPage.meta_description || '')
+    setShowEditPageModal(true)
+    setShowEditMenu(false)
+  }
+
+  const handleSaveEditPage = () => {
+    if (!template || !currentPage || !editPageName.trim()) return
+
+    const updatedPages = template.pages.map(p => {
+      if (p.id === currentPage.id) {
+        return {
+          ...p,
+          name: editPageName,
+          slug: editPageSlug,
+          meta_description: editPageMetaDescription
+        }
+      }
+      return p
+    })
+
+    setTemplate({ ...template, pages: updatedPages })
+    setCurrentPage({
+      ...currentPage,
+      name: editPageName,
+      slug: editPageSlug,
+      meta_description: editPageMetaDescription
+    })
+    setShowEditPageModal(false)
+  }
+
+  const handleCopyPage = () => {
+    if (!template || !currentPage) return
+
+    const copiedPage: TemplatePage = {
+      id: Date.now(),
+      name: `${currentPage.name} (Copy)`,
+      slug: `${currentPage.slug}-copy`,
+      is_homepage: false,
+      order: template.pages.length,
+      sections: currentPage.sections.map(section => ({
+        ...section,
+        id: Date.now() + Math.random() * 1000
+      })),
+      meta_description: currentPage.meta_description
+    }
+
+    setTemplate({
+      ...template,
+      pages: [...template.pages, copiedPage]
+    })
+    setCurrentPage(copiedPage)
+    setShowEditMenu(false)
+  }
+
+  const handleAddPageFromTemplate = (templateType: string) => {
+    if (!template) return
+
+    let pageName = ''
+    let sections: TemplateSection[] = []
+
+    if (templateType === 'about') {
+      pageName = 'About Us'
+      sections = [
+        { id: Date.now(), type: 'header-simple', section_name: 'Header', section_id: generateIdentifier('Header'), content: { title: 'About Us' }, order: 0 },
+        { id: Date.now() + 1, type: 'grid-2x1', section_name: 'Content Grid', section_id: generateIdentifier('Content Grid'), content: { columns: [] }, order: 1 },
+        { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
+      ]
+    } else if (templateType === 'services') {
+      pageName = 'Services'
+      sections = [
+        { id: Date.now(), type: 'header-simple', section_name: 'Header', section_id: generateIdentifier('Header'), content: { title: 'Our Services' }, order: 0 },
+        { id: Date.now() + 1, type: 'grid-3x1', section_name: 'Services Grid', section_id: generateIdentifier('Services Grid'), content: { columns: [] }, order: 1 },
+        { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
+      ]
+    } else if (templateType === 'contact') {
+      pageName = 'Contact'
+      sections = [
+        { id: Date.now(), type: 'header-simple', section_name: 'Header', section_id: generateIdentifier('Header'), content: { title: 'Contact Us' }, order: 0 },
+        { id: Date.now() + 1, type: 'contact-form', section_name: 'Contact Form', section_id: generateIdentifier('Contact Form'), content: {}, order: 1 },
+        { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
+      ]
+    }
+
+    const slug = pageName.toLowerCase().replace(/\s+/g, '-')
+    const newPage: TemplatePage = {
+      id: Date.now(),
+      name: pageName,
+      slug: slug,
+      page_id: generateIdentifier(pageName),
+      is_homepage: false,
+      order: template.pages.length,
+      sections: sections
+    }
+
+    setTemplate({
+      ...template,
+      pages: [...template.pages, newPage]
+    })
+    setCurrentPage(newPage)
+    setShowInsertMenu(false)
   }
 
   // Section Management Functions
@@ -556,9 +715,12 @@ export default function TemplateBuilder() {
     // Check if this is a footer section
     const isFooterSection = sectionConfig.type.startsWith('footer-')
 
+    const sectionName = sectionConfig.name || sectionConfig.type
     const newSection: TemplateSection = {
       id: Date.now(),
       type: sectionConfig.type,
+      section_name: sectionName,
+      section_id: generateIdentifier(sectionName),
       content: sectionConfig.defaultContent,
       order: isTopSection ? 0 : currentPage.sections.length
     }
@@ -840,9 +1002,12 @@ export default function TemplateBuilder() {
       // Check if this is a footer section
       const isFooterSection = sectionConfig.type.startsWith('footer-')
 
+      const sectionName = sectionConfig.name || sectionConfig.type
       const newSection: TemplateSection = {
         id: Date.now(),
         type: sectionConfig.type,
+        section_name: sectionName,
+        section_id: generateIdentifier(sectionName),
         content: sectionConfig.defaultContent,
         order: 0
       }
@@ -1116,7 +1281,6 @@ export default function TemplateBuilder() {
           </>
         ) : (
           <div className={`text-center py-20 p-8 ${activeId && activeDragData?.source === 'library' ? 'bg-amber-50' : ''}`}>
-            <div className="text-6xl mb-4">📄</div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Empty Page</h2>
             <p className="text-gray-600">
               {activeId && activeDragData?.source === 'library'
@@ -1200,20 +1364,7 @@ export default function TemplateBuilder() {
         {/* Hover Overlay */}
         {isHovered && (
           <div className={`absolute top-2 ${isLeftSidebar ? 'left-2' : 'right-2'} bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-50`}>
-            <span className="text-xs font-medium text-gray-700 mr-2 capitalize">{section.type}</span>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                setSelectedSection(section)
-              }}
-              className="p-1 hover:bg-amber-50 rounded transition"
-              title="Properties"
-            >
-              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-              </svg>
-            </button>
+            <span className="text-xs font-medium text-gray-700 mr-2 capitalize">{section.section_name || section.type}</span>
 
             {/* Dropdown nav: show expanded toggle */}
             {section.type === 'navbar-dropdown' && (
@@ -1810,8 +1961,9 @@ export default function TemplateBuilder() {
               <button
                 onClick={() => setShowFileMenu(!showFileMenu)}
                 onMouseEnter={() => {
-                  if (showEditMenu) {
+                  if (showEditMenu || showInsertMenu) {
                     setShowEditMenu(false)
+                    setShowInsertMenu(false)
                     setShowFileMenu(true)
                   }
                 }}
@@ -1844,8 +1996,9 @@ export default function TemplateBuilder() {
               <button
                 onClick={() => setShowEditMenu(!showEditMenu)}
                 onMouseEnter={() => {
-                  if (showFileMenu) {
+                  if (showFileMenu || showInsertMenu) {
                     setShowFileMenu(false)
+                    setShowInsertMenu(false)
                     setShowEditMenu(true)
                   }
                 }}
@@ -1877,10 +2030,56 @@ export default function TemplateBuilder() {
                     >
                       Site CSS
                     </button>
+                    <button
+                      onClick={() => setEditSubTab('page')}
+                      className={`flex-1 px-4 py-2 text-xs font-medium transition ${
+                        editSubTab === 'page'
+                          ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                          : 'bg-white text-gray-600 hover:bg-gray-50'
+                      }`}
+                    >
+                      Edit Page
+                    </button>
                   </div>
 
                   <div className="p-4 space-y-3">
-                    {editSubTab === 'settings' ? (
+                    {editSubTab === 'page' ? (
+                      <>
+                        {/* Edit Page Tab */}
+                        {currentPage ? (
+                          <>
+                            <div className="text-xs text-gray-600 mb-3">
+                              Current Page: <span className="font-medium">{currentPage.name}</span>
+                            </div>
+                            <button
+                              onClick={handleOpenEditPageModal}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-100 text-xs rounded border border-gray-200"
+                            >
+                              Rename Page & Edit Meta
+                            </button>
+                            <button
+                              onClick={handleCopyPage}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-100 text-xs rounded border border-gray-200"
+                            >
+                              Copy Page
+                            </button>
+                            {template.pages.length > 1 && (
+                              <button
+                                onClick={() => {
+                                  handleDeletePage(currentPage.id)
+                                  setShowEditMenu(false)
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 text-xs rounded border border-red-200"
+                              >
+                                Delete Page
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-xs text-gray-500">No page selected</div>
+                        )}
+                      </>
+                    ) : editSubTab === 'settings' ? (
                     <>
                     <div>
                       <label className="block text-xs font-medium text-gray-700 mb-1">
@@ -2032,31 +2231,73 @@ export default function TemplateBuilder() {
             <button
               className="px-3 h-full hover:bg-amber-50 transition"
               onMouseEnter={() => {
-                if (showFileMenu || showEditMenu) {
+                if (showFileMenu || showEditMenu || showInsertMenu) {
                   setShowFileMenu(false)
                   setShowEditMenu(false)
+                  setShowInsertMenu(false)
                 }
               }}
             >
               View
             </button>
+            <div className="relative" ref={insertMenuRef}>
+              <button
+                onClick={() => setShowInsertMenu(!showInsertMenu)}
+                onMouseEnter={() => {
+                  if (showFileMenu || showEditMenu) {
+                    setShowFileMenu(false)
+                    setShowEditMenu(false)
+                    setShowInsertMenu(true)
+                  }
+                }}
+                className="px-3 h-full hover:bg-amber-50 transition"
+              >
+                Insert
+              </button>
+              {showInsertMenu && template && (
+                <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
+                  <div className="py-1">
+                    <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase">New Page</div>
+                    <button
+                      onClick={() => {
+                        setShowAddPageModal(true)
+                        setShowInsertMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      Blank Page
+                    </button>
+                    <div className="border-t border-gray-200 my-1"></div>
+                    <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase">From Template</div>
+                    <button
+                      onClick={() => handleAddPageFromTemplate('about')}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      About Us Page
+                    </button>
+                    <button
+                      onClick={() => handleAddPageFromTemplate('services')}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      Services Page
+                    </button>
+                    <button
+                      onClick={() => handleAddPageFromTemplate('contact')}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      Contact Page
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               className="px-3 h-full hover:bg-amber-50 transition"
               onMouseEnter={() => {
-                if (showFileMenu || showEditMenu) {
+                if (showFileMenu || showEditMenu || showInsertMenu) {
                   setShowFileMenu(false)
                   setShowEditMenu(false)
-                }
-              }}
-            >
-              Insert
-            </button>
-            <button
-              className="px-3 h-full hover:bg-amber-50 transition"
-              onMouseEnter={() => {
-                if (showFileMenu || showEditMenu) {
-                  setShowFileMenu(false)
-                  setShowEditMenu(false)
+                  setShowInsertMenu(false)
                 }
               }}
             >
@@ -2477,6 +2718,22 @@ export default function TemplateBuilder() {
                     </option>
                   ))}
                 </select>
+                <button
+                  onClick={() => {
+                    setShowCSSPanel(true)
+                    setShowSectionCSS(false)
+                    setSelectedSection(null)
+                    setShowRightSidebar(true)
+                  }}
+                  className="p-1 hover:bg-gray-200 rounded transition"
+                  title="Edit CSS"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
+                    <path d="M5 3L3 9L5 21H19L21 9L19 3H5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                    <path d="M7 15L9 13L11 15L13 13L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    <text x="12" y="10" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">CSS</text>
+                  </svg>
+                </button>
               </div>
               <div className="flex items-center gap-1">
                 {currentPage && !currentPage.is_homepage && (
@@ -2532,42 +2789,245 @@ export default function TemplateBuilder() {
               className="bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0"
             >
               <div className="p-3">
-                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Properties</h2>
-                {selectedSection ? (
+                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">
+                  {showCSSPanel ? 'CSS Editor' : 'Properties'}
+                </h2>
+                {showCSSPanel ? (
                   <div className="space-y-3">
-                    <div>
-                      <label className="text-xs text-gray-500 block mb-1">Section Type</label>
-                      <div className="px-2 py-1.5 bg-gray-50 rounded text-xs capitalize font-medium">
+                    {/* CSS Tabs */}
+                    <div className="flex border-b border-gray-200">
+                      <button
+                        onClick={() => setCssTab('site')}
+                        className={`flex-1 px-3 py-2 text-xs font-medium transition ${
+                          cssTab === 'site'
+                            ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        Site CSS
+                      </button>
+                      <button
+                        onClick={() => setCssTab('page')}
+                        className={`flex-1 px-3 py-2 text-xs font-medium transition ${
+                          cssTab === 'page'
+                            ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                            : 'bg-white text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        Page CSS
+                      </button>
+                    </div>
+
+                    {/* CSS Content */}
+                    {cssTab === 'site' ? (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Global Stylesheet
+                        </label>
+                        <p className="text-[10px] text-gray-500 mb-2">
+                          CSS applied to all pages in this template
+                        </p>
+                        <textarea
+                          value={template?.custom_css || ''}
+                          onChange={(e) => setTemplate({ ...template!, custom_css: e.target.value })}
+                          rows={20}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          placeholder="/* Enter your CSS here */&#10;.my-class {&#10;  color: #000;&#10;}"
+                        />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Page-Specific CSS
+                        </label>
+                        <p className="text-[10px] text-gray-500 mb-2">
+                          CSS applied only to {currentPage?.name || 'this page'}
+                        </p>
+                        <textarea
+                          value={currentPage?.page_css || ''}
+                          onChange={(e) => {
+                            if (!template || !currentPage) return
+                            const updatedPages = template.pages.map(p =>
+                              p.id === currentPage.id ? { ...p, page_css: e.target.value } : p
+                            )
+                            setTemplate({ ...template, pages: updatedPages })
+                            setCurrentPage({ ...currentPage, page_css: e.target.value })
+                          }}
+                          rows={20}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          placeholder="/* Enter page-specific CSS */&#10;.page-class {&#10;  background: #fff;&#10;}"
+                        />
+                      </div>
+                    )}
+
+                    <button
+                      onClick={() => setShowCSSPanel(false)}
+                      className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition"
+                    >
+                      Close CSS Editor
+                    </button>
+                  </div>
+                ) : selectedSection ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <label className="text-xs text-gray-500 block mb-1">Section Name</label>
+                        <div className="flex gap-1">
+                          <input
+                            type="text"
+                            value={selectedSection.section_name || selectedSection.type}
+                            onChange={(e) => {
+                              const newName = e.target.value
+                              const updatedSection = {
+                                ...selectedSection,
+                                section_name: newName,
+                                section_id: selectedSection.section_id || generateIdentifier(newName)
+                              }
+                              setSelectedSection(updatedSection)
+                              // Update in template
+                              if (template && currentPage) {
+                                const updatedPages = template.pages.map(p => {
+                                  if (p.id === currentPage.id) {
+                                    return {
+                                      ...p,
+                                      sections: p.sections.map(s =>
+                                        s.id === selectedSection.id ? updatedSection : s
+                                      )
+                                    }
+                                  }
+                                  return p
+                                })
+                                setTemplate({ ...template, pages: updatedPages })
+                                setCurrentPage({
+                                  ...currentPage,
+                                  sections: currentPage.sections.map(s =>
+                                    s.id === selectedSection.id ? updatedSection : s
+                                  )
+                                })
+                              }
+                            }}
+                            className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            placeholder="Enter section name"
+                          />
+                          <button
+                            onClick={() => {
+                              const newId = generateIdentifier(selectedSection.section_name || selectedSection.type)
+                              const updatedSection = {
+                                ...selectedSection,
+                                section_id: newId
+                              }
+                              setSelectedSection(updatedSection)
+                              // Update in template
+                              if (template && currentPage) {
+                                const updatedPages = template.pages.map(p => {
+                                  if (p.id === currentPage.id) {
+                                    return {
+                                      ...p,
+                                      sections: p.sections.map(s =>
+                                        s.id === selectedSection.id ? updatedSection : s
+                                      )
+                                    }
+                                  }
+                                  return p
+                                })
+                                setTemplate({ ...template, pages: updatedPages })
+                                setCurrentPage({
+                                  ...currentPage,
+                                  sections: currentPage.sections.map(s =>
+                                    s.id === selectedSection.id ? updatedSection : s
+                                  )
+                                })
+                              }
+                            }}
+                            className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition"
+                            title="Generate new ID from section name"
+                          >
+                            Apply
+                          </button>
+                        </div>
+                        <div className="mt-1 px-2 py-1 bg-blue-50 rounded text-[10px] font-mono text-blue-700">
+                          <span className="font-semibold">ID:</span> {selectedSection.section_id || 'Not set'}
+                        </div>
+                        <p className="text-[9px] text-gray-500 mt-0.5">Use this ID in CSS: #{selectedSection.section_id}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowSectionCSS(!showSectionCSS)
+                          setShowCSSPanel(false)
+                        }}
+                        className="p-1 hover:bg-gray-200 rounded transition ml-2"
+                        title="Edit Section CSS"
+                      >
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
+                          <path d="M5 3L3 9L5 21H19L21 9L19 3H5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                          <path d="M7 15L9 13L11 15L13 13L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <text x="12" y="10" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">CSS</text>
+                        </svg>
+                      </button>
+                    </div>
+
+                    <div className="border-t border-gray-200 pt-2">
+                      <div className="text-[10px] text-gray-500 mb-1">Section Type:</div>
+                      <div className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700">
                         {selectedSection.type}
                       </div>
                     </div>
 
-                    {/* Grid Section Fields */}
-                    {selectedSection.type.startsWith('grid-') && (
+                    {showSectionCSS ? (
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Section-Specific CSS
+                        </label>
+                        <p className="text-[10px] text-gray-500 mb-2">
+                          CSS applied only to this {selectedSection.type} section
+                        </p>
+                        <textarea
+                          value={selectedSection.content?.section_css || ''}
+                          onChange={(e) =>
+                            handleUpdateSectionContent(selectedSection.id, {
+                              ...selectedSection.content,
+                              section_css: e.target.value
+                            })
+                          }
+                          rows={20}
+                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
+                          placeholder="/* Enter section-specific CSS */&#10;.section-class {&#10;  /* your styles */&#10;}"
+                        />
+                        <button
+                          onClick={() => setShowSectionCSS(false)}
+                          className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition mt-3"
+                        >
+                          Back to Properties
+                        </button>
+                      </div>
+                    ) : (
                       <>
-                        <div>
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Column Content</label>
-                          <div className="space-y-2">
-                            {(selectedSection.content?.columns || []).map((col: any, idx: number) => (
-                              <div key={idx}>
-                                <label className="text-[10px] text-gray-500 block mb-1">Column {idx + 1}</label>
-                                <textarea
-                                  value={col.content || ''}
-                                  onChange={(e) => {
-                                    const newColumns = [...(selectedSection.content?.columns || [])]
-                                    newColumns[idx] = { ...newColumns[idx], content: e.target.value }
-                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, columns: newColumns })
-                                  }}
-                                  rows={2}
-                                  className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                  placeholder={`Content for column ${idx + 1}`}
-                                />
+                        {/* Grid Section Fields */}
+                        {selectedSection.type.startsWith('grid-') && (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-gray-700 block mb-2">Column Content</label>
+                              <div className="space-y-2">
+                                {(selectedSection.content?.columns || []).map((col: any, idx: number) => (
+                                  <div key={idx}>
+                                    <label className="text-[10px] text-gray-500 block mb-1">Column {idx + 1}</label>
+                                    <textarea
+                                      value={col.content || ''}
+                                      onChange={(e) => {
+                                        const newColumns = [...(selectedSection.content?.columns || [])]
+                                        newColumns[idx] = { ...newColumns[idx], content: e.target.value }
+                                        handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, columns: newColumns })
+                                      }}
+                                      rows={2}
+                                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                      placeholder={`Content for column ${idx + 1}`}
+                                    />
+                                  </div>
+                                ))}
                               </div>
-                            ))}
-                          </div>
-                        </div>
-                      </>
-                    )}
+                            </div>
+                          </>
+                        )}
 
                     {/* Navigation Section Fields */}
                     {(selectedSection.type.startsWith('navbar-') || selectedSection.type.startsWith('header-') || selectedSection.type.startsWith('sidebar-nav-')) && (
@@ -2626,7 +3086,7 @@ export default function TemplateBuilder() {
                                   className="px-2 py-0.5 bg-blue-500 text-white text-[10px] rounded hover:bg-blue-600 transition"
                                   title="Convert old links to new format"
                                 >
-                                  ⚡ Convert
+                                  Convert
                                 </button>
                               )}
                               <button
@@ -2956,6 +3416,8 @@ export default function TemplateBuilder() {
                         </div>
                       </>
                     )}
+                      </>
+                    )}
                   </div>
                 ) : (
                   <div className="text-xs text-gray-500 text-center py-8">
@@ -3007,6 +3469,80 @@ export default function TemplateBuilder() {
                   className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add Page
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Page Modal */}
+      {showEditPageModal && currentPage && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Page Details</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Page Name
+                </label>
+                <input
+                  type="text"
+                  value={editPageName}
+                  onChange={(e) => setEditPageName(e.target.value)}
+                  placeholder="e.g., About Us, Services, Contact"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Page Slug
+                </label>
+                <input
+                  type="text"
+                  value={editPageSlug}
+                  onChange={(e) => setEditPageSlug(e.target.value)}
+                  placeholder="e.g., about-us, services, contact"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  The URL path for this page (e.g., /about-us)
+                </p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Meta Description
+                </label>
+                <textarea
+                  value={editPageMetaDescription}
+                  onChange={(e) => setEditPageMetaDescription(e.target.value)}
+                  placeholder="Brief description for search engines (150-160 characters recommended)"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  {editPageMetaDescription.length} characters
+                </p>
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => {
+                    setShowEditPageModal(false)
+                    setEditPageName('')
+                    setEditPageSlug('')
+                    setEditPageMetaDescription('')
+                  }}
+                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveEditPage}
+                  disabled={!editPageName.trim() || !editPageSlug.trim()}
+                  className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Save Changes
                 </button>
               </div>
             </div>

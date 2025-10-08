@@ -10,6 +10,8 @@ class UserSection extends Model
         'user_page_id',
         'template_section_id',
         'type',
+        'section_name',
+        'section_id',
         'content',
         'order'
     ];

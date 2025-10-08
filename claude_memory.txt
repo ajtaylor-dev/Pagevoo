@@ -1338,8 +1338,121 @@ User Dashboard → Pagevoo API (Laravel) → Plesk REST API → IONOS VPS
 9. Convert old string links with "⚡ Convert" button
 10. Links render with proper navigation in preview
 
+## Design & UI Policies
+
+**IMPORTANT - NO EMOJIS/ICONS IN UI:**
+- NEVER use emoji icons (✏️, 📋, 🗑️, etc.) in any user interface elements
+- Emojis make the interface look AI-generated and unprofessional
+- Use plain text labels for all buttons and menu items
+- This is a site-wide policy that applies to ALL components
+- Examples:
+  - Use "Rename Page" instead of "✏️ Rename Page"
+  - Use "Copy Page" instead of "📋 Copy Page"
+  - Use "Delete Page" instead of "🗑️ Delete Page"
+  - Use "Blank Page" instead of "📄 Blank Page"
+
+## Session 13 (2025-10-08) - Section & Page Identifier System with CSS Targeting
+
+**What We Built:**
+1. Unique identifier system for sections and pages (for CSS targeting)
+2. Editable section names with auto-generated IDs
+3. Database support for section_name, section_id, page_id
+4. Section name display in hover overlay
+5. Apply button to regenerate identifiers
+
+**Backend Changes:**
+
+1. **Database Migrations:**
+   - `2025_10_08_141830_add_section_identifiers_to_template_sections_table.php`
+     - Added `section_name` (string, nullable) after 'type'
+     - Added `section_id` (string, nullable) after 'section_name'
+   - `2025_10_08_141904_add_section_identifiers_to_user_sections_table.php`
+     - Added `section_name` (string, nullable) after 'template_section_id'
+     - Added `section_id` (string, nullable) after 'section_name'
+   - `2025_10_08_141928_add_page_id_to_template_pages_table.php`
+     - Added `page_id` (string, nullable) after 'slug'
+   - `2025_10_08_141951_add_page_id_to_user_pages_table.php`
+     - Added `page_id` (string, nullable) after 'slug'
+
+2. **Model Updates:**
+   - TemplateSection.php: Added section_name, section_id to fillable
+   - UserSection.php: Added section_name, section_id to fillable
+   - TemplatePage.php: Added page_id to fillable
+   - UserPage.php: Added page_id to fillable
+
+**Frontend Changes - TemplateBuilder.tsx:**
+
+1. **Identifier Generation System:**
+   - Helper function `generateRandomString(6)` - generates 6 random alphanumeric characters
+   - Helper function `sanitizeName(name)` - removes special characters, replaces spaces with underscores
+   - Helper function `generateIdentifier(name)` - combines sanitized name + random string
+   - Example: "Hero Section" → "hero_section_a3b4c5"
+
+2. **Interface Updates:**
+   - TemplatePage interface: Added `page_id?: string`
+   - TemplateSection interface: Added `section_name?: string`, `section_id?: string`
+
+3. **Section Properties Panel:**
+   - Changed "Section Type" label to "Section Name" (editable input field)
+   - Input displays section_name or falls back to section.type
+   - "Apply" button next to input (blue with white text)
+   - Click Apply to generate new ID from current section name
+   - ID display box below input (blue background, monospace font)
+   - Usage hint: "Use this ID in CSS: #section_id"
+   - Read-only Section Type display moved below as separate field
+
+4. **Section Hover Overlay:**
+   - Section name now displays in hover controls (was section.type)
+   - Shows `section.section_name || section.type`
+   - Removed properties icon/button (unnecessary since clicking section shows properties)
+
+5. **Auto-ID Generation:**
+   - First time editing section name: generates ID automatically
+   - Subsequent edits: keeps existing ID (prevents regeneration on every keystroke)
+   - Apply button: manually regenerate new random ID from current name
+   - IDs persist through template saves
+
+**Technical Fixes:**
+- Fixed onChange handler to prevent input interference (removed handleUpdateSectionContent call)
+- Fixed JSX structure for grid section properties panel (proper indentation and closing tags)
+- Section name input now properly editable without conflicts
+
+**Files Modified:**
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  - Added identifier generation helper functions (lines 60-83)
+  - Updated TemplatePage and TemplateSection interfaces
+  - Enhanced section properties panel with editable name + Apply button
+  - Updated section hover overlay to show section name instead of type
+  - Removed properties icon from hover controls
+  - Fixed grid section JSX structure
+
+- pagevoo-backend/app/Models/TemplateSection.php
+- pagevoo-backend/app/Models/UserSection.php
+- pagevoo-backend/app/Models/TemplatePage.php
+- pagevoo-backend/app/Models/UserPage.php
+
+**User Workflow:**
+1. Select section in canvas
+2. Properties panel shows "Section Name" input
+3. Edit section name (e.g., "Hero Section")
+4. ID auto-generates on first edit: hero_section_a3b4c5
+5. Click "Apply" button to regenerate new random ID
+6. Use ID in CSS editor: `#hero_section_a3b4c5 { ... }`
+7. Section hover overlay displays custom name
+8. Save template - identifiers persist to database
+
+**Key Features:**
+✅ Editable section names with unique CSS-targetable IDs
+✅ Sanitization system (lowercase, no special chars, underscores for spaces)
+✅ 6-character random suffix for uniqueness
+✅ Apply button to manually regenerate IDs
+✅ Database persistence for all identifiers
+✅ Section name display in hover overlay
+✅ Clean properties panel (removed unnecessary properties icon)
+✅ Usage hints for CSS targeting
+
 ## Last Updated
-2025-10-07
+2025-10-08
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

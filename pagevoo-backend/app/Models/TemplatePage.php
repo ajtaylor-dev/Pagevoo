@@ -10,6 +10,9 @@ class TemplatePage extends Model
         'template_id',
         'name',
         'slug',
+        'page_id',
+        'meta_description',
+        'page_css',
         'is_homepage',
         'order'
     ];

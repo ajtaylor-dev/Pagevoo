@@ -607,7 +607,7 @@ export default function UserDashboard() {
                     )}
                     {user?.account_status === 'trial' && !user?.package && (
                       <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-                        <p className="text-sm font-semibold text-red-700 mb-1">⚠️ Features limited!</p>
+                        <p className="text-sm font-semibold text-red-700 mb-1">Features limited!</p>
                         <p className="text-sm text-red-600 mb-3">Upgrade your trial account to unlock the full features of Pagevoo.</p>
                         <Link
                           to="/pricing"
