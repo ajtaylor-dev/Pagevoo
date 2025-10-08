@@ -13,7 +13,8 @@
       "Bash(composer:*)",
       "Bash(git log:*)",
       "Bash(npm run build:*)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(python:*)"
     ],
     "deny": [],
     "ask": []
