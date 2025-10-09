@@ -14,7 +14,9 @@
       "Bash(git log:*)",
       "Bash(npm run build:*)",
       "Bash(npx tsc:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Read(//c/Users/ajt19/Desktop/backup/**)",
+      "Bash(npx shadcn@latest add:*)"
     ],
     "deny": [],
     "ask": []

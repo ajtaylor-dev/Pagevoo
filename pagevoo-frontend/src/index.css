@@ -118,3 +118,72 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* 12-Column Responsive Grid System */
+.row [class*="col-"] {
+  float: left;
+  padding: 20px;
+  width: 100%; /* Mobile default - all columns 100% */
+  box-sizing: border-box;
+  min-height: 1px; /* Prevent collapse */
+}
+
+.row::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+.row {
+  width: 100%;
+}
+
+/* Tablet Landscape (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .row .col-1 { width: 8.33%; }
+  .row .col-2 { width: 16.66%; }
+  .row .col-3 { width: 25%; }
+  .row .col-4 { width: 33.33%; }
+  .row .col-5 { width: 41.66%; }
+  .row .col-6 { width: 50%; }
+  .row .col-7 { width: 58.33%; }
+  .row .col-8 { width: 66.66%; }
+  .row .col-9 { width: 75%; }
+  .row .col-10 { width: 83.33%; }
+  .row .col-11 { width: 91.66%; }
+  .row .col-12 { width: 100%; }
+}
+
+/* Desktop (1025px+) */
+@media only screen and (min-width: 1025px) {
+  .row .col-1 { width: 8.33%; }
+  .row .col-2 { width: 16.66%; }
+  .row .col-3 { width: 25%; }
+  .row .col-4 { width: 33.33%; }
+  .row .col-5 { width: 41.66%; }
+  .row .col-6 { width: 50%; }
+  .row .col-7 { width: 58.33%; }
+  .row .col-8 { width: 66.66%; }
+  .row .col-9 { width: 75%; }
+  .row .col-10 { width: 83.33%; }
+  .row .col-11 { width: 91.66%; }
+  .row .col-12 { width: 100%; }
+}
+
+/* Viewport Simulation Classes - Force mobile/tablet layout regardless of screen size */
+.viewport-mobile .row [class*="col-"] {
+  width: 100% !important; /* Force all columns to stack on mobile */
+}
+
+.viewport-tablet .row .col-1 { width: 8.33% !important; }
+.viewport-tablet .row .col-2 { width: 16.66% !important; }
+.viewport-tablet .row .col-3 { width: 25% !important; }
+.viewport-tablet .row .col-4 { width: 33.33% !important; }
+.viewport-tablet .row .col-5 { width: 41.66% !important; }
+.viewport-tablet .row .col-6 { width: 50% !important; }
+.viewport-tablet .row .col-7 { width: 58.33% !important; }
+.viewport-tablet .row .col-8 { width: 66.66% !important; }
+.viewport-tablet .row .col-9 { width: 75% !important; }
+.viewport-tablet .row .col-10 { width: 83.33% !important; }
+.viewport-tablet .row .col-11 { width: 91.66% !important; }
+.viewport-tablet .row .col-12 { width: 100% !important; }

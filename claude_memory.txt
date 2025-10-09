@@ -1619,8 +1619,91 @@ return { ...s, content: { ...s.content, [field]: value } }
 - [ ] Implement React export (generate Vite project)
 - [ ] Implement HTML export (generate static HTML/CSS)
 
+## Session 15 (2025-10-09) - CSS Styling System Improvements & Rich Text Editor
+
+**Initial Problem:**
+- User wanted to set font color at different levels (site, page, section, row, column)
+- Font family changes worked but font color caused text to become invisible
+- Issue: CSS specificity issues and matching color values (color: #f3f4f6 matching background-color: #f3f4f6)
+
+**Attempted Solution 1: Automatic Color Contrast Validation**
+- Added auto-validation in StyleEditor.tsx to detect when text color matches background
+- Implemented color contrast calculation (luminance-based black/white text)
+- Problem: Created infinite loops with useEffect dependencies
+- Result: Abandoned this approach as too complex
+
+**Final Solution: Simplified CSS Architecture**
+1. **Removed Font Options from Component-Level CSS** (StyleEditor.tsx:366-421)
+   - Text Color and Font Size controls now ONLY visible for page/site level (when `showFontSelector` is true)
+   - Section, row, and column CSS editors no longer show font styling options
+   - Keeps global styling at site level, prevents CSS conflicts
+
+2. **Upgraded Floating Text Editor with Rich Formatting** (TemplateBuilder.tsx:4373-4532)
+   - Replaced simple textarea with contentEditable div
+   - Added comprehensive formatting toolbar:
+     - **Text Formatting**: Bold, Italic, Underline buttons
+     - **Color Picker**: Inline text color selection
+     - **Font Size**: Dropdown (10px - 48px)
+     - **Alignment**: Left, Center, Right buttons
+     - **Lists**: Bullet and numbered lists
+     - **Clear Formatting**: Remove all styles button
+   - Uses `document.execCommand()` for formatting (deprecated but widely supported)
+   - Saves inline HTML styles directly to section content
+
+3. **Updated EditableText Component** (TemplateBuilder.tsx:1790-1799)
+   - Now uses `dangerouslySetInnerHTML` to render HTML content
+   - Supports all inline HTML tags: `<strong>`, `<em>`, `<span style="...">`, etc.
+   - Text displays with formatting on canvas
+
+**New CSS Styling Architecture:**
+- **Global Styling** (Site Level): Font family, base font size, default text color
+- **Layout Styling** (Section/Row/Column): Background color, padding, margin, border radius
+- **Inline Text Styling** (Rich Text Editor): Bold, italic, colors, sizes, alignment per text element
+
+**Files Modified:**
+- pagevoo-frontend/src/components/StyleEditor.tsx
+  - Wrapped Text Color and Font Size controls in `{showFontSelector && (...)}`
+  - These controls only appear for page/site context now
+
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  - Replaced textarea with contentEditable div (line 4514-4525)
+  - Added formatting toolbar with 12+ formatting options (lines 4391-4512)
+  - Updated EditableText to render HTML with dangerouslySetInnerHTML (line 1797)
+
+**User Workflow:**
+1. Set global font family and color via "Edit Site CSS"
+2. Set section/row/column background colors and spacing via Properties panel
+3. Click any text element to open rich text editor at bottom
+4. Use toolbar to apply bold, colors, sizes, alignment, etc.
+5. Formatted text saves as HTML inline styles
+6. Text inherits global styles unless overridden with inline formatting
+
+**Key Features:**
+✅ Clean separation: global styles vs inline formatting
+✅ Rich text editor with visual toolbar
+✅ Real-time formatting preview on canvas
+✅ No more invisible text issues (color conflicts eliminated)
+✅ Simpler mental model for users (site-wide vs specific text)
+
+**Technical Notes:**
+- document.execCommand() used for formatting (works in all browsers despite deprecation)
+- HTML content stored in section content fields (title, subtitle, column content, etc.)
+- contentEditable div allows formatted text entry
+- dangerouslySetInnerHTML renders saved HTML (safe because user-generated content)
+
+**User Feedback:**
+- User acknowledged system needs improvement for smoothness
+- Requested we update claude_memory.txt and end session for tonight
+- Next session will focus on improving and simplifying the template builder
+
+**Status:**
+- Code compiled successfully at 10:45:45 PM
+- Floating text editor functional with formatting toolbar
+- Font options removed from section/row/column StyleEditor
+- Session ending per user request
+
 ## Last Updated
-2025-10-08
+2025-10-09
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

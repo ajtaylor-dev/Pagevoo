@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect, memo, useCallback } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
+import { StyleEditor } from '@/components/StyleEditor'
 import {
   DndContext,
   DragOverlay,
@@ -28,6 +29,11 @@ interface TemplateSection {
   order: number
   section_name?: string
   section_id?: string
+}
+
+interface ContentCSS {
+  row?: string
+  columns?: { [key: string]: string } // e.g., { '0': 'col-1 css', '1': 'col-2 css' }
 }
 
 interface TemplatePage {
@@ -82,6 +88,160 @@ const generateIdentifier = (name: string): string => {
   return `${sanitized}_${random}`
 }
 
+// Helper function to generate CSS from section content_css and section_css
+const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteCSS?: string): string => {
+  let css = ''
+
+  // Helper to scope CSS to canvas and transform body selector
+  const scopeToCanvas = (inputCSS: string): string => {
+    if (!inputCSS || inputCSS.trim() === '') return ''
+
+    console.log('[generateContentCSS] Input CSS:', inputCSS)
+
+    // Extract body selector styles
+    const bodyMatch = inputCSS.match(/body\s*\{([^}]+)\}/i)
+    let processedCSS = inputCSS
+    let bodyStyles = ''
+
+    if (bodyMatch) {
+      bodyStyles = bodyMatch[1]
+      // Remove body block from original CSS
+      processedCSS = inputCSS.replace(/body\s*\{[^}]+\}/gi, '')
+    }
+
+    // Scope any remaining standalone CSS properties to canvas
+    const lines = processedCSS.split('\n')
+    let result = ''
+    let inBlock = false
+    let standaloneProps = ''
+
+    for (let line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.includes('{')) {
+        inBlock = true
+        result += line + '\n'
+      } else if (trimmed.includes('}')) {
+        inBlock = false
+        result += line + '\n'
+      } else if (!inBlock && trimmed.includes(':') && trimmed.includes(';')) {
+        standaloneProps += '  ' + trimmed + '\n'
+      } else {
+        result += line + '\n'
+      }
+    }
+
+    // Separate typography styles from layout/box model styles
+    const allStyles = (bodyStyles + standaloneProps).trim()
+
+    if (allStyles) {
+      // Typography properties that should apply to all text elements
+      const typographyProps = ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform', 'color']
+
+      // Layout/box model properties that should only apply to the canvas container
+      const layoutProps = ['background-color', 'background', 'padding', 'margin', 'border', 'border-radius', 'background-image', 'position', 'display', 'width', 'height']
+
+      const styleLines = allStyles.split('\n').filter(l => l.trim())
+      let typographyCSS = ''
+      let layoutCSS = ''
+
+      styleLines.forEach(line => {
+        const trimmed = line.trim()
+        const prop = trimmed.split(':')[0].trim()
+
+        if (typographyProps.some(p => prop.startsWith(p))) {
+          typographyCSS += '  ' + trimmed + '\n'
+        } else if (layoutProps.some(p => prop.startsWith(p))) {
+          layoutCSS += '  ' + trimmed + '\n'
+        } else {
+          // Unknown properties go to layout by default
+          layoutCSS += '  ' + trimmed + '\n'
+        }
+      })
+
+      // Apply typography to all text elements and canvas itself
+      if (typographyCSS.trim()) {
+        result = `#template-canvas,\n#template-canvas * {\n${typographyCSS}}\n\n` + result
+      }
+
+      // Apply layout/box properties only to canvas container
+      if (layoutCSS.trim()) {
+        result = `#template-canvas {\n${layoutCSS}}\n\n` + result
+      }
+    }
+
+    console.log('[generateContentCSS] Scoped CSS:', result)
+    return result
+  }
+
+  // 1. Site CSS - Applied globally within canvas (lowest specificity)
+  if (siteCSS) {
+    css += `/* Site-wide styles */\n${scopeToCanvas(siteCSS)}\n\n`
+  }
+
+  // 2. Page CSS - Applied to all elements on the page (higher specificity than site)
+  if (pageCSS) {
+    css += `/* Page-specific styles */\n${scopeToCanvas(pageCSS)}\n\n`
+  }
+
+  // 3. Section, Row, and Column CSS - Applied with specific selectors (highest specificity)
+  sections.forEach(section => {
+    const sectionId = section.section_id || `section-${section.id}`
+
+    // Section CSS (applied to section wrapper) - scoped to canvas
+    if (section.content?.section_css) {
+      css += `/* Section ${sectionId} styles */\n#template-canvas #${sectionId} {\n${section.content.section_css}\n}\n\n`
+    }
+
+    // Content CSS (row and columns)
+    const contentCSS = section.content?.content_css
+    if (!contentCSS) return
+
+    // Row CSS - scoped to canvas and specific section
+    if (contentCSS.row) {
+      css += `/* Section ${sectionId} row styles */\n#template-canvas #${sectionId} .row {\n${contentCSS.row}\n}\n\n`
+    }
+
+    // Column CSS - scoped to canvas with specific selectors for maximum specificity
+    if (contentCSS.columns) {
+      const columns = section.content?.columns || []
+      Object.entries(contentCSS.columns).forEach(([colIdx, colCSS]) => {
+        if (colCSS) {
+          const colWidth = columns[parseInt(colIdx)]?.colWidth || 12
+
+          // Separate typography from layout properties for better targeting
+          const lines = colCSS.split('\n').filter(l => l.trim())
+          let typographyCSS = ''
+          let layoutCSS = ''
+
+          const typographyProps = ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform', 'color', 'text-align', 'text-decoration']
+
+          lines.forEach(line => {
+            const trimmed = line.trim()
+            const prop = trimmed.split(':')[0].trim()
+            if (typographyProps.some(p => prop.startsWith(p))) {
+              typographyCSS += trimmed + '\n'
+            } else {
+              layoutCSS += trimmed + '\n'
+            }
+          })
+
+          // Apply layout properties to the column container
+          if (layoutCSS.trim()) {
+            css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} layout styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) {\n${layoutCSS}}\n\n`
+          }
+
+          // Apply typography properties to text elements inside the column
+          if (typographyCSS.trim()) {
+            css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} typography styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}),\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) * {\n${typographyCSS}}\n\n`
+          }
+        }
+      })
+    }
+  })
+
+  return css
+}
+
 export default function TemplateBuilder() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
@@ -111,6 +271,9 @@ export default function TemplateBuilder() {
   const [showCSSPanel, setShowCSSPanel] = useState(false)
   const [cssTab, setCssTab] = useState<'site' | 'page'>('site')
   const [showSectionCSS, setShowSectionCSS] = useState(false)
+  const [showContentStyle, setShowContentStyle] = useState(false)
+  const [expandedColumnIndex, setExpandedColumnIndex] = useState<number | null>(null)
+  const [showRowStyle, setShowRowStyle] = useState(false)
   const [hoveredSection, setHoveredSection] = useState<number | null>(null)
 
   // Undo/Redo and Save state
@@ -592,13 +755,121 @@ export default function TemplateBuilder() {
     }
   }
 
+  const getDefaultColumnCSS = () => `background: #f3f4f6;
+border: 2px dashed #d1d5db;
+border-radius: 0.5rem;
+min-height: 200px;
+display: flex;
+align-items: center;
+justify-content: center;
+color: #6b7280;`
+
+  const getDefaultSectionCSS = () => `padding: 2rem;`
+
+  const createDefaultContentCSS = (numColumns: number) => {
+    const columns: { [key: string]: string } = {}
+    for (let i = 0; i < numColumns; i++) {
+      columns[i] = getDefaultColumnCSS()
+    }
+    return { columns }
+  }
+
   const coreSections = [
-    { type: 'grid-1x1', label: '1 Column', description: 'Single full-width column for content', cols: 1, rows: 1, defaultContent: { columns: [{ content: 'Column content' }] } },
-    { type: 'grid-2x1', label: '2 Columns', description: 'Two equal columns side by side', cols: 2, rows: 1, defaultContent: { columns: [{ content: 'Column 1' }, { content: 'Column 2' }] } },
-    { type: 'grid-3x1', label: '3 Columns', description: 'Three equal columns in a row', cols: 3, rows: 1, defaultContent: { columns: [{ content: 'Column 1' }, { content: 'Column 2' }, { content: 'Column 3' }] } },
-    { type: 'grid-4x1', label: '4 Columns', description: 'Four equal columns in a row', cols: 4, rows: 1, defaultContent: { columns: [{ content: 'Col 1' }, { content: 'Col 2' }, { content: 'Col 3' }, { content: 'Col 4' }] } },
-    { type: 'grid-2x2', label: '2x2 Grid', description: 'Four boxes in a 2x2 grid layout', cols: 2, rows: 2, defaultContent: { columns: [{ content: 'Box 1' }, { content: 'Box 2' }, { content: 'Box 3' }, { content: 'Box 4' }] } },
-    { type: 'grid-3x2', label: '3x2 Grid', description: 'Six boxes in a 3x2 grid layout', cols: 3, rows: 2, defaultContent: { columns: Array(6).fill(null).map((_, i) => ({ content: `Box ${i + 1}` })) } },
+    {
+      type: 'grid-1x1',
+      label: '1 Column',
+      description: 'Single full-width column',
+      cols: 1,
+      rows: 1,
+      colWidths: [12], // col-12 (100%)
+      defaultContent: {
+        columns: [{ content: 'Column content', colWidth: 12 }],
+        content_css: createDefaultContentCSS(1),
+        section_css: getDefaultSectionCSS()
+      }
+    },
+    {
+      type: 'grid-2x1',
+      label: '2 Columns',
+      description: 'Two equal columns (50/50)',
+      cols: 2,
+      rows: 1,
+      colWidths: [6, 6], // 2x col-6 (50% each)
+      defaultContent: {
+        columns: [
+          { content: 'Column 1', colWidth: 6 },
+          { content: 'Column 2', colWidth: 6 }
+        ],
+        content_css: createDefaultContentCSS(2),
+        section_css: getDefaultSectionCSS()
+      }
+    },
+    {
+      type: 'grid-3x1',
+      label: '3 Columns',
+      description: 'Three equal columns (33/33/33)',
+      cols: 3,
+      rows: 1,
+      colWidths: [4, 4, 4], // 3x col-4 (33.33% each)
+      defaultContent: {
+        columns: [
+          { content: 'Column 1', colWidth: 4 },
+          { content: 'Column 2', colWidth: 4 },
+          { content: 'Column 3', colWidth: 4 }
+        ],
+        content_css: createDefaultContentCSS(3),
+        section_css: getDefaultSectionCSS()
+      }
+    },
+    {
+      type: 'grid-4x1',
+      label: '4 Columns',
+      description: 'Four equal columns (25% each)',
+      cols: 4,
+      rows: 1,
+      colWidths: [3, 3, 3, 3], // 4x col-3 (25% each)
+      defaultContent: {
+        columns: [
+          { content: 'Col 1', colWidth: 3 },
+          { content: 'Col 2', colWidth: 3 },
+          { content: 'Col 3', colWidth: 3 },
+          { content: 'Col 4', colWidth: 3 }
+        ],
+        content_css: createDefaultContentCSS(4),
+        section_css: getDefaultSectionCSS()
+      }
+    },
+    {
+      type: 'grid-2x2',
+      label: '2x2 Grid',
+      description: 'Four boxes in 2x2 layout',
+      cols: 2,
+      rows: 2,
+      colWidths: [6, 6, 6, 6], // 4x col-6 (2 rows of 50/50)
+      defaultContent: {
+        columns: [
+          { content: 'Box 1', colWidth: 6 },
+          { content: 'Box 2', colWidth: 6 },
+          { content: 'Box 3', colWidth: 6 },
+          { content: 'Box 4', colWidth: 6 }
+        ],
+        content_css: createDefaultContentCSS(4),
+        section_css: getDefaultSectionCSS()
+      }
+    },
+    {
+      type: 'grid-3x2',
+      label: '3x2 Grid',
+      description: 'Six boxes in 3x2 layout',
+      cols: 3,
+      rows: 2,
+      colWidths: [4, 4, 4, 4, 4, 4], // 6x col-4 (2 rows of 33/33/33)
+      defaultContent: {
+        columns: Array(6).fill(null).map((_, i) => ({ content: `Box ${i + 1}`, colWidth: 4 })),
+        content_css: createDefaultContentCSS(6),
+        section_css: getDefaultSectionCSS()
+      }
+    },
   ]
 
   const headerNavigationSections = [
@@ -1287,18 +1558,68 @@ export default function TemplateBuilder() {
     )
   }
 
+  // Helper to extract font families from CSS and generate Google Fonts link
+  const extractFontsFromCSS = (css: string): string[] => {
+    const fonts: Set<string> = new Set()
+    const fontFamilyRegex = /font-family:\s*['"]?([^'";\n]+)['"]?/gi
+    let match
+
+    while ((match = fontFamilyRegex.exec(css)) !== null) {
+      const fontName = match[1].split(',')[0].trim().replace(/['"]/g, '')
+      // Only include Google Fonts (not system fonts)
+      const googleFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald', 'Raleway', 'PT Sans', 'Merriweather', 'Nunito', 'Playfair Display', 'Ubuntu']
+      if (googleFonts.includes(fontName)) {
+        fonts.add(fontName)
+      }
+    }
+
+    return Array.from(fonts)
+  }
+
   // Canvas Drop Zone Component
-  const CanvasDropZone = ({ currentPage, activeId, activeDragData, renderSection }: any) => {
+  const CanvasDropZone = ({ currentPage, activeId, activeDragData, renderSection, viewport }: any) => {
     const { setNodeRef, isOver } = useDroppable({
       id: 'canvas-drop-zone',
       data: { type: 'canvas' }
     })
 
+    // Generate content CSS for all sections
+    // Generate complete CSS with proper cascade: site → page → section → row → column
+    console.log('[CanvasDropZone] Generating CSS with:', {
+      siteCss: template?.custom_css,
+      pageCss: currentPage.page_css
+    })
+    const contentCSS = currentPage?.sections
+      ? generateContentCSS(currentPage.sections, currentPage.page_css, template?.custom_css)
+      : ''
+    console.log('[CanvasDropZone] Generated contentCSS:', contentCSS)
+
+    // Extract fonts from all CSS for Google Fonts loading
+    const allCSS = contentCSS
+    const fonts = extractFontsFromCSS(allCSS)
+    const googleFontsLink = fonts.length > 0
+      ? `https://fonts.googleapis.com/css2?${fonts.map(f => `family=${encodeURIComponent(f.replace(/ /g, '+'))}`).join('&')}&display=swap`
+      : ''
+
+    // Apply viewport class to simulate responsive breakpoints
+    const viewportClass = viewport === 'mobile' ? 'viewport-mobile' : viewport === 'tablet' ? 'viewport-tablet' : ''
+
     return (
       <div
+        id="template-canvas"
         ref={setNodeRef}
-        className={`text-gray-900 min-h-[200px] ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-amber-400 ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-amber-50' : ''}`}
+        className={`text-gray-900 min-h-[200px] ${viewportClass} ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-amber-400 ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-amber-50' : ''}`}
       >
+        {/* Inject Google Fonts */}
+        {googleFontsLink && (
+          <link rel="stylesheet" href={googleFontsLink} />
+        )}
+
+        {/* Inject CSS with proper cascade: Site → Page → Section → Row → Column */}
+        {contentCSS && (
+          <style dangerouslySetInnerHTML={{ __html: contentCSS }} />
+        )}
+
         {currentPage && currentPage.sections && currentPage.sections.length > 0 ? (
           <>
             <SortableContext
@@ -1473,9 +1794,8 @@ export default function TemplateBuilder() {
           e.stopPropagation()
           handleOpenTextEditor(sectionId, field, value)
         }}
-      >
-        {value}
-      </Component>
+        dangerouslySetInnerHTML={{ __html: value }}
+      />
     )
   }
 
@@ -1703,15 +2023,15 @@ export default function TemplateBuilder() {
       }
 
       return sectionWrapper(
-        <div className={`p-8 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
-          <div
-            className="grid gap-4 w-full"
-            style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
-          >
+        <div
+          id={section.section_id || `section-${section.id}`}
+          className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+        >
+          <div className="row">
             {columns.map((col: any, idx: number) => (
               <div
                 key={idx}
-                className="bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 min-h-[200px] flex items-center justify-center"
+                className={`col-${col.colWidth || 12}`}
               >
                 <EditableText
                   tag="p"
@@ -1719,7 +2039,7 @@ export default function TemplateBuilder() {
                   field={`column_${idx}`}
                   value={col.content || `Column ${idx + 1}`}
                   onSave={(e) => handleGridColumnEdit(idx, e)}
-                  className="text-gray-500 text-sm text-center outline-none hover:bg-white/50 px-2 py-1 rounded transition"
+                  className="text-center outline-none hover:bg-white/50 px-2 py-1 rounded transition"
                 />
               </div>
             ))}
@@ -2600,12 +2920,14 @@ export default function TemplateBuilder() {
                         <p className="text-[10px] text-gray-500 mb-2">
                           Add custom CSS styles for your template. This CSS will be applied to all pages.
                         </p>
-                        <textarea
+                        <StyleEditor
                           value={template.custom_css || ''}
-                          onChange={(e) => setTemplate({ ...template, custom_css: e.target.value })}
-                          rows={12}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-                          placeholder="/* Enter your CSS here */&#10;.my-class {&#10;  color: #000;&#10;}"
+                          onChange={(css) => {
+                            console.log('[Site CSS onChange] New CSS:', css)
+                            setTemplate({ ...template, custom_css: css })
+                          }}
+                          context="page"
+                          showFontSelector={true}
                         />
                       </div>
                     </>
@@ -3203,6 +3525,7 @@ export default function TemplateBuilder() {
               activeId={activeId}
               activeDragData={activeDragData}
               renderSection={renderSection}
+              viewport={viewport}
             />
           </div>
         </main>
@@ -3260,12 +3583,14 @@ export default function TemplateBuilder() {
                         <p className="text-[10px] text-gray-500 mb-2">
                           CSS applied to all pages in this template
                         </p>
-                        <textarea
+                        <StyleEditor
                           value={template?.custom_css || ''}
-                          onChange={(e) => setTemplate({ ...template!, custom_css: e.target.value })}
-                          rows={20}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-                          placeholder="/* Enter your CSS here */&#10;.my-class {&#10;  color: #000;&#10;}"
+                          onChange={(css) => {
+                            console.log('[Site CSS onChange #2] New CSS:', css)
+                            setTemplate({ ...template!, custom_css: css })
+                          }}
+                          context="page"
+                          showFontSelector={true}
                         />
                       </div>
                     ) : (
@@ -3276,19 +3601,18 @@ export default function TemplateBuilder() {
                         <p className="text-[10px] text-gray-500 mb-2">
                           CSS applied only to {currentPage?.name || 'this page'}
                         </p>
-                        <textarea
+                        <StyleEditor
                           value={currentPage?.page_css || ''}
-                          onChange={(e) => {
+                          onChange={(css) => {
                             if (!template || !currentPage) return
                             const updatedPages = template.pages.map(p =>
-                              p.id === currentPage.id ? { ...p, page_css: e.target.value } : p
+                              p.id === currentPage.id ? { ...p, page_css: css } : p
                             )
                             setTemplate({ ...template, pages: updatedPages })
-                            setCurrentPage({ ...currentPage, page_css: e.target.value })
+                            setCurrentPage({ ...currentPage, page_css: css })
                           }}
-                          rows={20}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-                          placeholder="/* Enter page-specific CSS */&#10;.page-class {&#10;  background: #fff;&#10;}"
+                          context="page"
+                          showFontSelector={true}
                         />
                       </div>
                     )}
@@ -3383,20 +3707,23 @@ export default function TemplateBuilder() {
                         </div>
                         <p className="text-[9px] text-gray-500 mt-0.5">Use this ID in CSS: #{selectedSection.section_id}</p>
                       </div>
-                      <button
-                        onClick={() => {
-                          setShowSectionCSS(!showSectionCSS)
-                          setShowCSSPanel(false)
-                        }}
-                        className="p-1 hover:bg-gray-200 rounded transition ml-2"
-                        title="Edit Section CSS"
-                      >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
-                          <path d="M5 3L3 9L5 21H19L21 9L19 3H5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                          <path d="M7 15L9 13L11 15L13 13L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <text x="12" y="10" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">CSS</text>
-                        </svg>
-                      </button>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => {
+                            setShowSectionCSS(!showSectionCSS)
+                            setShowContentStyle(false)
+                            setShowCSSPanel(false)
+                          }}
+                          className="p-1 hover:bg-gray-200 rounded transition"
+                          title="Edit Section CSS"
+                        >
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
+                            <path d="M5 3L3 9L5 21H19L21 9L19 3H5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
+                            <path d="M7 15L9 13L11 15L13 13L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <text x="12" y="10" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">CSS</text>
+                          </svg>
+                        </button>
+                      </div>
                     </div>
 
                     <div className="border-t border-gray-200 pt-2">
@@ -3414,17 +3741,15 @@ export default function TemplateBuilder() {
                         <p className="text-[10px] text-gray-500 mb-2">
                           CSS applied only to this {selectedSection.type} section
                         </p>
-                        <textarea
+                        <StyleEditor
                           value={selectedSection.content?.section_css || ''}
-                          onChange={(e) =>
+                          onChange={(css) =>
                             handleUpdateSectionContent(selectedSection.id, {
                               ...selectedSection.content,
-                              section_css: e.target.value
+                              section_css: css
                             })
                           }
-                          rows={20}
-                          className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs font-mono focus:outline-none focus:ring-1 focus:ring-amber-500"
-                          placeholder="/* Enter section-specific CSS */&#10;.section-class {&#10;  /* your styles */&#10;}"
+                          context="section"
                         />
                         <button
                           onClick={() => setShowSectionCSS(false)}
@@ -3436,13 +3761,115 @@ export default function TemplateBuilder() {
                     ) : (
                       <>
                         {/* Grid Section Fields */}
-                        {selectedSection.type.startsWith('grid-') && (
-                          <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                            <p className="text-xs text-blue-700">
-                              <strong>💡 Tip:</strong> Click on any text in the columns to edit it using the floating editor at the bottom.
-                            </p>
-                          </div>
-                        )}
+                        {selectedSection.type.startsWith('grid-') && (() => {
+                          const [_, gridConfig] = selectedSection.type.split('-')
+                          const [cols, rows] = gridConfig.split('x').map(Number)
+                          const totalColumns = cols * rows
+                          const columns = selectedSection.content?.columns || []
+
+                          return (
+                            <>
+                              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
+                                <p className="text-xs text-blue-700">
+                                  <strong>💡 Tip:</strong> Click on any text in the columns to edit it using the floating editor at the bottom.
+                                </p>
+                              </div>
+
+                              {/* Row Style Button */}
+                              <div className="mb-3">
+                                <button
+                                  onClick={() => {
+                                    setShowRowStyle(!showRowStyle)
+                                    setExpandedColumnIndex(null)
+                                  }}
+                                  className="w-full px-3 py-2 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border border-purple-300 rounded text-sm font-medium text-purple-700 transition flex items-center justify-between"
+                                >
+                                  <span>Row Container Style</span>
+                                  <span className="text-xs">{showRowStyle ? '▼' : '▶'}</span>
+                                </button>
+
+                                {showRowStyle && (
+                                  <div className="mt-2 p-3 border border-purple-200 rounded bg-white">
+                                    <p className="text-[9px] text-gray-400 mb-2">
+                                      Target: <code className="bg-gray-100 px-1 rounded">.row</code>
+                                    </p>
+                                    <StyleEditor
+                                      value={selectedSection.content?.content_css?.row || ''}
+                                      onChange={(css) => {
+                                        const currentContentCSS = selectedSection.content?.content_css || {}
+                                        handleUpdateSectionContent(selectedSection.id, {
+                                          ...selectedSection.content,
+                                          content_css: {
+                                            ...currentContentCSS,
+                                            row: css
+                                          }
+                                        })
+                                      }}
+                                      context="row"
+                                    />
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Column Style Buttons */}
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-2">Column Styles</label>
+                                <div className="space-y-2">
+                                  {Array.from({ length: totalColumns }, (_, idx) => {
+                                    const colWidth = columns[idx]?.colWidth || 12
+                                    const isExpanded = expandedColumnIndex === idx
+
+                                    return (
+                                      <div key={idx}>
+                                        <button
+                                          onClick={() => {
+                                            setExpandedColumnIndex(isExpanded ? null : idx)
+                                            setShowRowStyle(false)
+                                          }}
+                                          className={`w-full px-3 py-2 border rounded text-sm font-medium transition flex items-center justify-between ${
+                                            isExpanded
+                                              ? 'bg-gradient-to-r from-amber-50 to-amber-100 border-amber-400 text-amber-700'
+                                              : 'bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border-gray-300 text-gray-700'
+                                          }`}
+                                        >
+                                          <span>Column {idx + 1} <span className="text-xs text-gray-500">(col-{colWidth})</span></span>
+                                          <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                                        </button>
+
+                                        {isExpanded && (
+                                          <div className="mt-2 p-3 border border-amber-200 rounded bg-white">
+                                            <p className="text-[9px] text-gray-400 mb-2">
+                                              Target: <code className="bg-gray-100 px-1 rounded">.col-{colWidth}</code> or position-based
+                                            </p>
+                                            <StyleEditor
+                                              value={selectedSection.content?.content_css?.columns?.[idx] || ''}
+                                              onChange={(css) => {
+                                                const currentContentCSS = selectedSection.content?.content_css || {}
+                                                const currentColumns = currentContentCSS.columns || {}
+                                                handleUpdateSectionContent(selectedSection.id, {
+                                                  ...selectedSection.content,
+                                                  content_css: {
+                                                    ...currentContentCSS,
+                                                    columns: {
+                                                      ...currentColumns,
+                                                      [idx]: css
+                                                    }
+                                                  }
+                                                })
+                                              }}
+                                              context="column"
+                                              showFontSelector={true}
+                                            />
+                                          </div>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </>
+                          )
+                        })()}
 
                     {/* Navigation Section Fields */}
                     {(selectedSection.type.startsWith('navbar-') || selectedSection.type.startsWith('header-') || selectedSection.type.startsWith('sidebar-nav-')) && (
@@ -3942,7 +4369,7 @@ export default function TemplateBuilder() {
       ) : null}
     </DragOverlay>
 
-    {/* Floating Text Editor */}
+    {/* Floating Rich Text Editor */}
     {editingText && (
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-blue-500 shadow-2xl z-50 animate-slide-up">
         <div className="max-w-7xl mx-auto p-4">
@@ -3959,15 +4386,145 @@ export default function TemplateBuilder() {
               </svg>
             </button>
           </div>
-          <textarea
-            value={editingText.value}
-            onChange={(e) => handleTextEditorChange(e.target.value)}
-            className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none font-sans text-base"
-            placeholder="Enter your text here..."
-            autoFocus
+
+          {/* Formatting Toolbar */}
+          <div className="flex items-center gap-1 mb-2 p-2 bg-gray-50 rounded-lg border border-gray-200 flex-wrap">
+            {/* Bold */}
+            <button
+              onClick={() => document.execCommand('bold', false)}
+              className="px-3 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Bold (Ctrl+B)"
+            >
+              <strong className="text-sm">B</strong>
+            </button>
+
+            {/* Italic */}
+            <button
+              onClick={() => document.execCommand('italic', false)}
+              className="px-3 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Italic (Ctrl+I)"
+            >
+              <em className="text-sm">I</em>
+            </button>
+
+            {/* Underline */}
+            <button
+              onClick={() => document.execCommand('underline', false)}
+              className="px-3 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Underline (Ctrl+U)"
+            >
+              <span className="text-sm underline">U</span>
+            </button>
+
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+            {/* Text Color */}
+            <input
+              type="color"
+              onChange={(e) => document.execCommand('foreColor', false, e.target.value)}
+              className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+              title="Text Color"
+            />
+
+            {/* Font Size */}
+            <select
+              onChange={(e) => document.execCommand('fontSize', false, e.target.value)}
+              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-white transition"
+              title="Font Size"
+              defaultValue="3"
+            >
+              <option value="1">10px</option>
+              <option value="2">13px</option>
+              <option value="3">16px</option>
+              <option value="4">18px</option>
+              <option value="5">24px</option>
+              <option value="6">32px</option>
+              <option value="7">48px</option>
+            </select>
+
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+            {/* Alignment */}
+            <button
+              onClick={() => document.execCommand('justifyLeft', false)}
+              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Align Left"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h10M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => document.execCommand('justifyCenter', false)}
+              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Align Center"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M7 12h10M4 18h16" />
+              </svg>
+            </button>
+            <button
+              onClick={() => document.execCommand('justifyRight', false)}
+              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Align Right"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M14 12h6M4 18h16" />
+              </svg>
+            </button>
+
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+            {/* Lists */}
+            <button
+              onClick={() => document.execCommand('insertUnorderedList', false)}
+              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Bullet List"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <circle cx="2" cy="6" r="1" fill="currentColor" />
+                <circle cx="2" cy="12" r="1" fill="currentColor" />
+                <circle cx="2" cy="18" r="1" fill="currentColor" />
+              </svg>
+            </button>
+            <button
+              onClick={() => document.execCommand('insertOrderedList', false)}
+              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Numbered List"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
+
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+            {/* Clear Formatting */}
+            <button
+              onClick={() => document.execCommand('removeFormat', false)}
+              className="px-3 py-1.5 text-xs hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Clear Formatting"
+            >
+              Clear
+            </button>
+          </div>
+
+          <div
+            ref={(el) => {
+              if (el && el.innerHTML !== editingText.value) {
+                el.innerHTML = editingText.value
+              }
+            }}
+            contentEditable
+            onInput={(e) => handleTextEditorChange(e.currentTarget.innerHTML)}
+            className="w-full min-h-[128px] px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans text-base overflow-y-auto bg-white"
+            style={{ maxHeight: '300px' }}
+            suppressContentEditableWarning
           />
+
           <div className="mt-2 text-xs text-gray-500">
-            Changes are applied live to the canvas above. Click the X or press ESC to close.
+            Use the toolbar to format your text. Changes are applied live to the canvas above.
           </div>
         </div>
       </div>
