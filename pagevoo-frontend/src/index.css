@@ -187,3 +187,99 @@
 .viewport-tablet .row .col-10 { width: 83.33% !important; }
 .viewport-tablet .row .col-11 { width: 91.66% !important; }
 .viewport-tablet .row .col-12 { width: 100% !important; }
+
+/* WYSIWYG Editor Heading Styles */
+.wysiwyg-editor h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin: 0.67em 0;
+}
+
+.wysiwyg-editor h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0.75em 0;
+}
+
+.wysiwyg-editor h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin: 1em 0;
+}
+
+.wysiwyg-editor h4 {
+  font-size: 1em;
+  font-weight: bold;
+  margin: 1.33em 0;
+}
+
+.wysiwyg-editor p {
+  margin: 1em 0;
+}
+
+.wysiwyg-editor ul, .wysiwyg-editor ol {
+  margin: 1em 0;
+  padding-left: 2.5em;
+  list-style-position: outside;
+}
+
+.wysiwyg-editor ul {
+  list-style-type: disc;
+}
+
+.wysiwyg-editor ol {
+  list-style-type: decimal;
+}
+
+.wysiwyg-editor li {
+  margin: 0.5em 0;
+  display: list-item;
+}
+
+/* Canvas Preview Heading Styles - Only apply to template content */
+.row h1 {
+  font-size: 2em;
+  font-weight: bold;
+  margin: 0.67em 0;
+}
+
+.row h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  margin: 0.75em 0;
+}
+
+.row h3 {
+  font-size: 1.17em;
+  font-weight: bold;
+  margin: 1em 0;
+}
+
+.row h4 {
+  font-size: 1em;
+  font-weight: bold;
+  margin: 1.33em 0;
+}
+
+.row p {
+  margin: 1em 0;
+}
+
+.row ul, .row ol {
+  margin: 1em 0;
+  padding-left: 2.5em;
+  list-style-position: outside;
+}
+
+.row ul {
+  list-style-type: disc;
+}
+
+.row ol {
+  list-style-type: decimal;
+}
+
+.row li {
+  margin: 0.5em 0;
+  display: list-item;
+}

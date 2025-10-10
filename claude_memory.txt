@@ -1702,8 +1702,171 @@ return { ...s, content: { ...s.content, [field]: value } }
 - Font options removed from section/row/column StyleEditor
 - Session ending per user request
 
+## Session 16 (2025-10-10) - WYSIWYG Editor Enhancements & Styling Improvements
+
+**What We Accomplished (Beyond Session 15):**
+1. Smoothed out WYSIWYG editor with enhanced functionality
+2. Implemented comprehensive rich text editing features
+3. Added advanced border controls for sections and columns
+4. Enhanced CSS styling with proper HTML rendering
+5. Improved editor UX with resizing, fullscreen, and link management
+
+**Major Enhancements:**
+
+**1. Advanced WYSIWYG Text Editor:**
+- **Resizable Editor Panel:**
+  - Drag handle at top of floating editor to resize height
+  - Range: 200px - (window height - 100px)
+  - Fullscreen toggle button for maximum editing space
+  - Persistent drag state with mouse event listeners
+
+- **Formatting Toolbar:**
+  - Bold, Italic, Underline (with active state indicators)
+  - Font size selector (10px - 48px dropdown)
+  - Color picker with hex input and visual swatch
+  - Text alignment buttons (Left, Center, Right)
+  - Ordered and unordered lists
+  - Link insertion/editing/removal
+  - Heading levels (H1, H2, H3, H4)
+  - Clear formatting button
+
+- **Link Management System:**
+  - Insert Link modal with URL and text inputs
+  - Edit existing links by selecting them
+  - Remove link functionality
+  - Selection preservation during modal operations
+  - Proper link rendering in contentEditable
+
+- **Code View Toggle:**
+  - Switch between WYSIWYG and HTML source code
+  - Monospace font for code editing
+  - Two-way sync between visual and code modes
+  - Syntax highlighting context
+
+- **Selection & State Management:**
+  - Save/restore selection when opening color picker
+  - Live formatting state detection (bold, italic, underline, font size, color, alignment)
+  - RGB to Hex color conversion for consistency
+  - Format state updates on selection change
+
+**2. Enhanced Border Controls (StyleEditor.tsx):**
+- **New Border Properties:**
+  - Border Width slider (0-10px)
+  - Border Color picker with hex input
+  - Border Style dropdown (None, Solid, Dashed, Dotted, Double)
+  - Visual color swatch preview
+
+- **Contextual Display:**
+  - Border controls ONLY visible for section and column contexts
+  - Border radius also restricted to section/column (not shown for page/site level)
+  - Cleaner UI with contextual property panels
+
+**3. CSS Rendering Improvements (index.css):**
+- **WYSIWYG Editor Styles:**
+  - Proper heading sizing (H1: 2em, H2: 1.5em, H3: 1.17em, H4: 1em)
+  - Paragraph margins (1em top/bottom)
+  - List styling with proper indentation (2.5em padding-left)
+  - List item display and spacing
+  - Bullet points for `<ul>`, decimal for `<ol>`
+
+- **Canvas Preview Styles:**
+  - Same heading and list styles applied to `.row` context
+  - Ensures WYSIWYG matches final output
+  - Consistent rendering between editor and canvas
+
+**4. Grid Section Improvements:**
+- Changed grid column rendering from `<p>` to `<div>` tags
+- Removed centered text alignment default (now respects inline formatting)
+- Removed default column CSS clutter (flex, align, justify)
+- Cleaner default: just border, border-radius, min-height, padding
+- Better support for rich text content in columns
+
+**5. View Menu Addition:**
+- Added View menu to toolbar (between Edit and Insert)
+- Placeholder items:
+  - Live Preview (coming soon)
+  - Source Code (coming soon)
+  - Stylesheet (coming soon)
+- Consistent menu behavior with hover-to-switch
+
+**Technical Implementation Details:**
+
+**Editor State Management:**
+```typescript
+const [editingText, setEditingText] = useState<{ sectionId: number; field: string; value: string } | null>(null)
+const [showCodeView, setShowCodeView] = useState(false)
+const [showColorPicker, setShowColorPicker] = useState(false)
+const [tempColor, setTempColor] = useState('#000000')
+const [savedSelection, setSavedSelection] = useState<Range | null>(null)
+const [showLinkModal, setShowLinkModal] = useState(false)
+const [linkUrl, setLinkUrl] = useState('')
+const [linkText, setLinkText] = useState('')
+const [editorHeight, setEditorHeight] = useState(300)
+const [isEditorFullscreen, setIsEditorFullscreen] = useState(false)
+const [isDraggingEditor, setIsDraggingEditor] = useState(false)
+const [currentFormatting, setCurrentFormatting] = useState({
+  bold: false, italic: false, underline: false,
+  fontSize: '16px', color: '#000000', alignment: 'left'
+})
+```
+
+**Formatting Functions:**
+- `applyFormatting(command, value)` - Generic document.execCommand wrapper
+- `applyFontSize(size)` - Apply font size with proper span wrapping
+- `applyColor(color)` - Apply text color with inline styles
+- `updateFormattingState()` - Read current selection formatting
+- `saveSelection()` / `restoreSelection()` - Preserve selection across modals
+- `rgbToHex(rgb)` - Convert computed RGB colors to hex
+
+**Files Modified:**
+- pagevoo-frontend/src/components/StyleEditor.tsx
+  - Added border controls (width, color, style)
+  - Contextual display logic for section/column
+  - Border color picker integration
+
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  - Complete WYSIWYG editor overhaul
+  - Resizable/fullscreen editor panel
+  - Link management system
+  - Code view toggle
+  - Formatting state tracking
+  - View menu addition
+
+- pagevoo-frontend/src/index.css
+  - WYSIWYG editor heading/list styles
+  - Canvas preview heading/list styles
+  - Proper HTML rendering support
+
+**User Workflow:**
+1. Click any text element to open floating WYSIWYG editor
+2. Use formatting toolbar to style text (bold, colors, headings, lists, links)
+3. Resize editor by dragging top handle or toggle fullscreen
+4. Switch to code view to edit HTML directly
+5. Insert/edit links with dedicated modal
+6. Select section/column to access border controls
+7. Apply border width, color, and style via StyleEditor
+8. Formatted content renders properly on canvas with HTML support
+
+**Current Status:**
+✅ Smooth WYSIWYG editor with comprehensive formatting
+✅ Resizable and fullscreen editor panel
+✅ Link management system
+✅ Code view for HTML editing
+✅ Advanced border controls for sections/columns
+✅ Proper CSS rendering for headings and lists
+✅ Clean separation of global vs inline styling
+✅ Solid bare-bones template builder foundation complete
+
+**Recommendations Document:**
+- Created `pagevoo recommendations.docx` with future improvement suggestions
+- User to review recommendations before deciding next steps
+- Template builder now has solid foundation for further development
+
+## Next Steps & Recommendations
+[User has `pagevoo recommendations.docx` file with detailed suggestions - content not yet added to this file. User will review and decide direction.]
+
 ## Last Updated
-2025-10-09
+2025-10-10
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

@@ -259,11 +259,31 @@ export default function TemplateBuilder() {
   const [showExportSectionModal, setShowExportSectionModal] = useState(false)
   const [showExportPageModal, setShowExportPageModal] = useState(false)
   const [editingText, setEditingText] = useState<{ sectionId: number; field: string; value: string } | null>(null)
+  const [showCodeView, setShowCodeView] = useState(false)
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [tempColor, setTempColor] = useState('#000000')
+  const [savedSelection, setSavedSelection] = useState<Range | null>(null)
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkText, setLinkText] = useState('')
+  const [editorHeight, setEditorHeight] = useState(300)
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false)
+  const [isDraggingEditor, setIsDraggingEditor] = useState(false)
+  const [currentFormatting, setCurrentFormatting] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    fontSize: '16px',
+    color: '#000000',
+    alignment: 'left'
+  })
+  const editorRef = useRef<HTMLDivElement>(null)
   const [sectionToExport, setSectionToExport] = useState<TemplateSection | null>(null)
   const [exportedSections, setExportedSections] = useState<any[]>([])
   const [exportedPages, setExportedPages] = useState<any[]>([])
   const [showFileMenu, setShowFileMenu] = useState(false)
   const [showInsertMenu, setShowInsertMenu] = useState(false)
+  const [showViewMenu, setShowViewMenu] = useState(false)
   const [showEditPageModal, setShowEditPageModal] = useState(false)
   const [editPageName, setEditPageName] = useState('')
   const [editPageSlug, setEditPageSlug] = useState('')
@@ -299,6 +319,7 @@ export default function TemplateBuilder() {
   const fileMenuRef = useRef<HTMLDivElement>(null)
   const editMenuRef = useRef<HTMLDivElement>(null)
   const insertMenuRef = useRef<HTMLDivElement>(null)
+  const viewMenuRef = useRef<HTMLDivElement>(null)
 
   // Configure drag sensors
   const sensors = useSensors(
@@ -427,13 +448,16 @@ export default function TemplateBuilder() {
       if (insertMenuRef.current && !insertMenuRef.current.contains(target)) {
         setShowInsertMenu(false)
       }
+      if (viewMenuRef.current && !viewMenuRef.current.contains(target)) {
+        setShowViewMenu(false)
+      }
     }
 
-    if (showFileMenu || showEditMenu || showInsertMenu) {
+    if (showFileMenu || showEditMenu || showInsertMenu || showViewMenu) {
       document.addEventListener('mousedown', handleClickOutside)
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [showFileMenu, showEditMenu, showInsertMenu])
+  }, [showFileMenu, showEditMenu, showInsertMenu, showViewMenu])
 
   // Reset CSS views when section changes
   useEffect(() => {
@@ -755,14 +779,10 @@ export default function TemplateBuilder() {
     }
   }
 
-  const getDefaultColumnCSS = () => `background: #f3f4f6;
-border: 2px dashed #d1d5db;
+  const getDefaultColumnCSS = () => `border: 2px dashed #d1d5db;
 border-radius: 0.5rem;
 min-height: 200px;
-display: flex;
-align-items: center;
-justify-content: center;
-color: #6b7280;`
+padding: 1rem;`
 
   const getDefaultSectionCSS = () => `padding: 2rem;`
 
@@ -1719,7 +1739,16 @@ color: #6b7280;`
   }
 
   const handleOpenTextEditor = (sectionId: number, field: string, currentValue: string) => {
+    // Reset editor ref so it reinitializes with new content
+    editorRef.current = null
+
     setEditingText({ sectionId, field, value: currentValue })
+    setShowCodeView(false)
+
+    // Wait for editor to render, then update formatting state
+    setTimeout(() => {
+      updateFormattingState()
+    }, 50)
   }
 
   const handleTextEditorChange = (newValue: string) => {
@@ -1730,6 +1759,315 @@ color: #6b7280;`
 
   const handleCloseTextEditor = () => {
     setEditingText(null)
+    setShowCodeView(false)
+    setShowColorPicker(false)
+    setSavedSelection(null)
+    setEditorHeight(300)
+    setIsEditorFullscreen(false)
+  }
+
+  // Handle editor resize drag
+  const handleEditorDragStart = (e: React.MouseEvent) => {
+    setIsDraggingEditor(true)
+    e.preventDefault()
+  }
+
+  const handleEditorDrag = (e: MouseEvent) => {
+    if (!isDraggingEditor) return
+
+    const newHeight = window.innerHeight - e.clientY
+    if (newHeight >= 200 && newHeight <= window.innerHeight - 100) {
+      setEditorHeight(newHeight)
+    }
+  }
+
+  const handleEditorDragEnd = () => {
+    setIsDraggingEditor(false)
+  }
+
+  // Toggle fullscreen
+  const toggleEditorFullscreen = () => {
+    if (isEditorFullscreen) {
+      setEditorHeight(300)
+      setIsEditorFullscreen(false)
+    } else {
+      setEditorHeight(window.innerHeight - 100)
+      setIsEditorFullscreen(true)
+    }
+  }
+
+  // Add/remove mouse event listeners for dragging
+  useEffect(() => {
+    if (isDraggingEditor) {
+      window.addEventListener('mousemove', handleEditorDrag)
+      window.addEventListener('mouseup', handleEditorDragEnd)
+    } else {
+      window.removeEventListener('mousemove', handleEditorDrag)
+      window.removeEventListener('mouseup', handleEditorDragEnd)
+    }
+
+    return () => {
+      window.removeEventListener('mousemove', handleEditorDrag)
+      window.removeEventListener('mouseup', handleEditorDragEnd)
+    }
+  }, [isDraggingEditor])
+
+  // Save current selection
+  const saveSelection = () => {
+    const selection = window.getSelection()
+    if (selection && selection.rangeCount > 0) {
+      setSavedSelection(selection.getRangeAt(0).cloneRange())
+    }
+  }
+
+  // Restore saved selection
+  const restoreSelection = () => {
+    if (savedSelection && editorRef.current) {
+      editorRef.current.focus()
+      const selection = window.getSelection()
+      if (selection) {
+        selection.removeAllRanges()
+        selection.addRange(savedSelection)
+      }
+    }
+  }
+
+  // Open color picker and save selection
+  const handleOpenColorPicker = () => {
+    saveSelection()
+    setTempColor(currentFormatting.color)
+    setShowColorPicker(true)
+  }
+
+  // Apply color from picker
+  const handleApplyColorFromPicker = () => {
+    restoreSelection()
+    applyColor(tempColor)
+    setShowColorPicker(false)
+  }
+
+  // Open link modal
+  const handleOpenLinkModal = () => {
+    if (!editorRef.current) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const selectedText = selection.toString()
+
+    // Check if selection is inside a link
+    let element = selection.anchorNode
+    while (element && element !== editorRef.current) {
+      if (element.nodeName === 'A') {
+        const linkElement = element as HTMLAnchorElement
+        setLinkUrl(linkElement.href)
+        setLinkText(linkElement.textContent || '')
+        break
+      }
+      element = element.parentNode
+    }
+
+    // If not editing existing link, use selected text
+    if (!element || element === editorRef.current) {
+      setLinkUrl('')
+      setLinkText(selectedText)
+    }
+
+    saveSelection()
+    setShowLinkModal(true)
+  }
+
+  // Apply link
+  const handleApplyLink = () => {
+    if (!linkUrl) return
+
+    restoreSelection()
+
+    if (!editorRef.current) return
+    editorRef.current.focus()
+
+    // If there's link text and no selection, insert the text first
+    const selection = window.getSelection()
+    if (selection && linkText && selection.toString() === '') {
+      document.execCommand('insertText', false, linkText)
+      // Select the inserted text
+      const range = document.createRange()
+      const textNode = selection.anchorNode
+      if (textNode) {
+        range.setStart(textNode, (selection.anchorOffset || 0) - linkText.length)
+        range.setEnd(textNode, selection.anchorOffset || 0)
+        selection.removeAllRanges()
+        selection.addRange(range)
+      }
+    }
+
+    // Create the link
+    document.execCommand('createLink', false, linkUrl)
+
+    setTimeout(() => {
+      if (editorRef.current) {
+        handleTextEditorChange(editorRef.current.innerHTML)
+      }
+    }, 10)
+
+    setShowLinkModal(false)
+    setLinkUrl('')
+    setLinkText('')
+  }
+
+  // Remove link
+  const handleRemoveLink = () => {
+    restoreSelection()
+
+    if (!editorRef.current) return
+    editorRef.current.focus()
+
+    document.execCommand('unlink')
+
+    setTimeout(() => {
+      if (editorRef.current) {
+        handleTextEditorChange(editorRef.current.innerHTML)
+      }
+    }, 10)
+
+    setShowLinkModal(false)
+    setLinkUrl('')
+    setLinkText('')
+  }
+
+  // Update formatting state based on current selection
+  const updateFormattingState = () => {
+    if (!editorRef.current) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    const range = selection.getRangeAt(0)
+    let element = range.commonAncestorContainer as HTMLElement
+
+    // If text node, get parent element
+    if (element.nodeType === Node.TEXT_NODE) {
+      element = element.parentElement as HTMLElement
+    }
+
+    // Check formatting
+    const bold = document.queryCommandState('bold')
+    const italic = document.queryCommandState('italic')
+    const underline = document.queryCommandState('underline')
+
+    // Get computed styles
+    const computedStyle = window.getComputedStyle(element)
+    const fontSize = computedStyle.fontSize
+    const color = rgbToHex(computedStyle.color)
+
+    // Get alignment
+    const alignment = element.style.textAlign || computedStyle.textAlign || 'left'
+
+    setCurrentFormatting({
+      bold,
+      italic,
+      underline,
+      fontSize,
+      color,
+      alignment
+    })
+  }
+
+  // Convert RGB to Hex
+  const rgbToHex = (rgb: string): string => {
+    if (rgb.startsWith('#')) return rgb
+
+    const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/)
+    if (!match) return '#000000'
+
+    const r = parseInt(match[1])
+    const g = parseInt(match[2])
+    const b = parseInt(match[3])
+
+    return '#' + [r, g, b].map(x => {
+      const hex = x.toString(16)
+      return hex.length === 1 ? '0' + hex : hex
+    }).join('')
+  }
+
+  // Modern formatting functions for WYSIWYG editor
+  const applyFormatting = (command: string, value?: string) => {
+    if (!editorRef.current) return
+
+    // Focus editor first
+    editorRef.current.focus()
+
+    // Small delay to ensure focus is set before executing command
+    setTimeout(() => {
+      if (!editorRef.current) return
+
+      document.execCommand(command, false, value)
+
+      // Trigger update to sync with canvas
+      setTimeout(() => {
+        if (editorRef.current) {
+          handleTextEditorChange(editorRef.current.innerHTML)
+          updateFormattingState()
+        }
+      }, 10)
+    }, 5)
+  }
+
+  const applyFontSize = (size: string) => {
+    if (!editorRef.current) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    editorRef.current.focus()
+
+    // Use execCommand with fontSize, then replace with proper styles
+    document.execCommand('fontSize', false, '7')
+
+    setTimeout(() => {
+      if (editorRef.current) {
+        // Replace all font tags with styled spans
+        const fontTags = editorRef.current.querySelectorAll('font[size="7"]')
+        fontTags.forEach(font => {
+          const span = document.createElement('span')
+          span.style.fontSize = size
+          span.innerHTML = font.innerHTML
+          font.replaceWith(span)
+        })
+
+        handleTextEditorChange(editorRef.current.innerHTML)
+        updateFormattingState()
+      }
+    }, 10)
+  }
+
+  const applyColor = (color: string) => {
+    if (!editorRef.current) return
+
+    const selection = window.getSelection()
+    if (!selection || selection.rangeCount === 0) return
+
+    editorRef.current.focus()
+
+    // Use foreColor first
+    document.execCommand('foreColor', false, color)
+
+    // Then ensure it's applied with inline styles by wrapping in span
+    setTimeout(() => {
+      if (editorRef.current) {
+        // Find all font tags and convert to spans with color style
+        const fontTags = editorRef.current.querySelectorAll('font[color]')
+        fontTags.forEach(font => {
+          const span = document.createElement('span')
+          span.style.color = font.getAttribute('color') || color
+          span.innerHTML = font.innerHTML
+          font.replaceWith(span)
+        })
+
+        handleTextEditorChange(editorRef.current.innerHTML)
+        updateFormattingState()
+      }
+    }, 10)
   }
 
   // Placeholder functions for undo/redo/save
@@ -2034,12 +2372,12 @@ color: #6b7280;`
                 className={`col-${col.colWidth || 12}`}
               >
                 <EditableText
-                  tag="p"
+                  tag="div"
                   sectionId={section.id}
                   field={`column_${idx}`}
                   value={col.content || `Column ${idx + 1}`}
                   onSave={(e) => handleGridColumnEdit(idx, e)}
-                  className="text-center outline-none hover:bg-white/50 px-2 py-1 rounded transition"
+                  className="outline-none hover:bg-white/50 px-2 py-1 rounded transition"
                 />
               </div>
             ))}
@@ -2943,18 +3281,55 @@ color: #6b7280;`
                 </div>
               )}
             </div>
-            <button
-              className="px-3 h-full hover:bg-amber-50 transition"
-              onMouseEnter={() => {
-                if (showFileMenu || showEditMenu || showInsertMenu) {
-                  setShowFileMenu(false)
-                  setShowEditMenu(false)
-                  setShowInsertMenu(false)
-                }
-              }}
-            >
-              View
-            </button>
+            <div className="relative" ref={viewMenuRef}>
+              <button
+                onClick={() => setShowViewMenu(!showViewMenu)}
+                onMouseEnter={() => {
+                  if (showFileMenu || showEditMenu || showInsertMenu) {
+                    setShowFileMenu(false)
+                    setShowEditMenu(false)
+                    setShowInsertMenu(false)
+                    setShowViewMenu(true)
+                  }
+                }}
+                className="px-3 h-full hover:bg-amber-50 transition"
+              >
+                View
+              </button>
+              {showViewMenu && (
+                <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
+                  <div className="py-1">
+                    <button
+                      onClick={() => {
+                        alert('Live Preview - Coming Soon!')
+                        setShowViewMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      Live Preview
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert('Source Code - Coming Soon!')
+                        setShowViewMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      Source Code
+                    </button>
+                    <button
+                      onClick={() => {
+                        alert('Stylesheet - Coming Soon!')
+                        setShowViewMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      Stylesheet
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
             <div className="relative" ref={insertMenuRef}>
               <button
                 onClick={() => setShowInsertMenu(!showInsertMenu)}
@@ -3272,42 +3647,6 @@ color: #6b7280;`
                   )}
                 </div>
 
-                {/* Special Sections */}
-                <div className="mb-3">
-                  <button
-                    onClick={() => toggleCategory('special')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
-                  >
-                    <span>Special Sections</span>
-                    <svg
-                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('special') ? 'rotate-90' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-
-                  {expandedCategories.includes('special') && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {specialSections.map((section) => (
-                        <DraggableSectionItem key={section.type} section={section}>
-                          <div
-                            className="group relative w-full cursor-grab active:cursor-grabbing"
-                            title={section.description}
-                          >
-                            {renderSectionThumbnail(section)}
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                              {section.label}
-                            </div>
-                          </div>
-                        </DraggableSectionItem>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
                 {/* Exported Sections */}
                 {exportedSections.length > 0 && (
                   <div className="mb-3">
@@ -3361,78 +3700,6 @@ color: #6b7280;`
                     </button>
                   </div>
                 )}
-
-                <div className="mt-6 pt-6 border-t border-gray-200">
-                  <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Page Library</h2>
-
-                  {/* Predefined Pages */}
-                  <div className="mb-3">
-                    <button
-                      onClick={() => toggleCategory('predefined-pages')}
-                      className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
-                    >
-                      <span>Ready-to-Go Pages</span>
-                      <svg
-                        className={`w-3 h-3 transition-transform ${expandedCategories.includes('predefined-pages') ? 'rotate-90' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-
-                    {expandedCategories.includes('predefined-pages') && (
-                      <div className="space-y-1 mt-2">
-                        {predefinedPages.map((page) => (
-                          <button
-                            key={page.name}
-                            onClick={() => handleAddPredefinedPage(page)}
-                            className="w-full text-left px-2 py-1.5 bg-gray-50 hover:bg-amber-50 rounded text-[10px] transition"
-                            title={page.description}
-                          >
-                            {page.name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Exported Pages */}
-                  {exportedPages.length > 0 && (
-                    <div className="mb-3">
-                      <button
-                        onClick={() => toggleCategory('exported-pages')}
-                        className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
-                      >
-                        <span>Exported Pages</span>
-                        <svg
-                          className={`w-3 h-3 transition-transform ${expandedCategories.includes('exported-pages') ? 'rotate-90' : ''}`}
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-
-                      {expandedCategories.includes('exported-pages') && (
-                        <div className="space-y-1 mt-2">
-                          {exportedPages.map((page) => (
-                            <button
-                              key={page.id}
-                              onClick={() => handleAddPredefinedPage(page)}
-                              className="w-full text-left px-2 py-1.5 bg-gray-50 hover:bg-amber-50 rounded text-[10px] transition"
-                              title={page.description}
-                            >
-                              {page.name}
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
 
               </div>
             </aside>
@@ -3612,7 +3879,6 @@ color: #6b7280;`
                             setCurrentPage({ ...currentPage, page_css: css })
                           }}
                           context="page"
-                          showFontSelector={true}
                         />
                       </div>
                     )}
@@ -3858,7 +4124,6 @@ color: #6b7280;`
                                                 })
                                               }}
                                               context="column"
-                                              showFontSelector={true}
                                             />
                                           </div>
                                         )}
@@ -4371,28 +4636,61 @@ color: #6b7280;`
 
     {/* Floating Rich Text Editor */}
     {editingText && (
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-blue-500 shadow-2xl z-50 animate-slide-up">
-        <div className="max-w-7xl mx-auto p-4">
+      <div
+        className="fixed bottom-0 left-0 right-0 bg-white border-t-2 border-blue-500 shadow-2xl z-50 animate-slide-up"
+        style={{ height: `${editorHeight}px` }}
+      >
+        {/* Resize Handle */}
+        <div
+          onMouseDown={handleEditorDragStart}
+          className="absolute top-0 left-0 right-0 h-2 cursor-ns-resize hover:bg-blue-400 bg-blue-500 transition flex items-center justify-center group"
+        >
+          <div className="w-12 h-1 bg-white rounded-full opacity-60 group-hover:opacity-100 transition"></div>
+        </div>
+
+        <div className="max-w-7xl mx-auto p-4 h-full flex flex-col" style={{ paddingTop: '12px' }}>
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-700">
               Text Editor - {editingText.field}
             </h3>
-            <button
-              onClick={handleCloseTextEditor}
-              className="text-gray-400 hover:text-gray-600 transition"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={toggleEditorFullscreen}
+                className="text-gray-400 hover:text-gray-600 transition"
+                title={isEditorFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+              >
+                {isEditorFullscreen ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 9h6v6" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  </svg>
+                )}
+              </button>
+              <button
+                onClick={handleCloseTextEditor}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
           </div>
 
           {/* Formatting Toolbar */}
           <div className="flex items-center gap-1 mb-2 p-2 bg-gray-50 rounded-lg border border-gray-200 flex-wrap">
             {/* Bold */}
             <button
-              onClick={() => document.execCommand('bold', false)}
-              className="px-3 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              onClick={() => applyFormatting('bold')}
+              className={`px-3 py-1.5 rounded border transition ${
+                currentFormatting.bold
+                  ? 'bg-blue-500 text-white border-blue-600'
+                  : 'hover:bg-white border-transparent hover:border-gray-300'
+              }`}
               title="Bold (Ctrl+B)"
             >
               <strong className="text-sm">B</strong>
@@ -4400,8 +4698,12 @@ color: #6b7280;`
 
             {/* Italic */}
             <button
-              onClick={() => document.execCommand('italic', false)}
-              className="px-3 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              onClick={() => applyFormatting('italic')}
+              className={`px-3 py-1.5 rounded border transition ${
+                currentFormatting.italic
+                  ? 'bg-blue-500 text-white border-blue-600'
+                  : 'hover:bg-white border-transparent hover:border-gray-300'
+              }`}
               title="Italic (Ctrl+I)"
             >
               <em className="text-sm">I</em>
@@ -4409,8 +4711,12 @@ color: #6b7280;`
 
             {/* Underline */}
             <button
-              onClick={() => document.execCommand('underline', false)}
-              className="px-3 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              onClick={() => applyFormatting('underline')}
+              className={`px-3 py-1.5 rounded border transition ${
+                currentFormatting.underline
+                  ? 'bg-blue-500 text-white border-blue-600'
+                  : 'hover:bg-white border-transparent hover:border-gray-300'
+              }`}
               title="Underline (Ctrl+U)"
             >
               <span className="text-sm underline">U</span>
@@ -4418,36 +4724,102 @@ color: #6b7280;`
 
             <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
+            {/* Font Family */}
+            <select
+              onChange={(e) => {
+                if (!editorRef.current) return
+                editorRef.current.focus()
+                document.execCommand('fontName', false, e.target.value)
+                setTimeout(() => {
+                  if (editorRef.current) {
+                    handleTextEditorChange(editorRef.current.innerHTML)
+                    updateFormattingState()
+                  }
+                }, 10)
+              }}
+              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-white transition max-w-[120px]"
+              title="Font Family"
+              defaultValue=""
+            >
+              <option value="" disabled>Font</option>
+              <option value="Arial">Arial</option>
+              <option value="Helvetica">Helvetica</option>
+              <option value="Times New Roman">Times New Roman</option>
+              <option value="Georgia">Georgia</option>
+              <option value="Courier New">Courier New</option>
+              <option value="Verdana">Verdana</option>
+              <option value="Trebuchet MS">Trebuchet MS</option>
+            </select>
+
+            {/* Heading Level */}
+            <select
+              onChange={(e) => {
+                if (!editorRef.current) return
+                editorRef.current.focus()
+                document.execCommand('formatBlock', false, e.target.value)
+                setTimeout(() => {
+                  if (editorRef.current) {
+                    handleTextEditorChange(editorRef.current.innerHTML)
+                    updateFormattingState()
+                  }
+                }, 10)
+              }}
+              className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-white transition"
+              title="Heading Level"
+              defaultValue=""
+            >
+              <option value="" disabled>Heading</option>
+              <option value="p">Normal</option>
+              <option value="h1">H1</option>
+              <option value="h2">H2</option>
+              <option value="h3">H3</option>
+              <option value="h4">H4</option>
+            </select>
+
             {/* Text Color */}
-            <input
-              type="color"
-              onChange={(e) => document.execCommand('foreColor', false, e.target.value)}
-              className="w-8 h-8 rounded border border-gray-300 cursor-pointer"
+            <button
+              onClick={handleOpenColorPicker}
+              className="flex items-center gap-1 px-2 py-1 border border-gray-300 rounded hover:bg-white transition"
               title="Text Color"
-            />
+            >
+              <div
+                className="w-6 h-6 rounded border border-gray-400"
+                style={{ backgroundColor: currentFormatting.color }}
+              />
+              <span className="text-xs text-gray-600 font-mono">{currentFormatting.color}</span>
+            </button>
 
             {/* Font Size */}
             <select
-              onChange={(e) => document.execCommand('fontSize', false, e.target.value)}
+              value={currentFormatting.fontSize}
+              onChange={(e) => applyFontSize(e.target.value)}
               className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-white transition"
               title="Font Size"
-              defaultValue="3"
             >
-              <option value="1">10px</option>
-              <option value="2">13px</option>
-              <option value="3">16px</option>
-              <option value="4">18px</option>
-              <option value="5">24px</option>
-              <option value="6">32px</option>
-              <option value="7">48px</option>
+              <option value="10px">10px</option>
+              <option value="12px">12px</option>
+              <option value="14px">14px</option>
+              <option value="16px">16px</option>
+              <option value="18px">18px</option>
+              <option value="20px">20px</option>
+              <option value="24px">24px</option>
+              <option value="28px">28px</option>
+              <option value="32px">32px</option>
+              <option value="36px">36px</option>
+              <option value="48px">48px</option>
+              <option value="64px">64px</option>
             </select>
 
             <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
             {/* Alignment */}
             <button
-              onClick={() => document.execCommand('justifyLeft', false)}
-              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              onClick={() => applyFormatting('justifyLeft')}
+              className={`px-2 py-1.5 rounded border transition ${
+                currentFormatting.alignment === 'left'
+                  ? 'bg-blue-500 text-white border-blue-600'
+                  : 'hover:bg-white border-transparent hover:border-gray-300'
+              }`}
               title="Align Left"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4455,8 +4827,12 @@ color: #6b7280;`
               </svg>
             </button>
             <button
-              onClick={() => document.execCommand('justifyCenter', false)}
-              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              onClick={() => applyFormatting('justifyCenter')}
+              className={`px-2 py-1.5 rounded border transition ${
+                currentFormatting.alignment === 'center'
+                  ? 'bg-blue-500 text-white border-blue-600'
+                  : 'hover:bg-white border-transparent hover:border-gray-300'
+              }`}
               title="Align Center"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4464,8 +4840,12 @@ color: #6b7280;`
               </svg>
             </button>
             <button
-              onClick={() => document.execCommand('justifyRight', false)}
-              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              onClick={() => applyFormatting('justifyRight')}
+              className={`px-2 py-1.5 rounded border transition ${
+                currentFormatting.alignment === 'right'
+                  ? 'bg-blue-500 text-white border-blue-600'
+                  : 'hover:bg-white border-transparent hover:border-gray-300'
+              }`}
               title="Align Right"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4477,7 +4857,7 @@ color: #6b7280;`
 
             {/* Lists */}
             <button
-              onClick={() => document.execCommand('insertUnorderedList', false)}
+              onClick={() => applyFormatting('insertUnorderedList')}
               className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
               title="Bullet List"
             >
@@ -4489,7 +4869,7 @@ color: #6b7280;`
               </svg>
             </button>
             <button
-              onClick={() => document.execCommand('insertOrderedList', false)}
+              onClick={() => applyFormatting('insertOrderedList')}
               className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
               title="Numbered List"
             >
@@ -4500,32 +4880,253 @@ color: #6b7280;`
 
             <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
+            {/* Link */}
+            <button
+              onClick={handleOpenLinkModal}
+              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Insert/Edit Link"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+              </svg>
+            </button>
+
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
             {/* Clear Formatting */}
             <button
-              onClick={() => document.execCommand('removeFormat', false)}
+              onClick={() => applyFormatting('removeFormat')}
               className="px-3 py-1.5 text-xs hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
               title="Clear Formatting"
             >
               Clear
             </button>
+
+            <div className="w-px h-6 bg-gray-300 mx-1"></div>
+
+            {/* Code View Toggle */}
+            <button
+              onClick={() => setShowCodeView(!showCodeView)}
+              className={`px-3 py-1.5 text-xs rounded border transition ${
+                showCodeView
+                  ? 'bg-gray-700 text-white border-gray-800'
+                  : 'hover:bg-white border-transparent hover:border-gray-300'
+              }`}
+              title="Toggle Code View"
+            >
+              {'</>'}
+            </button>
           </div>
 
-          <div
-            ref={(el) => {
-              if (el && el.innerHTML !== editingText.value) {
-                el.innerHTML = editingText.value
+          {showCodeView ? (
+            <textarea
+              value={editingText.value}
+              onChange={(e) => {
+                setEditingText({ ...editingText, value: e.target.value })
+                handleTextEdit(editingText.sectionId, editingText.field, e.target.value)
+              }}
+              className="flex-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-mono text-xs overflow-y-auto bg-gray-900 text-green-400"
+              spellCheck={false}
+            />
+          ) : (
+            <div
+              ref={(el) => {
+                if (el) {
+                  editorRef.current = el
+                  // Always sync the innerHTML with current editingText.value
+                  if (el.innerHTML !== editingText.value) {
+                    el.innerHTML = editingText.value
+                  }
+                }
+              }}
+              contentEditable
+              onInput={(e) => handleTextEditorChange(e.currentTarget.innerHTML)}
+              onMouseUp={updateFormattingState}
+              onKeyUp={updateFormattingState}
+              onFocus={updateFormattingState}
+              className="flex-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans text-base overflow-y-auto bg-white wysiwyg-editor"
+              suppressContentEditableWarning
+            />
+          )}
+
+          <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+            <span>
+              {showCodeView
+                ? 'Edit HTML directly. Switch back to visual mode to see formatted preview.'
+                : 'Use the toolbar to format your text. Changes are applied live to the canvas above.'
               }
-            }}
-            contentEditable
-            onInput={(e) => handleTextEditorChange(e.currentTarget.innerHTML)}
-            className="w-full min-h-[128px] px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans text-base overflow-y-auto bg-white"
-            style={{ maxHeight: '300px' }}
-            suppressContentEditableWarning
-          />
-
-          <div className="mt-2 text-xs text-gray-500">
-            Use the toolbar to format your text. Changes are applied live to the canvas above.
+            </span>
+            <span className="font-mono text-[10px]">
+              {showCodeView ? 'HTML' : 'WYSIWYG'}
+            </span>
           </div>
+
+          {/* Color Picker Modal */}
+          {showColorPicker && (
+            <div
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+              onClick={() => setShowColorPicker(false)}
+            >
+              <div
+                className="bg-white rounded-lg shadow-xl p-4 max-w-sm w-full mx-4 max-h-[90vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold">Choose Text Color</h3>
+                  <button
+                    onClick={() => setShowColorPicker(false)}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Color Presets */}
+                <div className="grid grid-cols-8 gap-2 mb-3">
+                  {[
+                    '#000000', '#FFFFFF', '#F3F4F6', '#D1D5DB', '#6B7280', '#374151', '#1F2937', '#111827',
+                    '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
+                    '#DC2626', '#D97706', '#059669', '#2563EB', '#7C3AED', '#DB2777', '#0D9488', '#EA580C',
+                    '#991B1B', '#92400E', '#065F46', '#1E40AF', '#5B21B6', '#9F1239', '#115E59', '#9A3412'
+                  ].map(color => (
+                    <button
+                      key={color}
+                      onClick={() => setTempColor(color)}
+                      className={`w-8 h-8 rounded border-2 transition ${
+                        tempColor === color ? 'border-blue-500 scale-110' : 'border-gray-300'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+
+                {/* Hex Input */}
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Hex Code</label>
+                  <input
+                    type="text"
+                    value={tempColor}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
+                        setTempColor(value)
+                      }
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="#000000"
+                    maxLength={7}
+                  />
+                </div>
+
+                {/* Preview */}
+                <div className="mb-3 p-3 border border-gray-300 rounded">
+                  <div
+                    className="w-full h-12 rounded flex items-center justify-center text-sm font-medium"
+                    style={{ backgroundColor: tempColor, color: tempColor }}
+                  >
+                    <span style={{
+                      color: parseInt(tempColor.replace('#', ''), 16) > 0xffffff/2 ? '#000' : '#fff'
+                    }}>
+                      Preview
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowColorPicker(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleApplyColorFromPicker}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Link Modal */}
+          {showLinkModal && (
+            <div
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+              onClick={() => setShowLinkModal(false)}
+            >
+              <div
+                className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold">Insert/Edit Link</h3>
+                  <button
+                    onClick={() => setShowLinkModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Link Text */}
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Link Text</label>
+                  <input
+                    type="text"
+                    value={linkText}
+                    onChange={(e) => setLinkText(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter link text"
+                  />
+                </div>
+
+                {/* Link URL */}
+                <div className="mb-3">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Link URL</label>
+                  <input
+                    type="url"
+                    value={linkUrl}
+                    onChange={(e) => setLinkUrl(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com"
+                  />
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowLinkModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  {linkUrl && (
+                    <button
+                      onClick={handleRemoveLink}
+                      className="flex-1 px-4 py-2 border border-red-300 text-red-600 rounded text-sm hover:bg-red-50 transition"
+                    >
+                      Remove Link
+                    </button>
+                  )}
+                  <button
+                    onClick={handleApplyLink}
+                    disabled={!linkUrl}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )}

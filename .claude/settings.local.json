@@ -16,7 +16,8 @@
       "Bash(npx tsc:*)",
       "Bash(python:*)",
       "Read(//c/Users/ajt19/Desktop/backup/**)",
-      "Bash(npx shadcn@latest add:*)"
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

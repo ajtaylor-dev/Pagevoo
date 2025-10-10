@@ -14,6 +14,9 @@ interface StyleProperty {
   padding?: number
   margin?: number
   borderRadius?: number
+  borderWidth?: number
+  borderColor?: string
+  borderStyle?: string
   position?: string
   backgroundImage?: string
 }
@@ -51,6 +54,14 @@ const POSITION_OPTIONS = [
   { value: 'sticky', label: 'Sticky' }
 ]
 
+const BORDER_STYLE_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'solid', label: 'Solid' },
+  { value: 'dashed', label: 'Dashed' },
+  { value: 'dotted', label: 'Dotted' },
+  { value: 'double', label: 'Double' }
+]
+
 const COLOR_PRESETS = [
   '#000000', '#FFFFFF', '#F3F4F6', '#D1D5DB', '#6B7280',
   '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6',
@@ -70,6 +81,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const [rawCSS, setRawCSS] = useState(value)
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
+  const [showBorderColorPicker, setShowBorderColorPicker] = useState(false)
 
   // Parse CSS string to extract visual properties
   const parseCSS = (css: string): StyleProperty => {
@@ -109,6 +121,18 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     // Border radius
     const radiusMatch = css.match(/border-radius:\s*(\d+(?:\.\d+)?)(?:px|rem);?/i)
     if (radiusMatch) props.borderRadius = parseFloat(radiusMatch[1])
+
+    // Border width
+    const borderWidthMatch = css.match(/border-width:\s*(\d+)px;?/i)
+    if (borderWidthMatch) props.borderWidth = parseInt(borderWidthMatch[1])
+
+    // Border color
+    const borderColorMatch = css.match(/border-color:\s*([^;]+);?/i)
+    if (borderColorMatch) props.borderColor = borderColorMatch[1].trim()
+
+    // Border style
+    const borderStyleMatch = css.match(/border-style:\s*([^;]+);?/i)
+    if (borderStyleMatch) props.borderStyle = borderStyleMatch[1].trim()
 
     // Position
     const positionMatch = css.match(/position:\s*([^;]+);?/i)
@@ -159,6 +183,9 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     if (props.padding !== undefined) css += `padding: ${props.padding}px;\n`
     if (props.margin !== undefined) css += `margin: ${props.margin}px;\n`
     if (props.borderRadius !== undefined) css += `border-radius: ${props.borderRadius}px;\n`
+    if (props.borderWidth !== undefined) css += `border-width: ${props.borderWidth}px;\n`
+    if (props.borderColor) css += `border-color: ${props.borderColor};\n`
+    if (props.borderStyle) css += `border-style: ${props.borderStyle};\n`
     if (props.position && props.position !== 'static') css += `position: ${props.position};\n`
     if (props.backgroundImage) css += `background-image: url('${props.backgroundImage}');\n`
 
@@ -292,6 +319,9 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       padding: parsed.padding ?? 0,
       margin: parsed.margin ?? 0,
       borderRadius: parsed.borderRadius ?? 0,
+      borderWidth: parsed.borderWidth ?? 0,
+      borderColor: parsed.borderColor,
+      borderStyle: parsed.borderStyle ?? 'solid',
       position: parsed.position ?? 'static',
       backgroundImage: parsed.backgroundImage,
     })
@@ -452,21 +482,101 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             />
           </div>
 
-          {/* Border Radius */}
-          <div>
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Border Radius</Label>
-              <span className="text-xs text-gray-500">{properties.borderRadius || 0}px</span>
+          {/* Border Radius - Only for section and column */}
+          {(context === 'section' || context === 'column') && (
+            <div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Border Radius</Label>
+                <span className="text-xs text-gray-500">{properties.borderRadius || 0}px</span>
+              </div>
+              <Slider
+                value={[properties.borderRadius || 0]}
+                onValueChange={(value) => updateProperty('borderRadius', value[0])}
+                min={0}
+                max={50}
+                step={1}
+                className="mt-2"
+              />
             </div>
-            <Slider
-              value={[properties.borderRadius || 0]}
-              onValueChange={(value) => updateProperty('borderRadius', value[0])}
-              min={0}
-              max={50}
-              step={1}
-              className="mt-2"
-            />
-          </div>
+          )}
+
+          {/* Border Controls - Only for section and column */}
+          {(context === 'section' || context === 'column') && (
+            <>
+              {/* Border Width */}
+              <div>
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Border Width</Label>
+                  <span className="text-xs text-gray-500">{properties.borderWidth || 0}px</span>
+                </div>
+                <Slider
+                  value={[properties.borderWidth || 0]}
+                  onValueChange={(value) => updateProperty('borderWidth', value[0])}
+                  min={0}
+                  max={10}
+                  step={1}
+                  className="mt-2"
+                />
+              </div>
+
+              {/* Border Color */}
+              <div>
+                <Label className="text-xs font-medium">Border Color</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    className="w-8 h-8 rounded border-2 border-gray-300"
+                    style={{ backgroundColor: properties.borderColor || '#000000' }}
+                    onClick={() => setShowBorderColorPicker(!showBorderColorPicker)}
+                  />
+                  <Input
+                    value={properties.borderColor || ''}
+                    onChange={(e) => updateProperty('borderColor', e.target.value)}
+                    className="h-8 text-xs flex-1"
+                    placeholder="e.g., #000000"
+                  />
+                </div>
+                {showBorderColorPicker && (
+                  <div className="mt-2">
+                    <HexColorPicker
+                      color={properties.borderColor || '#000000'}
+                      onChange={(color) => updateProperty('borderColor', color)}
+                      className="!w-full"
+                    />
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {COLOR_PRESETS.map(color => (
+                        <button
+                          key={color}
+                          className="w-6 h-6 rounded border border-gray-300"
+                          style={{ backgroundColor: color }}
+                          onClick={() => updateProperty('borderColor', color)}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Border Style */}
+              <div>
+                <Label className="text-xs font-medium">Border Style</Label>
+                <Select
+                  value={properties.borderStyle || 'solid'}
+                  onValueChange={(value) => updateProperty('borderStyle', value)}
+                >
+                  <SelectTrigger className="h-8 text-xs mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BORDER_STYLE_OPTIONS.map(option => (
+                      <SelectItem key={option.value} value={option.value} className="text-xs">
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           {/* Position */}
           <div>
