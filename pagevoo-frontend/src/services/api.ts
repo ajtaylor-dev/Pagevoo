@@ -363,6 +363,32 @@ class ApiService {
     return response.data;
   }
 
+  async uploadGalleryImage(templateId: number, file: File): Promise<ApiResponse<any>> {
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await this.client.post(`/v1/templates/${templateId}/gallery/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  }
+
+  async deleteGalleryImage(templateId: number, imageId: string): Promise<ApiResponse> {
+    const response = await this.client.post(`/v1/templates/${templateId}/gallery/delete`, {
+      image_id: imageId
+    });
+    return response.data;
+  }
+
+  async renameGalleryImage(templateId: number, imageId: string, newFilename: string): Promise<ApiResponse> {
+    const response = await this.client.post(`/v1/templates/${templateId}/gallery/rename`, {
+      image_id: imageId,
+      new_filename: newFilename
+    });
+    return response.data;
+  }
+
   /**
    * User Website Management Methods
    */

@@ -1862,11 +1862,247 @@ const [currentFormatting, setCurrentFormatting] = useState({
 - User to review recommendations before deciding next steps
 - Template builder now has solid foundation for further development
 
+## Project Direction & Architecture Decisions (2025-10-10)
+
+**Confirmed Architecture:**
+- **Separate databases per customer website** - Managed via Plesk API
+- **Hosting included in packages** - £19 (Brochure), £39 (Niche), £59 (Pro)
+- **One subdomain per package** - businessname.pagevoo.com
+- **Template storage:** `/template_directory/template_name/` (static HTML/CSS files)
+- **Website storage:** `/website_directory/website_name/` (customer sites)
+- **Template Builder workflow:** Creates HTML templates → Copies to customer folders
+- **Current focus:** Pure HTML/CSS3 template builder (advanced features come later)
+
+**Key Principles:**
+1. Templates are static HTML/CSS files stored in file system
+2. Template Builder creates these files from JSON structure
+3. Customers select template → copies to their website directory
+4. Each customer gets their own database via Plesk
+5. Advanced features (CMS, booking, etc.) implemented in future phases
+
+---
+
+## 2-Week Plan: HTML/CSS Template Builder Foundation
+
+**Goal:** Complete working HTML/CSS3 template builder with proper directory structure and export functionality.
+
+### **Week 1: Image Upload System & Template Export Engine**
+
+**Days 1-2: Image Upload Functionality**
+- [ ] Create image upload component in Template Builder
+- [ ] Backend: Laravel storage system for template images
+- [ ] Store images in `/template_directory/{template_id}/images/`
+- [ ] Image browser/gallery in properties panel
+- [ ] Support for: JPG, PNG, GIF, SVG, WebP
+- [ ] Image optimization (max 2MB, auto-resize)
+- [ ] Database: Add `images` JSON field to templates table
+- [ ] Delete images when template deleted
+
+**Days 3-4: Background Image System**
+- [ ] Add background image upload for sections
+- [ ] Background image upload for columns
+- [ ] Background positioning controls (cover, contain, repeat)
+- [ ] Background color + image overlay support
+- [ ] CSS background-image property generation
+
+**Days 5-7: HTML Export Engine (Phase 1)**
+- [ ] Create `HtmlExportService` class
+- [ ] Convert template JSON → clean HTML structure
+- [ ] Generate CSS from all styling data:
+  - Site-level CSS (from `custom_css` field)
+  - Page-level CSS (from `page_css` field)
+  - Section-level CSS (from section `css` field)
+  - Column-level CSS (from column `css` field)
+- [ ] Process navigation sections (navbar, headers, footers)
+- [ ] Process grid sections with proper column layouts
+- [ ] Copy images from template folder to export
+- [ ] Generate single HTML file (for testing)
+
+---
+
+### **Week 2: Multi-Page Export & Directory Structure**
+
+**Days 8-9: Multi-Page HTML Generation**
+- [ ] Generate separate HTML file per page (index.html, about.html, etc.)
+- [ ] Shared CSS file (`style.css`) across all pages
+- [ ] Navigation link processing (proper href values)
+- [ ] Homepage detection (slug === 'home' or is_homepage flag)
+- [ ] Shared navigation/footer across pages
+
+**Days 10-11: Complete Export Package**
+- [ ] Create proper directory structure:
+  ```
+  /template_directory/{template_name}/
+  ├── index.html
+  ├── about.html
+  ├── contact.html
+  ├── assets/
+  │   ├── css/
+  │   │   └── style.css
+  │   └── images/
+  │       ├── logo.png
+  │       └── hero-bg.jpg
+  ├── sitemap.xml
+  └── robots.txt
+  ```
+- [ ] Generate sitemap.xml
+- [ ] Generate robots.txt
+- [ ] Create ZIP download option
+- [ ] "Export Template" button in Template Builder
+
+**Days 12-13: Template Copy System**
+- [ ] Create `TemplateCopyService` class
+- [ ] Copy template directory → website directory
+- [ ] Update internal links for new domain
+- [ ] Database: Track which template a website uses
+- [ ] "Use This Template" flow for customers
+- [ ] Copy to `/website_directory/{business_name}/`
+
+**Day 14: Testing & Polish**
+- [ ] Test full workflow: Create template → Export → Copy to website folder
+- [ ] Verify HTML validation (W3C)
+- [ ] Test responsive CSS (desktop/tablet/mobile)
+- [ ] Test all section types render correctly
+- [ ] Test navigation links work
+- [ ] Test images load properly
+- [ ] Documentation for export process
+
+---
+
+## Success Metrics (End of Week 2)
+
+✅ Can upload images to Template Builder
+✅ Images stored in correct directory structure
+✅ Can export template as complete HTML/CSS package
+✅ Export includes all pages, CSS, and images
+✅ HTML validates and renders correctly in browser
+✅ Can copy template to website_directory
+✅ Ready for Plesk integration (Week 3+)
+
+---
+
+## Future Phases (Post Week 2)
+
+**Week 3+:**
+1. Plesk API integration for subdomain creation
+2. Automatic deployment to subdomain
+3. SSL certificate automation
+4. Contact form handling
+5. Advanced features (CMS, booking, user access systems, etc.)
+
+---
+
+## Technical Implementation Notes
+
+**Services to Create:**
+- `app/Services/HtmlExportService.php` - Convert template JSON to HTML
+- `app/Services/CssGeneratorService.php` - Generate CSS from all sources
+- `app/Services/WebsiteCopyService.php` - Copy templates to customer folders
+
+**Database Updates Needed:**
+- Add `images` JSON field to `templates` table
+- Track template-to-website relationships
+
+**Directory Structure:**
+```
+pagevoo-backend/public/
+├── template_directory/          # Static template files
+│   └── {template_name}/
+│       ├── *.html
+│       ├── assets/css/
+│       └── assets/images/
+└── website_directory/           # Customer websites
+    └── {business_name}/
+        ├── *.html
+        ├── assets/
+        └── (separate database via Plesk)
+```
+
+---
+
 ## Next Steps & Recommendations
-[User has `pagevoo recommendations.docx` file with detailed suggestions - content not yet added to this file. User will review and decide direction.]
+Start with **Day 1: Image Upload System** - This establishes the directory structure pattern that everything else builds upon.
+
+## Session 17 (2025-10-12) - Image Gallery System (IN PROGRESS - NOT COMPLETED)
+
+**Goal:** Implement image upload, management, and gallery system for Template Builder
+
+**What We Attempted:**
+1. Image gallery button added to toolbar (next to Save button)
+2. Full-featured ImageGallery.tsx component created
+3. Backend API endpoints for image CRUD operations
+4. Database migration for images JSON field
+
+**Components Created:**
+- `pagevoo-frontend/src/components/ImageGallery.tsx` - Complete gallery UI with upload/delete/rename
+- Migration: `2025_10_10_152606_add_images_to_templates_table.php` - Added images JSON field
+
+**Backend Implementation:**
+- TemplateController methods:
+  - `uploadGalleryImage()` - Upload to `/template_directory/template_{id}/images/`
+  - `deleteGalleryImage()` - Delete image file and database entry
+  - `renameGalleryImage()` - Rename physical file and update database
+- Routes: POST `/api/v1/templates/{id}/gallery/upload|delete|rename`
+- Image metadata stored in JSON: `{id, filename, path, size, uploaded_at}`
+
+**Frontend Implementation:**
+- ImageGallery component features:
+  - Grid layout with image thumbnails
+  - Upload multiple images (drag/drop ready)
+  - Delete with confirmation
+  - Rename with inline editing
+  - File size display and format validation
+  - Empty state with helpful message
+- TemplateBuilder integration:
+  - Image gallery button with photo icon in toolbar
+  - Modal opens with `showImageGallery` state
+  - Full CRUD handlers wired to API
+
+**Technical Issue Encountered:**
+- **Problem:** Image gallery modal not appearing when button clicked
+- **Symptoms:**
+  - Button click handler fires (confirmed via console logs)
+  - State changes from false to true (confirmed via logs)
+  - ImageGallery component not rendering (no component logs visible)
+  - Browser appears to have old cached code despite HMR updates
+- **Debugging Steps Taken:**
+  1. Added extensive console.log debugging to button and component
+  2. Verified JSX syntax and component integration
+  3. Fixed multiple JSX errors (Fragment wrapper issues)
+  4. Restarted dev server multiple times
+  5. Killed stale port processes (5173-5176)
+  6. Added module-level console.log to verify component loading
+  7. Increased z-index from 50 to 9999 to ensure visibility
+- **Current Status:**
+  - All code appears correct and compiles without errors
+  - Dev server running on port 5173
+  - Component still not rendering when button clicked
+  - User will need to close browser completely and test again next session
+
+**Files Created This Session:**
+- pagevoo-frontend/src/components/ImageGallery.tsx
+- pagevoo-backend/database/migrations/2025_10_10_152606_add_images_to_templates_table.php
+- pagevoo-backend/public/template_directory/ (directory created)
+
+**Files Modified This Session:**
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx (button, modal, handlers)
+- pagevoo-frontend/src/services/api.ts (gallery API methods)
+- pagevoo-backend/app/Models/Template.php (images field)
+- pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php (gallery endpoints)
+- pagevoo-backend/routes/api.php (gallery routes)
+
+**Next Steps for Continuation:**
+1. Debug why ImageGallery modal not appearing (browser caching issue suspected)
+2. Complete image gallery testing once modal displays
+3. Add background image selection from gallery to StyleEditor
+4. Continue with Days 3-4 of 2-week plan (Background Image System)
+
+**Status:** ⚠️ INCOMPLETE - Image gallery system 90% implemented but modal not displaying. Needs debugging next session.
+
+**User Note:** Session paused due to frontend rendering issue. All backend working. Will continue troubleshooting next time.
 
 ## Last Updated
-2025-10-10
+2025-10-12
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

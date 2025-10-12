@@ -16,13 +16,15 @@ class Template extends Model
         'exclusive_to',
         'technologies',
         'features',
-        'custom_css'
+        'custom_css',
+        'images'
     ];
 
     protected $casts = [
         'is_active' => 'boolean',
         'technologies' => 'array',
-        'features' => 'array'
+        'features' => 'array',
+        'images' => 'array'
     ];
 
     public function creator()

@@ -252,4 +252,145 @@ class TemplateController extends BaseController
 
         return $this->sendSuccess($template, 'Preview image uploaded successfully');
     }
+
+    /**
+     * Upload image to template gallery
+     */
+    public function uploadGalleryImage(Request $request, $id)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048', // 2MB max
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error', 422, $validator->errors());
+        }
+
+        // Create template directory if it doesn't exist
+        $templateDir = public_path("template_directory/template_{$template->id}/images");
+        if (!file_exists($templateDir)) {
+            mkdir($templateDir, 0755, true);
+        }
+
+        // Upload file
+        $file = $request->file('image');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $file->move($templateDir, $filename);
+
+        // Add image to template's images array
+        $images = $template->images ?? [];
+        $newImage = [
+            'id' => uniqid(),
+            'filename' => $filename,
+            'path' => "template_directory/template_{$template->id}/images/{$filename}",
+            'size' => $file->getSize(),
+            'uploaded_at' => now()->toDateTimeString()
+        ];
+        $images[] = $newImage;
+        $template->update(['images' => $images]);
+
+        return $this->sendSuccess($newImage, 'Image uploaded successfully');
+    }
+
+    /**
+     * Delete image from template gallery
+     */
+    public function deleteGalleryImage(Request $request, $id)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $imageId = $request->input('image_id');
+        $images = $template->images ?? [];
+
+        // Find and remove image
+        $imageToDelete = null;
+        $images = array_filter($images, function($img) use ($imageId, &$imageToDelete) {
+            if ($img['id'] === $imageId) {
+                $imageToDelete = $img;
+                return false;
+            }
+            return true;
+        });
+
+        if (!$imageToDelete) {
+            return $this->sendError('Image not found', 404);
+        }
+
+        // Delete physical file
+        $filePath = public_path($imageToDelete['path']);
+        if (file_exists($filePath)) {
+            unlink($filePath);
+        }
+
+        // Update template
+        $template->update(['images' => array_values($images)]);
+
+        return $this->sendSuccess(null, 'Image deleted successfully');
+    }
+
+    /**
+     * Rename image in template gallery
+     */
+    public function renameGalleryImage(Request $request, $id)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'image_id' => 'required|string',
+            'new_filename' => 'required|string|max:255',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error', 422, $validator->errors());
+        }
+
+        $imageId = $request->input('image_id');
+        $newFilename = $request->input('new_filename');
+        $images = $template->images ?? [];
+
+        // Find and update image
+        $imageFound = false;
+        foreach ($images as &$img) {
+            if ($img['id'] === $imageId) {
+                $imageFound = true;
+
+                // Rename physical file
+                $oldPath = public_path($img['path']);
+                $dir = dirname($oldPath);
+                $newPath = $dir . '/' . $newFilename;
+
+                if (file_exists($oldPath)) {
+                    rename($oldPath, $newPath);
+                }
+
+                // Update image data
+                $img['filename'] = $newFilename;
+                $img['path'] = "template_directory/template_{$template->id}/images/{$newFilename}";
+                break;
+            }
+        }
+
+        if (!$imageFound) {
+            return $this->sendError('Image not found', 404);
+        }
+
+        // Update template
+        $template->update(['images' => $images]);
+
+        return $this->sendSuccess(null, 'Image renamed successfully');
+    }
 }

@@ -17,7 +17,10 @@
       "Bash(python:*)",
       "Read(//c/Users/ajt19/Desktop/backup/**)",
       "Bash(npx shadcn@latest add:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(tasklist)",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)"
     ],
     "deny": [],
     "ask": []

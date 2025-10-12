@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
 import { StyleEditor } from '@/components/StyleEditor'
+import { ImageGallery } from '@/components/ImageGallery'
 import {
   DndContext,
   DragOverlay,
@@ -60,6 +61,13 @@ interface Template {
   technologies: string[]
   features: string[]
   custom_css?: string
+  images?: Array<{
+    id: string
+    filename: string
+    path: string
+    size: number
+    uploaded_at: string
+  }>
 }
 
 // Helper function to generate random string
@@ -289,6 +297,7 @@ export default function TemplateBuilder() {
   const [editPageSlug, setEditPageSlug] = useState('')
   const [editPageMetaDescription, setEditPageMetaDescription] = useState('')
   const [showCSSPanel, setShowCSSPanel] = useState(false)
+  const [showImageGallery, setShowImageGallery] = useState(false)
   const [cssTab, setCssTab] = useState<'site' | 'page'>('site')
   const [showSectionCSS, setShowSectionCSS] = useState(false)
   const [showContentStyle, setShowContentStyle] = useState(false)
@@ -3347,7 +3356,6 @@ padding: 1rem;`
               {showInsertMenu && template && (
                 <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
                   <div className="py-1">
-                    <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase">New Page</div>
                     <button
                       onClick={() => {
                         setShowAddPageModal(true)
@@ -3355,27 +3363,7 @@ padding: 1rem;`
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
                     >
-                      Blank Page
-                    </button>
-                    <div className="border-t border-gray-200 my-1"></div>
-                    <div className="px-3 py-1 text-[10px] font-semibold text-gray-500 uppercase">From Template</div>
-                    <button
-                      onClick={() => handleAddPageFromTemplate('about')}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
-                    >
-                      About Us Page
-                    </button>
-                    <button
-                      onClick={() => handleAddPageFromTemplate('services')}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
-                    >
-                      Services Page
-                    </button>
-                    <button
-                      onClick={() => handleAddPageFromTemplate('contact')}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
-                    >
-                      Contact Page
+                      New Page
                     </button>
                   </div>
                 </div>
@@ -3432,6 +3420,22 @@ padding: 1rem;`
               {hasUnsavedChanges && (
                 <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
               )}
+            </button>
+
+            {/* Image Gallery Button */}
+            <button
+              onClick={() => {
+                console.log('Image Gallery button clicked, current state:', showImageGallery)
+                console.log('Template exists:', !!template, 'Template ID:', template?.id)
+                setShowImageGallery(true)
+                console.log('Set showImageGallery to true')
+              }}
+              className="p-1.5 hover:bg-gray-100 rounded transition text-gray-600 ml-1"
+              title="Image Gallery"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
             </button>
           </div>
         </div>
@@ -5223,6 +5227,42 @@ function ExportModal({ title, onSave, onClose }: { title: string, onSave: (name:
           </div>
         </div>
       </div>
+
+      {/* Image Gallery Modal */}
+      <ImageGallery
+        isOpen={showImageGallery}
+        onClose={() => setShowImageGallery(false)}
+        templateId={template?.id || 0}
+        images={template?.images || []}
+        onUpload={async (file) => {
+          if (!template) return
+          const response = await api.uploadGalleryImage(template.id, file)
+          if (response.success && response.data) {
+            setTemplate({
+              ...template,
+              images: [...(template.images || []), response.data]
+            })
+          }
+        }}
+        onDelete={async (imageId) => {
+          if (!template) return
+          await api.deleteGalleryImage(template.id, imageId)
+          setTemplate({
+            ...template,
+            images: (template.images || []).filter(img => img.id !== imageId)
+          })
+        }}
+        onRename={async (imageId, newFilename) => {
+          if (!template) return
+          await api.renameGalleryImage(template.id, imageId, newFilename)
+          setTemplate({
+            ...template,
+            images: (template.images || []).map(img =>
+              img.id === imageId ? { ...img, filename: newFilename } : img
+            )
+          })
+        }}
+      />
     </div>
   )
 }
