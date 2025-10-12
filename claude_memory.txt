@@ -2101,8 +2101,85 @@ Start with **Day 1: Image Upload System** - This establishes the directory struc
 
 **User Note:** Session paused due to frontend rendering issue. All backend working. Will continue troubleshooting next time.
 
+## Session 17 Continued (2025-10-12) - Image Gallery Modal Debugging
+
+**Problem Investigation:**
+- ImageGallery modal confirmed not displaying despite backend working perfectly
+- Button click handlers fire correctly
+- State updates from false → true confirmed via useEffect logging
+- Component re-renders happening but modal not appearing
+
+**Root Cause Discovered:**
+- TemplateBuilder component experiencing rapid re-renders (visible in console with 🔴 emoji logs)
+- `showImageGallery` state flipping from true back to false immediately after being set
+- Suspected issue: React state batching or component remounting causing state loss
+- Console trace showed no specific function resetting the state - happening during render cycle
+
+**Debugging Steps Taken:**
+1. Added conditional rendering with `{showImageGallery && ...}` wrapper
+2. Added extensive console.log debugging throughout component lifecycle
+3. Added useEffect to track showImageGallery state changes with console.trace()
+4. Added console logs in render function to verify component re-renders
+5. Changed setState to functional form: `setShowImageGallery(prev => true)`
+6. Implemented ref-based forcing mechanism (`imageGalleryRef`)
+7. Combined ref and state checks: `{(showImageGallery || imageGalleryRef.current) ? ...}`
+8. Disabled Image Gallery button when template.id === 0 (unsaved templates)
+9. Added alert to prompt users to save template first before uploading images
+
+**Final Implementation:**
+- Image Gallery button now disabled/grayed out for unsaved templates (template.id === 0)
+- Tooltip shows "Save template first to upload images"
+- Alert message appears if clicked before saving
+- Ref-based state management added as backup mechanism
+- Button click sets both `imageGalleryRef.current = true` and state
+- Conditional renders if EITHER ref OR state is true
+- ImageGallery component receives `isOpen={true}` directly when rendered
+
+**Current Status:**
+- Backend fully functional (upload/delete/rename endpoints working)
+- Database migration complete (images JSON field added)
+- ImageGallery component UI complete and styled
+- Directory structure created (/template_directory/)
+- Frontend state management issue persists - modal still not appearing
+- Rapid re-renders occurring in TemplateBuilder component
+- State update getting lost/reset during re-render cycle
+
+**Files Modified Today:**
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  - Added imageGalleryRef useRef hook
+  - Updated button onClick handler with ref + state
+  - Changed conditional rendering logic
+  - Added disabled state for unsaved templates
+  - Added extensive debugging console logs
+  - Set ImageGallery isOpen={true} directly
+
+- pagevoo-frontend/src/components/ImageGallery.tsx
+  - Added additional console.log debugging in early return
+
+**Technical Analysis:**
+The issue appears to be a race condition or React batching problem where:
+1. Button click → sets imageGalleryRef.current = true
+2. Button click → calls setShowImageGallery(true)
+3. useEffect fires showing state changed to true
+4. Multiple rapid re-renders occur (visible in console)
+5. State somehow resets back to false during these re-renders
+6. Modal never displays because state is false by the time render completes
+
+**Next Session Priority:**
+- Investigate why TemplateBuilder is re-rendering so rapidly
+- Check for state dependencies causing unnecessary re-renders
+- Consider moving ImageGallery outside TemplateBuilder component tree
+- May need to use React.memo or useMemo to prevent parent re-renders
+- Possibly implement ImageGallery as a portal to break out of render tree
+- Consider using zustand or context for modal state instead of local state
+
+**Workaround Considerations:**
+- Could implement image upload directly in properties panel instead of modal
+- Could create separate "/image-gallery" route instead of modal
+- Could use a global modal manager to handle modal state externally
+
 ## Last Updated
-2025-10-12
+2025-10-12 (evening session)
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

@@ -35,9 +35,12 @@ export function ImageGallery({
 
   console.log('ImageGallery render - isOpen:', isOpen, 'images count:', images?.length)
 
-  if (!isOpen) return null
+  if (!isOpen) {
+    console.log('ImageGallery: isOpen is false, returning null')
+    return null
+  }
 
-  console.log('ImageGallery rendering modal...')
+  console.log('ImageGallery rendering modal...', 'images:', images)
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B'
