@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\GroupController;
 use App\Http\Controllers\Api\V1\NoteController;
 use App\Http\Controllers\Api\V1\TemplateController;
 use App\Http\Controllers\Api\V1\UserWebsiteController;
+use App\Http\Controllers\Api\V1\SettingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -98,6 +99,15 @@ Route::prefix('v1')->group(function () {
             Route::put('/content', [UserWebsiteController::class, 'updateContent']);
             Route::post('/publish', [UserWebsiteController::class, 'publish']);
             Route::post('/unpublish', [UserWebsiteController::class, 'unpublish']);
+        });
+
+        // Settings management (Admin only)
+        Route::middleware('admin')->prefix('settings')->group(function () {
+            Route::get('/', [SettingController::class, 'index']);
+            Route::get('/upload', [SettingController::class, 'getUploadSettings']);
+            Route::put('/upload', [SettingController::class, 'updateUploadSettings']);
+            Route::get('/{key}', [SettingController::class, 'show']);
+            Route::put('/{key}', [SettingController::class, 'update']);
         });
     });
 

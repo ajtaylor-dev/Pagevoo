@@ -274,6 +274,18 @@ export default function TemplateBuilder() {
   const [showLinkModal, setShowLinkModal] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
   const [linkText, setLinkText] = useState('')
+  const [showInsertImageModal, setShowInsertImageModal] = useState(false)
+  const [imageInsertMode, setImageInsertMode] = useState<'url' | 'gallery'>('url')
+  const [imageUrl, setImageUrl] = useState('')
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
+  const [imageWidth, setImageWidth] = useState<number>(0)
+  const [imageHeight, setImageHeight] = useState<number>(0)
+  const [constrainProportions, setConstrainProportions] = useState(true)
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(1)
+  const [imageAltText, setImageAltText] = useState<string>('')
+  const [imageLink, setImageLink] = useState<string>('')
+  const [imageLinkTarget, setImageLinkTarget] = useState<'_self' | '_blank'>('_self')
   const [editorHeight, setEditorHeight] = useState(300)
   const [isEditorFullscreen, setIsEditorFullscreen] = useState(false)
   const [isDraggingEditor, setIsDraggingEditor] = useState(false)
@@ -479,6 +491,7 @@ export default function TemplateBuilder() {
     console.log('showImageGallery state changed to:', showImageGallery)
     console.trace('Stack trace for showImageGallery change:')
   }, [showImageGallery])
+
 
   const handleSaveTemplate = async () => {
     if (!template) {
@@ -1951,6 +1964,380 @@ padding: 1rem;`
     setLinkText('')
   }
 
+  // Open insert image modal
+  const handleOpenInsertImageModal = () => {
+    saveSelection()
+    setImageInsertMode('url')
+    setImageUrl('')
+    setSelectedGalleryImage(null)
+    setShowInsertImageModal(true)
+  }
+
+  // Insert image from URL or gallery
+  const handleInsertImage = () => {
+    const imgSrc = imageInsertMode === 'url' ? imageUrl : selectedGalleryImage
+
+    if (!imgSrc) {
+      alert('Please provide an image URL or select from gallery')
+      return
+    }
+
+    restoreSelection()
+
+    if (!editorRef.current) return
+    editorRef.current.focus()
+
+    // Insert image using execCommand
+    const img = `<img src="${imgSrc}" alt="Inserted image" style="max-width: 100%; height: auto;" />`
+    document.execCommand('insertHTML', false, img)
+
+    setTimeout(() => {
+      if (editorRef.current) {
+        handleTextEditorChange(editorRef.current.innerHTML)
+      }
+    }, 10)
+
+    setShowInsertImageModal(false)
+    setImageUrl('')
+    setSelectedGalleryImage(null)
+  }
+
+  // Handle paste event for images
+  const handleEditorPaste = async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items
+    if (!items) return
+
+    // Check if clipboard contains an image
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        e.preventDefault() // Prevent default paste behavior
+
+        const file = items[i].getAsFile()
+        if (!file || !template) return
+
+        try {
+          // Auto-save template if needed
+          let templateId = template.id
+          if (templateId === 0) {
+            alert('Please save the template before pasting images.')
+            return
+          }
+
+          // Show loading indicator
+          alert('Uploading image...')
+
+          // Upload the image to gallery
+          const response = await api.uploadGalleryImage(templateId, file)
+
+          if (response.success && response.data) {
+            // Insert the uploaded image at cursor position
+            const imageUrl = `http://localhost:8000/${response.data.path}`
+
+            if (editorRef.current) {
+              editorRef.current.focus()
+
+              // Insert image at cursor
+              const img = `<img src="${imageUrl}" alt="Pasted image" style="max-width: 100%; height: auto;" />`
+              document.execCommand('insertHTML', false, img)
+
+              setTimeout(() => {
+                if (editorRef.current) {
+                  handleTextEditorChange(editorRef.current.innerHTML)
+                }
+              }, 10)
+
+              // Refresh template to show new image in gallery
+              if (response.data) {
+                setTemplate({
+                  ...template,
+                  images: [...(template.images || []), response.data]
+                })
+              }
+
+              alert('Image uploaded and inserted!')
+            }
+          }
+        } catch (error) {
+          console.error('Error uploading pasted image:', error)
+          alert('Failed to upload image')
+        }
+
+        break
+      }
+    }
+  }
+
+  // Handle image click in editor
+  const handleEditorClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement
+      setSelectedImage(img)
+
+      // Get current dimensions
+      const width = img.width || img.naturalWidth
+      const height = img.height || img.naturalHeight
+      setImageWidth(width)
+      setImageHeight(height)
+
+      // Calculate aspect ratio
+      const aspectRatio = width / height
+      setImageAspectRatio(aspectRatio)
+
+      // Get current alt text
+      setImageAltText(img.alt || '')
+
+      // Check if image is wrapped in a link
+      const parentLink = img.parentElement
+      if (parentLink && parentLink.tagName === 'A') {
+        setImageLink((parentLink as HTMLAnchorElement).href)
+        setImageLinkTarget((parentLink as HTMLAnchorElement).target as '_self' | '_blank' || '_self')
+      } else {
+        setImageLink('')
+        setImageLinkTarget('_self')
+      }
+
+      // Add selected class for visual feedback
+      const allImages = editorRef.current?.querySelectorAll('img')
+      allImages?.forEach(i => i.classList.remove('selected-image'))
+      img.classList.add('selected-image')
+    } else {
+      // Deselect image if clicking elsewhere
+      setSelectedImage(null)
+      setImageAltText('')
+      setImageLink('')
+      setImageLinkTarget('_self')
+      const allImages = editorRef.current?.querySelectorAll('img')
+      allImages?.forEach(i => i.classList.remove('selected-image'))
+    }
+  }
+
+  // Handle width change
+  const handleWidthChange = (value: number) => {
+    setImageWidth(value)
+    if (constrainProportions) {
+      const newHeight = Math.round(value / imageAspectRatio)
+      setImageHeight(newHeight)
+    }
+  }
+
+  // Handle height change
+  const handleHeightChange = (value: number) => {
+    setImageHeight(value)
+    if (constrainProportions) {
+      const newWidth = Math.round(value * imageAspectRatio)
+      setImageWidth(newWidth)
+    }
+  }
+
+  // Apply link to image
+  const applyImageLink = () => {
+    if (!selectedImage || !editorRef.current) return
+
+    const currentHtml = editorRef.current.innerHTML
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = currentHtml
+
+    const images = tempDiv.querySelectorAll('img')
+    images.forEach(img => {
+      if (img.src === selectedImage.src) {
+        const parentElement = img.parentElement
+
+        // If imageLink is empty, remove link if it exists
+        if (!imageLink.trim()) {
+          if (parentElement && parentElement.tagName === 'A') {
+            // Replace the <a> with just the <img>
+            parentElement.replaceWith(img)
+          }
+        } else {
+          // If image already has a link, update it
+          if (parentElement && parentElement.tagName === 'A') {
+            (parentElement as HTMLAnchorElement).href = imageLink
+            (parentElement as HTMLAnchorElement).target = imageLinkTarget
+          } else {
+            // Wrap image in a new link
+            const link = document.createElement('a')
+            link.href = imageLink
+            link.target = imageLinkTarget
+            img.parentNode?.insertBefore(link, img)
+            link.appendChild(img)
+          }
+        }
+      }
+    })
+
+    // Update the editor content
+    handleTextEditorChange(tempDiv.innerHTML)
+
+    // Re-select the image after render
+    setTimeout(() => {
+      if (editorRef.current) {
+        const updatedImages = editorRef.current.querySelectorAll('img')
+        updatedImages.forEach(img => {
+          if (img.src === selectedImage.src) {
+            setSelectedImage(img as HTMLImageElement)
+            img.classList.add('selected-image')
+          }
+        })
+      }
+    }, 100)
+  }
+
+  // Apply alt text to image
+  const applyImageAltText = () => {
+    if (!selectedImage || !editorRef.current) return
+
+    // Update the image alt text directly in the HTML
+    const currentHtml = editorRef.current.innerHTML
+
+    // Find the image in the HTML and update its alt attribute
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = currentHtml
+
+    const images = tempDiv.querySelectorAll('img')
+    images.forEach(img => {
+      if (img.src === selectedImage.src) {
+        img.setAttribute('alt', imageAltText)
+      }
+    })
+
+    // Update the editor content with the modified HTML
+    handleTextEditorChange(tempDiv.innerHTML)
+
+    // Update the selected image reference after re-render
+    setTimeout(() => {
+      if (editorRef.current) {
+        const updatedImages = editorRef.current.querySelectorAll('img')
+        updatedImages.forEach(img => {
+          if (img.src === selectedImage.src) {
+            setSelectedImage(img as HTMLImageElement)
+            img.classList.add('selected-image')
+          }
+        })
+      }
+    }, 100)
+  }
+
+  // Apply image dimensions
+  const applyImageDimensions = () => {
+    if (!selectedImage) {
+      alert('No image selected!')
+      return
+    }
+
+    if (!imageWidth || !imageHeight || imageWidth < 10 || imageHeight < 10) {
+      alert('Please enter valid dimensions (minimum 10px)')
+      return
+    }
+
+    // Update the image styles directly in the HTML
+    const currentHtml = editorRef.current?.innerHTML || ''
+
+    // Find the image in the HTML and update its style
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = currentHtml
+
+    const images = tempDiv.querySelectorAll('img')
+    images.forEach(img => {
+      if (img.src === selectedImage.src) {
+        // Get current style and remove old width/height/max-width
+        let styleStr = img.getAttribute('style') || ''
+        styleStr = styleStr
+          .replace(/width:\s*[^;]+;?/gi, '')
+          .replace(/height:\s*[^;]+;?/gi, '')
+          .replace(/max-width:\s*[^;]+;?/gi, '')
+          .trim()
+
+        // Add new dimensions
+        if (styleStr && !styleStr.endsWith(';')) styleStr += ';'
+        styleStr += ` width: ${imageWidth}px; height: ${imageHeight}px; max-width: none;`
+
+        img.setAttribute('style', styleStr)
+      }
+    })
+
+    // Update the editor content with the modified HTML
+    if (editorRef.current) {
+      handleTextEditorChange(tempDiv.innerHTML)
+    }
+
+    // Update the selected image reference after re-render
+    setTimeout(() => {
+      if (editorRef.current) {
+        const updatedImages = editorRef.current.querySelectorAll('img')
+        updatedImages.forEach(img => {
+          if (img.src === selectedImage.src) {
+            setSelectedImage(img as HTMLImageElement)
+            img.classList.add('selected-image')
+          }
+        })
+      }
+    }, 100)
+
+    // Show success feedback
+    alert(`Image resized to ${imageWidth}px × ${imageHeight}px`)
+  }
+
+  // Set image width to 100%
+  const setImageWidthTo100 = () => {
+    if (!selectedImage) {
+      alert('No image selected!')
+      return
+    }
+
+    // Update the image styles directly in the HTML
+    const currentHtml = editorRef.current?.innerHTML || ''
+
+    // Find the image in the HTML and update its style
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = currentHtml
+
+    const images = tempDiv.querySelectorAll('img')
+    images.forEach(img => {
+      if (img.src === selectedImage.src) {
+        // Get current style and remove old width/height/max-width
+        let styleStr = img.getAttribute('style') || ''
+        styleStr = styleStr
+          .replace(/width:\s*[^;]+;?/gi, '')
+          .replace(/height:\s*[^;]+;?/gi, '')
+          .replace(/max-width:\s*[^;]+;?/gi, '')
+          .trim()
+
+        // Add 100% width and auto height
+        if (styleStr && !styleStr.endsWith(';')) styleStr += ';'
+        styleStr += ` width: 100%; height: auto; max-width: 100%;`
+
+        img.setAttribute('style', styleStr)
+      }
+    })
+
+    // Update the editor content with the modified HTML
+    if (editorRef.current) {
+      handleTextEditorChange(tempDiv.innerHTML)
+    }
+
+    // Update the selected image reference and state after re-render
+    setTimeout(() => {
+      if (editorRef.current) {
+        const updatedImages = editorRef.current.querySelectorAll('img')
+        updatedImages.forEach(img => {
+          if (img.src === selectedImage.src) {
+            setSelectedImage(img as HTMLImageElement)
+            img.classList.add('selected-image')
+
+            // Update state to reflect actual rendered dimensions
+            const parentWidth = img.parentElement?.offsetWidth || img.offsetWidth
+            setImageWidth(parentWidth)
+            const newHeight = Math.round(parentWidth / imageAspectRatio)
+            setImageHeight(newHeight)
+          }
+        })
+      }
+    }, 100)
+
+    alert('Image width set to 100%')
+  }
+
   // Update formatting state based on current selection
   const updateFormattingState = () => {
     if (!editorRef.current) return
@@ -2010,6 +2397,12 @@ padding: 1rem;`
   const applyFormatting = (command: string, value?: string) => {
     if (!editorRef.current) return
 
+    // Check if an image is selected and handle image alignment
+    if (selectedImage && (command === 'justifyLeft' || command === 'justifyCenter' || command === 'justifyRight')) {
+      applyImageAlignment(command)
+      return
+    }
+
     // Focus editor first
     editorRef.current.focus()
 
@@ -2027,6 +2420,66 @@ padding: 1rem;`
         }
       }, 10)
     }, 5)
+  }
+
+  // Apply alignment to selected image
+  const applyImageAlignment = (command: string) => {
+    if (!selectedImage || !editorRef.current) return
+
+    let displayStyle = 'block'
+    let marginStyle = '0'
+
+    if (command === 'justifyLeft') {
+      displayStyle = 'block'
+      marginStyle = '0 auto 0 0'
+    } else if (command === 'justifyCenter') {
+      displayStyle = 'block'
+      marginStyle = '0 auto'
+    } else if (command === 'justifyRight') {
+      displayStyle = 'block'
+      marginStyle = '0 0 0 auto'
+    }
+
+    // Update the image styles directly in the HTML
+    const currentHtml = editorRef.current.innerHTML
+
+    // Find the image in the HTML and update its style
+    const tempDiv = document.createElement('div')
+    tempDiv.innerHTML = currentHtml
+
+    const images = tempDiv.querySelectorAll('img')
+    images.forEach(img => {
+      if (img.src === selectedImage.src) {
+        // Get current style and remove old display/margin
+        let styleStr = img.getAttribute('style') || ''
+        styleStr = styleStr
+          .replace(/display:\s*[^;]+;?/gi, '')
+          .replace(/margin:\s*[^;]+;?/gi, '')
+          .trim()
+
+        // Add new alignment styles
+        if (styleStr && !styleStr.endsWith(';')) styleStr += ';'
+        styleStr += ` display: ${displayStyle}; margin: ${marginStyle};`
+
+        img.setAttribute('style', styleStr)
+      }
+    })
+
+    // Update the editor content with the modified HTML
+    handleTextEditorChange(tempDiv.innerHTML)
+
+    // Update the selected image reference after re-render
+    setTimeout(() => {
+      if (editorRef.current) {
+        const updatedImages = editorRef.current.querySelectorAll('img')
+        updatedImages.forEach(img => {
+          if (img.src === selectedImage.src) {
+            setSelectedImage(img as HTMLImageElement)
+            img.classList.add('selected-image')
+          }
+        })
+      }
+    }, 100)
   }
 
   const applyFontSize = (size: string) => {
@@ -3434,8 +3887,8 @@ padding: 1rem;`
             {/* Image Gallery Button */}
             <button
               onClick={() => {
-                if (!template || template.id === 0) {
-                  alert('Please save the template first before uploading images.')
+                if (!template) {
+                  alert('Please create a template first.')
                   return
                 }
                 console.log('Image Gallery button clicked')
@@ -3445,13 +3898,13 @@ padding: 1rem;`
                   return true
                 })
               }}
-              disabled={!template || template.id === 0}
+              disabled={!template}
               className={`p-1.5 rounded transition ml-1 ${
-                !template || template.id === 0
+                !template
                   ? 'text-gray-300 cursor-not-allowed'
                   : 'text-gray-600 hover:bg-gray-100'
               }`}
-              title={!template || template.id === 0 ? 'Save template first to upload images' : 'Image Gallery'}
+              title={!template ? 'Create a template first' : 'Image Gallery'}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -3903,6 +4356,7 @@ padding: 1rem;`
                             setCurrentPage({ ...currentPage, page_css: css })
                           }}
                           context="page"
+                          galleryImages={template?.images}
                         />
                       </div>
                     )}
@@ -4040,6 +4494,7 @@ padding: 1rem;`
                             })
                           }
                           context="section"
+                          galleryImages={template?.images}
                         />
                         <button
                           onClick={() => setShowSectionCSS(false)}
@@ -4096,6 +4551,7 @@ padding: 1rem;`
                                         })
                                       }}
                                       context="row"
+                                      galleryImages={template?.images}
                                     />
                                   </div>
                                 )}
@@ -4148,6 +4604,7 @@ padding: 1rem;`
                                                 })
                                               }}
                                               context="column"
+                                              galleryImages={template?.images}
                                             />
                                           </div>
                                         )}
@@ -4915,6 +5372,17 @@ padding: 1rem;`
               </svg>
             </button>
 
+            {/* Insert Image */}
+            <button
+              onClick={handleOpenInsertImageModal}
+              className="px-2 py-1.5 hover:bg-white rounded border border-transparent hover:border-gray-300 transition"
+              title="Insert Image"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
+
             <div className="w-px h-6 bg-gray-300 mx-1"></div>
 
             {/* Clear Formatting */}
@@ -4968,6 +5436,8 @@ padding: 1rem;`
               onMouseUp={updateFormattingState}
               onKeyUp={updateFormattingState}
               onFocus={updateFormattingState}
+              onClick={handleEditorClick}
+              onPaste={handleEditorPaste}
               className="flex-1 w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 font-sans text-base overflow-y-auto bg-white wysiwyg-editor"
               suppressContentEditableWarning
             />
@@ -5151,9 +5621,366 @@ padding: 1rem;`
               </div>
             </div>
           )}
+
+          {/* Insert Image Modal */}
+          {showInsertImageModal && (
+            <div
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+              onClick={() => setShowInsertImageModal(false)}
+            >
+              <div
+                className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-sm font-semibold">Insert Image</h3>
+                  <button
+                    onClick={() => setShowInsertImageModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Mode Selector */}
+                <div className="flex gap-2 mb-4">
+                  <button
+                    onClick={() => setImageInsertMode('url')}
+                    className={`flex-1 px-4 py-2 rounded border transition ${
+                      imageInsertMode === 'url'
+                        ? 'bg-blue-500 text-white border-blue-600'
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    URL
+                  </button>
+                  <button
+                    onClick={() => setImageInsertMode('gallery')}
+                    className={`flex-1 px-4 py-2 rounded border transition ${
+                      imageInsertMode === 'gallery'
+                        ? 'bg-blue-500 text-white border-blue-600'
+                        : 'border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Gallery
+                  </button>
+                </div>
+
+                {/* URL Mode */}
+                {imageInsertMode === 'url' && (
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Image URL</label>
+                    <input
+                      type="url"
+                      value={imageUrl}
+                      onChange={(e) => setImageUrl(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="https://example.com/image.jpg"
+                    />
+                    {imageUrl && (
+                      <div className="mt-2 p-2 border border-gray-200 rounded">
+                        <p className="text-xs text-gray-600 mb-1">Preview:</p>
+                        <img src={imageUrl} alt="Preview" className="max-w-full h-auto max-h-48 rounded" onError={(e) => {
+                          e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999"%3EInvalid%3C/text%3E%3C/svg%3E'
+                        }} />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Gallery Mode */}
+                {imageInsertMode === 'gallery' && (
+                  <div className="mb-4">
+                    <p className="text-xs text-gray-600 mb-2">Select an image from your gallery:</p>
+                    {template?.images && template.images.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                        {template.images.map((image) => (
+                          <div
+                            key={image.id}
+                            onClick={() => setSelectedGalleryImage(`http://localhost:8000/${image.path}`)}
+                            className={`cursor-pointer border-2 rounded p-1 transition ${
+                              selectedGalleryImage === `http://localhost:8000/${image.path}`
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-gray-200 hover:border-gray-400'
+                            }`}
+                          >
+                            <img
+                              src={`http://localhost:8000/${image.path}`}
+                              alt={image.filename}
+                              className="w-full h-24 object-cover rounded"
+                            />
+                            <p className="text-xs text-gray-600 mt-1 truncate">{image.filename}</p>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 text-sm">
+                        No images in gallery. Upload images first.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setShowInsertImageModal(false)}
+                    className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleInsertImage}
+                    disabled={imageInsertMode === 'url' ? !imageUrl : !selectedGalleryImage}
+                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Insert Image
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Image Resize Controls */}
+          {selectedImage && (
+            <div className="fixed bottom-4 right-4 bg-white border-2 border-gray-300 rounded-lg shadow-xl p-4 z-[9998] w-80 max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-semibold">Image Settings</h4>
+                <button
+                  onClick={() => setSelectedImage(null)}
+                  className="text-gray-400 hover:text-gray-600 transition"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                {/* Alt Text Input */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Alt Text (Accessibility)
+                  </label>
+                  <input
+                    type="text"
+                    value={imageAltText}
+                    onChange={(e) => setImageAltText(e.target.value)}
+                    onBlur={applyImageAltText}
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Describe this image..."
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Helps screen readers and SEO
+                  </p>
+                </div>
+
+                {/* Link Input */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Link URL (Optional)
+                  </label>
+                  <input
+                    type="url"
+                    value={imageLink}
+                    onChange={(e) => setImageLink(e.target.value)}
+                    onBlur={applyImageLink}
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="https://example.com"
+                  />
+                  <div className="flex items-center gap-2 mt-2">
+                    <input
+                      type="checkbox"
+                      id="link-new-tab"
+                      checked={imageLinkTarget === '_blank'}
+                      onChange={(e) => {
+                        setImageLinkTarget(e.target.checked ? '_blank' : '_self')
+                        if (imageLink) applyImageLink()
+                      }}
+                      className="w-3 h-3 text-blue-600 rounded"
+                    />
+                    <label htmlFor="link-new-tab" className="text-xs text-gray-600 cursor-pointer select-none">
+                      Open in new tab
+                    </label>
+                  </div>
+                  {imageLink && (
+                    <button
+                      onClick={() => {
+                        setImageLink('')
+                        setImageLinkTarget('_self')
+                        applyImageLink()
+                      }}
+                      className="text-xs text-red-600 hover:text-red-700 mt-1"
+                    >
+                      Remove Link
+                    </button>
+                  )}
+                </div>
+
+                <div className="border-t border-gray-200 my-3"></div>
+
+                {/* Width Input */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Width (px)</label>
+                  <input
+                    type="number"
+                    value={imageWidth}
+                    onChange={(e) => handleWidthChange(parseInt(e.target.value) || 0)}
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="50"
+                  />
+                </div>
+
+                {/* Height Input */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Height (px)</label>
+                  <input
+                    type="number"
+                    value={imageHeight}
+                    onChange={(e) => handleHeightChange(parseInt(e.target.value) || 0)}
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="50"
+                  />
+                </div>
+
+                {/* Constrain Proportions Checkbox */}
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="constrain-proportions"
+                    checked={constrainProportions}
+                    onChange={(e) => setConstrainProportions(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <label htmlFor="constrain-proportions" className="text-xs text-gray-700 cursor-pointer select-none">
+                    Constrain Proportions
+                  </label>
+                </div>
+
+                {/* Aspect Ratio Info */}
+                <div className="text-xs text-gray-500 pt-2 border-t border-gray-200">
+                  <p>Aspect Ratio: {imageAspectRatio.toFixed(2)}</p>
+                </div>
+
+                {/* Buttons */}
+                <div className="space-y-2 mt-3">
+                  {/* Set to 100% Button */}
+                  <button
+                    onClick={setImageWidthTo100}
+                    className="w-full px-4 py-2 bg-green-500 text-white rounded text-sm hover:bg-green-600 transition"
+                  >
+                    Set Width to 100%
+                  </button>
+
+                  {/* Apply Button */}
+                  <button
+                    onClick={applyImageDimensions}
+                    className="w-full px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
+                  >
+                    Apply Custom Size
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     )}
+
+      {/* Image Gallery Modal */}
+      {console.log('About to render ImageGallery conditional, showImageGallery:', showImageGallery, 'ref:', imageGalleryRef.current, 'template ID:', template?.id)}
+      {(showImageGallery || imageGalleryRef.current) ? (
+        <>
+          {console.log('Rendering ImageGallery component NOW')}
+          <ImageGallery
+            isOpen={true}
+            onClose={() => {
+              console.log('ImageGallery onClose called')
+              imageGalleryRef.current = false
+              setShowImageGallery(false)
+            }}
+            templateId={template?.id || 0}
+            images={template?.images || []}
+            onUpload={async (file) => {
+            if (!template) {
+              console.error('No template available for upload')
+              return
+            }
+
+            // Auto-save template if it hasn't been saved yet
+            let templateId = template.id
+            if (templateId === 0) {
+              console.log('Template not saved yet, auto-saving before upload...')
+              try {
+                const saveResponse = await api.createTemplate({
+                  name: template.name || 'Untitled Template',
+                  description: template.description || '',
+                  business_type: template.business_type || 'other',
+                  is_active: template.is_active,
+                  exclusive_to: template.exclusive_to,
+                  technologies: template.technologies,
+                  features: template.features,
+                  custom_css: template.custom_css,
+                  pages: template.pages
+                })
+                if (saveResponse.success && saveResponse.data) {
+                  templateId = saveResponse.data.id
+                  setTemplate(saveResponse.data)
+                  console.log('Template auto-saved with ID:', templateId)
+                } else {
+                  alert('Please save the template before uploading images.')
+                  return
+                }
+              } catch (error) {
+                console.error('Auto-save error:', error)
+                alert('Failed to save template. Please save manually before uploading images.')
+                return
+              }
+            }
+
+            console.log('Starting image upload for template:', templateId, 'file:', file.name)
+            try {
+              const response = await api.uploadGalleryImage(templateId, file)
+              console.log('Upload response:', response)
+              if (response.success && response.data) {
+                console.log('Upload successful, adding image to template')
+                setTemplate({
+                  ...template,
+                  id: templateId,
+                  images: [...(template.images || []), response.data]
+                })
+              } else {
+                console.error('Upload failed:', response)
+                alert(`Failed to upload image: ${response.message || 'Unknown error'}`)
+              }
+            } catch (error) {
+              console.error('Upload error:', error)
+              alert(`Error uploading image: ${error}`)
+            }
+          }}
+          onDelete={async (imageId) => {
+            if (!template) return
+            await api.deleteGalleryImage(template.id, imageId)
+            setTemplate({
+              ...template,
+              images: (template.images || []).filter(img => img.id !== imageId)
+            })
+          }}
+          onRename={async (imageId, newFilename) => {
+            if (!template) return
+            await api.renameGalleryImage(template.id, imageId, newFilename)
+            setTemplate({
+              ...template,
+              images: (template.images || []).map(img =>
+                img.id === imageId ? { ...img, filename: newFilename } : img
+              )
+            })
+          }}
+        />
+        </>
+      ) : null}
   </DndContext>
   )
 }
@@ -5247,52 +6074,6 @@ function ExportModal({ title, onSave, onClose }: { title: string, onSave: (name:
           </div>
         </div>
       </div>
-
-      {/* Image Gallery Modal */}
-      {console.log('About to render ImageGallery conditional, showImageGallery:', showImageGallery, 'ref:', imageGalleryRef.current, 'template ID:', template?.id)}
-      {(showImageGallery || imageGalleryRef.current) ? (
-        <>
-          {console.log('Rendering ImageGallery component NOW')}
-          <ImageGallery
-            isOpen={true}
-            onClose={() => {
-              console.log('ImageGallery onClose called')
-              imageGalleryRef.current = false
-              setShowImageGallery(false)
-            }}
-            templateId={template?.id || 0}
-            images={template?.images || []}
-            onUpload={async (file) => {
-            if (!template) return
-            const response = await api.uploadGalleryImage(template.id, file)
-            if (response.success && response.data) {
-              setTemplate({
-                ...template,
-                images: [...(template.images || []), response.data]
-              })
-            }
-          }}
-          onDelete={async (imageId) => {
-            if (!template) return
-            await api.deleteGalleryImage(template.id, imageId)
-            setTemplate({
-              ...template,
-              images: (template.images || []).filter(img => img.id !== imageId)
-            })
-          }}
-          onRename={async (imageId, newFilename) => {
-            if (!template) return
-            await api.renameGalleryImage(template.id, imageId, newFilename)
-            setTemplate({
-              ...template,
-              images: (template.images || []).map(img =>
-                img.id === imageId ? { ...img, filename: newFilename } : img
-              )
-            })
-          }}
-        />
-        </>
-      ) : null}
     </div>
   )
 }

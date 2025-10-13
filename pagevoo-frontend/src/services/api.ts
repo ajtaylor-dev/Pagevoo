@@ -414,6 +414,25 @@ class ApiService {
     const response = await this.client.post('/v1/user-website/unpublish');
     return response.data;
   }
+
+  /**
+   * Settings Management Methods
+   */
+
+  async getUploadSettings(): Promise<ApiResponse<any>> {
+    const response = await this.client.get('/v1/settings/upload');
+    return response.data;
+  }
+
+  async updateUploadSettings(data: {
+    upload_max_gallery_image_size: number;
+    upload_max_preview_image_size: number;
+    upload_allowed_gallery_formats: string;
+    upload_allowed_preview_formats: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put('/v1/settings/upload', data);
+    return response.data;
+  }
 }
 
 // Export singleton instance

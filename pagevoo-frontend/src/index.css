@@ -283,3 +283,11 @@
   margin: 0.5em 0;
   display: list-item;
 }
+
+/* Selected Image Styles */
+.wysiwyg-editor img.selected-image {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+  position: relative;
+  cursor: pointer;
+}

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Template;
 use App\Models\TemplatePage;
 use App\Models\TemplateSection;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
@@ -230,8 +231,12 @@ class TemplateController extends BaseController
             return $this->sendError('Template not found', 404);
         }
 
+        // Get upload settings from database
+        $maxSize = Setting::get('upload_max_preview_image_size', 5120);
+        $allowedFormats = Setting::get('upload_allowed_preview_formats', 'jpeg,png,jpg,gif,webp');
+
         $validator = Validator::make($request->all(), [
-            'preview_image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max
+            'preview_image' => "required|image|mimes:{$allowedFormats}|max:{$maxSize}",
         ]);
 
         if ($validator->fails()) {
@@ -258,44 +263,68 @@ class TemplateController extends BaseController
      */
     public function uploadGalleryImage(Request $request, $id)
     {
-        $template = Template::find($id);
+        try {
+            \Log::info('Upload gallery image called for template ID: ' . $id);
 
-        if (!$template) {
-            return $this->sendError('Template not found', 404);
+            $template = Template::find($id);
+
+            if (!$template) {
+                return $this->sendError('Template not found', 404);
+            }
+
+            // Get upload settings from database
+            $maxSize = Setting::get('upload_max_gallery_image_size', 2048);
+            $allowedFormats = Setting::get('upload_allowed_gallery_formats', 'jpeg,png,jpg,gif,svg,webp');
+
+            $validator = Validator::make($request->all(), [
+                'image' => "required|image|mimes:{$allowedFormats}|max:{$maxSize}",
+            ]);
+
+            if ($validator->fails()) {
+                \Log::error('Validation failed', ['errors' => $validator->errors()]);
+                return $this->sendError('Validation Error', 422, $validator->errors());
+            }
+
+            // Create template directory if it doesn't exist
+            $templateDir = public_path("template_directory/template_{$template->id}/images");
+            \Log::info('Template directory: ' . $templateDir);
+
+            if (!file_exists($templateDir)) {
+                \Log::info('Creating directory...');
+                mkdir($templateDir, 0755, true);
+            }
+
+            // Upload file
+            $file = $request->file('image');
+            $filename = time() . '_' . $file->getClientOriginalName();
+            $fileSize = $file->getSize(); // Get size BEFORE moving
+            \Log::info('Moving file to: ' . $templateDir . '/' . $filename);
+            $file->move($templateDir, $filename);
+
+            // Add image to template's images array
+            $images = $template->images ?? [];
+            \Log::info('Existing images count: ' . count($images));
+
+            $newImage = [
+                'id' => uniqid(),
+                'filename' => $filename,
+                'path' => "template_directory/template_{$template->id}/images/{$filename}",
+                'size' => $fileSize,
+                'uploaded_at' => now()->toDateTimeString()
+            ];
+            $images[] = $newImage;
+
+            \Log::info('Updating template with new image', ['newImage' => $newImage]);
+            $template->update(['images' => $images]);
+
+            \Log::info('Image uploaded successfully');
+            return $this->sendSuccess($newImage, 'Image uploaded successfully');
+        } catch (\Exception $e) {
+            \Log::error('Upload gallery image error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString()
+            ]);
+            return $this->sendError('Upload failed: ' . $e->getMessage(), 500);
         }
-
-        $validator = Validator::make($request->all(), [
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,svg,webp|max:2048', // 2MB max
-        ]);
-
-        if ($validator->fails()) {
-            return $this->sendError('Validation Error', 422, $validator->errors());
-        }
-
-        // Create template directory if it doesn't exist
-        $templateDir = public_path("template_directory/template_{$template->id}/images");
-        if (!file_exists($templateDir)) {
-            mkdir($templateDir, 0755, true);
-        }
-
-        // Upload file
-        $file = $request->file('image');
-        $filename = time() . '_' . $file->getClientOriginalName();
-        $file->move($templateDir, $filename);
-
-        // Add image to template's images array
-        $images = $template->images ?? [];
-        $newImage = [
-            'id' => uniqid(),
-            'filename' => $filename,
-            'path' => "template_directory/template_{$template->id}/images/{$filename}",
-            'size' => $file->getSize(),
-            'uploaded_at' => now()->toDateTimeString()
-        ];
-        $images[] = $newImage;
-        $template->update(['images' => $images]);
-
-        return $this->sendSuccess($newImage, 'Image uploaded successfully');
     }
 
     /**

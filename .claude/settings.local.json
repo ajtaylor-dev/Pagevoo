@@ -20,7 +20,12 @@
       "Bash(findstr:*)",
       "Bash(tasklist)",
       "Bash(netstat:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(npm start)",
+      "Bash(npm run dev)",
+      "Bash(npm run:*)",
+      "Bash(dir:*)",
+      "Bash(powershell:*)"
     ],
     "deny": [],
     "ask": []

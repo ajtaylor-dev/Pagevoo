@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import { TemplateManager } from '@/components/TemplateManager'
+import { UploadSettings } from '@/components/UploadSettings'
 
 interface User {
   id: number
@@ -549,8 +550,8 @@ export default function Dashboard() {
 
           {activeSection === 'website-settings' && (
             <div>
-              <h2 className="text-2xl font-bold text-[#4b4b4b] mb-4">Website Settings</h2>
-              <p className="text-gray-600">Configure website settings here...</p>
+              <h2 className="text-2xl font-bold text-[#4b4b4b] mb-6">Website Settings</h2>
+              <UploadSettings />
             </div>
           )}
 

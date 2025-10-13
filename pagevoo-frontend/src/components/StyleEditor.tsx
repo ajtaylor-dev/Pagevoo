@@ -19,6 +19,10 @@ interface StyleProperty {
   borderStyle?: string
   position?: string
   backgroundImage?: string
+  backgroundSize?: string
+  backgroundPosition?: string
+  backgroundRepeat?: string
+  backgroundAttachment?: string
 }
 
 interface StyleEditorProps {
@@ -26,6 +30,14 @@ interface StyleEditorProps {
   onChange: (css: string) => void
   context: 'page' | 'section' | 'row' | 'column'
   showFontSelector?: boolean
+  galleryImages?: Array<{
+    id: string
+    filename: string
+    path: string
+    size: number
+    uploaded_at: string
+  }>
+  onOpenGallery?: () => void
 }
 
 const GOOGLE_FONTS = [
@@ -68,7 +80,39 @@ const COLOR_PRESETS = [
   '#EC4899', '#14B8A6', '#F97316', '#84CC16', '#06B6D4'
 ]
 
-export function StyleEditor({ value, onChange, context, showFontSelector = false }: StyleEditorProps) {
+const BACKGROUND_SIZE_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: 'cover', label: 'Cover' },
+  { value: 'contain', label: 'Contain' },
+  { value: '100% 100%', label: 'Stretch' },
+]
+
+const BACKGROUND_POSITION_OPTIONS = [
+  { value: 'center', label: 'Center' },
+  { value: 'top', label: 'Top' },
+  { value: 'bottom', label: 'Bottom' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+  { value: 'top left', label: 'Top Left' },
+  { value: 'top right', label: 'Top Right' },
+  { value: 'bottom left', label: 'Bottom Left' },
+  { value: 'bottom right', label: 'Bottom Right' },
+]
+
+const BACKGROUND_REPEAT_OPTIONS = [
+  { value: 'no-repeat', label: 'No Repeat' },
+  { value: 'repeat', label: 'Repeat' },
+  { value: 'repeat-x', label: 'Repeat X' },
+  { value: 'repeat-y', label: 'Repeat Y' },
+]
+
+const BACKGROUND_ATTACHMENT_OPTIONS = [
+  { value: 'scroll', label: 'Scroll' },
+  { value: 'fixed', label: 'Fixed' },
+  { value: 'local', label: 'Local' },
+]
+
+export function StyleEditor({ value, onChange, context, showFontSelector = false, galleryImages, onOpenGallery }: StyleEditorProps) {
   const [activeTab, setActiveTab] = useState<'simplified' | 'code'>('simplified')
   const [properties, setProperties] = useState<StyleProperty>({
     fontSize: 16,
@@ -82,6 +126,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const [showBackgroundPicker, setShowBackgroundPicker] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
   const [showBorderColorPicker, setShowBorderColorPicker] = useState(false)
+  const [showGalleryModal, setShowGalleryModal] = useState(false)
+  const [selectedGalleryImagePath, setSelectedGalleryImagePath] = useState<string | null>(null)
 
   // Parse CSS string to extract visual properties
   const parseCSS = (css: string): StyleProperty => {
@@ -142,6 +188,22 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     const bgImageMatch = css.match(/background-image:\s*url\(([^)]+)\);?/i)
     if (bgImageMatch) props.backgroundImage = bgImageMatch[1].replace(/['"]/g, '')
 
+    // Background size
+    const bgSizeMatch = css.match(/background-size:\s*([^;]+);?/i)
+    if (bgSizeMatch) props.backgroundSize = bgSizeMatch[1].trim()
+
+    // Background position
+    const bgPositionMatch = css.match(/background-position:\s*([^;]+);?/i)
+    if (bgPositionMatch) props.backgroundPosition = bgPositionMatch[1].trim()
+
+    // Background repeat
+    const bgRepeatMatch = css.match(/background-repeat:\s*([^;]+);?/i)
+    if (bgRepeatMatch) props.backgroundRepeat = bgRepeatMatch[1].trim()
+
+    // Background attachment
+    const bgAttachmentMatch = css.match(/background-attachment:\s*([^;]+);?/i)
+    if (bgAttachmentMatch) props.backgroundAttachment = bgAttachmentMatch[1].trim()
+
     return props
   }
 
@@ -187,7 +249,13 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     if (props.borderColor) css += `border-color: ${props.borderColor};\n`
     if (props.borderStyle) css += `border-style: ${props.borderStyle};\n`
     if (props.position && props.position !== 'static') css += `position: ${props.position};\n`
-    if (props.backgroundImage) css += `background-image: url('${props.backgroundImage}');\n`
+    if (props.backgroundImage) {
+      css += `background-image: url('${props.backgroundImage}');\n`
+      if (props.backgroundSize) css += `background-size: ${props.backgroundSize};\n`
+      if (props.backgroundPosition) css += `background-position: ${props.backgroundPosition};\n`
+      if (props.backgroundRepeat) css += `background-repeat: ${props.backgroundRepeat};\n`
+      if (props.backgroundAttachment) css += `background-attachment: ${props.backgroundAttachment};\n`
+    }
 
     return css
   }
@@ -324,6 +392,10 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       borderStyle: parsed.borderStyle ?? 'solid',
       position: parsed.position ?? 'static',
       backgroundImage: parsed.backgroundImage,
+      backgroundSize: parsed.backgroundSize,
+      backgroundPosition: parsed.backgroundPosition,
+      backgroundRepeat: parsed.backgroundRepeat,
+      backgroundAttachment: parsed.backgroundAttachment,
     })
     setRawCSS(value)
   }, [value])
@@ -598,16 +670,203 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </Select>
           </div>
 
-          {/* Background Image */}
-          <div>
-            <Label className="text-xs font-medium">Background Image URL</Label>
-            <Input
-              value={properties.backgroundImage || ''}
-              onChange={(e) => updateProperty('backgroundImage', e.target.value)}
-              className="h-8 text-xs mt-1"
-              placeholder="https://example.com/image.jpg"
-            />
-          </div>
+          {/* Background Image - Hide for site/page context */}
+          {!(context === 'page' && showFontSelector) && (
+            <div>
+              <Label className="text-xs font-medium">Background Image</Label>
+              <div className="space-y-2 mt-1">
+                <Input
+                  value={properties.backgroundImage || ''}
+                  onChange={(e) => updateProperty('backgroundImage', e.target.value)}
+                  className="h-8 text-xs"
+                  placeholder="https://example.com/image.jpg or choose from gallery"
+                />
+                <button
+                  onClick={() => setShowGalleryModal(true)}
+                  className="w-full px-3 py-1.5 text-xs border border-gray-300 rounded hover:bg-gray-50 transition flex items-center justify-center gap-1"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  Choose from Gallery
+                </button>
+                {properties.backgroundImage && (
+                  <>
+                    <div className="p-2 border border-gray-200 rounded">
+                      <p className="text-[9px] text-gray-600 mb-1">Preview:</p>
+                      <div
+                        className="w-full h-20 rounded bg-cover bg-center"
+                        style={{ backgroundImage: `url('${properties.backgroundImage}')` }}
+                      />
+                    </div>
+
+                    {/* Background Image Properties */}
+                    <div className="grid grid-cols-2 gap-2">
+                      {/* Background Size */}
+                      <div>
+                        <Label className="text-[9px] font-medium">Size</Label>
+                        <Select
+                          value={properties.backgroundSize || 'auto'}
+                          onValueChange={(value) => updateProperty('backgroundSize', value)}
+                        >
+                          <SelectTrigger className="h-7 text-[10px] mt-0.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BACKGROUND_SIZE_OPTIONS.map(option => (
+                              <SelectItem key={option.value} value={option.value} className="text-[10px]">
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Background Repeat */}
+                      <div>
+                        <Label className="text-[9px] font-medium">Repeat</Label>
+                        <Select
+                          value={properties.backgroundRepeat || 'no-repeat'}
+                          onValueChange={(value) => updateProperty('backgroundRepeat', value)}
+                        >
+                          <SelectTrigger className="h-7 text-[10px] mt-0.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BACKGROUND_REPEAT_OPTIONS.map(option => (
+                              <SelectItem key={option.value} value={option.value} className="text-[10px]">
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Background Position */}
+                      <div>
+                        <Label className="text-[9px] font-medium">Position</Label>
+                        <Select
+                          value={properties.backgroundPosition || 'center'}
+                          onValueChange={(value) => updateProperty('backgroundPosition', value)}
+                        >
+                          <SelectTrigger className="h-7 text-[10px] mt-0.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BACKGROUND_POSITION_OPTIONS.map(option => (
+                              <SelectItem key={option.value} value={option.value} className="text-[10px]">
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Background Attachment */}
+                      <div>
+                        <Label className="text-[9px] font-medium">Attachment</Label>
+                        <Select
+                          value={properties.backgroundAttachment || 'scroll'}
+                          onValueChange={(value) => updateProperty('backgroundAttachment', value)}
+                        >
+                          <SelectTrigger className="h-7 text-[10px] mt-0.5">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {BACKGROUND_ATTACHMENT_OPTIONS.map(option => (
+                              <SelectItem key={option.value} value={option.value} className="text-[10px]">
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Gallery Modal */}
+              {showGalleryModal && (
+                <div
+                  className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+                  onClick={() => setShowGalleryModal(false)}
+                >
+                  <div
+                    className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Choose Background Image</h3>
+                      <button
+                        onClick={() => setShowGalleryModal(false)}
+                        className="text-gray-400 hover:text-gray-600 transition"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {galleryImages && galleryImages.length > 0 ? (
+                      <>
+                        <p className="text-xs text-gray-600 mb-2">Select an image from your gallery:</p>
+                        <div className="grid grid-cols-3 gap-2 mb-4">
+                          {galleryImages.map((image) => (
+                            <div
+                              key={image.id}
+                              onClick={() => setSelectedGalleryImagePath(`http://localhost:8000/${image.path}`)}
+                              className={`cursor-pointer border-2 rounded p-1 transition ${
+                                selectedGalleryImagePath === `http://localhost:8000/${image.path}`
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                            >
+                              <img
+                                src={`http://localhost:8000/${image.path}`}
+                                alt={image.filename}
+                                className="w-full h-24 object-cover rounded"
+                              />
+                              <p className="text-xs text-gray-600 mt-1 truncate">{image.filename}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-center py-8 text-gray-500 text-sm mb-4">
+                        No images in gallery. Upload images first.
+                      </div>
+                    )}
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setShowGalleryModal(false)
+                          setSelectedGalleryImagePath(null)
+                        }}
+                        className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (selectedGalleryImagePath) {
+                            updateProperty('backgroundImage', selectedGalleryImagePath)
+                          }
+                          setShowGalleryModal(false)
+                          setSelectedGalleryImagePath(null)
+                        }}
+                        disabled={!selectedGalleryImagePath}
+                        className="flex-1 px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Select Image
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
 
         <TabsContent value="code" className="mt-4">
