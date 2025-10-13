@@ -1165,8 +1165,369 @@ User responded asking to update claude_memory.txt first.
 
 **Current Status:** ✅ COMPLETE - All 9 image features working perfectly. Ready for next feature set.
 
+**CONTINUED FROM PREVIOUS SESSION (2025-10-14)...**
+
+## Session 19 (2025-10-14) - Undo/Redo System & Save/Load/Export Workflow
+
+**What We Built:**
+1. Comprehensive undo/redo system with 10-step history
+2. Red/green save icon status indicator
+3. Distinction between Save (working copy) and Export As HTML Template (publish)
+4. Published template indicator banner
+5. Warning system for editing published templates
+6. Complete keyboard shortcut integration
+
+**Major Changes:**
+
+### 1. State Management for Undo/Redo System (TemplateBuilder.tsx:326-328)
+```typescript
+const [history, setHistory] = useState<Template[]>([])
+const [historyIndex, setHistoryIndex] = useState(-1)
+const [isPublished, setIsPublished] = useState(false)
+```
+
+### 2. History Management Function (lines 2513-2537)
+**Implementation:**
+- `addToHistory(newTemplate)` - Adds state to history array
+- Deep clones template with JSON.parse(JSON.stringify())
+- Removes history after current index if user made changes after undo
+- Limits to 10 steps (removes oldest if exceeded)
+- Updates canUndo/canRedo states
+- Sets hasUnsavedChanges to true
+
+**Pattern:**
+```typescript
+const addToHistory = (newTemplate: Template) => {
+  setHistory(prev => {
+    const newHistory = prev.slice(0, historyIndex + 1)
+    newHistory.push(JSON.parse(JSON.stringify(newTemplate)))
+
+    if (newHistory.length > 10) {
+      newHistory.shift()
+      setHistoryIndex(9)
+    } else {
+      setHistoryIndex(newHistory.length - 1)
+    }
+
+    setCanUndo(true)
+    setCanRedo(false)
+    return newHistory
+  })
+  setHasUnsavedChanges(true)
+}
+```
+
+### 3. Undo/Redo Functions (lines 2540-2577)
+**handleUndo():**
+- Navigates to previous state in history
+- Deep clones previous state
+- Finds and sets current page from history
+- Updates historyIndex and undo/redo availability
+- Sets hasUnsavedChanges to true
+
+**handleRedo():**
+- Navigates to next state in history
+- Deep clones next state
+- Finds and sets current page from history
+- Updates historyIndex and undo/redo availability
+- Sets hasUnsavedChanges to true
+
+### 4. Save Function (lines 2580-2610)
+**Implementation:**
+- Checks if template exists
+- Shows warning if template is published
+- Calls api.updateTemplate to save to database
+- Sets hasUnsavedChanges to false on success
+- Updates initial history state if empty
+
+**Warning System:**
+```typescript
+if (isPublished) {
+  if (!confirm('This template is published. Saving will update the published version. Continue?')) {
+    return
+  }
+}
+```
+
+### 5. Load Function (lines 2612-2652)
+**Implementation:**
+- Confirms if user has unsaved changes
+- Calls api.getTemplate to load from database
+- Sets published status from is_active field
+- Resets history with loaded state
+- Resets undo/redo states
+- Sets hasUnsavedChanges to false
+
+### 6. Export As HTML Template Function (lines 2676-2720)
+**Implementation:**
+- Checks if template exists
+- Shows warning if already published
+- Checks for unsaved changes before publishing
+- Confirms export action with user
+- Updates template with is_active = true
+- Calls api.updateTemplate to save
+- Sets isPublished state to true
+- Alert on successful publish
+
+**Validation:**
+```typescript
+if (hasUnsavedChanges) {
+  alert('Please save your changes before publishing the template.')
+  return
+}
+```
+
+### 7. History Tracking Integration
+**Functions Modified to Track History:**
+- handleAddSection (line 1163) - Section added
+- handleDeleteSection (line 1185) - Section removed
+- handleMoveSection (line 1260) - Section reordered
+- handleMoveSidebar (line 1293) - Sidebar moved
+- handleUpdateSectionContent (line 1317) - Content updated
+
+**Pattern:**
+```typescript
+const updatedTemplate = { ...template, pages: updatedPages }
+setTemplate(updatedTemplate)
+addToHistory(updatedTemplate)  // ← Added this line
+```
+
+### 8. Initial Load History Setup (lines 421-431)
+**Implementation:**
+```typescript
+// Initialize history with loaded state
+setHistory([JSON.parse(JSON.stringify(templateData))])
+setHistoryIndex(0)
+setCanUndo(false)
+setCanRedo(false)
+
+// Set published status
+setIsPublished(templateData.is_active || false)
+
+// Template just loaded, so no unsaved changes
+setHasUnsavedChanges(false)
+```
+
+### 9. Save Icon Status Indicator (line 4330)
+**Visual Feedback:**
+- Red text when hasUnsavedChanges is true
+- Green text when all changes saved
+- Updated tooltip messages
+
+```typescript
+className={`p-1.5 hover:bg-gray-100 rounded transition relative ${hasUnsavedChanges ? 'text-red-500' : 'text-green-500'}`}
+title={hasUnsavedChanges ? 'Save (Ctrl+S) - Unsaved changes' : 'Save (Ctrl+S) - All changes saved'}
+```
+
+### 10. Removed Create Template Button
+**Removed:** Lines 4522-4528 (old Create/Save Template button)
+**Reason:** Export As > HTML Template now handles publishing
+
+### 11. Export As Menu Structure (lines 4049-4078)
+**Updated Menu:**
+```
+Export As >
+├── HTML Template (Publish) [amber styling - primary action]
+├── ─────────────────────
+├── .ZIP Website [coming soon]
+└── React Website [coming soon]
+```
+
+### 12. Published Template Banner (lines 4645-4674)
+**UI Component:**
+- Amber gradient background banner at top
+- Check icon with "Published Template" text
+- Warning message about changes affecting published version
+- "Unpublish" button that sets is_active to false
+
+**Implementation:**
+```typescript
+{isPublished && (
+  <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <svg className="w-5 h-5 text-amber-600">...</svg>
+        <div>
+          <span>Published Template</span>
+          <p>This template is published... Changes will update published version.</p>
+        </div>
+      </div>
+      <button onClick={unpublish}>Unpublish</button>
+    </div>
+  </div>
+)}
+```
+
+### 13. Keyboard Shortcuts Integration
+**Already Existed:**
+- Ctrl+S / Cmd+S - Save
+- Ctrl+Z / Cmd+Z - Undo
+- Ctrl+Y / Cmd+Shift+Z - Redo
+- Ctrl+O / Cmd+O - Load
+
+**Implementation:**
+```typescript
+useEffect(() => {
+  const handleKeyDown = (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+      e.preventDefault()
+      handleSave()
+    }
+    // ... other shortcuts
+  }
+  window.addEventListener('keydown', handleKeyDown)
+  return () => window.removeEventListener('keydown', handleKeyDown)
+}, [template, hasUnsavedChanges])
+```
+
+**Architecture Decisions:**
+
+1. **Save vs Export Distinction:**
+   - File > Save → Working copy to database (can be loaded later)
+   - Export As > HTML Template → Sets is_active=true, publishes template
+   - Clear separation between draft and published states
+
+2. **History Management:**
+   - 10-step circular buffer (removes oldest when exceeding limit)
+   - Deep cloning prevents reference issues
+   - Slice history on branch creation (undo then make new change)
+   - Track current position with historyIndex
+
+3. **Published Template Behavior:**
+   - Once exported, template is "locked" as published
+   - Every save after export updates the published version
+   - Banner reminder when editing published templates
+   - Unpublish option available (sets is_active back to false)
+   - Warning prompts before saving over published template
+
+4. **Unsaved Changes Tracking:**
+   - Any undo/redo sets hasUnsavedChanges to true
+   - Any addToHistory call sets hasUnsavedChanges to true
+   - Save function sets hasUnsavedChanges to false
+   - Load function resets to false
+   - Visual indicator on save icon (red/green)
+
+**Files Modified:**
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  - Added state variables (history, historyIndex, isPublished)
+  - Implemented addToHistory helper function
+  - Implemented handleUndo/handleRedo functions
+  - Implemented handleSave function with published warning
+  - Implemented handleLoad function with unsaved confirmation
+  - Implemented handleExportAsHTMLTemplate function
+  - Updated save icon styling (red/green indicator)
+  - Added published template banner component
+  - Integrated history tracking into 5 key modification functions
+  - Updated initial load to initialize history
+  - Removed Create Template button
+  - Updated Export As menu structure
+
+**User Workflow:**
+
+1. **Creating New Template:**
+   - Work on template in builder
+   - File > Save to save working copy to database
+   - Save icon turns green when saved
+   - Export As > HTML Template when ready to publish
+
+2. **Editing Existing Template:**
+   - File > Load to load template from database
+   - Make changes (save icon turns red)
+   - File > Save to save working copy
+   - Save icon turns green
+
+3. **Publishing Template:**
+   - Ensure all changes saved (green icon)
+   - Export As > HTML Template (Publish)
+   - Confirm export action
+   - Template now marked as published
+   - Amber banner appears at top
+
+4. **Editing Published Template:**
+   - Load published template
+   - See amber banner warning
+   - Make changes (red save icon)
+   - File > Save (see warning about updating published version)
+   - Confirm save
+   - Published template updated
+
+5. **Using Undo/Redo:**
+   - Ctrl+Z to undo (up to 10 steps)
+   - Ctrl+Y to redo
+   - Save icon turns red after undo/redo
+   - File > Save to commit changes
+
+**Technical Notes:**
+
+1. **Deep Cloning Strategy:**
+   - Used JSON.parse(JSON.stringify()) for deep cloning
+   - Prevents reference sharing between history states
+   - Each history entry is completely independent
+
+2. **History Branch Management:**
+   - When user undoes then makes new change:
+   - Slice history at current index: `prev.slice(0, historyIndex + 1)`
+   - Add new state to truncated history
+   - Effectively creates new branch, discards "future" states
+
+3. **Page Reference Tracking:**
+   - When restoring from history, find current page by ID:
+   - `previousState.pages.find(p => p.id === currentPage?.id)`
+   - Ensures currentPage reference stays valid after undo/redo
+
+4. **Additional Functions That Could Track History (Future Enhancement):**
+   - ~11 more setTemplate calls could benefit from addToHistory:
+   - Lines: 685, 712, 723, 750, 1421, 1491, 1758, 3432, 4892, 4938, 4971
+   - These handle: page operations, CSS updates, section properties, etc.
+
+**Testing Status:**
+✅ All changes compiled successfully
+✅ HMR updates working properly
+✅ Build completed at 11:58:33 PM
+✅ Dev server running on port 5173
+✅ Backend server running on port 8000
+
+**Feature Completion Status:**
+1. ✅ Undo/redo system with 10-step history
+2. ✅ Red/green save icon indicator
+3. ✅ Save function (working copy to database)
+4. ✅ Load function (from database)
+5. ✅ Export As HTML Template (publish)
+6. ✅ Published template warning banner
+7. ✅ Save over published warning
+8. ✅ History tracking in 5 key functions
+9. ✅ Keyboard shortcuts working
+10. ✅ Create Template button removed
+
+**Known Limitations:**
+- Only 5 functions currently track history (could expand to 11+ more)
+- No visual indication of history position (could add "Step 3 of 10" UI)
+- No history inspection/preview (could add history panel)
+- Published templates can still be unpublished (intentional - allows flexibility)
+
+**Next Steps Suggested (Not Implemented):**
+- [ ] Add history tracking to remaining ~11 setTemplate calls
+- [ ] Add visual history position indicator
+- [ ] Add history inspection panel
+- [ ] Implement .ZIP Website export
+- [ ] Implement React Website export
+- [ ] Add confirmation when unpublishing template
+
+**Code References:**
+- History management: TemplateBuilder.tsx:2513-2537
+- Undo function: TemplateBuilder.tsx:2540-2558
+- Redo function: TemplateBuilder.tsx:2560-2577
+- Save function: TemplateBuilder.tsx:2580-2610
+- Load function: TemplateBuilder.tsx:2612-2652
+- Export function: TemplateBuilder.tsx:2676-2720
+- Save icon: TemplateBuilder.tsx:4330
+- Published banner: TemplateBuilder.tsx:4645-4674
+- Export menu: TemplateBuilder.tsx:4049-4078
+
+**Current Status:** ✅ COMPLETE - Comprehensive undo/redo/save/publish system fully implemented and functional.
+
 ## Last Updated
-2025-10-13 (Session 18 completed)
+2025-10-14 (Session 19 completed)
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

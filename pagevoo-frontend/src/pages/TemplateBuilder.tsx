@@ -264,8 +264,6 @@ export default function TemplateBuilder() {
   const [editSubTab, setEditSubTab] = useState<'settings' | 'css' | 'page'>('settings')
   const [showAddPageModal, setShowAddPageModal] = useState(false)
   const [newPageName, setNewPageName] = useState('')
-  const [showExportSectionModal, setShowExportSectionModal] = useState(false)
-  const [showExportPageModal, setShowExportPageModal] = useState(false)
   const [editingText, setEditingText] = useState<{ sectionId: number; field: string; value: string } | null>(null)
   const [showCodeView, setShowCodeView] = useState(false)
   const [showColorPicker, setShowColorPicker] = useState(false)
@@ -298,9 +296,6 @@ export default function TemplateBuilder() {
     alignment: 'left'
   })
   const editorRef = useRef<HTMLDivElement>(null)
-  const [sectionToExport, setSectionToExport] = useState<TemplateSection | null>(null)
-  const [exportedSections, setExportedSections] = useState<any[]>([])
-  const [exportedPages, setExportedPages] = useState<any[]>([])
   const [showFileMenu, setShowFileMenu] = useState(false)
   const [showInsertMenu, setShowInsertMenu] = useState(false)
   const [showViewMenu, setShowViewMenu] = useState(false)
@@ -311,6 +306,12 @@ export default function TemplateBuilder() {
   const [showCSSPanel, setShowCSSPanel] = useState(false)
   const [showImageGallery, setShowImageGallery] = useState(false)
   const imageGalleryRef = useRef(false)
+  const [showSourceCodeModal, setShowSourceCodeModal] = useState(false)
+  const [showStylesheetModal, setShowStylesheetModal] = useState(false)
+  const [editableHTML, setEditableHTML] = useState('')
+  const [editableCSS, setEditableCSS] = useState('')
+  const [isEditingHTML, setIsEditingHTML] = useState(false)
+  const [isEditingCSS, setIsEditingCSS] = useState(false)
   const [cssTab, setCssTab] = useState<'site' | 'page'>('site')
   const [showSectionCSS, setShowSectionCSS] = useState(false)
   const [showContentStyle, setShowContentStyle] = useState(false)
@@ -322,6 +323,9 @@ export default function TemplateBuilder() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [canUndo, setCanUndo] = useState(false)
   const [canRedo, setCanRedo] = useState(false)
+  const [history, setHistory] = useState<Template[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const [isPublished, setIsPublished] = useState(false)
 
   // Drag and Drop state
   const [activeId, setActiveId] = useState<string | null>(null)
@@ -413,6 +417,18 @@ export default function TemplateBuilder() {
           // Set current page to homepage or first page
           const homepage = templateData.pages.find((p: TemplatePage) => p.is_homepage) || templateData.pages[0]
           setCurrentPage(homepage)
+
+          // Initialize history with loaded state
+          setHistory([JSON.parse(JSON.stringify(templateData))])
+          setHistoryIndex(0)
+          setCanUndo(false)
+          setCanRedo(false)
+
+          // Set published status
+          setIsPublished(templateData.is_active || false)
+
+          // Template just loaded, so no unsaved changes
+          setHasUnsavedChanges(false)
         }
       } catch (error) {
         console.error('Failed to load template:', error)
@@ -491,6 +507,22 @@ export default function TemplateBuilder() {
     console.log('showImageGallery state changed to:', showImageGallery)
     console.trace('Stack trace for showImageGallery change:')
   }, [showImageGallery])
+
+  // Dynamically update HTML when template/page changes
+  useEffect(() => {
+    if (currentPage && showSourceCodeModal) {
+      const generatedHTML = generatePageHTML()
+      setEditableHTML(generatedHTML)
+    }
+  }, [currentPage, currentPage?.sections, showSourceCodeModal])
+
+  // Dynamically update CSS when template/page changes
+  useEffect(() => {
+    if (currentPage && template && showStylesheetModal) {
+      const generatedCSS = generateStylesheet()
+      setEditableCSS(generatedCSS)
+    }
+  }, [currentPage, currentPage?.sections, template?.custom_css, currentPage?.page_css, showStylesheetModal])
 
 
   const handleSaveTemplate = async () => {
@@ -983,56 +1015,6 @@ padding: 1rem;`
     }
   }
 
-  const handleExportSection = () => {
-    if (!selectedSection) return
-    setSectionToExport(selectedSection)
-    setShowExportSectionModal(true)
-  }
-
-  const handleSaveExportedSection = (name: string, description: string, thumbnail: string | null) => {
-    if (!sectionToExport) return
-
-    const exportedSection = {
-      id: Date.now(),
-      name,
-      description,
-      thumbnail,
-      type: sectionToExport.type,
-      content: sectionToExport.content,
-      label: name,
-      defaultContent: sectionToExport.content
-    }
-
-    setExportedSections([...exportedSections, exportedSection])
-    setShowExportSectionModal(false)
-    setSectionToExport(null)
-    alert('Section exported successfully!')
-  }
-
-  const handleExportPage = () => {
-    if (!currentPage) return
-    setShowExportPageModal(true)
-  }
-
-  const handleSaveExportedPage = (name: string, description: string, thumbnail: string | null) => {
-    if (!currentPage) return
-
-    const exportedPage = {
-      id: Date.now(),
-      name,
-      description,
-      thumbnail,
-      sections: currentPage.sections.map(s => ({
-        type: s.type,
-        content: s.content
-      }))
-    }
-
-    setExportedPages([...exportedPages, exportedPage])
-    setShowExportPageModal(false)
-    alert('Page exported successfully!')
-  }
-
   const handleAddPredefinedPage = (pageConfig: any) => {
     if (!template) return
 
@@ -1174,9 +1156,11 @@ padding: 1rem;`
 
     const updatedCurrentPage = updatedPages.find(p => p.id === currentPage.id)
     if (updatedCurrentPage) {
-      setTemplate({ ...template, pages: updatedPages })
+      const updatedTemplate = { ...template, pages: updatedPages }
+      setTemplate(updatedTemplate)
       setCurrentPage(updatedCurrentPage)
       setSelectedSection(newSection)
+      addToHistory(updatedTemplate)
     }
   }
 
@@ -1192,11 +1176,13 @@ padding: 1rem;`
       return p
     })
 
-    setTemplate({ ...template, pages: updatedPages })
+    const updatedTemplate = { ...template, pages: updatedPages }
+    setTemplate(updatedTemplate)
     setCurrentPage({ ...currentPage, sections: updatedSections })
     if (selectedSection?.id === sectionId) {
       setSelectedSection(null)
     }
+    addToHistory(updatedTemplate)
   }
 
   const handleMoveSection = (sectionId: number, direction: 'up' | 'down') => {
@@ -1268,8 +1254,10 @@ padding: 1rem;`
       return p
     })
 
-    setTemplate({ ...template, pages: updatedPages })
+    const updatedTemplate = { ...template, pages: updatedPages }
+    setTemplate(updatedTemplate)
     setCurrentPage({ ...currentPage, sections: newSections })
+    addToHistory(updatedTemplate)
   }
 
   const handleMoveSidebar = (sectionId: number, direction: 'left' | 'right') => {
@@ -1291,7 +1279,8 @@ padding: 1rem;`
       return p
     })
 
-    setTemplate({ ...template, pages: updatedPages })
+    const updatedTemplate = { ...template, pages: updatedPages }
+    setTemplate(updatedTemplate)
     setCurrentPage({ ...currentPage, sections: updatedSections })
 
     // Update selected section if this was the selected one
@@ -1301,6 +1290,7 @@ padding: 1rem;`
         setSelectedSection(updatedSection)
       }
     }
+    addToHistory(updatedTemplate)
   }
 
   const handleUpdateSectionContent = (sectionId: number, newContent: any) => {
@@ -1320,9 +1310,11 @@ padding: 1rem;`
       return p
     })
 
-    setTemplate({ ...template, pages: updatedPages })
+    const updatedTemplate = { ...template, pages: updatedPages }
+    setTemplate(updatedTemplate)
     setCurrentPage({ ...currentPage, sections: updatedSections })
     setSelectedSection({ ...selectedSection!, content: newContent })
+    addToHistory(updatedTemplate)
   }
 
   // Drag and Drop Event Handlers
@@ -2539,31 +2531,192 @@ padding: 1rem;`
     }, 10)
   }
 
-  // Placeholder functions for undo/redo/save
+  // History management helper function
+  const addToHistory = (newTemplate: Template) => {
+    setHistory(prev => {
+      // Remove any history after current index (if user made changes after undo)
+      const newHistory = prev.slice(0, historyIndex + 1)
+
+      // Add new state
+      newHistory.push(JSON.parse(JSON.stringify(newTemplate))) // Deep clone
+
+      // Limit to 10 steps
+      if (newHistory.length > 10) {
+        newHistory.shift() // Remove oldest
+        setHistoryIndex(9)
+      } else {
+        setHistoryIndex(newHistory.length - 1)
+      }
+
+      // Update undo/redo availability
+      setCanUndo(true)
+      setCanRedo(false)
+
+      return newHistory
+    })
+
+    setHasUnsavedChanges(true)
+  }
+
+  // Undo/Redo functions
   const handleUndo = () => {
-    console.log('Undo functionality - to be implemented')
-    // TODO: Implement undo functionality
+    if (historyIndex > 0 && template) {
+      const newIndex = historyIndex - 1
+      const previousState = history[newIndex]
+
+      setTemplate(JSON.parse(JSON.stringify(previousState)))
+
+      // Find and set current page
+      const currentPageInHistory = previousState.pages.find(p => p.id === currentPage?.id)
+      if (currentPageInHistory) {
+        setCurrentPage(currentPageInHistory)
+      }
+
+      setHistoryIndex(newIndex)
+      setCanUndo(newIndex > 0)
+      setCanRedo(true)
+      setHasUnsavedChanges(true)
+    }
   }
 
   const handleRedo = () => {
-    console.log('Redo functionality - to be implemented')
-    // TODO: Implement redo functionality
+    if (historyIndex < history.length - 1 && template) {
+      const newIndex = historyIndex + 1
+      const nextState = history[newIndex]
+
+      setTemplate(JSON.parse(JSON.stringify(nextState)))
+
+      // Find and set current page
+      const currentPageInHistory = nextState.pages.find(p => p.id === currentPage?.id)
+      if (currentPageInHistory) {
+        setCurrentPage(currentPageInHistory)
+      }
+
+      setHistoryIndex(newIndex)
+      setCanUndo(true)
+      setCanRedo(newIndex < history.length - 1)
+      setHasUnsavedChanges(true)
+    }
   }
 
-  const handleSave = () => {
-    console.log('Save functionality - to be implemented')
-    // TODO: Implement save functionality
-    setHasUnsavedChanges(false)
+  const handleSave = async () => {
+    if (!template) {
+      alert('No template to save')
+      return
+    }
+
+    // If template is published, show warning
+    if (isPublished) {
+      if (!confirm('This template is published. Saving will update the published version. Continue?')) {
+        return
+      }
+    }
+
+    try {
+      const response = await api.updateTemplate(template.id, template)
+
+      if (response.success) {
+        setHasUnsavedChanges(false)
+        // Update initial history state to current saved state
+        if (history.length === 0) {
+          setHistory([JSON.parse(JSON.stringify(template))])
+          setHistoryIndex(0)
+        }
+      } else {
+        alert('Failed to save template: ' + (response.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Save error:', error)
+      alert('Failed to save template')
+    }
   }
 
-  const handleSaveAs = () => {
-    console.log('Save As functionality - to be implemented')
-    // TODO: Implement save as functionality
+  const handleLoad = async () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Loading will discard them. Continue?')) {
+        return
+      }
+    }
+
+    if (!templateId) {
+      alert('No template ID specified')
+      return
+    }
+
+    try {
+      const response = await api.getTemplate(parseInt(templateId))
+
+      if (response.success && response.data) {
+        const templateData = response.data
+
+        setTemplate(templateData)
+
+        // Set current page to homepage or first page
+        const homepage = templateData.pages.find((p: TemplatePage) => p.is_homepage) || templateData.pages[0]
+        setCurrentPage(homepage)
+
+        // Check if published
+        setIsPublished(templateData.is_active || false)
+
+        // Reset history
+        setHistory([JSON.parse(JSON.stringify(templateData))])
+        setHistoryIndex(0)
+        setCanUndo(false)
+        setCanRedo(false)
+        setHasUnsavedChanges(false)
+      } else {
+        alert('Failed to load template')
+      }
+    } catch (error) {
+      console.error('Load error:', error)
+      alert('Failed to load template')
+    }
   }
 
-  const handleLoad = () => {
-    console.log('Load functionality - to be implemented')
-    // TODO: Implement load functionality
+  const handleExportAsHTMLTemplate = async () => {
+    if (!template) {
+      alert('No template to export')
+      return
+    }
+
+    // Check if already published
+    if (isPublished) {
+      if (!confirm('This template is already published. Exporting again will update the published version. Continue?')) {
+        return
+      }
+    }
+
+    // Check for unsaved changes
+    if (hasUnsavedChanges) {
+      alert('Please save your changes before publishing the template.')
+      return
+    }
+
+    // Confirm export
+    if (!confirm('Export this template as HTML Template? This will publish the template and make it available to users.')) {
+      return
+    }
+
+    try {
+      // Update template to set is_active = true (published)
+      const updatedTemplate = {
+        ...template,
+        is_active: true
+      }
+
+      const response = await api.updateTemplate(template.id, updatedTemplate)
+
+      if (response.success) {
+        setTemplate(updatedTemplate)
+        setIsPublished(true)
+        alert('Template published successfully! It is now available in the templates list.')
+      } else {
+        alert('Failed to publish template: ' + (response.error || 'Unknown error'))
+      }
+    } catch (error) {
+      console.error('Export error:', error)
+      alert('Failed to publish template')
+    }
   }
 
   const handleExportReact = () => {
@@ -2574,6 +2727,503 @@ padding: 1rem;`
   const handleExportHTML = () => {
     console.log('Export as HTML - to be implemented')
     // TODO: Implement HTML export
+  }
+
+  // Generate HTML source code from current page
+  const generatePageHTML = (): string => {
+    if (!currentPage || !currentPage.sections) return ''
+
+    const sectionId = (section: TemplateSection) => section.section_id || `section-${section.id}`
+
+    const generateSectionHTML = (section: TemplateSection): string => {
+      const content = section.content || {}
+      const id = sectionId(section)
+
+      // Grid sections (1x1, 2x1, 3x1, etc.)
+      if (section.type.startsWith('grid-')) {
+        const columns = content.columns || []
+        const columnsHTML = columns.map((col: any, idx: number) => {
+          const colWidth = col.colWidth || 12
+          return `    <div class="col-${colWidth}">\n      ${col.content || `Column ${idx + 1}`}\n    </div>`
+        }).join('\n')
+
+        return `  <section id="${id}">\n    <div class="row">\n${columnsHTML}\n    </div>\n  </section>`
+      }
+
+      // Hero sections
+      if (section.type === 'hero') {
+        return `  <section id="${id}" class="hero">
+    <h1>${content.title || 'Welcome'}</h1>
+    <p>${content.subtitle || 'Your subtitle here'}</p>
+    <button>${content.cta_text || 'Get Started'}</button>
+  </section>`
+      }
+
+      // Gallery sections
+      if (section.type === 'gallery') {
+        return `  <section id="${id}" class="gallery">
+    <h2>${content.heading || 'Gallery'}</h2>
+    <div class="gallery-grid">
+      <!-- Gallery images here -->
+    </div>
+  </section>`
+      }
+
+      // Contact form
+      if (section.type === 'contact-form') {
+        return `  <section id="${id}" class="contact-form">
+    <h2>${content.heading || 'Contact Us'}</h2>
+    <form>
+      <input type="text" placeholder="Name" required>
+      <input type="email" placeholder="Email" required>
+      <textarea placeholder="Message" required></textarea>
+      <button type="submit">Send</button>
+    </form>
+  </section>`
+      }
+
+      // Booking form
+      if (section.type === 'booking-form') {
+        return `  <section id="${id}" class="booking-form">
+    <h2>${content.heading || 'Book Now'}</h2>
+    <form>
+      <input type="text" placeholder="Name" required>
+      <input type="date" placeholder="Date" required>
+      <input type="time" placeholder="Time" required>
+      <button type="submit">Book</button>
+    </form>
+  </section>`
+      }
+
+      // Login box
+      if (section.type === 'login-box') {
+        return `  <section id="${id}" class="login-box">
+    <h2>${content.heading || 'Sign In'}</h2>
+    <form>
+      <input type="email" placeholder="Email" required>
+      <input type="password" placeholder="Password" required>
+      <button type="submit">Login</button>
+    </form>
+  </section>`
+      }
+
+      // Testimonials
+      if (section.type === 'testimonials') {
+        return `  <section id="${id}" class="testimonials">
+    <h2>${content.heading || 'What Our Customers Say'}</h2>
+    <div class="testimonials-grid">
+      <!-- Testimonials here -->
+    </div>
+  </section>`
+      }
+
+      // Navbar sections
+      if (section.type.startsWith('navbar-')) {
+        const links = content.links || ['Home', 'About', 'Services', 'Contact']
+        const linksHTML = links.map((link: string) => `      <a href="#">${link}</a>`).join('\n')
+        return `  <nav id="${id}" class="${section.type}">
+    <div class="logo">${content.logo || 'Logo'}</div>
+    <div class="nav-links">
+${linksHTML}
+    </div>
+  </nav>`
+      }
+
+      // Header sections
+      if (section.type.startsWith('header-')) {
+        return `  <header id="${id}" class="${section.type}">
+    <div class="logo">${content.logo || 'Company Name'}</div>
+    ${content.tagline ? `<p class="tagline">${content.tagline}</p>` : ''}
+  </header>`
+      }
+
+      // Sidebar sections
+      if (section.type.startsWith('sidebar-nav-')) {
+        const links = content.links || ['Dashboard', 'Profile', 'Settings', 'Logout']
+        const linksHTML = links.map((link: string) => `      <a href="#">${link}</a>`).join('\n')
+        return `  <aside id="${id}" class="${section.type}">
+    <nav>
+${linksHTML}
+    </nav>
+  </aside>`
+      }
+
+      // Footer sections
+      if (section.type.startsWith('footer-')) {
+        if (section.type === 'footer-simple') {
+          return `  <footer id="${id}" class="footer-simple">
+    <p>${content.text || '© 2025 Company Name. All rights reserved.'}</p>
+  </footer>`
+        } else if (section.type === 'footer-columns') {
+          const columns = content.columns || []
+          const columnsHTML = columns.map((col: any) => {
+            const linksHTML = (col.links || []).map((link: string) => `        <li><a href="#">${link}</a></li>`).join('\n')
+            return `      <div class="footer-column">
+        <h3>${col.title}</h3>
+        <ul>
+${linksHTML}
+        </ul>
+      </div>`
+          }).join('\n')
+          return `  <footer id="${id}" class="footer-columns">
+${columnsHTML}
+  </footer>`
+        } else if (section.type === 'footer-social') {
+          const socials = content.socials || ['Facebook', 'Twitter', 'Instagram']
+          const socialsHTML = socials.map((social: string) => `      <a href="#">${social}</a>`).join('\n')
+          return `  <footer id="${id}" class="footer-social">
+    <p>${content.text || '© 2025 Company'}</p>
+    <div class="social-links">
+${socialsHTML}
+    </div>
+  </footer>`
+        }
+      }
+
+      // Default/unknown section type
+      return `  <section id="${id}" class="${section.type}">
+    <!-- ${section.type} section -->
+  </section>`
+    }
+
+    // Generate HTML for all sections
+    const sectionsHTML = currentPage.sections
+      .sort((a, b) => a.order - b.order)
+      .map(section => generateSectionHTML(section))
+      .join('\n\n')
+
+    // Generate complete HTML document
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${currentPage.name}</title>
+  ${currentPage.meta_description ? `<meta name="description" content="${currentPage.meta_description}">` : ''}
+  <style>
+    /* Add your CSS styles here */
+  </style>
+</head>
+<body>
+
+${sectionsHTML}
+
+</body>
+</html>`
+  }
+
+  // Generate complete stylesheet (style.css)
+  const generateStylesheet = (): string => {
+    if (!currentPage || !template) return ''
+
+    let css = ''
+
+    // Header comment
+    css += `/*\n * Generated Stylesheet for ${currentPage.name}\n * Generated by Pagevoo Template Builder\n */\n\n`
+
+    // 1. Responsive Grid System (Base - Mobile First)
+    css += `/* Responsive Grid System - Mobile First */\n\n`
+    css += `[class*="col-"] {\n`
+    css += `  float: left;\n`
+    css += `  padding: 20px;\n`
+    css += `  width: 100%;\n`
+    css += `}\n\n`
+
+    css += `.row::after {\n`
+    css += `  content: "";\n`
+    css += `  clear: both;\n`
+    css += `  display: table;\n`
+    css += `}\n\n`
+
+    css += `*, *::after, *::before {\n`
+    css += `  -webkit-box-sizing: border-box;\n`
+    css += `  -moz-box-sizing: border-box;\n`
+    css += `  box-sizing: border-box;\n`
+    css += `}\n\n`
+
+    // 2. Site CSS (Global styles)
+    if (template.custom_css && template.custom_css.trim()) {
+      css += `/* Site-Wide Styles */\n\n`
+      css += template.custom_css + '\n\n'
+    }
+
+    // 3. Page CSS (Page-specific styles)
+    if (currentPage.page_css && currentPage.page_css.trim()) {
+      css += `/* Page-Specific Styles: ${currentPage.name} */\n\n`
+      css += currentPage.page_css + '\n\n'
+    }
+
+    // 4. Section, Row, and Column CSS
+    if (currentPage.sections && currentPage.sections.length > 0) {
+      css += `/* Section, Row, and Column Styles */\n\n`
+
+      currentPage.sections
+        .sort((a, b) => a.order - b.order)
+        .forEach(section => {
+          const sectionId = section.section_id || `section-${section.id}`
+
+          // Section CSS
+          if (section.content?.section_css) {
+            css += `/* Section: ${section.section_name || section.type} */\n`
+            css += `#${sectionId} {\n`
+            css += section.content.section_css
+            if (!section.content.section_css.trim().endsWith(';')) css += ';'
+            css += `\n}\n\n`
+          }
+
+          // Content CSS (row and columns)
+          const contentCSS = section.content?.content_css
+          if (contentCSS) {
+            // Row CSS
+            if (contentCSS.row) {
+              css += `/* Section ${sectionId} - Row Styles */\n`
+              css += `#${sectionId} .row {\n`
+              css += contentCSS.row
+              if (!contentCSS.row.trim().endsWith(';')) css += ';'
+              css += `\n}\n\n`
+            }
+
+            // Column CSS
+            if (contentCSS.columns) {
+              const columns = section.content?.columns || []
+              Object.entries(contentCSS.columns).forEach(([colIdx, colCSS]) => {
+                if (colCSS) {
+                  const colWidth = columns[parseInt(colIdx)]?.colWidth || 12
+                  css += `/* Section ${sectionId} - Column ${parseInt(colIdx) + 1} */\n`
+                  css += `#${sectionId} .col-${colWidth}:nth-of-type(${parseInt(colIdx) + 1}) {\n`
+                  css += colCSS
+                  if (!(colCSS as string).trim().endsWith(';')) css += ';'
+                  css += `\n}\n\n`
+                }
+              })
+            }
+          }
+        })
+    }
+
+    // 5. Responsive Breakpoints - Tablet Landscape
+    css += `/* Tablet Landscape (768px - 1024px) */\n`
+    css += `@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {\n`
+    css += `  .col-1 {width: 8.33%;}\n`
+    css += `  .col-2 {width: 16.66%;}\n`
+    css += `  .col-3 {width: 25%;}\n`
+    css += `  .col-4 {width: 33.33%;}\n`
+    css += `  .col-5 {width: 41.66%;}\n`
+    css += `  .col-6 {width: 50%;}\n`
+    css += `  .col-7 {width: 58.33%;}\n`
+    css += `  .col-8 {width: 66.66%;}\n`
+    css += `  .col-9 {width: 75%;}\n`
+    css += `  .col-10 {width: 83.33%;}\n`
+    css += `  .col-11 {width: 91.66%;}\n`
+    css += `  .col-12 {width: 100%;}\n`
+    css += `}\n\n`
+
+    // 6. Responsive Breakpoints - Desktop
+    css += `/* Desktop and High-Res Devices (1025px+) */\n`
+    css += `@media only screen and (min-width: 1025px) {\n`
+    css += `  .col-1 {width: 8.33%;}\n`
+    css += `  .col-2 {width: 16.66%;}\n`
+    css += `  .col-3 {width: 25%;}\n`
+    css += `  .col-4 {width: 33.33%;}\n`
+    css += `  .col-5 {width: 41.66%;}\n`
+    css += `  .col-6 {width: 50%;}\n`
+    css += `  .col-7 {width: 58.33%;}\n`
+    css += `  .col-8 {width: 66.66%;}\n`
+    css += `  .col-9 {width: 75%;}\n`
+    css += `  .col-10 {width: 83.33%;}\n`
+    css += `  .col-11 {width: 91.66%;}\n`
+    css += `  .col-12 {width: 100%;}\n`
+    css += `}\n`
+
+    return css
+  }
+
+  // Handler for applying HTML changes
+  const handleApplyHTMLChanges = () => {
+    if (!currentPage || !template) return
+
+    // Show confirmation dialog
+    if (!confirm('Applying HTML changes will update your template structure. This may cause issues with the template builder if structural elements have been modified. Continue?')) {
+      return
+    }
+
+    try {
+      // For now, we'll implement a simplified parsing that extracts text content from columns
+      // A full HTML parser would be more complex and is beyond the current scope
+
+      // Parse the edited HTML to extract section content
+      const parser = new DOMParser()
+      const doc = parser.parseFromString(editableHTML, 'text/html')
+
+      // Find all sections in the parsed HTML
+      const sections = doc.querySelectorAll('section')
+
+      // Update sections in currentPage
+      const updatedSections = currentPage.sections.map((section, idx) => {
+        const sectionElement = sections[idx]
+        if (!sectionElement) return section
+
+        // Update text content in columns for grid sections
+        if (section.type.startsWith('grid-')) {
+          const columns = sectionElement.querySelectorAll('[class*="col-"]')
+          const updatedColumns = (section.content?.columns || []).map((col: any, colIdx: number) => {
+            const columnElement = columns[colIdx]
+            if (columnElement) {
+              return {
+                ...col,
+                content: columnElement.innerHTML.trim()
+              }
+            }
+            return col
+          })
+
+          return {
+            ...section,
+            content: {
+              ...section.content,
+              columns: updatedColumns
+            }
+          }
+        }
+
+        // Handle other section types (hero, etc.)
+        // Extract text from heading and paragraph
+        const heading = sectionElement.querySelector('h1, h2')
+        const paragraph = sectionElement.querySelector('p')
+
+        if (heading || paragraph) {
+          return {
+            ...section,
+            content: {
+              ...section.content,
+              heading: heading?.textContent || section.content?.heading,
+              text: paragraph?.textContent || section.content?.text
+            }
+          }
+        }
+
+        return section
+      })
+
+      // Update the page with modified sections
+      const updatedPage = {
+        ...currentPage,
+        sections: updatedSections
+      }
+
+      // Update template with modified page
+      const updatedPages = template.pages.map(p =>
+        p.id === currentPage.id ? updatedPage : p
+      )
+
+      setTemplate({
+        ...template,
+        pages: updatedPages
+      })
+      setCurrentPage(updatedPage)
+      setHasUnsavedChanges(true)
+      setIsEditingHTML(false)
+
+      alert('HTML changes applied successfully! Remember to save your template.')
+    } catch (error) {
+      console.error('Error parsing HTML:', error)
+      alert('Failed to parse HTML. Please check your syntax and try again.')
+    }
+  }
+
+  // Handler for applying CSS changes
+  const handleApplyCSSChanges = () => {
+    if (!currentPage || !template) return
+
+    // Show confirmation dialog
+    if (!confirm('Applying CSS changes will update your styles. Invalid CSS may cause display issues. Continue?')) {
+      return
+    }
+
+    try {
+      // Extract different CSS sections from the edited CSS
+      const cssText = editableCSS
+
+      // Split CSS by comments to identify different sections
+      const siteCSSMatch = cssText.match(/\/\* Site-Wide Styles \*\/\s*\n([\s\S]*?)(?=\/\*|$)/)
+      const pageCSSMatch = cssText.match(/\/\* Page-Specific Styles:.*?\*\/\s*\n([\s\S]*?)(?=\/\*|$)/)
+
+      // Update site CSS if found
+      if (siteCSSMatch && siteCSSMatch[1]) {
+        const siteCSS = siteCSSMatch[1].trim()
+        setTemplate({
+          ...template,
+          custom_css: siteCSS
+        })
+      }
+
+      // Update page CSS if found
+      if (pageCSSMatch && pageCSSMatch[1]) {
+        const pageCSS = pageCSSMatch[1].trim()
+        const updatedPage = {
+          ...currentPage,
+          page_css: pageCSS
+        }
+
+        const updatedPages = template.pages.map(p =>
+          p.id === currentPage.id ? updatedPage : p
+        )
+
+        setTemplate({
+          ...template,
+          pages: updatedPages
+        })
+        setCurrentPage(updatedPage)
+      }
+
+      // Parse section-specific CSS
+      const sectionCSSMatches = cssText.matchAll(/#(section-\d+|[\w-]+)\s*\{([^}]+)\}/g)
+      const updatedSections = [...currentPage.sections]
+
+      for (const match of sectionCSSMatches) {
+        const sectionId = match[1]
+        const cssContent = match[2].trim()
+
+        // Find matching section
+        const sectionIndex = updatedSections.findIndex(s => {
+          const sid = s.section_id || `section-${s.id}`
+          return sid === sectionId
+        })
+
+        if (sectionIndex !== -1) {
+          updatedSections[sectionIndex] = {
+            ...updatedSections[sectionIndex],
+            content: {
+              ...updatedSections[sectionIndex].content,
+              section_css: cssContent
+            }
+          }
+        }
+      }
+
+      // Update page with modified sections
+      const updatedPage = {
+        ...currentPage,
+        sections: updatedSections
+      }
+
+      const updatedPages = template.pages.map(p =>
+        p.id === currentPage.id ? updatedPage : p
+      )
+
+      setTemplate({
+        ...template,
+        pages: updatedPages
+      })
+      setCurrentPage(updatedPage)
+      setHasUnsavedChanges(true)
+      setIsEditingCSS(false)
+
+      alert('CSS changes applied successfully! Remember to save your template.')
+    } catch (error) {
+      console.error('Error parsing CSS:', error)
+      alert('Failed to parse CSS. Please check your syntax and try again.')
+    }
   }
 
   // Clickable text component that opens the editor
@@ -3442,37 +4092,37 @@ padding: 1rem;`
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                       </svg>
                     </button>
-                    <div className="absolute left-full top-0 ml-0 bg-white border border-gray-200 shadow-lg z-50 w-40 hidden group-hover:block">
+                    <div className="absolute left-full top-0 ml-0 bg-white border border-gray-200 shadow-lg z-50 w-48 hidden group-hover:block">
                       <button
                         onClick={() => {
-                          handleExportReact()
+                          handleExportAsHTMLTemplate()
                           setShowFileMenu(false)
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                        className="w-full text-left px-4 py-2 hover:bg-amber-50 text-xs font-medium text-amber-700"
                       >
-                        React
+                        HTML Template (Publish)
+                      </button>
+                      <div className="border-t border-gray-200 my-1"></div>
+                      <button
+                        onClick={() => {
+                          alert('ZIP Website export coming soon!')
+                          setShowFileMenu(false)
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs text-gray-500"
+                      >
+                        .ZIP Website
                       </button>
                       <button
                         onClick={() => {
-                          handleExportHTML()
+                          alert('React Website export coming soon!')
                           setShowFileMenu(false)
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                        className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs text-gray-500"
                       >
-                        HTML
+                        React Website
                       </button>
                     </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      handleExportPage()
-                      setShowFileMenu(false)
-                    }}
-                    disabled={!currentPage}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Export Current Page
-                  </button>
                   <div className="border-t border-gray-200 my-1"></div>
                   <button
                     onClick={() => setShowFileMenu(false)}
@@ -3781,7 +4431,7 @@ padding: 1rem;`
                     </button>
                     <button
                       onClick={() => {
-                        alert('Source Code - Coming Soon!')
+                        setShowSourceCodeModal(true)
                         setShowViewMenu(false)
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
@@ -3790,7 +4440,7 @@ padding: 1rem;`
                     </button>
                     <button
                       onClick={() => {
-                        alert('Stylesheet - Coming Soon!')
+                        setShowStylesheetModal(true)
                         setShowViewMenu(false)
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
@@ -3873,15 +4523,12 @@ padding: 1rem;`
           <div className="flex items-center h-full border-l border-gray-200 pl-2 ml-2">
             <button
               onClick={handleSave}
-              className={`p-1.5 hover:bg-gray-100 rounded transition ${hasUnsavedChanges ? 'text-amber-600' : 'text-gray-600'}`}
-              title={hasUnsavedChanges ? 'Save (Ctrl+S) - Unsaved changes' : 'Save (Ctrl+S)'}
+              className={`p-1.5 hover:bg-gray-100 rounded transition relative ${hasUnsavedChanges ? 'text-red-500' : 'text-green-500'}`}
+              title={hasUnsavedChanges ? 'Save (Ctrl+S) - Unsaved changes' : 'Save (Ctrl+S) - All changes saved'}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
               </svg>
-              {hasUnsavedChanges && (
-                <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-              )}
             </button>
 
             {/* Image Gallery Button */}
@@ -3927,13 +4574,6 @@ padding: 1rem;`
         <div className="flex items-center h-full text-xs space-x-1 pr-2">
           <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition">
             Preview
-          </button>
-          <button
-            onClick={handleSaveTemplate}
-            disabled={loading}
-            className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-white rounded transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading ? 'Saving...' : template.id === 0 ? 'Create Template' : 'Save Template'}
           </button>
           <div className="ml-2 px-2 text-gray-600 border-l border-gray-200">
             {user?.name}
@@ -4001,6 +4641,37 @@ padding: 1rem;`
           <span className="text-xs text-gray-600">Zoom: 100%</span>
         </div>
       </div>
+
+      {/* Published Template Indicator Banner */}
+      {isPublished && (
+        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <div>
+              <span className="text-sm font-medium text-amber-800">Published Template</span>
+              <p className="text-xs text-amber-700">This template is published and available to users. Changes will update the published version.</p>
+            </div>
+          </div>
+          <button
+            onClick={() => {
+              if (confirm('Unpublish this template? It will no longer be available to users.')) {
+                const updatedTemplate = { ...template!, is_active: false }
+                api.updateTemplate(template!.id, updatedTemplate).then(response => {
+                  if (response.success) {
+                    setTemplate(updatedTemplate)
+                    setIsPublished(false)
+                  }
+                })
+              }
+            }}
+            className="px-3 py-1 bg-white border border-amber-300 text-amber-700 rounded text-xs hover:bg-amber-50 transition"
+          >
+            Unpublish
+          </button>
+        </div>
+      )}
 
       {/* Builder Main Area */}
       <div className="flex-1 flex overflow-hidden relative">
@@ -4123,60 +4794,6 @@ padding: 1rem;`
                     </div>
                   )}
                 </div>
-
-                {/* Exported Sections */}
-                {exportedSections.length > 0 && (
-                  <div className="mb-3">
-                    <button
-                      onClick={() => toggleCategory('exported')}
-                      className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
-                    >
-                      <span>Exported Sections</span>
-                      <svg
-                        className={`w-3 h-3 transition-transform ${expandedCategories.includes('exported') ? 'rotate-90' : ''}`}
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-
-                    {expandedCategories.includes('exported') && (
-                      <div className="grid grid-cols-2 gap-2 mt-2">
-                        {exportedSections.map((section) => (
-                          <DraggableSectionItem key={section.id} section={section}>
-                            <div
-                              className="group relative w-full cursor-grab active:cursor-grabbing"
-                              title={section.description}
-                            >
-                              {section.thumbnail ? (
-                                <img src={section.thumbnail} alt={section.name} className="w-full aspect-video object-cover rounded border border-gray-300" />
-                              ) : (
-                                renderSectionThumbnail(section)
-                              )}
-                              <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
-                                {section.label}
-                              </div>
-                            </div>
-                          </DraggableSectionItem>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Export Section Button */}
-                {selectedSection && (
-                  <div className="border-t border-gray-200 pt-3 mt-3">
-                    <button
-                      onClick={handleExportSection}
-                      className="w-full px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded transition text-xs font-medium"
-                    >
-                      Export Selected Section
-                    </button>
-                  </div>
-                )}
 
               </div>
             </aside>
@@ -5078,27 +5695,6 @@ padding: 1rem;`
           </div>
         </div>
       )}
-
-      {/* Export Section Modal */}
-      {showExportSectionModal && (
-        <ExportModal
-          title="Export Section"
-          onSave={handleSaveExportedSection}
-          onClose={() => {
-            setShowExportSectionModal(false)
-            setSectionToExport(null)
-          }}
-        />
-      )}
-
-      {/* Export Page Modal */}
-      {showExportPageModal && (
-        <ExportModal
-          title="Export Page"
-          onSave={handleSaveExportedPage}
-          onClose={() => setShowExportPageModal(false)}
-        />
-      )}
     </div>
 
     {/* Drag Overlay - Shows preview of dragged item */}
@@ -5981,100 +6577,270 @@ padding: 1rem;`
         />
         </>
       ) : null}
+
+      {/* Source Code Modal */}
+      {showSourceCodeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg shadow-xl w-[90vw] h-[85vh] max-w-6xl flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">Page Source Code</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    HTML source code for: <span className="font-medium">{currentPage?.name}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {!isEditingHTML ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditableHTML(generatePageHTML())
+                          setIsEditingHTML(true)
+                        }}
+                        className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 text-sm font-medium transition"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          const html = generatePageHTML()
+                          navigator.clipboard.writeText(html)
+                          alert('Source code copied to clipboard!')
+                        }}
+                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        onClick={() => {
+                          const html = generatePageHTML()
+                          const blob = new Blob([html], { type: 'text/html' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `${currentPage?.slug || 'page'}.html`
+                          document.body.appendChild(a)
+                          a.click()
+                          document.body.removeChild(a)
+                          URL.revokeObjectURL(url)
+                        }}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition"
+                      >
+                        Download
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleApplyHTMLChanges}
+                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
+                      >
+                        Apply Changes
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingHTML(false)
+                          setEditableHTML(generatePageHTML())
+                        }}
+                        className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm font-medium transition"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowSourceCodeModal(false)
+                      setIsEditingHTML(false)
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Warning Banner - Only show when editing */}
+            {isEditingHTML && (
+              <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-200">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-yellow-800">Warning: Editing source code directly</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Modifying the HTML structure (especially deleting sections or columns) may cause issues with the template builder canvas. It's recommended to only edit text content and attributes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden p-6">
+              <div className="h-full bg-gray-900 rounded-lg overflow-hidden">
+                {!isEditingHTML ? (
+                  <div className="h-full overflow-auto">
+                    <pre className="text-green-400 font-mono text-sm p-4 whitespace-pre-wrap break-words">
+                      <code>{editableHTML || generatePageHTML()}</code>
+                    </pre>
+                  </div>
+                ) : (
+                  <textarea
+                    value={editableHTML}
+                    onChange={(e) => setEditableHTML(e.target.value)}
+                    className="w-full h-full p-4 bg-gray-900 text-green-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    spellCheck={false}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
+              <p className="text-sm text-gray-600">
+                Generated from {currentPage?.sections?.length || 0} section{(currentPage?.sections?.length || 0) !== 1 ? 's' : ''} • {isEditingHTML ? 'Editing mode - Changes will update template' : 'Dynamic preview - Updates as you build'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stylesheet Modal */}
+      {showStylesheetModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg shadow-xl w-[90vw] h-[85vh] max-w-6xl flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">Compiled Stylesheet</h2>
+                  <p className="text-sm text-gray-600 mt-1">
+                    Complete CSS for: <span className="font-medium">{currentPage?.name}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  {!isEditingCSS ? (
+                    <>
+                      <button
+                        onClick={() => {
+                          setEditableCSS(generateStylesheet())
+                          setIsEditingCSS(true)
+                        }}
+                        className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 text-sm font-medium transition"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => {
+                          const css = generateStylesheet()
+                          navigator.clipboard.writeText(css)
+                          alert('Stylesheet copied to clipboard!')
+                        }}
+                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
+                      >
+                        Copy
+                      </button>
+                      <button
+                        onClick={() => {
+                          const css = generateStylesheet()
+                          const blob = new Blob([css], { type: 'text/css' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = 'style.css'
+                          document.body.appendChild(a)
+                          a.click()
+                          document.body.removeChild(a)
+                          URL.revokeObjectURL(url)
+                        }}
+                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition"
+                      >
+                        Download
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleApplyCSSChanges}
+                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
+                      >
+                        Apply Changes
+                      </button>
+                      <button
+                        onClick={() => {
+                          setIsEditingCSS(false)
+                          setEditableCSS(generateStylesheet())
+                        }}
+                        className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm font-medium transition"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  )}
+                  <button
+                    onClick={() => {
+                      setShowStylesheetModal(false)
+                      setIsEditingCSS(false)
+                    }}
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Warning Banner - Only show when editing */}
+            {isEditingCSS && (
+              <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-200">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-yellow-800">Warning: Editing stylesheet directly</p>
+                    <p className="text-xs text-yellow-700 mt-1">
+                      Invalid CSS syntax may cause display issues in the template builder. Ensure your CSS is valid before applying changes.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Content */}
+            <div className="flex-1 overflow-hidden p-6">
+              <div className="h-full bg-gray-900 rounded-lg overflow-hidden">
+                {!isEditingCSS ? (
+                  <div className="h-full overflow-auto">
+                    <pre className="text-cyan-400 font-mono text-sm p-4 whitespace-pre-wrap break-words">
+                      <code>{editableCSS || generateStylesheet()}</code>
+                    </pre>
+                  </div>
+                ) : (
+                  <textarea
+                    value={editableCSS}
+                    onChange={(e) => setEditableCSS(e.target.value)}
+                    className="w-full h-full p-4 bg-gray-900 text-cyan-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    spellCheck={false}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
+              <p className="text-sm text-gray-600">
+                {isEditingCSS ? 'Editing mode - Changes will update template styles' : 'Dynamic preview - Updates as you build'} • Cascade Order: Grid System → Site CSS → Page CSS → Section CSS → Row CSS → Column CSS → Responsive Breakpoints
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
   </DndContext>
   )
 }
-
-// Export Modal Component
-function ExportModal({ title, onSave, onClose }: { title: string, onSave: (name: string, description: string, thumbnail: string | null) => void, onClose: () => void }) {
-  const [name, setName] = useState('')
-  const [description, setDescription] = useState('')
-  const [thumbnail, setThumbnail] = useState<string | null>(null)
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = (event) => {
-      setThumbnail(event.target?.result as string)
-    }
-    reader.readAsDataURL(file)
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">{title}</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., My Custom Section"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-              autoFocus
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of this item"
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Thumbnail (Optional)</label>
-            {thumbnail && (
-              <div className="mb-2">
-                <img src={thumbnail} alt="Preview" className="w-full h-32 object-cover rounded border border-gray-300" />
-              </div>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-            />
-            <p className="text-xs text-gray-500 mt-1">Recommended: 800x600px or similar aspect ratio</p>
-          </div>
-          <div className="flex gap-2 pt-2">
-            <button
-              onClick={onClose}
-              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={() => {
-                if (!name.trim()) {
-                  alert('Please enter a name')
-                  return
-                }
-                onSave(name, description, thumbnail)
-                setName('')
-                setDescription('')
-                setThumbnail(null)
-              }}
-              disabled={!name.trim()}
-              className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Export
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-

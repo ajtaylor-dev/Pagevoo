@@ -23,6 +23,7 @@ interface StyleProperty {
   backgroundPosition?: string
   backgroundRepeat?: string
   backgroundAttachment?: string
+  opacity?: number
 }
 
 interface StyleEditorProps {
@@ -204,6 +205,10 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     const bgAttachmentMatch = css.match(/background-attachment:\s*([^;]+);?/i)
     if (bgAttachmentMatch) props.backgroundAttachment = bgAttachmentMatch[1].trim()
 
+    // Opacity
+    const opacityMatch = css.match(/opacity:\s*([\d.]+);?/i)
+    if (opacityMatch) props.opacity = parseFloat(opacityMatch[1])
+
     return props
   }
 
@@ -256,6 +261,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       if (props.backgroundRepeat) css += `background-repeat: ${props.backgroundRepeat};\n`
       if (props.backgroundAttachment) css += `background-attachment: ${props.backgroundAttachment};\n`
     }
+    if (props.opacity !== undefined && props.opacity !== 1) css += `opacity: ${props.opacity};\n`
 
     return css
   }
@@ -396,6 +402,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       backgroundPosition: parsed.backgroundPosition,
       backgroundRepeat: parsed.backgroundRepeat,
       backgroundAttachment: parsed.backgroundAttachment,
+      opacity: parsed.opacity ?? 1,
     })
     setRawCSS(value)
   }, [value])
@@ -865,6 +872,27 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Opacity Slider - Show for section and column */}
+          {(context === 'section' || context === 'column') && (
+            <div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-medium">Opacity</Label>
+                <span className="text-xs text-gray-500">{((properties.opacity ?? 1) * 100).toFixed(0)}%</span>
+              </div>
+              <Slider
+                value={[(properties.opacity ?? 1) * 100]}
+                onValueChange={(value) => updateProperty('opacity', value[0] / 100)}
+                min={0}
+                max={100}
+                step={1}
+                className="mt-2"
+              />
+              <p className="text-[9px] text-gray-400 mt-1">
+                Adjust transparency (0% = invisible, 100% = fully visible)
+              </p>
             </div>
           )}
         </TabsContent>
