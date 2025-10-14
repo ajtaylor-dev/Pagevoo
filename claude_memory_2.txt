@@ -1526,8 +1526,230 @@ useEffect(() => {
 
 **Current Status:** ✅ COMPLETE - Comprehensive undo/redo/save/publish system fully implemented and functional.
 
+## Session 20 (2025-10-14) - Header & Navigation Enhancement Planning & Save/Load System Fixes
+
+**What We Accomplished:**
+1. Fixed save/load/undo/redo system - templates now save/load correctly
+2. Implemented Word-style save behavior (prompt for name on first save)
+3. Added template selector modal for loading templates
+4. Fixed database schema issues (added css column, removed old name column)
+5. Corrected published/unpublished workflow (Save = draft, Export = publish)
+6. Added comprehensive filter system to Template Manager
+7. Planned comprehensive header/navigation enhancement system
+
+**Session Context:**
+User reported issues with save/load functionality and requested enhancements to header/nav sections.
+
+### Part 1: Save/Load System Fixes
+
+**Problems Fixed:**
+
+1. **Save Not Prompting for Template Name:**
+   - Added prompt on first save (template.id === 0)
+   - Subsequent saves just overwrite (Word-style behavior)
+   - Template gets database ID after first save
+
+2. **Templates Auto-Publishing on Save:**
+   - Changed backend default `is_active` from true to false
+   - Frontend explicitly sends `is_active: false` when creating
+   - Save = draft (unpublished), Export As > HTML Template = publish
+
+3. **Published Banner Showing Incorrectly:**
+   - Set `isPublished = false` after creating template
+   - Load function correctly reads `template.is_active` state
+
+4. **Database Schema Issues:**
+   - Added migration to remove old `name` column from template_sections
+   - Added migration to add `css` column to template_sections and user_sections
+   - Updated models' fillable arrays
+
+**Word-Style Save Implementation (TemplateBuilder.tsx:2607-2712):**
+```typescript
+const handleSave = async () => {
+  // If template.id === 0 (new template), prompt for name
+  if (template.id === 0) {
+    const templateName = prompt('Enter a template name:', 'Untitled Template')
+    if (!templateName) return
+    return performSaveAsCreate(templateName.trim())
+  }
+
+  // Existing template - just save (preserves is_active state)
+  const templateToSave = { ...template, is_active: isPublished }
+  await api.updateTemplate(template.id, templateToSave)
+}
+
+const handleSaveAs = async () => {
+  const newName = prompt('Save template as:', template.name + ' (Copy)')
+  if (!newName) return
+  await performSaveAsCreate(newName.trim())
+}
+```
+
+**Load Template Modal (TemplateBuilder.tsx:2719-2781, 6688-6768):**
+- Modal displays all templates (admin view - includes drafts)
+- Shows template name, description, business type, page count
+- Published/unpublished badge indicators
+- Click any template to load it
+- Warns if unsaved changes before loading
+
+**Files Modified:**
+- `pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php` (line 92: default is_active to false)
+- `pagevoo-backend/app/Models/TemplateSection.php` (removed name, added css to fillable/casts)
+- `pagevoo-backend/app/Models/UserSection.php` (added css to fillable/casts)
+- `pagevoo-backend/database/migrations/2025_10_14_125729_add_css_to_template_sections_table.php` (NEW)
+- `pagevoo-backend/database/migrations/2025_10_14_130214_remove_name_column_from_template_sections.php` (NEW)
+- `pagevoo-frontend/src/services/api.ts` (updated updateTemplate signature to accept any data)
+- `pagevoo-frontend/src/pages/TemplateBuilder.tsx` (save/load/saveAs functions, load modal)
+
+### Part 2: Template Manager Filter System
+
+**User Request:** "Add filter options to template manager to search by published/unpublished, business type, etc."
+
+**Implementation (TemplateManager.tsx:115-333):**
+
+**Filter Controls:**
+1. **Search Box** - Search by name or description (real-time)
+2. **Status Filter** - All / Published Only / Unpublished Only
+3. **Business Type Filter** - Dynamically populated from templates
+4. **Package Access Filter** - All / No Restrictions / Pro Only / Niche Only
+
+**Features:**
+- Results counter: "Showing X of Y templates"
+- Clear Filters button (appears when any filter active)
+- Empty state when no matches found
+- All filters work together with AND logic
+- Responsive grid layout maintained
+
+**State Variables Added:**
+```typescript
+const [searchQuery, setSearchQuery] = useState('')
+const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'unpublished'>('all')
+const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all')
+const [exclusiveFilter, setExclusiveFilter] = useState<'all' | 'pro' | 'niche' | 'none'>('all')
+
+// Filtered array
+const filteredTemplates = templates.filter(template => {
+  // Search, status, business type, and exclusive filters
+})
+```
+
+**Files Modified:**
+- `pagevoo-frontend/src/components/TemplateManager.tsx`
+  - Added filter state variables
+  - Added filteredTemplates computed array
+  - Added filter UI panel
+  - Updated grid to use filteredTemplates
+
+### Part 3: Header & Navigation Enhancement Planning
+
+**User Request:** "Polish up header and nav sections with advanced CSS options, button styling with hover functions, customizable dropdowns (click vs mouseover), timing controls, and hierarchical tree layout for navigation links."
+
+**Status:** Planning phase completed. Implementation scheduled for next session.
+
+**Planned Features:**
+
+**Phase 1: Advanced Styling Controls**
+- Button/link colors (default, hover, active states)
+- Typography controls (size, weight, letter-spacing)
+- Spacing controls (padding, margin - all sides individual)
+- Border controls (width, style, color, radius)
+- Transition controls (duration, timing function)
+- Container background (color, gradient, image)
+- Box shadow builder
+- Active page indicator customization
+
+**Phase 2: Dropdown Behavior System**
+- Trigger method selector (click / hover / hybrid)
+- Hover delay before opening (0-1000ms)
+- Auto-close delay (0-5000ms or never)
+- Transition animation duration
+- Dropdown-specific styling (bg, width, shadow, item colors)
+
+**Phase 3: Hierarchical Navigation Tree**
+- Visual tree view with collapsible parents
+- Drag-and-drop reordering
+- Inline editing of labels
+- Bulk operations (cut, copy, paste)
+- Icons for item types
+- Import/export navigation structure
+
+**Documentation Created:**
+- `SESSION_20_PLAN.md` - Complete implementation specification with:
+  - Data structure enhancements
+  - CSS generation strategy
+  - Component architecture plan
+  - Technical implementation notes
+  - Success metrics
+
+**Next Session Priority:**
+1. Implement NavigationStylingPanel component
+2. Add button/link styling controls
+3. Add dropdown behavior options
+4. Begin hierarchical tree UI implementation
+
+**User Workflow (Save/Load):**
+1. Create new template → Work on it → File > Save (prompts for name)
+2. Save again → No prompt, just overwrites
+3. File > Load → Modal shows all templates → Click to load
+4. File > Save As... → Prompts for new name → Creates copy
+5. Export As > HTML Template → Publishes template (sets is_active = true)
+
+**User Workflow (Template Manager):**
+1. Dashboard > Template Manager
+2. Use filters to find templates:
+   - Search by name/description
+   - Filter by published/unpublished
+   - Filter by business type
+   - Filter by package (Pro/Niche/None)
+3. Results update in real-time
+4. Clear filters to reset
+5. Click Edit to open in builder
+
+**Testing Status:**
+✅ Save/Load system working correctly
+✅ Template Manager filters functional
+✅ Word-style save behavior implemented
+✅ Published/unpublished workflow corrected
+✅ Load modal displays all templates
+✅ Database migrations ran successfully
+✅ All code compiling without errors
+
+**Technical Notes:**
+
+1. **Save Flow:**
+   - New template (id=0): Prompt → Create → Get ID → Update state
+   - Existing template: Update → Keep is_active unchanged unless published
+
+2. **Load Flow:**
+   - Click Load → Fetch all templates → Show modal
+   - Click template → Load full data → Reset history → Close modal
+
+3. **Template Manager:**
+   - Admin view shows ALL templates (published + unpublished)
+   - Customers only see published templates (via api.getAllTemplates)
+   - Template Manager uses api.getAllTemplatesAdmin
+
+**Code References:**
+- Save function: TemplateBuilder.tsx:2607-2650
+- performSaveAsCreate: TemplateBuilder.tsx:2652-2704
+- Save As: TemplateBuilder.tsx:2706-2712
+- Load: TemplateBuilder.tsx:2719-2745
+- handleLoadTemplate: TemplateBuilder.tsx:2747-2781
+- Load modal: TemplateBuilder.tsx:6688-6768
+- Filter system: TemplateManager.tsx:118-333
+- Migration (css): 2025_10_14_125729_add_css_to_template_sections_table.php
+- Migration (remove name): 2025_10_14_130214_remove_name_column_from_template_sections.php
+
+**Known Issues:**
+- None currently - all features tested and working
+
+**Current Status:**
+✅ Session 20 Part 1 (Save/Load) - COMPLETE
+✅ Session 20 Part 2 (Filters) - COMPLETE
+📋 Session 20 Part 3 (Header/Nav Enhancement) - PLANNING COMPLETE, awaiting implementation
+
 ## Last Updated
-2025-10-14 (Session 19 completed)
+2025-10-14 (Session 20 completed - planning phase for header/nav enhancements)
 
 ---
 Note: Update this file at the end of each session to track progress and current work.

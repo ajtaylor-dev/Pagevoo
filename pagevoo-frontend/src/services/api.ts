@@ -338,13 +338,7 @@ class ApiService {
     return response.data;
   }
 
-  async updateTemplate(id: number, data: {
-    name?: string;
-    description?: string;
-    business_type?: string;
-    preview_image?: string;
-    is_active?: boolean;
-  }): Promise<ApiResponse<any>> {
+  async updateTemplate(id: number, data: any): Promise<ApiResponse<any>> {
     const response = await this.client.put(`/v1/templates/${id}`, data);
     return response.data;
   }

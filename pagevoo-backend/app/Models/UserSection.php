@@ -13,11 +13,13 @@ class UserSection extends Model
         'section_name',
         'section_id',
         'content',
+        'css',
         'order'
     ];
 
     protected $casts = [
-        'content' => 'array'
+        'content' => 'array',
+        'css' => 'array'
     ];
 
     public function userPage()

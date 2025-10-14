@@ -327,6 +327,11 @@ export default function TemplateBuilder() {
   const [historyIndex, setHistoryIndex] = useState(-1)
   const [isPublished, setIsPublished] = useState(false)
 
+  // Template selector modal
+  const [showLoadModal, setShowLoadModal] = useState(false)
+  const [availableTemplates, setAvailableTemplates] = useState<any[]>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
+
   // Drag and Drop state
   const [activeId, setActiveId] = useState<string | null>(null)
   const [activeDragData, setActiveDragData] = useState<any>(null)
@@ -2605,6 +2610,21 @@ padding: 1rem;`
       return
     }
 
+    // If template.id === 0 (new template), prompt for name like Word
+    if (template.id === 0) {
+      const templateName = prompt('Enter a template name:', template.name || 'Untitled Template')
+      if (!templateName || templateName.trim() === '') {
+        return // User cancelled or entered empty name
+      }
+
+      // Update template name
+      setTemplate({ ...template, name: templateName.trim() })
+
+      // Perform save as create
+      return performSaveAsCreate(templateName.trim())
+    }
+
+    // Existing template - just save/overwrite
     // If template is published, show warning
     if (isPublished) {
       if (!confirm('This template is published. Saving will update the published version. Continue?')) {
@@ -2613,22 +2633,92 @@ padding: 1rem;`
     }
 
     try {
-      const response = await api.updateTemplate(template.id, template)
+      // Make sure is_active stays false when saving (don't accidentally publish)
+      const templateToSave = { ...template, is_active: isPublished }
+      const response = await api.updateTemplate(template.id, templateToSave)
 
       if (response.success) {
         setHasUnsavedChanges(false)
-        // Update initial history state to current saved state
-        if (history.length === 0) {
-          setHistory([JSON.parse(JSON.stringify(template))])
-          setHistoryIndex(0)
-        }
+        alert('Template saved successfully!')
       } else {
-        alert('Failed to save template: ' + (response.error || 'Unknown error'))
+        alert('Failed to save template: ' + (response.message || 'Unknown error'))
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Save error:', error)
-      alert('Failed to save template')
+      alert('Failed to save template: ' + (error.response?.data?.message || error.message || 'Unknown error'))
     }
+  }
+
+  const performSaveAsCreate = async (templateName: string) => {
+    if (!template) return
+
+    try {
+      // Prepare template data for creation
+      const templateData = {
+        name: templateName,
+        description: template.description || '',
+        business_type: template.business_type || 'other',
+        preview_image: template.preview_image || '',
+        is_active: false, // Always save as unpublished (draft) - only "Export As > HTML Template" publishes
+        exclusive_to: template.exclusive_to || null,
+        technologies: template.technologies || [],
+        features: template.features || [],
+        custom_css: template.custom_css || '',
+        pages: template.pages.map(page => ({
+          name: page.name,
+          slug: page.slug,
+          page_id: page.page_id || null,
+          is_homepage: page.is_homepage || false,
+          order: page.order || 0,
+          sections: page.sections.map(section => ({
+            section_name: section.section_name || section.type,
+            section_id: section.section_id || null,
+            type: section.type,
+            content: section.content || {},
+            css: section.css || {},
+            order: section.order || 0
+          }))
+        }))
+      }
+
+      const response = await api.createTemplate(templateData)
+
+      if (response.success && response.data) {
+        // Update template with returned ID and name
+        const newTemplate = { ...template, id: response.data.id, name: templateName, is_active: false }
+        setTemplate(newTemplate)
+
+        // Set published state to false (it's a draft)
+        setIsPublished(false)
+
+        // Update history with new template
+        setHistory([JSON.parse(JSON.stringify(newTemplate))])
+        setHistoryIndex(0)
+        setHasUnsavedChanges(false)
+
+        alert('Template created successfully!')
+      } else {
+        alert('Failed to save template: ' + (response.message || 'Unknown error'))
+      }
+    } catch (error: any) {
+      console.error('Save error:', error)
+      alert('Failed to save template: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    }
+  }
+
+  const handleSaveAs = async () => {
+    if (!template) {
+      alert('No template to save')
+      return
+    }
+
+    const newName = prompt('Save template as:', template.name ? template.name + ' (Copy)' : 'Untitled Template')
+    if (!newName || newName.trim() === '') {
+      return // User cancelled
+    }
+
+    // Create a copy with the new name and id = 0 (force create)
+    await performSaveAsCreate(newName.trim())
   }
 
   const handleLoad = async () => {
@@ -2638,13 +2728,30 @@ padding: 1rem;`
       }
     }
 
-    if (!templateId) {
-      alert('No template ID specified')
-      return
-    }
+    // Fetch all templates and show modal
+    setLoadingTemplates(true)
+    setShowLoadModal(true)
 
     try {
-      const response = await api.getTemplate(parseInt(templateId))
+      const response = await api.getAllTemplatesAdmin()
+      if (response.success && response.data) {
+        setAvailableTemplates(response.data)
+      } else {
+        alert('Failed to load templates list')
+        setShowLoadModal(false)
+      }
+    } catch (error) {
+      console.error('Load templates error:', error)
+      alert('Failed to load templates list')
+      setShowLoadModal(false)
+    } finally {
+      setLoadingTemplates(false)
+    }
+  }
+
+  const handleLoadTemplate = async (templateId: number) => {
+    try {
+      const response = await api.getTemplate(templateId)
 
       if (response.success && response.data) {
         const templateData = response.data
@@ -2664,6 +2771,11 @@ padding: 1rem;`
         setCanUndo(false)
         setCanRedo(false)
         setHasUnsavedChanges(false)
+
+        // Close modal
+        setShowLoadModal(false)
+
+        alert('Template loaded successfully!')
       } else {
         alert('Failed to load template')
       }
@@ -6577,6 +6689,88 @@ ${sectionsHTML}
         />
         </>
       ) : null}
+
+      {/* Load Template Modal */}
+      {showLoadModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[80vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+              <h2 className="text-xl font-semibold text-gray-900">Load Template</h2>
+              <button
+                onClick={() => setShowLoadModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 overflow-y-auto flex-1">
+              {loadingTemplates ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-gray-500">Loading templates...</div>
+                </div>
+              ) : availableTemplates.length === 0 ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="text-gray-500">No templates available</div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-4">
+                  {availableTemplates.map((tmpl) => (
+                    <div
+                      key={tmpl.id}
+                      className="border border-gray-200 rounded-lg p-4 hover:border-[#98b290] hover:shadow-md transition cursor-pointer"
+                      onClick={() => handleLoadTemplate(tmpl.id)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900">{tmpl.name}</h3>
+                          {tmpl.description && (
+                            <p className="text-sm text-gray-600 mt-1">{tmpl.description}</p>
+                          )}
+                          <div className="flex items-center gap-3 mt-2">
+                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
+                              {tmpl.business_type}
+                            </span>
+                            {tmpl.is_active && (
+                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
+                                Published
+                              </span>
+                            )}
+                            {tmpl.pages && (
+                              <span className="text-xs text-gray-500">
+                                {tmpl.pages.length} {tmpl.pages.length === 1 ? 'page' : 'pages'}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="ml-4">
+                          <svg className="w-6 h-6 text-[#98b290]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
+              <button
+                onClick={() => setShowLoadModal(false)}
+                className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Source Code Modal */}
       {showSourceCodeModal && (

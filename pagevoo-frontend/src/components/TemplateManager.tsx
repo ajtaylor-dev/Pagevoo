@@ -115,6 +115,10 @@ const FeatureIcon: React.FC<{ feature: string }> = ({ feature }) => {
 export function TemplateManager() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+  const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
+  const [exclusiveFilter, setExclusiveFilter] = useState<'all' | 'pro' | 'niche' | 'none'>('all');
 
   useEffect(() => {
     loadTemplates();
@@ -165,6 +169,35 @@ export function TemplateManager() {
     }
   };
 
+  // Filter templates based on search and filters
+  const filteredTemplates = templates.filter(template => {
+    // Search filter (name or description)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        template.name.toLowerCase().includes(query) ||
+        (template.description && template.description.toLowerCase().includes(query));
+      if (!matchesSearch) return false;
+    }
+
+    // Status filter
+    if (statusFilter === 'published' && !template.is_active) return false;
+    if (statusFilter === 'unpublished' && template.is_active) return false;
+
+    // Business type filter
+    if (businessTypeFilter !== 'all' && template.business_type !== businessTypeFilter) return false;
+
+    // Exclusive filter
+    if (exclusiveFilter === 'pro' && template.exclusive_to !== 'pro') return false;
+    if (exclusiveFilter === 'niche' && template.exclusive_to !== 'niche') return false;
+    if (exclusiveFilter === 'none' && template.exclusive_to !== null) return false;
+
+    return true;
+  });
+
+  // Get unique business types for filter dropdown
+  const businessTypes = Array.from(new Set(templates.map(t => t.business_type))).sort();
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -187,6 +220,89 @@ export function TemplateManager() {
         </a>
       </div>
 
+      {/* Filters */}
+      <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Search */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Search</label>
+            <input
+              type="text"
+              placeholder="Search templates..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+            />
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+            >
+              <option value="all">All Templates</option>
+              <option value="published">Published Only</option>
+              <option value="unpublished">Unpublished Only</option>
+            </select>
+          </div>
+
+          {/* Business Type Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Business Type</label>
+            <select
+              value={businessTypeFilter}
+              onChange={(e) => setBusinessTypeFilter(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+            >
+              <option value="all">All Types</option>
+              {businessTypes.map(type => (
+                <option key={type} value={type}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Exclusive Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Package Access</label>
+            <select
+              value={exclusiveFilter}
+              onChange={(e) => setExclusiveFilter(e.target.value as any)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+            >
+              <option value="all">All Packages</option>
+              <option value="none">No Restrictions</option>
+              <option value="pro">Pro Only</option>
+              <option value="niche">Niche Only</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Results Count & Clear Filters */}
+        <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+          <p className="text-sm text-gray-600">
+            Showing <span className="font-semibold">{filteredTemplates.length}</span> of <span className="font-semibold">{templates.length}</span> templates
+          </p>
+          {(searchQuery || statusFilter !== 'all' || businessTypeFilter !== 'all' || exclusiveFilter !== 'all') && (
+            <button
+              onClick={() => {
+                setSearchQuery('');
+                setStatusFilter('all');
+                setBusinessTypeFilter('all');
+                setExclusiveFilter('all');
+              }}
+              className="text-sm text-[#98b290] hover:text-[#88a280] font-medium transition"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
       {templates.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
           <p className="text-gray-600 mb-4">No templates found</p>
@@ -199,9 +315,24 @@ export function TemplateManager() {
             Create Your First Template
           </a>
         </div>
+      ) : filteredTemplates.length === 0 ? (
+        <div className="text-center py-12 bg-gray-50 rounded-lg border border-gray-200">
+          <p className="text-gray-600 mb-4">No templates match your filters</p>
+          <button
+            onClick={() => {
+              setSearchQuery('');
+              setStatusFilter('all');
+              setBusinessTypeFilter('all');
+              setExclusiveFilter('all');
+            }}
+            className="inline-block px-6 py-3 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md font-medium transition"
+          >
+            Clear Filters
+          </button>
+        </div>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {templates.map((template) => (
+          {filteredTemplates.map((template) => (
             <div
               key={template.id}
               className={`border rounded-lg overflow-hidden transition ${

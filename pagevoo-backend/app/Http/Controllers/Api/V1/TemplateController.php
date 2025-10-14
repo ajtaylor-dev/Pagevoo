@@ -68,12 +68,15 @@ class TemplateController extends BaseController
             'pages' => 'required|array',
             'pages.*.name' => 'required|string',
             'pages.*.slug' => 'required|string',
+            'pages.*.page_id' => 'nullable|string',
             'pages.*.is_homepage' => 'boolean',
             'pages.*.order' => 'integer',
             'pages.*.sections' => 'array',
-            'pages.*.sections.*.name' => 'nullable|string',
+            'pages.*.sections.*.section_name' => 'nullable|string',
+            'pages.*.sections.*.section_id' => 'nullable|string',
             'pages.*.sections.*.type' => 'required|string',
             'pages.*.sections.*.content' => 'nullable|array',
+            'pages.*.sections.*.css' => 'nullable|array',
             'pages.*.sections.*.order' => 'integer',
         ]);
 
@@ -86,7 +89,7 @@ class TemplateController extends BaseController
             'description' => $request->description,
             'business_type' => $request->business_type,
             'preview_image' => $request->preview_image,
-            'is_active' => $request->is_active ?? true,
+            'is_active' => $request->is_active ?? false, // Default to unpublished (draft)
             'created_by' => auth()->id(),
             'exclusive_to' => $request->exclusive_to,
             'technologies' => $request->technologies,
@@ -100,6 +103,7 @@ class TemplateController extends BaseController
                 'template_id' => $template->id,
                 'name' => $pageData['name'],
                 'slug' => $pageData['slug'],
+                'page_id' => $pageData['page_id'] ?? null,
                 'is_homepage' => $pageData['is_homepage'] ?? false,
                 'order' => $pageData['order'] ?? 0,
             ]);
@@ -108,9 +112,11 @@ class TemplateController extends BaseController
                 foreach ($pageData['sections'] as $sectionData) {
                     TemplateSection::create([
                         'template_page_id' => $page->id,
-                        'name' => $sectionData['name'] ?? ucfirst($sectionData['type']),
+                        'section_name' => $sectionData['section_name'] ?? ucfirst($sectionData['type']),
+                        'section_id' => $sectionData['section_id'] ?? null,
                         'type' => $sectionData['type'],
                         'content' => $sectionData['content'] ?? null,
+                        'css' => $sectionData['css'] ?? null,
                         'order' => $sectionData['order'] ?? 0,
                     ]);
                 }
@@ -148,9 +154,11 @@ class TemplateController extends BaseController
             'pages.*.is_homepage' => 'boolean',
             'pages.*.order' => 'integer',
             'pages.*.sections' => 'array',
-            'pages.*.sections.*.name' => 'nullable|string',
+            'pages.*.sections.*.section_name' => 'nullable|string',
+            'pages.*.sections.*.section_id' => 'nullable|string',
             'pages.*.sections.*.type' => 'required|string',
             'pages.*.sections.*.content' => 'nullable|array',
+            'pages.*.sections.*.css' => 'nullable|array',
             'pages.*.sections.*.order' => 'integer',
         ]);
 

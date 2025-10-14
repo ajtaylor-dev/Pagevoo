@@ -8,16 +8,17 @@ class TemplateSection extends Model
 {
     protected $fillable = [
         'template_page_id',
-        'name',
-        'type',
         'section_name',
         'section_id',
+        'type',
         'content',
+        'css',
         'order'
     ];
 
     protected $casts = [
-        'content' => 'array'
+        'content' => 'array',
+        'css' => 'array'
     ];
 
     public function templatePage()
