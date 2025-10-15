@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
 import { StyleEditor } from '@/components/StyleEditor'
 import { ImageGallery } from '@/components/ImageGallery'
+import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
 import {
   DndContext,
   DragOverlay,
@@ -94,6 +95,83 @@ const generateIdentifier = (name: string): string => {
   const sanitized = sanitizeName(name)
   const random = generateRandomString(6)
   return `${sanitized}_${random}`
+}
+
+// Helper functions for navigation styling
+const generateContainerStyle = (containerStyle: any): React.CSSProperties => {
+  if (!containerStyle) return {}
+
+  return {
+    background: containerStyle.background,
+    backgroundImage: containerStyle.backgroundImage,
+    paddingTop: containerStyle.paddingTop,
+    paddingRight: containerStyle.paddingRight,
+    paddingBottom: containerStyle.paddingBottom,
+    paddingLeft: containerStyle.paddingLeft,
+    marginTop: containerStyle.marginTop,
+    marginRight: containerStyle.marginRight,
+    marginBottom: containerStyle.marginBottom,
+    marginLeft: containerStyle.marginLeft,
+    borderWidth: containerStyle.borderWidth,
+    borderStyle: containerStyle.borderStyle,
+    borderColor: containerStyle.borderColor,
+    borderRadius: containerStyle.borderRadius,
+    boxShadow: containerStyle.shadow,
+    opacity: containerStyle.opacity
+  }
+}
+
+const generateLinkStyle = (linkStyling: any, isHover: boolean = false): React.CSSProperties => {
+  if (!linkStyling) return {}
+
+  return {
+    color: isHover ? linkStyling.textColorHover : linkStyling.textColor,
+    backgroundColor: isHover ? linkStyling.bgColorHover : linkStyling.bgColor,
+    fontSize: linkStyling.fontSize,
+    fontWeight: linkStyling.fontWeight,
+    letterSpacing: linkStyling.letterSpacing,
+    padding: linkStyling.padding,
+    margin: linkStyling.margin,
+    border: linkStyling.border,
+    borderRadius: linkStyling.borderRadius,
+    transition: linkStyling.transition
+  }
+}
+
+const generateActiveIndicatorStyle = (activeIndicator: any): React.CSSProperties => {
+  if (!activeIndicator) return {}
+
+  const { type, color, thickness, customCSS } = activeIndicator
+
+  if (type === 'custom' && customCSS) {
+    // Parse custom CSS string into object (simplified)
+    return {}
+  }
+
+  switch (type) {
+    case 'underline':
+      return {
+        borderBottom: `${thickness || '2px'} solid ${color || '#f59e0b'}`,
+        paddingBottom: '4px'
+      }
+    case 'background':
+      return {
+        backgroundColor: color || 'rgba(251, 191, 36, 0.2)',
+        borderRadius: '4px'
+      }
+    case 'border':
+      return {
+        border: `2px solid ${color || '#f59e0b'}`,
+        borderRadius: '4px'
+      }
+    default:
+      return {}
+  }
+}
+
+const isActivePage = (link: any, currentPageId: number): boolean => {
+  if (typeof link !== 'object') return false
+  return link.linkType === 'page' && link.pageId === currentPageId
 }
 
 // Helper function to generate CSS from section content_css and section_css
@@ -3749,35 +3827,15 @@ ${sectionsHTML}
       case 'navbar-basic':
       case 'navbar-sticky':
         return sectionWrapper(
-          <div className={`bg-white border-b-2 border-gray-200 p-4 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
-            <div className="flex items-center justify-between max-w-7xl mx-auto">
-              <EditableText
-                tag="div"
-                sectionId={section.id}
-                field="logo"
-                value={content.logo || 'Logo'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
-              />
-              <div className="flex gap-6">
-                {(content.links || []).map((link: any, idx: number) => (
-                  <a
-                    key={idx}
-                    href={getLinkHref(link)}
-                    className="text-gray-700 hover:text-amber-600 transition"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    {getLinkLabel(link)}
-                  </a>
-                ))}
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'navbar-dropdown':
-        return sectionWrapper(
-          <div className={`bg-white border-b-2 border-gray-200 p-4 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div
+            className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+            style={{
+              backgroundColor: '#ffffff',
+              borderBottom: '2px solid #e5e7eb',
+              padding: '1rem',
+              ...generateContainerStyle(content.containerStyle)
+            }}
+          >
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <EditableText
                 tag="div"
@@ -3789,36 +3847,20 @@ ${sectionsHTML}
               />
               <div className="flex gap-6">
                 {(content.links || []).map((link: any, idx: number) => {
-                  const hasSubItems = typeof link === 'object' && link.subItems && link.subItems.length > 0
+                  const isActive = isActivePage(link, currentPage?.id || 0)
                   return (
-                    <div key={idx} className="relative">
-                      <a
-                        href={getLinkHref(link)}
-                        className="text-gray-700 hover:text-amber-600 transition cursor-pointer flex items-center gap-1"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        {getLinkLabel(link)}
-                        {hasSubItems && (
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                          </svg>
-                        )}
-                      </a>
-                      {content.expanded && hasSubItems && (
-                        <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg p-2 min-w-[120px] z-10">
-                          {link.subItems.map((subItem: any, subIdx: number) => (
-                            <a
-                              key={subIdx}
-                              href={getLinkHref(subItem)}
-                              className="block text-xs text-gray-600 hover:text-amber-600 hover:bg-amber-50 py-1 px-2 rounded transition"
-                              onClick={(e) => e.preventDefault()}
-                            >
-                              {getLinkLabel(subItem)}
-                            </a>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                    <a
+                      key={idx}
+                      href={getLinkHref(link)}
+                      className="transition"
+                      style={{
+                        ...generateLinkStyle(content.linkStyling),
+                        ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
+                      }}
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      {getLinkLabel(link)}
+                    </a>
                   )
                 })}
               </div>
@@ -3826,9 +3868,163 @@ ${sectionsHTML}
           </div>
         )
 
+      case 'navbar-dropdown':
+        const DropdownNavItem = ({ link, linkStyling, dropdownConfig, activeIndicator, currentPageId }: any) => {
+          const [isOpen, setIsOpen] = useState(false)
+          const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
+          const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null)
+
+          const hasSubItems = typeof link === 'object' && link.subItems && link.subItems.length > 0
+          const trigger = dropdownConfig?.trigger || 'click'
+          const hoverDelay = dropdownConfig?.hoverDelay || 0
+          const autoCloseDelay = dropdownConfig?.autoCloseDelay ?? 0
+          const transitionDuration = dropdownConfig?.transitionDuration || 200
+          const isActive = isActivePage(link, currentPageId)
+
+          const handleMouseEnter = () => {
+            if (trigger === 'click') return
+
+            // Clear any existing close timeout
+            if (closeTimeout) clearTimeout(closeTimeout)
+
+            // Set hover delay before opening
+            const timeout = setTimeout(() => {
+              setIsOpen(true)
+
+              // Set auto-close timer if configured
+              if (autoCloseDelay > 0) {
+                const closeTimer = setTimeout(() => setIsOpen(false), autoCloseDelay)
+                setCloseTimeout(closeTimer)
+              }
+            }, hoverDelay)
+
+            setHoverTimeout(timeout)
+          }
+
+          const handleMouseLeave = () => {
+            if (trigger === 'click') return
+
+            // Clear hover timeout
+            if (hoverTimeout) clearTimeout(hoverTimeout)
+
+            // Close immediately on mouse leave
+            setIsOpen(false)
+
+            // Clear auto-close timeout
+            if (closeTimeout) clearTimeout(closeTimeout)
+          }
+
+          const handleClick = (e: React.MouseEvent) => {
+            e.preventDefault()
+
+            if (trigger === 'hover') return
+
+            setIsOpen(!isOpen)
+
+            // Set auto-close timer if configured
+            if (!isOpen && autoCloseDelay > 0) {
+              const closeTimer = setTimeout(() => setIsOpen(false), autoCloseDelay)
+              setCloseTimeout(closeTimer)
+            }
+          }
+
+          return (
+            <div
+              className="relative"
+              onMouseEnter={handleMouseEnter}
+              onMouseLeave={handleMouseLeave}
+            >
+              <a
+                href={getLinkHref(link)}
+                className="cursor-pointer flex items-center gap-1"
+                style={{
+                  ...generateLinkStyle(linkStyling),
+                  ...(isActive ? generateActiveIndicatorStyle(activeIndicator) : {})
+                }}
+                onClick={handleClick}
+              >
+                {getLinkLabel(link)}
+                {hasSubItems && (
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                )}
+              </a>
+              {isOpen && hasSubItems && (
+                <div
+                  className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg p-2 min-w-[120px] z-10"
+                  style={{
+                    animation: `fadeIn ${transitionDuration}ms ease-in-out`
+                  }}
+                >
+                  {link.subItems.map((subItem: any, subIdx: number) => {
+                    const isSubItemActive = isActivePage(subItem, currentPageId)
+                    return (
+                      <a
+                        key={subIdx}
+                        href={getLinkHref(subItem)}
+                        className="block text-xs transition py-1 px-2 rounded"
+                        style={{
+                          ...generateLinkStyle(linkStyling),
+                          ...(isSubItemActive ? generateActiveIndicatorStyle(activeIndicator) : {})
+                        }}
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        {getLinkLabel(subItem)}
+                      </a>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )
+        }
+
+        return sectionWrapper(
+          <div
+            className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+            style={{
+              backgroundColor: '#ffffff',
+              borderBottom: '2px solid #e5e7eb',
+              padding: '1rem',
+              ...generateContainerStyle(content.containerStyle)
+            }}
+          >
+            <div className="flex items-center justify-between max-w-7xl mx-auto">
+              <EditableText
+                tag="div"
+                sectionId={section.id}
+                field="logo"
+                value={content.logo || 'Logo'}
+                onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
+                className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+              />
+              <div className="flex gap-6">
+                {(content.links || []).map((link: any, idx: number) => (
+                  <DropdownNavItem
+                    key={idx}
+                    link={link}
+                    linkStyling={content.linkStyling}
+                    dropdownConfig={content.dropdownConfig}
+                    activeIndicator={content.activeIndicator}
+                    currentPageId={currentPage?.id || 0}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+
       case 'header-simple':
         return sectionWrapper(
-          <div className={`bg-gradient-to-r from-amber-50 to-amber-100 p-12 text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div
+            className={`text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+            style={{
+              background: 'linear-gradient(to right, #fef3c7, #fde68a)',
+              padding: '3rem',
+              ...generateContainerStyle(content.containerStyle)
+            }}
+          >
             <EditableText
               tag="h1"
               sectionId={section.id}
@@ -3850,7 +4046,15 @@ ${sectionsHTML}
 
       case 'header-centered':
         return sectionWrapper(
-          <div className={`bg-white p-8 text-center border-b-2 border-gray-200 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div
+            className={`text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+            style={{
+              backgroundColor: '#ffffff',
+              padding: '2rem',
+              borderBottom: '2px solid #e5e7eb',
+              ...generateContainerStyle(content.containerStyle)
+            }}
+          >
             <EditableText
               tag="h1"
               sectionId={section.id}
@@ -3861,16 +4065,23 @@ ${sectionsHTML}
             />
             {content.navigation && (
               <div className="flex gap-6 justify-center">
-                {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => (
-                  <a
-                    key={idx}
-                    href={getLinkHref(link)}
-                    className="text-gray-700 hover:text-amber-600 transition"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    {getLinkLabel(link)}
-                  </a>
-                ))}
+                {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => {
+                  const isActive = isActivePage(link, currentPage?.id || 0)
+                  return (
+                    <a
+                      key={idx}
+                      href={getLinkHref(link)}
+                      className="transition"
+                      style={{
+                        ...generateLinkStyle(content.linkStyling),
+                        ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
+                      }}
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      {getLinkLabel(link)}
+                    </a>
+                  )
+                })}
               </div>
             )}
           </div>
@@ -3878,7 +4089,15 @@ ${sectionsHTML}
 
       case 'header-split':
         return sectionWrapper(
-          <div className={`bg-white p-6 border-b-2 border-gray-200 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div
+            className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+            style={{
+              backgroundColor: '#ffffff',
+              padding: '1.5rem',
+              borderBottom: '2px solid #e5e7eb',
+              ...generateContainerStyle(content.containerStyle)
+            }}
+          >
             <div className="flex items-center justify-between max-w-7xl mx-auto">
               <EditableText
                 tag="h1"
@@ -3889,16 +4108,23 @@ ${sectionsHTML}
                 className="text-2xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
               />
               <div className="flex gap-6">
-                {(content.links || []).map((link: any, idx: number) => (
-                  <a
-                    key={idx}
-                    href={getLinkHref(link)}
-                    className="text-gray-700 hover:text-amber-600 transition"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    {getLinkLabel(link)}
-                  </a>
-                ))}
+                {(content.links || []).map((link: any, idx: number) => {
+                  const isActive = isActivePage(link, currentPage?.id || 0)
+                  return (
+                    <a
+                      key={idx}
+                      href={getLinkHref(link)}
+                      className="transition"
+                      style={{
+                        ...generateLinkStyle(content.linkStyling),
+                        ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
+                      }}
+                      onClick={(e) => e.preventDefault()}
+                    >
+                      {getLinkLabel(link)}
+                    </a>
+                  )
+                })}
               </div>
             </div>
           </div>
@@ -5602,6 +5828,17 @@ ${sectionsHTML}
                               </div>
                             ))}
                           </div>
+                        </div>
+
+                        {/* Navigation Styling Panel */}
+                        <div className="mt-4 border-t border-gray-200 pt-4">
+                          <h3 className="text-xs font-semibold text-gray-900 mb-3">Navigation Styling</h3>
+                          <NavigationStylingPanel
+                            content={selectedSection.content || {}}
+                            onUpdate={(updatedContent) => {
+                              handleUpdateSectionContent(selectedSection.id, updatedContent)
+                            }}
+                          />
                         </div>
                       </>
                     )}
