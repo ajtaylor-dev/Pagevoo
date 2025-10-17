@@ -188,6 +188,29 @@
 .viewport-tablet .row .col-11 { width: 91.66% !important; }
 .viewport-tablet .row .col-12 { width: 100% !important; }
 
+/* Responsive Navigation - Viewport Preview Mode */
+/* Mobile viewport: show hamburger, hide desktop menu */
+.viewport-mobile .md\:hidden {
+  display: flex !important;
+}
+
+.viewport-mobile .md\:flex {
+  display: none !important;
+}
+
+.viewport-mobile .hidden {
+  display: none !important;
+}
+
+/* Tablet viewport: show desktop menu, hide hamburger */
+.viewport-tablet .md\:hidden {
+  display: none !important;
+}
+
+.viewport-tablet .md\:flex {
+  display: flex !important;
+}
+
 /* WYSIWYG Editor Heading Styles */
 .wysiwyg-editor h1 {
   font-size: 2em;

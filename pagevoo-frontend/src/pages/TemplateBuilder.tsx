@@ -5,6 +5,8 @@ import { api } from '@/services/api'
 import { StyleEditor } from '@/components/StyleEditor'
 import { ImageGallery } from '@/components/ImageGallery'
 import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
+import NavigationTreeManager from '@/components/NavigationTreeManager'
+import { MobileMenu } from '@/components/MobileMenu'
 import {
   DndContext,
   DragOverlay,
@@ -359,6 +361,7 @@ export default function TemplateBuilder() {
   const [imageHeight, setImageHeight] = useState<number>(0)
   const [constrainProportions, setConstrainProportions] = useState(true)
   const [imageAspectRatio, setImageAspectRatio] = useState<number>(1)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<{ [key: number]: boolean }>({})
   const [imageAltText, setImageAltText] = useState<string>('')
   const [imageLink, setImageLink] = useState<string>('')
   const [imageLinkTarget, setImageLinkTarget] = useState<'_self' | '_blank'>('_self')
@@ -1042,8 +1045,8 @@ padding: 1rem;`
     { type: 'navbar-dropdown', label: 'Dropdown Nav', description: 'Navigation bar with dropdown menus', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'Services', 'About', 'Contact'] } },
     { type: 'navbar-sticky', label: 'Sticky Navbar', description: 'Navigation that sticks to top on scroll', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
     { type: 'header-simple', label: 'Simple Header', description: 'Clean header with logo and tagline', position: 'top', defaultContent: { logo: 'Company Name', tagline: 'Your tagline here' } },
-    { type: 'header-centered', label: 'Centered Header', description: 'Centered logo with navigation below', position: 'top', defaultContent: { logo: 'Brand', navigation: true } },
-    { type: 'header-split', label: 'Split Header', description: 'Logo left, navigation right layout', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
+    { type: 'header-centered', label: 'Centered Header', description: 'Centered logo with navigation below', position: 'top', defaultContent: { logo: 'Brand', navigation: true, links: ['Home', 'About', 'Services', 'Contact'] } },
+    { type: 'header-split', label: 'Split Header', description: 'Logo left, navigation right layout', position: 'top', defaultContent: { logo: 'Logo', navigation: true, links: ['Home', 'About', 'Services', 'Contact'] } },
     // Sidebar navigation (can move left/right)
     { type: 'sidebar-nav-left', label: 'Sidebar Nav (Left)', description: 'Left-side vertical navigation menu', position: 'left', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'], positioned: 'permanently-fixed', fullHeight: true } },
     { type: 'sidebar-nav-right', label: 'Sidebar Nav (Right)', description: 'Right-side vertical navigation menu', position: 'right', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'], positioned: 'permanently-fixed', fullHeight: true } },
@@ -3497,29 +3500,6 @@ ${sectionsHTML}
           <div className={`absolute top-2 ${isLeftSidebar ? 'left-2' : 'right-2'} bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-50`}>
             <span className="text-xs font-medium text-gray-700 mr-2 capitalize">{section.section_name || section.type}</span>
 
-            {/* Dropdown nav: show expanded toggle */}
-            {section.type === 'navbar-dropdown' && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleUpdateSectionContent(section.id, {
-                    ...content,
-                    expanded: !content.expanded
-                  })
-                }}
-                className={`p-1 hover:bg-amber-50 rounded transition ${content.expanded ? 'bg-amber-100' : ''}`}
-                title={content.expanded ? 'Collapse Dropdowns' : 'Expand Dropdowns'}
-              >
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {content.expanded ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  )}
-                </svg>
-              </button>
-            )}
-
             {/* Sidebar sections: show left/right controls */}
             {isSidebar && (
               <>
@@ -3827,45 +3807,75 @@ ${sectionsHTML}
       case 'navbar-basic':
       case 'navbar-sticky':
         return sectionWrapper(
-          <div
-            className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-            style={{
-              backgroundColor: '#ffffff',
-              borderBottom: '2px solid #e5e7eb',
-              padding: '1rem',
-              ...generateContainerStyle(content.containerStyle)
-            }}
-          >
-            <div className="flex items-center justify-between max-w-7xl mx-auto">
-              <EditableText
-                tag="div"
-                sectionId={section.id}
-                field="logo"
-                value={content.logo || 'Logo'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
-              />
-              <div className="flex gap-6">
-                {(content.links || []).map((link: any, idx: number) => {
-                  const isActive = isActivePage(link, currentPage?.id || 0)
-                  return (
-                    <a
-                      key={idx}
-                      href={getLinkHref(link)}
-                      className="transition"
-                      style={{
-                        ...generateLinkStyle(content.linkStyling),
-                        ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
-                      }}
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      {getLinkLabel(link)}
-                    </a>
-                  )
-                })}
+          <>
+            <div
+              className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              style={{
+                backgroundColor: '#ffffff',
+                borderBottom: '2px solid #e5e7eb',
+                padding: '1rem',
+                ...generateContainerStyle(content.containerStyle)
+              }}
+            >
+              <div className="flex items-center justify-between max-w-7xl mx-auto">
+                <EditableText
+                  tag="div"
+                  sectionId={section.id}
+                  field="logo"
+                  value={content.logo || 'Logo'}
+                  onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
+                  className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                />
+
+                {/* Desktop Menu */}
+                <div className="hidden md:flex gap-6">
+                  {(content.links || []).map((link: any, idx: number) => {
+                    const isActive = isActivePage(link, currentPage?.id || 0)
+                    return (
+                      <a
+                        key={idx}
+                        href={getLinkHref(link)}
+                        className="transition"
+                        style={{
+                          ...generateLinkStyle(content.linkStyling),
+                          ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
+                        }}
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        {getLinkLabel(link)}
+                      </a>
+                    )
+                  })}
+                </div>
+
+                {/* Mobile Menu Button */}
+                <button
+                  className="md:hidden p-2 hover:bg-gray-100 rounded transition"
+                  onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
+                  aria-label="Open menu"
+                >
+                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
               </div>
             </div>
-          </div>
+
+            {/* Mobile Menu */}
+            <MobileMenu
+              isOpen={!!mobileMenuOpen[section.id]}
+              onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
+              links={content.links || []}
+              linkStyling={content.linkStyling}
+              activeIndicator={content.activeIndicator}
+              currentPageId={currentPage?.id || 0}
+              getLinkHref={getLinkHref}
+              getLinkLabel={getLinkLabel}
+              isActivePage={isActivePage}
+              generateLinkStyle={generateLinkStyle}
+              generateActiveIndicatorStyle={generateActiveIndicatorStyle}
+            />
+          </>
         )
 
       case 'navbar-dropdown':
@@ -3981,38 +3991,68 @@ ${sectionsHTML}
         }
 
         return sectionWrapper(
-          <div
-            className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-            style={{
-              backgroundColor: '#ffffff',
-              borderBottom: '2px solid #e5e7eb',
-              padding: '1rem',
-              ...generateContainerStyle(content.containerStyle)
-            }}
-          >
-            <div className="flex items-center justify-between max-w-7xl mx-auto">
-              <EditableText
-                tag="div"
-                sectionId={section.id}
-                field="logo"
-                value={content.logo || 'Logo'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
-              />
-              <div className="flex gap-6">
-                {(content.links || []).map((link: any, idx: number) => (
-                  <DropdownNavItem
-                    key={idx}
-                    link={link}
-                    linkStyling={content.linkStyling}
-                    dropdownConfig={content.dropdownConfig}
-                    activeIndicator={content.activeIndicator}
-                    currentPageId={currentPage?.id || 0}
-                  />
-                ))}
+          <>
+            <div
+              className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              style={{
+                backgroundColor: '#ffffff',
+                borderBottom: '2px solid #e5e7eb',
+                padding: '1rem',
+                ...generateContainerStyle(content.containerStyle)
+              }}
+            >
+              <div className="flex items-center justify-between max-w-7xl mx-auto">
+                <EditableText
+                  tag="div"
+                  sectionId={section.id}
+                  field="logo"
+                  value={content.logo || 'Logo'}
+                  onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
+                  className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                />
+
+                {/* Desktop Menu */}
+                <div className="hidden md:flex gap-6">
+                  {(content.links || []).map((link: any, idx: number) => (
+                    <DropdownNavItem
+                      key={idx}
+                      link={link}
+                      linkStyling={content.linkStyling}
+                      dropdownConfig={content.dropdownConfig}
+                      activeIndicator={content.activeIndicator}
+                      currentPageId={currentPage?.id || 0}
+                    />
+                  ))}
+                </div>
+
+                {/* Mobile Menu Button */}
+                <button
+                  className="md:hidden p-2 hover:bg-gray-100 rounded transition"
+                  onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
+                  aria-label="Open menu"
+                >
+                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                </button>
               </div>
             </div>
-          </div>
+
+            {/* Mobile Menu */}
+            <MobileMenu
+              isOpen={!!mobileMenuOpen[section.id]}
+              onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
+              links={content.links || []}
+              linkStyling={content.linkStyling}
+              activeIndicator={content.activeIndicator}
+              currentPageId={currentPage?.id || 0}
+              getLinkHref={getLinkHref}
+              getLinkLabel={getLinkLabel}
+              isActivePage={isActivePage}
+              generateLinkStyle={generateLinkStyle}
+              generateActiveIndicatorStyle={generateActiveIndicatorStyle}
+            />
+          </>
         )
 
       case 'header-simple':
@@ -4046,88 +4086,156 @@ ${sectionsHTML}
 
       case 'header-centered':
         return sectionWrapper(
-          <div
-            className={`text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-            style={{
-              backgroundColor: '#ffffff',
-              padding: '2rem',
-              borderBottom: '2px solid #e5e7eb',
-              ...generateContainerStyle(content.containerStyle)
-            }}
-          >
-            <EditableText
-              tag="h1"
-              sectionId={section.id}
-              field="logo"
-              value={content.logo || 'Brand'}
-              onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-              className="text-3xl font-bold text-amber-600 mb-4 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
-            />
-            {content.navigation && (
-              <div className="flex gap-6 justify-center">
-                {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => {
-                  const isActive = isActivePage(link, currentPage?.id || 0)
-                  return (
-                    <a
-                      key={idx}
-                      href={getLinkHref(link)}
-                      className="transition"
-                      style={{
-                        ...generateLinkStyle(content.linkStyling),
-                        ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
-                      }}
-                      onClick={(e) => e.preventDefault()}
-                    >
-                      {getLinkLabel(link)}
-                    </a>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )
-
-      case 'header-split':
-        return sectionWrapper(
-          <div
-            className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
-            style={{
-              backgroundColor: '#ffffff',
-              padding: '1.5rem',
-              borderBottom: '2px solid #e5e7eb',
-              ...generateContainerStyle(content.containerStyle)
-            }}
-          >
-            <div className="flex items-center justify-between max-w-7xl mx-auto">
+          <>
+            <div
+              className={`text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              style={{
+                backgroundColor: '#ffffff',
+                padding: '2rem',
+                borderBottom: '2px solid #e5e7eb',
+                ...generateContainerStyle(content.containerStyle)
+              }}
+            >
               <EditableText
                 tag="h1"
                 sectionId={section.id}
                 field="logo"
-                value={content.logo || 'Logo'}
+                value={content.logo || 'Brand'}
                 onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                className="text-2xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                className="text-3xl font-bold text-amber-600 mb-4 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
               />
-              <div className="flex gap-6">
-                {(content.links || []).map((link: any, idx: number) => {
-                  const isActive = isActivePage(link, currentPage?.id || 0)
-                  return (
-                    <a
-                      key={idx}
-                      href={getLinkHref(link)}
-                      className="transition"
-                      style={{
-                        ...generateLinkStyle(content.linkStyling),
-                        ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
-                      }}
-                      onClick={(e) => e.preventDefault()}
+              {content.navigation !== false && (
+                <>
+                  {/* Desktop Menu */}
+                  <div className="hidden md:flex gap-6 justify-center">
+                    {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => {
+                      const isActive = isActivePage(link, currentPage?.id || 0)
+                      return (
+                        <a
+                          key={idx}
+                          href={getLinkHref(link)}
+                          className="transition"
+                          style={{
+                            ...generateLinkStyle(content.linkStyling),
+                            ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
+                          }}
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          {getLinkLabel(link)}
+                        </a>
+                      )
+                    })}
+                  </div>
+
+                  {/* Mobile Menu Button */}
+                  <button
+                    className="md:hidden p-2 hover:bg-gray-100 rounded transition"
+                    onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
+                    aria-label="Open menu"
+                  >
+                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                  </button>
+                </>
+              )}
+            </div>
+
+            {/* Mobile Menu */}
+            {content.navigation !== false && (
+              <MobileMenu
+                isOpen={!!mobileMenuOpen[section.id]}
+                onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
+                links={content.links || []}
+                linkStyling={content.linkStyling}
+                activeIndicator={content.activeIndicator}
+                currentPageId={currentPage?.id || 0}
+                getLinkHref={getLinkHref}
+                getLinkLabel={getLinkLabel}
+                isActivePage={isActivePage}
+                generateLinkStyle={generateLinkStyle}
+                generateActiveIndicatorStyle={generateActiveIndicatorStyle}
+              />
+            )}
+          </>
+        )
+
+      case 'header-split':
+        return sectionWrapper(
+          <>
+            <div
+              className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              style={{
+                backgroundColor: '#ffffff',
+                padding: '1.5rem',
+                borderBottom: '2px solid #e5e7eb',
+                ...generateContainerStyle(content.containerStyle)
+              }}
+            >
+              <div className="flex items-center justify-between max-w-7xl mx-auto">
+                <EditableText
+                  tag="h1"
+                  sectionId={section.id}
+                  field="logo"
+                  value={content.logo || 'Logo'}
+                  onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
+                  className="text-2xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                />
+                {content.navigation !== false && (
+                  <>
+                    {/* Desktop Menu */}
+                    <div className="hidden md:flex gap-6">
+                      {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => {
+                        const isActive = isActivePage(link, currentPage?.id || 0)
+                        return (
+                          <a
+                            key={idx}
+                            href={getLinkHref(link)}
+                            className="transition"
+                            style={{
+                              ...generateLinkStyle(content.linkStyling),
+                              ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
+                            }}
+                            onClick={(e) => e.preventDefault()}
+                          >
+                            {getLinkLabel(link)}
+                          </a>
+                        )
+                      })}
+                    </div>
+
+                    {/* Mobile Menu Button */}
+                    <button
+                      className="md:hidden p-2 hover:bg-gray-100 rounded transition"
+                      onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
+                      aria-label="Open menu"
                     >
-                      {getLinkLabel(link)}
-                    </a>
-                  )
-                })}
+                      <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-          </div>
+
+            {/* Mobile Menu */}
+            {content.navigation !== false && (
+              <MobileMenu
+                isOpen={!!mobileMenuOpen[section.id]}
+                onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
+                links={content.links || []}
+                linkStyling={content.linkStyling}
+                activeIndicator={content.activeIndicator}
+                currentPageId={currentPage?.id || 0}
+                getLinkHref={getLinkHref}
+                getLinkLabel={getLinkLabel}
+                isActivePage={isActivePage}
+                generateLinkStyle={generateLinkStyle}
+                generateActiveIndicatorStyle={generateActiveIndicatorStyle}
+              />
+            )}
+          </>
         )
 
       // Footer sections
@@ -4760,7 +4868,23 @@ ${sectionsHTML}
                   <div className="py-1">
                     <button
                       onClick={() => {
-                        alert('Live Preview - Coming Soon!')
+                        // Generate complete HTML with embedded CSS
+                        const html = generatePageHTML()
+                        const css = generateStylesheet()
+
+                        // Replace the placeholder CSS comment with actual CSS
+                        const completeHTML = html.replace(
+                          '/* Add your CSS styles here */',
+                          css
+                        )
+
+                        // Open in new tab
+                        const newWindow = window.open('', '_blank')
+                        if (newWindow) {
+                          newWindow.document.write(completeHTML)
+                          newWindow.document.close()
+                        }
+
                         setShowViewMenu(false)
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
@@ -5584,262 +5708,58 @@ ${sectionsHTML}
                           </div>
                         )}
 
-                        {/* Navigation Links Manager */}
-                        <div>
-                          <div className="flex items-center justify-between mb-2">
-                            <label className="text-xs font-medium text-gray-700">Navigation Links</label>
-                            <div className="flex gap-1">
-                              {/* Convert old links button */}
-                              {selectedSection.content?.links?.some((link: any) => typeof link === 'string') && (
-                                <button
-                                  onClick={() => {
-                                    const currentLinks = selectedSection.content?.links || []
-                                    const convertedLinks = currentLinks.map((link: any) => {
-                                      if (typeof link === 'string') {
-                                        return selectedSection.type === 'navbar-dropdown'
-                                          ? { label: link, linkType: 'page', pageId: null, url: '', subItems: [] }
-                                          : { label: link, linkType: 'page', pageId: null, url: '' }
-                                      }
-                                      return link
-                                    })
-                                    handleUpdateSectionContent(selectedSection.id, {
-                                      ...selectedSection.content,
-                                      links: convertedLinks
-                                    })
-                                  }}
-                                  className="px-2 py-0.5 bg-blue-500 text-white text-[10px] rounded hover:bg-blue-600 transition"
-                                  title="Convert old links to new format"
-                                >
-                                  Convert
-                                </button>
-                              )}
-                              <button
-                                onClick={() => {
-                                  const currentLinks = selectedSection.content?.links || []
-                                  const newLink = selectedSection.type === 'navbar-dropdown'
-                                    ? { label: 'New Link', linkType: 'page', pageId: null, url: '', subItems: [] }
-                                    : { label: 'New Link', linkType: 'page', pageId: null, url: '' }
+                        {/* Show Navigation Toggle for header sections */}
+                        {(selectedSection.type === 'header-centered' || selectedSection.type === 'header-split') && (
+                          <div className="mb-4">
+                            <label className="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={selectedSection.content?.navigation !== false}
+                                onChange={(e) => {
                                   handleUpdateSectionContent(selectedSection.id, {
                                     ...selectedSection.content,
-                                    links: [...currentLinks, newLink]
+                                    navigation: e.target.checked
                                   })
                                 }}
-                                className="px-2 py-0.5 bg-amber-500 text-white text-[10px] rounded hover:bg-amber-600 transition"
-                              >
-                                + Add Link
-                              </button>
+                                className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                              />
+                              <span>Show Navigation Links</span>
+                            </label>
+                            <p className="text-[10px] text-gray-500 mt-1 ml-5">
+                              Enable to display navigation links below the header
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Navigation Links Manager - Tree View */}
+                        {(!selectedSection.type.startsWith('header-') || selectedSection.content?.navigation !== false) && (
+                          <>
+                            <div>
+                              <label className="text-xs font-medium text-gray-700 block mb-2">Navigation Links</label>
+                              <NavigationTreeManager
+                                links={selectedSection.content?.links || []}
+                                pages={template?.pages || []}
+                                onChange={(newLinks) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    links: newLinks
+                                  })
+                                }}
+                              />
                             </div>
-                          </div>
 
-                          <div className="space-y-3 max-h-96 overflow-y-auto">
-                            {((selectedSection.content?.links || []) as any[]).map((link: any, idx: number) => (
-                              <div key={idx} className="border border-gray-200 rounded-lg p-2 bg-gray-50">
-                                {/* Link Label */}
-                                <div className="mb-2">
-                                  <label className="text-[10px] text-gray-500 block mb-1">Label</label>
-                                  <input
-                                    type="text"
-                                    value={typeof link === 'string' ? link : link.label || ''}
-                                    onChange={(e) => {
-                                      const newLinks = [...(selectedSection.content?.links || [])]
-                                      if (typeof newLinks[idx] === 'string') {
-                                        newLinks[idx] = { label: e.target.value, linkType: 'page', pageId: null, url: '' }
-                                      } else {
-                                        newLinks[idx] = { ...newLinks[idx], label: e.target.value }
-                                      }
-                                      handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                    }}
-                                    className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                    placeholder="Link text"
-                                  />
-                                </div>
-
-                                {/* Link Type Selection */}
-                                {typeof link === 'object' && (
-                                  <>
-                                    <div className="mb-2">
-                                      <label className="text-[10px] text-gray-500 block mb-1">Link Type</label>
-                                      <select
-                                        value={link.linkType || 'page'}
-                                        onChange={(e) => {
-                                          const newLinks = [...(selectedSection.content?.links || [])]
-                                          newLinks[idx] = { ...newLinks[idx], linkType: e.target.value, pageId: null, url: '' }
-                                          handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                        }}
-                                        className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                      >
-                                        <option value="page">Link to Page</option>
-                                        <option value="url">External URL</option>
-                                      </select>
-                                    </div>
-
-                                    {/* Page Selector */}
-                                    {link.linkType === 'page' && (
-                                      <div className="mb-2">
-                                        <label className="text-[10px] text-gray-500 block mb-1">Select Page</label>
-                                        <select
-                                          value={link.pageId || ''}
-                                          onChange={(e) => {
-                                            const newLinks = [...(selectedSection.content?.links || [])]
-                                            newLinks[idx] = { ...newLinks[idx], pageId: e.target.value ? parseInt(e.target.value) : null }
-                                            handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                          }}
-                                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                        >
-                                          <option value="">Select a page...</option>
-                                          {template?.pages.map(page => (
-                                            <option key={page.id} value={page.id}>
-                                              {page.name} {page.is_homepage ? '(Home)' : ''}
-                                            </option>
-                                          ))}
-                                        </select>
-                                      </div>
-                                    )}
-
-                                    {/* URL Input */}
-                                    {link.linkType === 'url' && (
-                                      <div className="mb-2">
-                                        <label className="text-[10px] text-gray-500 block mb-1">URL</label>
-                                        <input
-                                          type="text"
-                                          value={link.url || ''}
-                                          onChange={(e) => {
-                                            const newLinks = [...(selectedSection.content?.links || [])]
-                                            newLinks[idx] = { ...newLinks[idx], url: e.target.value }
-                                            handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                          }}
-                                          className="w-full px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
-                                          placeholder="https://example.com"
-                                        />
-                                      </div>
-                                    )}
-
-                                    {/* Sub-items for dropdown nav */}
-                                    {selectedSection.type === 'navbar-dropdown' && link.subItems !== undefined && (
-                                      <div className="mb-2 pl-2 border-l-2 border-amber-300">
-                                        <div className="flex items-center justify-between mb-1">
-                                          <label className="text-[10px] text-gray-500">Sub-items</label>
-                                          <button
-                                            onClick={() => {
-                                              const newLinks = [...(selectedSection.content?.links || [])]
-                                              const newSubItem = { label: 'Sub-item', linkType: 'page', pageId: null, url: '' }
-                                              newLinks[idx] = {
-                                                ...newLinks[idx],
-                                                subItems: [...(newLinks[idx].subItems || []), newSubItem]
-                                              }
-                                              handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                            }}
-                                            className="px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] rounded hover:bg-amber-200 transition"
-                                          >
-                                            + Sub
-                                          </button>
-                                        </div>
-                                        <div className="space-y-2">
-                                          {(link.subItems || []).map((subItem: any, subIdx: number) => (
-                                            <div key={subIdx} className="bg-white border border-gray-200 rounded p-1.5">
-                                              <input
-                                                type="text"
-                                                value={subItem.label || ''}
-                                                onChange={(e) => {
-                                                  const newLinks = [...(selectedSection.content?.links || [])]
-                                                  const newSubItems = [...(newLinks[idx].subItems || [])]
-                                                  newSubItems[subIdx] = { ...newSubItems[subIdx], label: e.target.value }
-                                                  newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
-                                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                                }}
-                                                className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
-                                                placeholder="Sub-item label"
-                                              />
-                                              <select
-                                                value={subItem.linkType || 'page'}
-                                                onChange={(e) => {
-                                                  const newLinks = [...(selectedSection.content?.links || [])]
-                                                  const newSubItems = [...(newLinks[idx].subItems || [])]
-                                                  newSubItems[subIdx] = { ...newSubItems[subIdx], linkType: e.target.value }
-                                                  newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
-                                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                                }}
-                                                className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
-                                              >
-                                                <option value="page">Page</option>
-                                                <option value="url">URL</option>
-                                              </select>
-                                              {subItem.linkType === 'page' ? (
-                                                <select
-                                                  value={subItem.pageId || ''}
-                                                  onChange={(e) => {
-                                                    const newLinks = [...(selectedSection.content?.links || [])]
-                                                    const newSubItems = [...(newLinks[idx].subItems || [])]
-                                                    newSubItems[subIdx] = { ...newSubItems[subIdx], pageId: e.target.value ? parseInt(e.target.value) : null }
-                                                    newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
-                                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                                  }}
-                                                  className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
-                                                >
-                                                  <option value="">Select page...</option>
-                                                  {template?.pages.map(page => (
-                                                    <option key={page.id} value={page.id}>{page.name}</option>
-                                                  ))}
-                                                </select>
-                                              ) : (
-                                                <input
-                                                  type="text"
-                                                  value={subItem.url || ''}
-                                                  onChange={(e) => {
-                                                    const newLinks = [...(selectedSection.content?.links || [])]
-                                                    const newSubItems = [...(newLinks[idx].subItems || [])]
-                                                    newSubItems[subIdx] = { ...newSubItems[subIdx], url: e.target.value }
-                                                    newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
-                                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                                  }}
-                                                  className="w-full px-1.5 py-0.5 border border-gray-300 rounded text-[10px] mb-1"
-                                                  placeholder="URL"
-                                                />
-                                              )}
-                                              <button
-                                                onClick={() => {
-                                                  const newLinks = [...(selectedSection.content?.links || [])]
-                                                  const newSubItems = (newLinks[idx].subItems || []).filter((_: any, i: number) => i !== subIdx)
-                                                  newLinks[idx] = { ...newLinks[idx], subItems: newSubItems }
-                                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                                }}
-                                                className="w-full px-1.5 py-0.5 bg-red-50 text-red-600 text-[9px] rounded hover:bg-red-100 transition"
-                                              >
-                                                Remove
-                                              </button>
-                                            </div>
-                                          ))}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </>
-                                )}
-
-                                {/* Remove Link Button */}
-                                <button
-                                  onClick={() => {
-                                    const newLinks = (selectedSection.content?.links || []).filter((_: any, i: number) => i !== idx)
-                                    handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                  }}
-                                  className="w-full mt-1 px-2 py-1 bg-red-50 text-red-600 text-xs rounded hover:bg-red-100 transition"
-                                >
-                                  Remove Link
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Navigation Styling Panel */}
-                        <div className="mt-4 border-t border-gray-200 pt-4">
-                          <h3 className="text-xs font-semibold text-gray-900 mb-3">Navigation Styling</h3>
-                          <NavigationStylingPanel
-                            content={selectedSection.content || {}}
-                            onUpdate={(updatedContent) => {
-                              handleUpdateSectionContent(selectedSection.id, updatedContent)
-                            }}
-                          />
-                        </div>
+                            {/* Navigation Styling Panel */}
+                            <div className="mt-4 border-t border-gray-200 pt-4">
+                              <h3 className="text-xs font-semibold text-gray-900 mb-3">Navigation Styling</h3>
+                              <NavigationStylingPanel
+                                content={selectedSection.content || {}}
+                                onUpdate={(updatedContent) => {
+                                  handleUpdateSectionContent(selectedSection.id, updatedContent)
+                                }}
+                              />
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
 
