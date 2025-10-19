@@ -7,11 +7,18 @@ use App\Models\Template;
 use App\Models\TemplatePage;
 use App\Models\TemplateSection;
 use App\Models\Setting;
+use App\Services\TemplateFileGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 
 class TemplateController extends BaseController
 {
+    protected TemplateFileGenerator $fileGenerator;
+
+    public function __construct()
+    {
+        $this->fileGenerator = new TemplateFileGenerator();
+    }
     /**
      * Get all templates
      */
@@ -125,6 +132,17 @@ class TemplateController extends BaseController
 
         $template->load(['pages.sections', 'creator']);
 
+        // Generate HTML/CSS files to disk
+        try {
+            $this->fileGenerator->generateTemplateFiles($template);
+        } catch (\Exception $e) {
+            \Log::error('Failed to generate template files: ' . $e->getMessage());
+            // Don't fail the request, just log the error
+        }
+
+        // Refresh template to get updated template_slug
+        $template->refresh();
+
         return $this->sendSuccess($template, 'Template created successfully');
     }
 
@@ -165,6 +183,10 @@ class TemplateController extends BaseController
         if ($validator->fails()) {
             return $this->sendError('Validation Error', 422, $validator->errors());
         }
+
+        // Track if is_active is changing
+        $wasActive = $template->is_active;
+        $willBeActive = $request->has('is_active') ? $request->is_active : $wasActive;
 
         $template->update($request->only([
             'name',
@@ -209,6 +231,25 @@ class TemplateController extends BaseController
 
         $template->load(['pages.sections', 'creator']);
 
+        // Handle slug regeneration if published status changed
+        if ($wasActive !== $willBeActive) {
+            try {
+                $this->fileGenerator->updateSlugOnPublish($template, $willBeActive);
+            } catch (\Exception $e) {
+                \Log::error('Failed to update template slug on publish: ' . $e->getMessage());
+            }
+        } else {
+            // Regenerate HTML/CSS files
+            try {
+                $this->fileGenerator->generateTemplateFiles($template);
+            } catch (\Exception $e) {
+                \Log::error('Failed to regenerate template files: ' . $e->getMessage());
+            }
+        }
+
+        // Refresh template to get updated template_slug if it was generated
+        $template->refresh();
+
         return $this->sendSuccess($template, 'Template updated successfully');
     }
 
@@ -221,6 +262,14 @@ class TemplateController extends BaseController
 
         if (!$template) {
             return $this->sendError('Template not found', 404);
+        }
+
+        // Delete template files from disk
+        try {
+            $this->fileGenerator->deleteTemplateFiles($template);
+        } catch (\Exception $e) {
+            \Log::error('Failed to delete template files: ' . $e->getMessage());
+            // Continue with deletion even if file cleanup fails
         }
 
         $template->delete();

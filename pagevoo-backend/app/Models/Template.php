@@ -8,6 +8,7 @@ class Template extends Model
 {
     protected $fillable = [
         'name',
+        'template_slug',
         'description',
         'business_type',
         'preview_image',

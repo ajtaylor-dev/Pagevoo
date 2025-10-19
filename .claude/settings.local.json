@@ -27,7 +27,8 @@
       "Bash(dir:*)",
       "Bash(powershell:*)",
       "Bash(timeout 15 npm run dev)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(del nul)"
     ],
     "deny": [],
     "ask": []
