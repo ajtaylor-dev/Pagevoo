@@ -142,6 +142,7 @@ class TemplateController extends BaseController
 
         // Refresh template to get updated template_slug
         $template->refresh();
+        $template->load(['pages.sections', 'creator']);
 
         return $this->sendSuccess($template, 'Template created successfully');
     }
@@ -169,6 +170,7 @@ class TemplateController extends BaseController
             'pages' => 'nullable|array',
             'pages.*.name' => 'required|string',
             'pages.*.slug' => 'required|string',
+            'pages.*.page_id' => 'nullable|string',
             'pages.*.is_homepage' => 'boolean',
             'pages.*.order' => 'integer',
             'pages.*.sections' => 'array',
@@ -211,6 +213,7 @@ class TemplateController extends BaseController
                     'template_id' => $template->id,
                     'name' => $pageData['name'],
                     'slug' => $pageData['slug'],
+                    'page_id' => $pageData['page_id'] ?? null,
                     'is_homepage' => $pageData['is_homepage'] ?? false,
                     'order' => $pageData['order'] ?? 0,
                 ]);
@@ -219,9 +222,11 @@ class TemplateController extends BaseController
                     foreach ($pageData['sections'] as $sectionData) {
                         TemplateSection::create([
                             'template_page_id' => $page->id,
-                            'name' => $sectionData['name'] ?? ucfirst($sectionData['type']),
+                            'section_name' => $sectionData['section_name'] ?? ucfirst($sectionData['type']),
+                            'section_id' => $sectionData['section_id'] ?? null,
                             'type' => $sectionData['type'],
                             'content' => $sectionData['content'] ?? null,
+                            'css' => $sectionData['css'] ?? null,
                             'order' => $sectionData['order'] ?? 0,
                         ]);
                     }
@@ -229,6 +234,8 @@ class TemplateController extends BaseController
             }
         }
 
+        // Force refresh to ensure all relationships are loaded fresh from database
+        $template->refresh();
         $template->load(['pages.sections', 'creator']);
 
         // Handle slug regeneration if published status changed
@@ -244,11 +251,16 @@ class TemplateController extends BaseController
                 $this->fileGenerator->generateTemplateFiles($template);
             } catch (\Exception $e) {
                 \Log::error('Failed to regenerate template files: ' . $e->getMessage());
+                // Log more details about the error
+                \Log::error('Template ID: ' . $template->id);
+                \Log::error('Template Slug: ' . $template->template_slug);
+                \Log::error('Pages count: ' . $template->pages->count());
             }
         }
 
-        // Refresh template to get updated template_slug if it was generated
+        // Final refresh to get updated template_slug if it was generated
         $template->refresh();
+        $template->load(['pages.sections', 'creator']);
 
         return $this->sendSuccess($template, 'Template updated successfully');
     }

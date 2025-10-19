@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Home</title>
+  <link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<nav id="navbarbasic_fsv8zd" class="navbar-basic">
+  <div class="nav-container">
+    <div class="logo"><span style="color: rgb(220, 38, 38);"><span style="font-size: 28px;">Logo</span></span></div>
+    <div class="nav-links desktop-menu">
+      <a href="#">Home</a>
+      <a href="#">About</a>
+      <a href="#">Services</a>
+      <a href="#">Contact</a>
+    </div>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu('navbarbasic_fsv8zd')" aria-label="Toggle menu">
+      <svg class="menu-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+    </button>
+  </div>
+  <div class="mobile-menu" id="mobile-menu-navbarbasic_fsv8zd">
+    <a href="#">Home</a>
+    <a href="#">About</a>
+    <a href="#">Services</a>
+    <a href="#">Contact</a>
+  </div>
+</nav>
+
+<section id="hahaha12345_s9gr2w">
+  <div class="row">
+    <div class="col-12">
+      Column content hahah
+    </div>
+  </div>
+</section>
+
+<section id="grid3x1_7xlyli">
+  <div class="row">
+    <div class="col-4">
+      Column 1
+    </div>
+    <div class="col-4">
+      Column 2
+    </div>
+    <div class="col-4">
+      Column 3
+    </div>
+  </div>
+</section>
+
+<script>
+function toggleMobileMenu(sectionId) {
+  const menu = document.getElementById('mobile-menu-' + sectionId);
+  if (menu) {
+    menu.classList.toggle('active');
+  }
+}
+</script>
+
+</body>
+</html>

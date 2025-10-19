@@ -24,6 +24,13 @@ interface StyleProperty {
   backgroundRepeat?: string
   backgroundAttachment?: string
   opacity?: number
+  // Link styles
+  linkColor?: string
+  linkHoverColor?: string
+  linkVisitedColor?: string
+  linkActiveColor?: string
+  linkTextDecoration?: string
+  linkHoverTextDecoration?: string
 }
 
 interface StyleEditorProps {
@@ -113,6 +120,13 @@ const BACKGROUND_ATTACHMENT_OPTIONS = [
   { value: 'local', label: 'Local' },
 ]
 
+const TEXT_DECORATION_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'underline', label: 'Underline' },
+  { value: 'overline', label: 'Overline' },
+  { value: 'line-through', label: 'Line Through' },
+]
+
 export function StyleEditor({ value, onChange, context, showFontSelector = false, galleryImages, onOpenGallery }: StyleEditorProps) {
   const [activeTab, setActiveTab] = useState<'simplified' | 'code'>('simplified')
   const [properties, setProperties] = useState<StyleProperty>({
@@ -129,6 +143,22 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const [showBorderColorPicker, setShowBorderColorPicker] = useState(false)
   const [showGalleryModal, setShowGalleryModal] = useState(false)
   const [selectedGalleryImagePath, setSelectedGalleryImagePath] = useState<string | null>(null)
+  const [showLinkColorPicker, setShowLinkColorPicker] = useState(false)
+  const [showLinkHoverColorPicker, setShowLinkHoverColorPicker] = useState(false)
+  const [showLinkVisitedColorPicker, setShowLinkVisitedColorPicker] = useState(false)
+  const [showLinkActiveColorPicker, setShowLinkActiveColorPicker] = useState(false)
+
+  // Local state for hex inputs to prevent parent re-renders on every keystroke
+  const [linkColorInput, setLinkColorInput] = useState('')
+  const [linkHoverColorInput, setLinkHoverColorInput] = useState('')
+  const [linkVisitedColorInput, setLinkVisitedColorInput] = useState('')
+  const [linkActiveColorInput, setLinkActiveColorInput] = useState('')
+
+  // Track which input is being edited
+  const [editingLinkColor, setEditingLinkColor] = useState(false)
+  const [editingLinkHoverColor, setEditingLinkHoverColor] = useState(false)
+  const [editingLinkVisitedColor, setEditingLinkVisitedColor] = useState(false)
+  const [editingLinkActiveColor, setEditingLinkActiveColor] = useState(false)
 
   // Parse CSS string to extract visual properties
   const parseCSS = (css: string): StyleProperty => {
@@ -209,6 +239,30 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     const opacityMatch = css.match(/opacity:\s*([\d.]+);?/i)
     if (opacityMatch) props.opacity = parseFloat(opacityMatch[1])
 
+    // Link color (a { color: ... })
+    const linkColorMatch = css.match(/a\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkColorMatch) props.linkColor = linkColorMatch[1].trim()
+
+    // Link hover color (a:hover { color: ... })
+    const linkHoverColorMatch = css.match(/a:hover\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkHoverColorMatch) props.linkHoverColor = linkHoverColorMatch[1].trim()
+
+    // Link visited color (a:visited { color: ... })
+    const linkVisitedColorMatch = css.match(/a:visited\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkVisitedColorMatch) props.linkVisitedColor = linkVisitedColorMatch[1].trim()
+
+    // Link active color (a:active { color: ... })
+    const linkActiveColorMatch = css.match(/a:active\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkActiveColorMatch) props.linkActiveColor = linkActiveColorMatch[1].trim()
+
+    // Link text decoration (a { text-decoration: ... })
+    const linkTextDecorationMatch = css.match(/a\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
+    if (linkTextDecorationMatch) props.linkTextDecoration = linkTextDecorationMatch[1].trim()
+
+    // Link hover text decoration (a:hover { text-decoration: ... })
+    const linkHoverTextDecorationMatch = css.match(/a:hover\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
+    if (linkHoverTextDecorationMatch) props.linkHoverTextDecoration = linkHoverTextDecorationMatch[1].trim()
+
     return props
   }
 
@@ -216,37 +270,67 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const generateCSS = (props: StyleProperty): string => {
     let css = ''
 
-    // For page/site context with font selector, apply font styles globally via body selector
+    // For page/site context with font selector, apply ALL styles globally via body selector
     if (showFontSelector && context === 'page') {
       let bodyStyles = ''
 
-      // Font family - always include if specified
+      // Font styles
       if (props.fontFamily) {
         bodyStyles += `  font-family: '${props.fontFamily}', sans-serif;\n`
       }
-
-      // Font size - apply globally
       if (props.fontSize) {
         bodyStyles += `  font-size: ${props.fontSize}px;\n`
       }
-
-      // Text color - apply globally
       if (props.color) {
         bodyStyles += `  color: ${props.color};\n`
       }
 
+      // Background and layout (for body element)
+      if (props.backgroundColor) bodyStyles += `  background-color: ${props.backgroundColor};\n`
+      if (props.padding !== undefined) bodyStyles += `  padding: ${props.padding}px;\n`
+      if (props.margin !== undefined) bodyStyles += `  margin: ${props.margin}px;\n`
+
       if (bodyStyles) {
         css += `body {\n${bodyStyles}}\n\n`
       }
+
+      // Link styles for page/site level
+      if (props.linkColor || props.linkTextDecoration) {
+        css += `a {\n`
+        if (props.linkColor) css += `  color: ${props.linkColor};\n`
+        if (props.linkTextDecoration) css += `  text-decoration: ${props.linkTextDecoration};\n`
+        css += `}\n\n`
+      }
+
+      if (props.linkHoverColor || props.linkHoverTextDecoration) {
+        css += `a:hover {\n`
+        if (props.linkHoverColor) css += `  color: ${props.linkHoverColor};\n`
+        if (props.linkHoverTextDecoration) css += `  text-decoration: ${props.linkHoverTextDecoration};\n`
+        css += `}\n\n`
+      }
+
+      if (props.linkVisitedColor) {
+        css += `a:visited {\n`
+        css += `  color: ${props.linkVisitedColor};\n`
+        css += `}\n\n`
+      }
+
+      if (props.linkActiveColor) {
+        css += `a:active {\n`
+        css += `  color: ${props.linkActiveColor};\n`
+        css += `}\n\n`
+      }
+
+      // Border properties don't make sense for page-level, so skip them
+      // Only return the body selector CSS and link styles
+      return css
     }
 
+    // For section/row/column context, output properties without selector (parent will wrap them)
     if (props.backgroundColor) css += `background-color: ${props.backgroundColor};\n`
-    if (!showFontSelector || context !== 'page') {
-      // Only add these if not in page context (otherwise they're in body{})
-      if (props.fontFamily) css += `font-family: '${props.fontFamily}', sans-serif;\n`
-      if (props.color) css += `color: ${props.color};\n`
-      if (props.fontSize) css += `font-size: ${props.fontSize}px;\n`
-    }
+    if (props.fontFamily) css += `font-family: '${props.fontFamily}', sans-serif;\n`
+    if (props.color) css += `color: ${props.color};\n`
+    if (props.fontSize) css += `font-size: ${props.fontSize}px;\n`
     if (props.padding !== undefined) css += `padding: ${props.padding}px;\n`
     if (props.margin !== undefined) css += `margin: ${props.margin}px;\n`
     if (props.borderRadius !== undefined) css += `border-radius: ${props.borderRadius}px;\n`
@@ -262,6 +346,36 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       if (props.backgroundAttachment) css += `background-attachment: ${props.backgroundAttachment};\n`
     }
     if (props.opacity !== undefined && props.opacity !== 1) css += `opacity: ${props.opacity};\n`
+
+    // Note: Link styles for section/row/column need special handling
+    // They will be added with specific selectors (e.g., #section-id a {})
+    // This is handled in the TemplateBuilder when applying section CSS
+    if (props.linkColor || props.linkTextDecoration || props.linkHoverColor ||
+        props.linkHoverTextDecoration || props.linkVisitedColor || props.linkActiveColor) {
+      css += `\n/* Link styles - apply with descendant selector (e.g., #section-id a {}) */\n`
+
+      if (props.linkColor || props.linkTextDecoration) {
+        css += `/* a { */\n`
+        if (props.linkColor) css += `/*   color: ${props.linkColor}; */\n`
+        if (props.linkTextDecoration) css += `/*   text-decoration: ${props.linkTextDecoration}; */\n`
+        css += `/* } */\n`
+      }
+
+      if (props.linkHoverColor || props.linkHoverTextDecoration) {
+        css += `/* a:hover { */\n`
+        if (props.linkHoverColor) css += `/*   color: ${props.linkHoverColor}; */\n`
+        if (props.linkHoverTextDecoration) css += `/*   text-decoration: ${props.linkHoverTextDecoration}; */\n`
+        css += `/* } */\n`
+      }
+
+      if (props.linkVisitedColor) {
+        css += `/* a:visited { color: ${props.linkVisitedColor}; } */\n`
+      }
+
+      if (props.linkActiveColor) {
+        css += `/* a:active { color: ${props.linkActiveColor}; } */\n`
+      }
+    }
 
     return css
   }
@@ -346,6 +460,11 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
 
   // Parse CSS string into properties on mount - strip out matching colors
   useEffect(() => {
+    // Don't update if user is actively editing any input
+    if (editingLinkColor || editingLinkHoverColor || editingLinkVisitedColor || editingLinkActiveColor) {
+      return
+    }
+
     if (!value || value.trim() === '') {
       // If empty CSS, reset to minimal defaults
       setProperties({
@@ -403,9 +522,15 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       backgroundRepeat: parsed.backgroundRepeat,
       backgroundAttachment: parsed.backgroundAttachment,
       opacity: parsed.opacity ?? 1,
+      linkColor: parsed.linkColor,
+      linkHoverColor: parsed.linkHoverColor,
+      linkVisitedColor: parsed.linkVisitedColor,
+      linkActiveColor: parsed.linkActiveColor,
+      linkTextDecoration: parsed.linkTextDecoration,
+      linkHoverTextDecoration: parsed.linkHoverTextDecoration,
     })
     setRawCSS(value)
-  }, [value])
+  }, [value, editingLinkColor, editingLinkHoverColor, editingLinkVisitedColor, editingLinkActiveColor])
 
   return (
     <div className="w-full">
@@ -874,6 +999,335 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
               )}
             </div>
           )}
+
+          {/* Hyperlink Styling Section */}
+          <div className="border-t pt-4 mt-4">
+            <Label className="text-xs font-medium mb-3 block">Hyperlink Styles</Label>
+
+            {/* Link Default Color */}
+            <div className="mb-3">
+              <Label className="text-[10px] font-medium text-gray-600">Link Color</Label>
+              <div className="flex gap-2 mt-1">
+                <div className="relative flex-1">
+                  <button
+                    onClick={() => setShowLinkColorPicker(!showLinkColorPicker)}
+                    className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
+                    style={{ backgroundColor: properties.linkColor || 'transparent' }}
+                  >
+                    <span className="font-mono text-[10px]" style={{
+                      color: properties.linkColor ? (getContrastColor(properties.linkColor)) : '#666'
+                    }}>
+                      {properties.linkColor || 'Default'}
+                    </span>
+                  </button>
+                  {showLinkColorPicker && (
+                    <div className="absolute z-10 mt-1">
+                      <div className="fixed inset-0" onClick={() => setShowLinkColorPicker(false)} />
+                      <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
+                        <HexColorPicker
+                          color={properties.linkColor || '#0000EE'}
+                          onChange={(color) => updateProperty('linkColor', color)}
+                        />
+                        <div className="grid grid-cols-5 gap-1 mt-2">
+                          {COLOR_PRESETS.map(color => (
+                            <button
+                              key={color}
+                              className="w-6 h-6 rounded border border-gray-300"
+                              style={{ backgroundColor: color }}
+                              onClick={() => updateProperty('linkColor', color)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Input
+                  type="text"
+                  value={editingLinkColor ? linkColorInput : (properties.linkColor || '')}
+                  onFocus={(e) => {
+                    setEditingLinkColor(true)
+                    setLinkColorInput(e.target.value)
+                  }}
+                  onChange={(e) => setLinkColorInput(e.target.value)}
+                  onBlur={(e) => {
+                    setEditingLinkColor(false)
+                    if (e.target.value) {
+                      updateProperty('linkColor', e.target.value)
+                    }
+                    setLinkColorInput('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (e.currentTarget.value) {
+                        updateProperty('linkColor', e.currentTarget.value)
+                      }
+                      setEditingLinkColor(false)
+                      setLinkColorInput('')
+                      e.currentTarget.blur()
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="#0000EE"
+                  className="w-24 h-8 text-[10px] font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Link Text Decoration */}
+            <div className="mb-3">
+              <Label className="text-[10px] font-medium text-gray-600">Link Decoration</Label>
+              <Select
+                value={properties.linkTextDecoration || 'underline'}
+                onValueChange={(value) => updateProperty('linkTextDecoration', value)}
+              >
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEXT_DECORATION_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Link Hover Color */}
+            <div className="mb-3">
+              <Label className="text-[10px] font-medium text-gray-600">Link Hover Color</Label>
+              <div className="flex gap-2 mt-1">
+                <div className="relative flex-1">
+                  <button
+                    onClick={() => setShowLinkHoverColorPicker(!showLinkHoverColorPicker)}
+                    className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
+                    style={{ backgroundColor: properties.linkHoverColor || 'transparent' }}
+                  >
+                    <span className="font-mono text-[10px]" style={{
+                      color: properties.linkHoverColor ? (getContrastColor(properties.linkHoverColor)) : '#666'
+                    }}>
+                      {properties.linkHoverColor || 'Default'}
+                    </span>
+                  </button>
+                  {showLinkHoverColorPicker && (
+                    <div className="absolute z-10 mt-1">
+                      <div className="fixed inset-0" onClick={() => setShowLinkHoverColorPicker(false)} />
+                      <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
+                        <HexColorPicker
+                          color={properties.linkHoverColor || '#551A8B'}
+                          onChange={(color) => updateProperty('linkHoverColor', color)}
+                        />
+                        <div className="grid grid-cols-5 gap-1 mt-2">
+                          {COLOR_PRESETS.map(color => (
+                            <button
+                              key={color}
+                              className="w-6 h-6 rounded border border-gray-300"
+                              style={{ backgroundColor: color }}
+                              onClick={() => updateProperty('linkHoverColor', color)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Input
+                  type="text"
+                  value={editingLinkHoverColor ? linkHoverColorInput : (properties.linkHoverColor || '')}
+                  onFocus={(e) => {
+                    setEditingLinkHoverColor(true)
+                    setLinkHoverColorInput(e.target.value)
+                  }}
+                  onChange={(e) => setLinkHoverColorInput(e.target.value)}
+                  onBlur={(e) => {
+                    setEditingLinkHoverColor(false)
+                    if (e.target.value) {
+                      updateProperty('linkHoverColor', e.target.value)
+                    }
+                    setLinkHoverColorInput('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (e.currentTarget.value) {
+                        updateProperty('linkHoverColor', e.currentTarget.value)
+                      }
+                      setEditingLinkHoverColor(false)
+                      setLinkHoverColorInput('')
+                      e.currentTarget.blur()
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="#551A8B"
+                  className="w-24 h-8 text-[10px] font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Link Hover Decoration */}
+            <div className="mb-3">
+              <Label className="text-[10px] font-medium text-gray-600">Hover Decoration</Label>
+              <Select
+                value={properties.linkHoverTextDecoration || 'underline'}
+                onValueChange={(value) => updateProperty('linkHoverTextDecoration', value)}
+              >
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TEXT_DECORATION_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Link Visited Color */}
+            <div className="mb-3">
+              <Label className="text-[10px] font-medium text-gray-600">Visited Link Color</Label>
+              <div className="flex gap-2 mt-1">
+                <div className="relative flex-1">
+                  <button
+                    onClick={() => setShowLinkVisitedColorPicker(!showLinkVisitedColorPicker)}
+                    className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
+                    style={{ backgroundColor: properties.linkVisitedColor || 'transparent' }}
+                  >
+                    <span className="font-mono text-[10px]" style={{
+                      color: properties.linkVisitedColor ? (getContrastColor(properties.linkVisitedColor)) : '#666'
+                    }}>
+                      {properties.linkVisitedColor || 'Default'}
+                    </span>
+                  </button>
+                  {showLinkVisitedColorPicker && (
+                    <div className="absolute z-10 mt-1">
+                      <div className="fixed inset-0" onClick={() => setShowLinkVisitedColorPicker(false)} />
+                      <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
+                        <HexColorPicker
+                          color={properties.linkVisitedColor || '#551A8B'}
+                          onChange={(color) => updateProperty('linkVisitedColor', color)}
+                        />
+                        <div className="grid grid-cols-5 gap-1 mt-2">
+                          {COLOR_PRESETS.map(color => (
+                            <button
+                              key={color}
+                              className="w-6 h-6 rounded border border-gray-300"
+                              style={{ backgroundColor: color }}
+                              onClick={() => updateProperty('linkVisitedColor', color)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Input
+                  type="text"
+                  value={editingLinkVisitedColor ? linkVisitedColorInput : (properties.linkVisitedColor || '')}
+                  onFocus={(e) => {
+                    setEditingLinkVisitedColor(true)
+                    setLinkVisitedColorInput(e.target.value)
+                  }}
+                  onChange={(e) => setLinkVisitedColorInput(e.target.value)}
+                  onBlur={(e) => {
+                    setEditingLinkVisitedColor(false)
+                    if (e.target.value) {
+                      updateProperty('linkVisitedColor', e.target.value)
+                    }
+                    setLinkVisitedColorInput('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (e.currentTarget.value) {
+                        updateProperty('linkVisitedColor', e.currentTarget.value)
+                      }
+                      setEditingLinkVisitedColor(false)
+                      setLinkVisitedColorInput('')
+                      e.currentTarget.blur()
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="#551A8B"
+                  className="w-24 h-8 text-[10px] font-mono"
+                />
+              </div>
+            </div>
+
+            {/* Link Active Color */}
+            <div className="mb-3">
+              <Label className="text-[10px] font-medium text-gray-600">Active Link Color</Label>
+              <div className="flex gap-2 mt-1">
+                <div className="relative flex-1">
+                  <button
+                    onClick={() => setShowLinkActiveColorPicker(!showLinkActiveColorPicker)}
+                    className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
+                    style={{ backgroundColor: properties.linkActiveColor || 'transparent' }}
+                  >
+                    <span className="font-mono text-[10px]" style={{
+                      color: properties.linkActiveColor ? (getContrastColor(properties.linkActiveColor)) : '#666'
+                    }}>
+                      {properties.linkActiveColor || 'Default'}
+                    </span>
+                  </button>
+                  {showLinkActiveColorPicker && (
+                    <div className="absolute z-10 mt-1">
+                      <div className="fixed inset-0" onClick={() => setShowLinkActiveColorPicker(false)} />
+                      <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
+                        <HexColorPicker
+                          color={properties.linkActiveColor || '#FF0000'}
+                          onChange={(color) => updateProperty('linkActiveColor', color)}
+                        />
+                        <div className="grid grid-cols-5 gap-1 mt-2">
+                          {COLOR_PRESETS.map(color => (
+                            <button
+                              key={color}
+                              className="w-6 h-6 rounded border border-gray-300"
+                              style={{ backgroundColor: color }}
+                              onClick={() => updateProperty('linkActiveColor', color)}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <Input
+                  type="text"
+                  value={editingLinkActiveColor ? linkActiveColorInput : (properties.linkActiveColor || '')}
+                  onFocus={(e) => {
+                    setEditingLinkActiveColor(true)
+                    setLinkActiveColorInput(e.target.value)
+                  }}
+                  onChange={(e) => setLinkActiveColorInput(e.target.value)}
+                  onBlur={(e) => {
+                    setEditingLinkActiveColor(false)
+                    if (e.target.value) {
+                      updateProperty('linkActiveColor', e.target.value)
+                    }
+                    setLinkActiveColorInput('')
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (e.currentTarget.value) {
+                        updateProperty('linkActiveColor', e.currentTarget.value)
+                      }
+                      setEditingLinkActiveColor(false)
+                      setLinkActiveColorInput('')
+                      e.currentTarget.blur()
+                    }
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                  placeholder="#FF0000"
+                  className="w-24 h-8 text-[10px] font-mono"
+                />
+              </div>
+            </div>
+
+            <p className="text-[9px] text-gray-400 mt-2">
+              Customize hyperlink appearance for normal, hover, visited, and active states
+            </p>
+          </div>
 
           {/* Opacity Slider - Show for section and column */}
           {(context === 'section' || context === 'column') && (

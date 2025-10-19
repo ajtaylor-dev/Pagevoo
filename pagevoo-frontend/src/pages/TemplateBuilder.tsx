@@ -125,7 +125,7 @@ const generateContainerStyle = (containerStyle: any): React.CSSProperties => {
 }
 
 const generateLinkStyle = (linkStyling: any, isHover: boolean = false): React.CSSProperties => {
-  if (!linkStyling) return {}
+  if (!linkStyling) return { textDecoration: 'none' }
 
   return {
     color: isHover ? linkStyling.textColorHover : linkStyling.textColor,
@@ -137,7 +137,8 @@ const generateLinkStyle = (linkStyling: any, isHover: boolean = false): React.CS
     margin: linkStyling.margin,
     border: linkStyling.border,
     borderRadius: linkStyling.borderRadius,
-    transition: linkStyling.transition
+    transition: linkStyling.transition,
+    textDecoration: 'none'
   }
 }
 
@@ -198,6 +199,27 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
       processedCSS = inputCSS.replace(/body\s*\{[^}]+\}/gi, '')
     }
 
+    // Extract link selector styles (a, a:hover, a:visited, a:active)
+    let linkSelectors = ''
+    const linkPatterns = [
+      /a\s*\{([^}]+)\}/gi,
+      /a:hover\s*\{([^}]+)\}/gi,
+      /a:visited\s*\{([^}]+)\}/gi,
+      /a:active\s*\{([^}]+)\}/gi
+    ]
+
+    linkPatterns.forEach((pattern) => {
+      const matches = [...processedCSS.matchAll(pattern)]
+      matches.forEach(match => {
+        // Scope link selector to canvas
+        const selector = match[0].match(/^[^{]+/)[0].trim()
+        const styles = match[1]
+        linkSelectors += `#template-canvas ${selector} {\n  ${styles.trim()}\n}\n\n`
+        // Remove from processed CSS
+        processedCSS = processedCSS.replace(match[0], '')
+      })
+    })
+
     // Scope any remaining standalone CSS properties to canvas
     const lines = processedCSS.split('\n')
     let result = ''
@@ -247,15 +269,22 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
         }
       })
 
-      // Apply typography to all text elements and canvas itself
+      // Apply typography to canvas and text elements
+      // Use lower specificity to allow inline styles to override
+      // DO NOT use * selector as it will override inline styles
       if (typographyCSS.trim()) {
-        result = `#template-canvas,\n#template-canvas * {\n${typographyCSS}}\n\n` + result
+        result = `#template-canvas {\n${typographyCSS}}\n\n` + result
       }
 
       // Apply layout/box properties only to canvas container
       if (layoutCSS.trim()) {
         result = `#template-canvas {\n${layoutCSS}}\n\n` + result
       }
+    }
+
+    // Add link selectors (already scoped to canvas)
+    if (linkSelectors.trim()) {
+      result = linkSelectors + result
     }
 
     console.log('[generateContentCSS] Scoped CSS:', result)
@@ -272,7 +301,56 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
     css += `/* Page-specific styles */\n${scopeToCanvas(pageCSS)}\n\n`
   }
 
-  // 3. Section, Row, and Column CSS - Applied with specific selectors (highest specificity)
+  // 3. Base text content styles for canvas (matching live preview)
+  css += `/* Text Content Styles */\n\n`
+  css += `#template-canvas .row h1 {\n`
+  css += `  font-size: 2em;\n`
+  css += `  font-weight: bold;\n`
+  css += `  margin: 0.67em 0;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row h2 {\n`
+  css += `  font-size: 1.5em;\n`
+  css += `  font-weight: bold;\n`
+  css += `  margin: 0.75em 0;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row h3 {\n`
+  css += `  font-size: 1.17em;\n`
+  css += `  font-weight: bold;\n`
+  css += `  margin: 1em 0;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row h4 {\n`
+  css += `  font-size: 1em;\n`
+  css += `  font-weight: bold;\n`
+  css += `  margin: 1.33em 0;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row p {\n`
+  css += `  margin: 1em 0;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row ul, #template-canvas .row ol {\n`
+  css += `  margin: 1em 0;\n`
+  css += `  padding-left: 2.5em;\n`
+  css += `  list-style-position: outside;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row ul {\n`
+  css += `  list-style-type: disc;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row ol {\n`
+  css += `  list-style-type: decimal;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row li {\n`
+  css += `  margin: 0.5em 0;\n`
+  css += `  display: list-item;\n`
+  css += `}\n\n`
+
+  // 4. Section, Row, and Column CSS - Applied with specific selectors (highest specificity)
   sections.forEach(section => {
     const sectionId = section.section_id || `section-${section.id}`
 
@@ -319,9 +397,10 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
             css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} layout styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) {\n${layoutCSS}}\n\n`
           }
 
-          // Apply typography properties to text elements inside the column
+          // Apply typography properties to the column container only
+          // Inheritance will apply these to child elements, but inline styles will still override
           if (typographyCSS.trim()) {
-            css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} typography styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}),\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) * {\n${typographyCSS}}\n\n`
+            css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} typography styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) {\n${typographyCSS}}\n\n`
           }
         }
       })
@@ -564,16 +643,25 @@ export default function TemplateBuilder() {
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node
 
-      if (fileMenuRef.current && !fileMenuRef.current.contains(target)) {
+      // Check if click is inside a dropdown portal, color picker, or input field
+      const targetElement = target as HTMLElement
+      const isDropdownClick = targetElement.closest('[role="listbox"]') ||
+                              targetElement.closest('[data-radix-popper-content-wrapper]') ||
+                              targetElement.closest('[data-radix-select-content]') ||
+                              targetElement.closest('.react-colorful') ||
+                              targetElement.closest('input[type="text"]') ||
+                              targetElement.tagName === 'INPUT'
+
+      if (fileMenuRef.current && !fileMenuRef.current.contains(target) && !isDropdownClick) {
         setShowFileMenu(false)
       }
-      if (editMenuRef.current && !editMenuRef.current.contains(target)) {
+      if (editMenuRef.current && !editMenuRef.current.contains(target) && !isDropdownClick) {
         setShowEditMenu(false)
       }
-      if (insertMenuRef.current && !insertMenuRef.current.contains(target)) {
+      if (insertMenuRef.current && !insertMenuRef.current.contains(target) && !isDropdownClick) {
         setShowInsertMenu(false)
       }
-      if (viewMenuRef.current && !viewMenuRef.current.contains(target)) {
+      if (viewMenuRef.current && !viewMenuRef.current.contains(target) && !isDropdownClick) {
         setShowViewMenu(false)
       }
     }
@@ -601,7 +689,7 @@ export default function TemplateBuilder() {
       const generatedHTML = generatePageHTML()
       setEditableHTML(generatedHTML)
     }
-  }, [currentPage, currentPage?.sections, showSourceCodeModal])
+  }, [currentPage, currentPage?.sections, JSON.stringify(currentPage?.sections?.map(s => ({ id: s.id, section_id: s.section_id, section_name: s.section_name }))), showSourceCodeModal])
 
   // Dynamically update CSS when template/page changes
   useEffect(() => {
@@ -609,7 +697,7 @@ export default function TemplateBuilder() {
       const generatedCSS = generateStylesheet()
       setEditableCSS(generatedCSS)
     }
-  }, [currentPage, currentPage?.sections, template?.custom_css, currentPage?.page_css, showStylesheetModal])
+  }, [currentPage, currentPage?.sections, JSON.stringify(currentPage?.sections?.map(s => ({ id: s.id, section_id: s.section_id, section_name: s.section_name }))), template?.custom_css, currentPage?.page_css, showStylesheetModal])
 
 
   const handleSaveTemplate = async () => {
@@ -2720,8 +2808,21 @@ padding: 1rem;`
       const response = await api.updateTemplate(template.id, templateToSave)
 
       if (response.success && response.data) {
-        // Update template with data from backend (includes template_slug)
-        setTemplate(response.data)
+        // Update template with fresh data from backend (includes all pages/sections with proper IDs)
+        const freshTemplate = response.data
+        setTemplate(freshTemplate)
+
+        // Update current page reference to match the new data
+        if (currentPage) {
+          const updatedCurrentPage = freshTemplate.pages.find((p: TemplatePage) => p.slug === currentPage.slug)
+          if (updatedCurrentPage) {
+            setCurrentPage(updatedCurrentPage)
+          }
+        }
+
+        // Update history with the fresh template
+        addToHistory(freshTemplate)
+
         setHasUnsavedChanges(false)
         alert('Template saved successfully!')
       } else {
@@ -2768,8 +2869,8 @@ padding: 1rem;`
       const response = await api.createTemplate(templateData)
 
       if (response.success && response.data) {
-        // Update template with returned ID and name
-        const newTemplate = { ...template, id: response.data.id, name: templateName, is_active: false }
+        // Update template with returned data (includes id, template_slug, etc.)
+        const newTemplate = { ...template, ...response.data }
         setTemplate(newTemplate)
 
         // Set published state to false (it's a draft)
@@ -3156,25 +3257,41 @@ ${sectionsHTML}
     // 1. Base Reset and Box Sizing
     css += `/* Base Reset */\n\n`
     css += `*, *::after, *::before {\n`
-    css += `  -webkit-box-sizing: border-box;\n`
-    css += `  -moz-box-sizing: border-box;\n`
     css += `  box-sizing: border-box;\n`
     css += `  margin: 0;\n`
     css += `  padding: 0;\n`
     css += `}\n\n`
 
     css += `body {\n`
-    css += `  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;\n`
+    css += `  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n`
     css += `  line-height: 1.6;\n`
     css += `}\n\n`
 
-    // 2. Navigation Base Styles
+    // 2. Default link styles
+    css += `a {\n`
+    css += `  color: inherit;\n`
+    css += `  text-decoration: none;\n`
+    css += `}\n\n`
+
+    // 3. Navigation Base Styles
     css += `/* Navigation Base Styles */\n\n`
     css += `nav[class*="navbar-"], header[class*="header-"] {\n`
+    css += `  padding: 1rem;\n`
+    css += `  background-color: #ffffff;\n`
+    css += `  border-bottom: 2px solid #e5e7eb;\n`
+    css += `}\n\n`
+
+    css += `.nav-container {\n`
     css += `  display: flex;\n`
     css += `  align-items: center;\n`
     css += `  justify-content: space-between;\n`
-    css += `  padding: 1rem 2rem;\n`
+    css += `  max-width: 1280px;\n`
+    css += `  margin: 0 auto;\n`
+    css += `}\n\n`
+
+    css += `.logo {\n`
+    css += `  font-size: 1.25rem;\n`
+    css += `  font-weight: bold;\n`
     css += `}\n\n`
 
     css += `.nav-links {\n`
@@ -3183,16 +3300,57 @@ ${sectionsHTML}
     css += `  align-items: center;\n`
     css += `}\n\n`
 
-    css += `.logo {\n`
-    css += `  font-size: 1.5rem;\n`
-    css += `  font-weight: bold;\n`
+    css += `.mobile-menu-btn {\n`
+    css += `  display: none;\n`
+    css += `  background: none;\n`
+    css += `  border: none;\n`
+    css += `  cursor: pointer;\n`
+    css += `  padding: 0.5rem;\n`
     css += `}\n\n`
 
-    // 3. Responsive Grid System (Base - Mobile First)
-    css += `/* Responsive Grid System - Mobile First */\n\n`
+    css += `.menu-icon {\n`
+    css += `  width: 1.5rem;\n`
+    css += `  height: 1.5rem;\n`
+    css += `  color: #374151;\n`
+    css += `}\n\n`
+
+    css += `.mobile-menu {\n`
+    css += `  display: none;\n`
+    css += `  width: 100%;\n`
+    css += `  background-color: #ffffff;\n`
+    css += `  border-top: 1px solid #e5e7eb;\n`
+    css += `  padding: 1rem;\n`
+    css += `}\n\n`
+
+    css += `.mobile-menu.active {\n`
+    css += `  display: block;\n`
+    css += `}\n\n`
+
+    css += `.mobile-menu a {\n`
+    css += `  display: block;\n`
+    css += `  padding: 0.75rem;\n`
+    css += `  border-radius: 0.375rem;\n`
+    css += `}\n\n`
+
+    css += `.mobile-menu a:hover {\n`
+    css += `  background-color: #f3f4f6;\n`
+    css += `}\n\n`
+
+    // 4. Mobile Navigation
+    css += `/* Mobile Navigation */\n\n`
+    css += `@media (max-width: 767px) {\n`
+    css += `  .desktop-menu {\n`
+    css += `    display: none;\n`
+    css += `  }\n\n`
+    css += `  .mobile-menu-btn {\n`
+    css += `    display: block;\n`
+    css += `  }\n`
+    css += `}\n\n`
+
+    // 5. Responsive Grid System
+    css += `/* Responsive Grid System */\n\n`
     css += `[class*="col-"] {\n`
     css += `  float: left;\n`
-    css += `  padding: 20px;\n`
     css += `  width: 100%;\n`
     css += `}\n\n`
 
@@ -3202,21 +3360,69 @@ ${sectionsHTML}
     css += `  display: table;\n`
     css += `}\n\n`
 
-    // 4. Site CSS (Global styles)
+    // 6. Text Content Styles
+    css += `/* Text Content Styles */\n\n`
+    css += `.row h1 {\n`
+    css += `  font-size: 2em;\n`
+    css += `  font-weight: bold;\n`
+    css += `  margin: 0.67em 0;\n`
+    css += `}\n\n`
+
+    css += `.row h2 {\n`
+    css += `  font-size: 1.5em;\n`
+    css += `  font-weight: bold;\n`
+    css += `  margin: 0.75em 0;\n`
+    css += `}\n\n`
+
+    css += `.row h3 {\n`
+    css += `  font-size: 1.17em;\n`
+    css += `  font-weight: bold;\n`
+    css += `  margin: 1em 0;\n`
+    css += `}\n\n`
+
+    css += `.row h4 {\n`
+    css += `  font-size: 1em;\n`
+    css += `  font-weight: bold;\n`
+    css += `  margin: 1.33em 0;\n`
+    css += `}\n\n`
+
+    css += `.row p {\n`
+    css += `  margin: 1em 0;\n`
+    css += `}\n\n`
+
+    css += `.row ul, .row ol {\n`
+    css += `  margin: 1em 0;\n`
+    css += `  padding-left: 2.5em;\n`
+    css += `  list-style-position: outside;\n`
+    css += `}\n\n`
+
+    css += `.row ul {\n`
+    css += `  list-style-type: disc;\n`
+    css += `}\n\n`
+
+    css += `.row ol {\n`
+    css += `  list-style-type: decimal;\n`
+    css += `}\n\n`
+
+    css += `.row li {\n`
+    css += `  margin: 0.5em 0;\n`
+    css += `  display: list-item;\n`
+    css += `}\n\n`
+
+    // 7. Site CSS (Global styles)
     if (template.custom_css && template.custom_css.trim()) {
       css += `/* Site-Wide Styles */\n\n`
       css += template.custom_css + '\n\n'
     }
 
-    // 5. Page CSS (Page-specific styles)
+    // 8. Page CSS (Page-specific styles)
     if (currentPage.page_css && currentPage.page_css.trim()) {
-      css += `/* Page-Specific Styles: ${currentPage.name} */\n\n`
+      css += `/* Page: ${currentPage.name} */\n\n`
       css += currentPage.page_css + '\n\n'
     }
 
-    // 6. Section, Row, and Column CSS
+    // 9. Section, Row, and Column CSS
     if (currentPage.sections && currentPage.sections.length > 0) {
-      css += `/* Section, Row, and Column Styles */\n\n`
 
       currentPage.sections
         .sort((a, b) => a.order - b.order)
@@ -3227,9 +3433,8 @@ ${sectionsHTML}
           if (section.content?.section_css) {
             css += `/* Section: ${section.section_name || section.type} */\n`
             css += `#${sectionId} {\n`
-            css += section.content.section_css
-            if (!section.content.section_css.trim().endsWith(';')) css += ';'
-            css += `\n}\n\n`
+            css += `  ${section.content.section_css.trim()}\n`
+            css += `}\n\n`
           }
 
           // Content CSS (row and columns)
@@ -3237,11 +3442,10 @@ ${sectionsHTML}
           if (contentCSS) {
             // Row CSS
             if (contentCSS.row) {
-              css += `/* Section ${sectionId} - Row Styles */\n`
+              css += `/* ${section.section_name || section.type} - Row */\n`
               css += `#${sectionId} .row {\n`
-              css += contentCSS.row
-              if (!contentCSS.row.trim().endsWith(';')) css += ';'
-              css += `\n}\n\n`
+              css += `  ${contentCSS.row.trim()}\n`
+              css += `}\n\n`
             }
 
             // Column CSS
@@ -3250,137 +3454,86 @@ ${sectionsHTML}
               Object.entries(contentCSS.columns).forEach(([colIdx, colCSS]) => {
                 if (colCSS) {
                   const colWidth = columns[parseInt(colIdx)]?.colWidth || 12
-                  css += `/* Section ${sectionId} - Column ${parseInt(colIdx) + 1} */\n`
+                  css += `/* ${section.section_name || section.type} - Column ${parseInt(colIdx) + 1} */\n`
                   css += `#${sectionId} .col-${colWidth}:nth-of-type(${parseInt(colIdx) + 1}) {\n`
-                  css += colCSS
-                  if (!(colCSS as string).trim().endsWith(';')) css += ';'
-                  css += `\n}\n\n`
+                  css += `  ${(colCSS as string).trim()}\n`
+                  css += `}\n\n`
                 }
               })
             }
           }
 
-          // Navigation/Header Styling (containerStyle, linkStyling, activeIndicator)
-          if (section.type.startsWith('navbar-') || section.type.startsWith('header-') || section.type.startsWith('sidebar-nav-')) {
+          // Navigation/Header Styling (containerStyle, linkStyling)
+          if (section.type.startsWith('navbar-') || section.type.startsWith('header-')) {
             const content = section.content || {}
 
             // Container Style
             if (content.containerStyle) {
               const cs = content.containerStyle
-              css += `/* ${section.section_name || section.type} - Container Styles */\n`
+              css += `/* ${section.section_name || section.type} - Container */\n`
               css += `#${sectionId} {\n`
               if (cs.background) css += `  background: ${cs.background};\n`
-              if (cs.backgroundImage) css += `  background-image: url(${cs.backgroundImage});\n`
               if (cs.paddingTop) css += `  padding-top: ${cs.paddingTop}px;\n`
               if (cs.paddingRight) css += `  padding-right: ${cs.paddingRight}px;\n`
               if (cs.paddingBottom) css += `  padding-bottom: ${cs.paddingBottom}px;\n`
               if (cs.paddingLeft) css += `  padding-left: ${cs.paddingLeft}px;\n`
-              if (cs.marginTop) css += `  margin-top: ${cs.marginTop}px;\n`
-              if (cs.marginRight) css += `  margin-right: ${cs.marginRight}px;\n`
-              if (cs.marginBottom) css += `  margin-bottom: ${cs.marginBottom}px;\n`
-              if (cs.marginLeft) css += `  margin-left: ${cs.marginLeft}px;\n`
               if (cs.borderWidth) css += `  border-width: ${cs.borderWidth}px;\n`
               if (cs.borderStyle && cs.borderStyle !== 'none') css += `  border-style: ${cs.borderStyle};\n`
               if (cs.borderColor) css += `  border-color: ${cs.borderColor};\n`
               if (cs.borderRadius) css += `  border-radius: ${cs.borderRadius}px;\n`
-              if (cs.shadow) css += `  box-shadow: ${cs.shadow};\n`
-              if (cs.opacity !== undefined) css += `  opacity: ${cs.opacity / 100};\n`
               css += `}\n\n`
             }
 
             // Link Styling
             if (content.linkStyling) {
               const ls = content.linkStyling
-              css += `/* ${section.section_name || section.type} - Link Styles */\n`
-              css += `#${sectionId} a, #${sectionId} .nav-links a {\n`
+              css += `/* ${section.section_name || section.type} - Links */\n`
+              css += `#${sectionId} a {\n`
               if (ls.textColor) css += `  color: ${ls.textColor};\n`
               if (ls.bgColor) css += `  background-color: ${ls.bgColor};\n`
               if (ls.fontSize) css += `  font-size: ${ls.fontSize}px;\n`
-              if (ls.fontWeight) css += `  font-weight: ${ls.fontWeight};\n`
-              if (ls.letterSpacing) css += `  letter-spacing: ${ls.letterSpacing}px;\n`
-              if (ls.paddingTop) css += `  padding-top: ${ls.paddingTop}px;\n`
-              if (ls.paddingRight) css += `  padding-right: ${ls.paddingRight}px;\n`
-              if (ls.paddingBottom) css += `  padding-bottom: ${ls.paddingBottom}px;\n`
-              if (ls.paddingLeft) css += `  padding-left: ${ls.paddingLeft}px;\n`
-              if (ls.border) css += `  border: ${ls.border};\n`
-              if (ls.borderRadius) css += `  border-radius: ${ls.borderRadius}px;\n`
-              if (ls.transition) {
-                const duration = ls.transition.duration || 300
-                const timing = ls.transition.timingFunction || 'ease'
-                css += `  transition: all ${duration}ms ${timing};\n`
-              }
               css += `  text-decoration: none;\n`
               css += `}\n\n`
 
-              // Link Hover Styles
-              css += `/* ${section.section_name || section.type} - Link Hover Styles */\n`
-              css += `#${sectionId} a:hover, #${sectionId} .nav-links a:hover {\n`
+              css += `#${sectionId} a:hover {\n`
               if (ls.textColorHover) css += `  color: ${ls.textColorHover};\n`
               if (ls.bgColorHover) css += `  background-color: ${ls.bgColorHover};\n`
-              css += `}\n\n`
-            }
-
-            // Active Page Indicator
-            if (content.activeIndicator && content.activeIndicator.type !== 'none') {
-              const ai = content.activeIndicator
-              css += `/* ${section.section_name || section.type} - Active Page Indicator */\n`
-              css += `#${sectionId} a.active {\n`
-
-              if (ai.type === 'underline') {
-                const thickness = ai.thickness || '2px'
-                const color = ai.color || '#f59e0b'
-                css += `  border-bottom: ${thickness} solid ${color};\n`
-                css += `  padding-bottom: 4px;\n`
-              } else if (ai.type === 'background') {
-                const color = ai.color || '#f59e0b'
-                css += `  background-color: ${color}20;\n` // 20 = 12% opacity in hex
-                css += `  border-radius: 4px;\n`
-              } else if (ai.type === 'border') {
-                const color = ai.color || '#f59e0b'
-                css += `  border: 2px solid ${color};\n`
-                css += `  border-radius: 4px;\n`
-              } else if (ai.type === 'custom' && ai.customCSS) {
-                css += `  ${ai.customCSS}\n`
-              }
-
               css += `}\n\n`
             }
           }
         })
     }
 
-    // 7. Responsive Breakpoints - Tablet Landscape
-    css += `/* Tablet Landscape (768px - 1024px) */\n`
-    css += `@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {\n`
-    css += `  .col-1 {width: 8.33%;}\n`
-    css += `  .col-2 {width: 16.66%;}\n`
-    css += `  .col-3 {width: 25%;}\n`
-    css += `  .col-4 {width: 33.33%;}\n`
-    css += `  .col-5 {width: 41.66%;}\n`
-    css += `  .col-6 {width: 50%;}\n`
-    css += `  .col-7 {width: 58.33%;}\n`
-    css += `  .col-8 {width: 66.66%;}\n`
-    css += `  .col-9 {width: 75%;}\n`
-    css += `  .col-10 {width: 83.33%;}\n`
-    css += `  .col-11 {width: 91.66%;}\n`
-    css += `  .col-12 {width: 100%;}\n`
+    // 10. Responsive Breakpoints
+    css += `/* Responsive Breakpoints */\n\n`
+    css += `@media (min-width: 768px) {\n`
+    css += `  .col-1 { width: 8.33%; }\n`
+    css += `  .col-2 { width: 16.67%; }\n`
+    css += `  .col-3 { width: 25%; }\n`
+    css += `  .col-4 { width: 33.33%; }\n`
+    css += `  .col-5 { width: 41.67%; }\n`
+    css += `  .col-6 { width: 50%; }\n`
+    css += `  .col-7 { width: 58.33%; }\n`
+    css += `  .col-8 { width: 66.67%; }\n`
+    css += `  .col-9 { width: 75%; }\n`
+    css += `  .col-10 { width: 83.33%; }\n`
+    css += `  .col-11 { width: 91.67%; }\n`
+    css += `  .col-12 { width: 100%; }\n`
     css += `}\n\n`
 
-    // 8. Responsive Breakpoints - Desktop
-    css += `/* Desktop and High-Res Devices (1025px+) */\n`
-    css += `@media only screen and (min-width: 1025px) {\n`
-    css += `  .col-1 {width: 8.33%;}\n`
-    css += `  .col-2 {width: 16.66%;}\n`
-    css += `  .col-3 {width: 25%;}\n`
-    css += `  .col-4 {width: 33.33%;}\n`
-    css += `  .col-5 {width: 41.66%;}\n`
-    css += `  .col-6 {width: 50%;}\n`
-    css += `  .col-7 {width: 58.33%;}\n`
-    css += `  .col-8 {width: 66.66%;}\n`
-    css += `  .col-9 {width: 75%;}\n`
-    css += `  .col-10 {width: 83.33%;}\n`
-    css += `  .col-11 {width: 91.66%;}\n`
-    css += `  .col-12 {width: 100%;}\n`
+    css += `@media (min-width: 1025px) {\n`
+    css += `  .col-1 { width: 8.33%; }\n`
+    css += `  .col-2 { width: 16.67%; }\n`
+    css += `  .col-3 { width: 25%; }\n`
+    css += `  .col-4 { width: 33.33%; }\n`
+    css += `  .col-5 { width: 41.67%; }\n`
+    css += `  .col-6 { width: 50%; }\n`
+    css += `  .col-7 { width: 58.33%; }\n`
+    css += `  .col-8 { width: 66.67%; }\n`
+    css += `  .col-9 { width: 75%; }\n`
+    css += `  .col-10 { width: 83.33%; }\n`
+    css += `  .col-11 { width: 91.67%; }\n`
+    css += `  .col-12 { width: 100%; }\n`
     css += `}\n`
 
     return css
@@ -3629,19 +3782,19 @@ ${sectionsHTML}
       >
         {/* Position Indicator Badge */}
         {(section.type === 'navbar-sticky' || isTopLocked || isBottomLocked) && (
-          <div className="absolute top-1 left-1 z-30 flex gap-1">
+          <div className="builder-ui absolute top-1 left-1 z-30 flex gap-1">
             {section.type === 'navbar-sticky' && (
-              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full border border-purple-300">
+              <span className="builder-ui px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full border border-purple-300">
                 STICKY
               </span>
             )}
             {isTopLocked && section.type !== 'navbar-sticky' && (
-              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full border border-blue-300">
+              <span className="builder-ui px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full border border-blue-300">
                 FIXED TOP
               </span>
             )}
             {isBottomLocked && (
-              <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-300">
+              <span className="builder-ui px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-300">
                 FIXED BOTTOM
               </span>
             )}
@@ -3652,8 +3805,8 @@ ${sectionsHTML}
 
         {/* Hover Overlay */}
         {isHovered && (
-          <div className={`absolute top-2 ${isLeftSidebar ? 'left-2' : 'right-2'} bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-50`}>
-            <span className="text-xs font-medium text-gray-700 mr-2 capitalize">{section.section_name || section.type}</span>
+          <div className={`builder-ui absolute top-2 ${isLeftSidebar ? 'left-2' : 'right-2'} bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-50`}>
+            <span className="builder-ui text-xs font-medium text-gray-700 mr-2 capitalize">{section.section_name || section.type}</span>
 
             {/* Sidebar sections: show left/right controls */}
             {isSidebar && (
@@ -3665,10 +3818,10 @@ ${sectionsHTML}
                       e.stopPropagation()
                       setSidebarVisible(!sidebarVisible)
                     }}
-                    className={`p-1 hover:bg-amber-50 rounded transition ${sidebarVisible ? 'bg-amber-100' : ''}`}
+                    className={`builder-ui p-1 hover:bg-amber-50 rounded transition ${sidebarVisible ? 'bg-amber-100' : ''}`}
                     title={sidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'}
                   >
-                    <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       {sidebarVisible ? (
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       ) : (
@@ -3684,10 +3837,10 @@ ${sectionsHTML}
                     handleMoveSidebar(section.id, 'left')
                   }}
                   disabled={isLeftSidebar}
-                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
                   title="Move to Left"
                 >
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                 </button>
@@ -3698,10 +3851,10 @@ ${sectionsHTML}
                     handleMoveSidebar(section.id, 'right')
                   }}
                   disabled={isRightSidebar}
-                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
                   title="Move to Right"
                 >
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
                 </button>
@@ -3717,10 +3870,10 @@ ${sectionsHTML}
                     handleMoveSection(section.id, 'up')
                   }}
                   disabled={index === 0}
-                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
                   title="Move Up"
                 >
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
                   </svg>
                 </button>
@@ -3731,10 +3884,10 @@ ${sectionsHTML}
                     handleMoveSection(section.id, 'down')
                   }}
                   disabled={index === (currentPage?.sections.length || 0) - 1}
-                  className="p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
                   title="Move Down"
                 >
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
@@ -3743,8 +3896,8 @@ ${sectionsHTML}
 
             {/* Position-locked sections: show lock icon */}
             {isPositionLocked && (
-              <div className="p-1 text-gray-400" title="Position locked">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="builder-ui p-1 text-gray-400" title="Position locked">
+                <svg className="builder-ui w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
               </div>
@@ -3755,10 +3908,10 @@ ${sectionsHTML}
                 e.stopPropagation()
                 handleDeleteSection(section.id)
               }}
-              className="p-1 hover:bg-red-50 rounded transition ml-1"
+              className="builder-ui p-1 hover:bg-red-50 rounded transition ml-1"
               title="Delete"
             >
-              <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="builder-ui w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
             </button>
@@ -3821,7 +3974,7 @@ ${sectionsHTML}
                   field={`column_${idx}`}
                   value={col.content || `Column ${idx + 1}`}
                   onSave={(e) => handleGridColumnEdit(idx, e)}
-                  className="outline-none hover:bg-white/50 px-2 py-1 rounded transition"
+                  className="outline-none hover:bg-white/50 rounded transition"
                 />
               </div>
             ))}
@@ -3979,7 +4132,7 @@ ${sectionsHTML}
                   field="logo"
                   value={content.logo || 'Logo'}
                   onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                  className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                  className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
                 />
 
                 {/* Desktop Menu */}
@@ -4163,7 +4316,7 @@ ${sectionsHTML}
                   field="logo"
                   value={content.logo || 'Logo'}
                   onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                  className="text-xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                  className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
                 />
 
                 {/* Desktop Menu */}
@@ -4257,7 +4410,7 @@ ${sectionsHTML}
                 field="logo"
                 value={content.logo || 'Brand'}
                 onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                className="text-3xl font-bold text-amber-600 mb-4 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                className="text-3xl font-bold mb-4 outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
               />
               {content.navigation !== false && (
                 <>
@@ -4334,7 +4487,7 @@ ${sectionsHTML}
                   field="logo"
                   value={content.logo || 'Logo'}
                   onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                  className="text-2xl font-bold text-amber-600 outline-none hover:bg-amber-50 px-2 py-1 rounded transition"
+                  className="text-2xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
                 />
                 {content.navigation !== false && (
                   <>
@@ -5624,13 +5777,15 @@ ${sectionsHTML}
                                   }
                                   return p
                                 })
-                                setTemplate({ ...template, pages: updatedPages })
+                                const updatedTemplate = { ...template, pages: updatedPages }
+                                setTemplate(updatedTemplate)
                                 setCurrentPage({
                                   ...currentPage,
                                   sections: currentPage.sections.map(s =>
                                     s.id === selectedSection.id ? updatedSection : s
                                   )
                                 })
+                                addToHistory(updatedTemplate)
                               }
                             }}
                             className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
@@ -5657,13 +5812,15 @@ ${sectionsHTML}
                                   }
                                   return p
                                 })
-                                setTemplate({ ...template, pages: updatedPages })
+                                const updatedTemplate = { ...template, pages: updatedPages }
+                                setTemplate(updatedTemplate)
                                 setCurrentPage({
                                   ...currentPage,
                                   sections: currentPage.sections.map(s =>
                                     s.id === selectedSection.id ? updatedSection : s
                                   )
                                 })
+                                addToHistory(updatedTemplate)
                               }
                             }}
                             className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition"
@@ -5886,6 +6043,7 @@ ${sectionsHTML}
                               <NavigationTreeManager
                                 links={selectedSection.content?.links || []}
                                 pages={template?.pages || []}
+                                sectionType={selectedSection.type}
                                 onChange={(newLinks) => {
                                   handleUpdateSectionContent(selectedSection.id, {
                                     ...selectedSection.content,

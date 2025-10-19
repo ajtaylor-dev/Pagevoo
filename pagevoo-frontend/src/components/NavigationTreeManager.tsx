@@ -38,6 +38,7 @@ interface TreeNodeProps {
   collapsedIds: Set<string | number>
   selectedIds: Set<string | number>
   onToggleSelect: (linkId: string | number, isShiftKey: boolean) => void
+  allowSubItems?: boolean
 }
 
 function TreeNode({
@@ -52,6 +53,7 @@ function TreeNode({
   collapsedIds,
   selectedIds,
   onToggleSelect,
+  allowSubItems = true,
 }: TreeNodeProps) {
   const [isEditingLabel, setIsEditingLabel] = useState(false)
   const [labelValue, setLabelValue] = useState(link.label)
@@ -205,16 +207,18 @@ function TreeNode({
 
         {/* Action buttons */}
         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          {/* Add child button */}
-          <button
-            onClick={() => onAddChild(link.id!)}
-            className="p-1 hover:bg-green-100 rounded text-green-600"
-            title="Add sub-item"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
+          {/* Add child button - only show for dropdown navbars */}
+          {allowSubItems && (
+            <button
+              onClick={() => onAddChild(link.id!)}
+              className="p-1 hover:bg-green-100 rounded text-green-600"
+              title="Add sub-item"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+          )}
 
           {/* Edit button */}
           <button
@@ -257,6 +261,7 @@ function TreeNode({
               collapsedIds={collapsedIds}
               selectedIds={selectedIds}
               onToggleSelect={onToggleSelect}
+              allowSubItems={allowSubItems}
             />
           ))}
         </div>
@@ -269,13 +274,17 @@ interface NavigationTreeManagerProps {
   links: NavigationLink[]
   pages: any[]
   onChange: (links: NavigationLink[]) => void
+  sectionType?: string
 }
 
 export default function NavigationTreeManager({
   links,
   pages,
   onChange,
+  sectionType,
 }: NavigationTreeManagerProps) {
+  // Only allow subitems for dropdown navbars
+  const allowSubItems = sectionType === 'navbar-dropdown'
   const [collapsedIds, setCollapsedIds] = useState<Set<string | number>>(new Set())
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set())
   const [clipboard, setClipboard] = useState<{ action: 'cut' | 'copy'; items: NavigationLink[] } | null>(null)
@@ -580,6 +589,7 @@ export default function NavigationTreeManager({
                   collapsedIds={collapsedIds}
                   selectedIds={selectedIds}
                   onToggleSelect={handleToggleSelect}
+                  allowSubItems={allowSubItems}
                 />
               ))
             )}
@@ -591,7 +601,7 @@ export default function NavigationTreeManager({
       <div className="text-xs text-gray-500 space-y-1">
         <p>• Double-click label to edit</p>
         <p>• Drag handle to reorder</p>
-        <p>• Click + to add sub-item</p>
+        {allowSubItems && <p>• Click + to add sub-item</p>}
         <p>• Use checkboxes for bulk operations</p>
       </div>
     </div>

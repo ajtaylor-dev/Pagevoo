@@ -122,7 +122,6 @@
 /* 12-Column Responsive Grid System */
 .row [class*="col-"] {
   float: left;
-  padding: 20px;
   width: 100%; /* Mobile default - all columns 100% */
   box-sizing: border-box;
   min-height: 1px; /* Prevent collapse */
