@@ -1173,7 +1173,7 @@ padding: 1rem;`
             style={{ gridTemplateColumns: `repeat(${section.cols}, 1fr)` }}
           >
             {gridItems.map((_, idx) => (
-              <div key={idx} className="bg-amber-100 rounded-sm border border-amber-200"></div>
+              <div key={idx} className="bg-[#d4e5d0] rounded-sm border border-[#d4e5d0]"></div>
             ))}
           </div>
         </div>
@@ -1181,8 +1181,8 @@ padding: 1rem;`
     } else {
       // Special section - show icon placeholder
       return (
-        <div className="w-full aspect-video bg-gradient-to-br from-amber-50 to-amber-100 rounded border border-amber-200 flex items-center justify-center">
-          <div className="text-2xl font-bold text-amber-600">
+        <div className="w-full aspect-video bg-gradient-to-br from-[#e8f0e6] to-[#d4e5d0] rounded border border-[#d4e5d0] flex items-center justify-center">
+          <div className="text-2xl font-bold text-[#5a7a54]">
             {section.label.charAt(0)}
           </div>
         </div>
@@ -1728,7 +1728,7 @@ padding: 1rem;`
         {isOver && activeId && (
           <div className="relative h-2 -mb-2">
             <div className="absolute inset-0 bg-amber-400 rounded-full animate-pulse"></div>
-            <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-lg z-50">
+            <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-[#98b290] text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-lg z-50">
               ↓ Insert here
             </div>
           </div>
@@ -1739,7 +1739,7 @@ padding: 1rem;`
           {...attributes}
           className="absolute top-2 left-2 z-40 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing"
         >
-          <div className="bg-amber-500 text-white p-1.5 rounded shadow-lg">
+          <div className="bg-[#98b290] text-white p-1.5 rounded shadow-lg">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
             </svg>
@@ -1760,12 +1760,12 @@ padding: 1rem;`
     return (
       <div
         ref={setNodeRef}
-        className={`min-h-[60px] transition-all ${activeId && activeDragData?.source === 'library' ? 'border-2 border-dashed border-amber-300' : ''} ${isOver ? 'bg-amber-50' : ''}`}
+        className={`min-h-[60px] transition-all ${activeId && activeDragData?.source === 'library' ? 'border-2 border-dashed border-[#b8ceb4]' : ''} ${isOver ? 'bg-[#e8f0e6]' : ''}`}
       >
         {isOver && activeId && (
           <div className="relative h-2">
             <div className="absolute inset-0 bg-amber-400 rounded-full animate-pulse"></div>
-            <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-lg z-50">
+            <div className="absolute left-1/2 -translate-x-1/2 -top-4 bg-[#98b290] text-white px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap shadow-lg z-50">
               ↓ Insert here
             </div>
           </div>
@@ -1824,7 +1824,7 @@ padding: 1rem;`
       <div
         id="template-canvas"
         ref={setNodeRef}
-        className={`text-gray-900 min-h-[200px] ${viewportClass} ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-amber-400 ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-amber-50' : ''}`}
+        className={`text-gray-900 min-h-[200px] ${viewportClass} ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-[#98b290] ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-[#e8f0e6]' : ''}`}
       >
         {/* Inject Google Fonts */}
         {googleFontsLink && (
@@ -1854,7 +1854,7 @@ padding: 1rem;`
             <BottomDropZone />
           </>
         ) : (
-          <div className={`text-center py-20 p-8 ${activeId && activeDragData?.source === 'library' ? 'bg-amber-50' : ''}`}>
+          <div className={`text-center py-20 p-8 ${activeId && activeDragData?.source === 'library' ? 'bg-[#e8f0e6]' : ''}`}>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">Empty Page</h2>
             <p className="text-gray-600">
               {activeId && activeDragData?.source === 'library'
@@ -2970,6 +2970,18 @@ padding: 1rem;`
     }
   }
 
+  // Live Preview Handler
+  const handleLivePreview = () => {
+    if (!template || !template.template_slug) {
+      alert('Please save your template first to generate live preview.')
+      return
+    }
+
+    // Open physical index.html file in new tab
+    const previewUrl = `http://localhost:8000/template_directory/${template.template_slug}/index.html`
+    window.open(previewUrl, '_blank')
+  }
+
   const handleExportAsHTMLTemplate = async () => {
     if (!template) {
       alert('No template to export')
@@ -3818,7 +3830,7 @@ ${sectionsHTML}
                       e.stopPropagation()
                       setSidebarVisible(!sidebarVisible)
                     }}
-                    className={`builder-ui p-1 hover:bg-amber-50 rounded transition ${sidebarVisible ? 'bg-amber-100' : ''}`}
+                    className={`builder-ui p-1 hover:bg-[#e8f0e6] rounded transition ${sidebarVisible ? 'bg-[#d4e5d0]' : ''}`}
                     title={sidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'}
                   >
                     <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3837,7 +3849,7 @@ ${sectionsHTML}
                     handleMoveSidebar(section.id, 'left')
                   }}
                   disabled={isLeftSidebar}
-                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
                   title="Move to Left"
                 >
                   <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3851,7 +3863,7 @@ ${sectionsHTML}
                     handleMoveSidebar(section.id, 'right')
                   }}
                   disabled={isRightSidebar}
-                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
                   title="Move to Right"
                 >
                   <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3870,7 +3882,7 @@ ${sectionsHTML}
                     handleMoveSection(section.id, 'up')
                   }}
                   disabled={index === 0}
-                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
                   title="Move Up"
                 >
                   <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3884,7 +3896,7 @@ ${sectionsHTML}
                     handleMoveSection(section.id, 'down')
                   }}
                   disabled={index === (currentPage?.sections.length || 0) - 1}
-                  className="builder-ui p-1 hover:bg-amber-50 rounded disabled:opacity-30 transition"
+                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
                   title="Move Down"
                 >
                   <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3960,7 +3972,7 @@ ${sectionsHTML}
       return sectionWrapper(
         <div
           id={section.section_id || `section-${section.id}`}
-          className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+          className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
         >
           <div className="row">
             {columns.map((col: any, idx: number) => (
@@ -3986,7 +3998,7 @@ ${sectionsHTML}
     switch (section.type) {
       case 'hero':
         return sectionWrapper(
-          <div className={`relative min-h-[400px] bg-gradient-to-br from-amber-500 to-amber-700 flex items-center justify-center text-white p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`relative min-h-[400px] bg-gradient-to-br from-[#98b290] to-[#7a9274] flex items-center justify-center text-white p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <div className="text-center max-w-3xl">
               <EditableText
                 tag="h1"
@@ -4018,7 +4030,7 @@ ${sectionsHTML}
 
       case 'gallery':
         return sectionWrapper(
-          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <EditableText
               tag="h2"
               sectionId={section.id}
@@ -4040,7 +4052,7 @@ ${sectionsHTML}
       case 'contact-form':
       case 'booking-form':
         return sectionWrapper(
-          <div className={`p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <EditableText
               tag="h2"
               sectionId={section.id}
@@ -4055,7 +4067,7 @@ ${sectionsHTML}
                   <span className="text-sm text-gray-600 capitalize">{field}</span>
                 </div>
               ))}
-              <button className="w-full px-6 py-3 bg-amber-500 text-white rounded-lg font-semibold">
+              <button className="w-full px-6 py-3 bg-[#98b290] text-white rounded-lg font-semibold">
                 Submit
               </button>
             </div>
@@ -4064,7 +4076,7 @@ ${sectionsHTML}
 
       case 'login-box':
         return sectionWrapper(
-          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <div className="max-w-sm mx-auto bg-white rounded-lg shadow-lg p-8">
               <EditableText
                 tag="h2"
@@ -4081,7 +4093,7 @@ ${sectionsHTML}
                 <div className="border-2 border-gray-300 rounded p-3">
                   <span className="text-sm text-gray-600">Password</span>
                 </div>
-                <button className="w-full px-6 py-3 bg-amber-500 text-white rounded-lg font-semibold">
+                <button className="w-full px-6 py-3 bg-[#98b290] text-white rounded-lg font-semibold">
                   Login
                 </button>
               </div>
@@ -4091,7 +4103,7 @@ ${sectionsHTML}
 
       case 'testimonials':
         return sectionWrapper(
-          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <EditableText
               tag="h2"
               sectionId={section.id}
@@ -4117,7 +4129,7 @@ ${sectionsHTML}
         return sectionWrapper(
           <>
             <div
-              className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
               style={{
                 backgroundColor: '#ffffff',
                 borderBottom: '2px solid #e5e7eb',
@@ -4301,7 +4313,7 @@ ${sectionsHTML}
         return sectionWrapper(
           <>
             <div
-              className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
               style={{
                 backgroundColor: '#ffffff',
                 borderBottom: '2px solid #e5e7eb',
@@ -4366,7 +4378,7 @@ ${sectionsHTML}
       case 'header-simple':
         return sectionWrapper(
           <div
-            className={`text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+            className={`text-center cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
             style={{
               background: 'linear-gradient(to right, #fef3c7, #fde68a)',
               padding: '3rem',
@@ -4396,7 +4408,7 @@ ${sectionsHTML}
         return sectionWrapper(
           <>
             <div
-              className={`text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              className={`text-center cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
               style={{
                 backgroundColor: '#ffffff',
                 padding: '2rem',
@@ -4472,7 +4484,7 @@ ${sectionsHTML}
         return sectionWrapper(
           <>
             <div
-              className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}
+              className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
               style={{
                 backgroundColor: '#ffffff',
                 padding: '1.5rem',
@@ -4549,7 +4561,7 @@ ${sectionsHTML}
       // Footer sections
       case 'footer-simple':
         return sectionWrapper(
-          <div className={`bg-gray-800 text-white p-8 text-center cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`bg-gray-800 text-white p-8 text-center cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <EditableText
               tag="p"
               sectionId={section.id}
@@ -4563,7 +4575,7 @@ ${sectionsHTML}
 
       case 'footer-columns':
         return sectionWrapper(
-          <div className={`bg-gray-800 text-white p-12 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`bg-gray-800 text-white p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <div className="grid grid-cols-4 gap-8 max-w-7xl mx-auto">
               {(content.columns || []).map((col: any, idx: number) => (
                 <div key={idx}>
@@ -4579,7 +4591,7 @@ ${sectionsHTML}
 
       case 'footer-social':
         return sectionWrapper(
-          <div className={`bg-gray-800 text-white p-8 cursor-pointer hover:ring-2 hover:ring-amber-500 transition ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+          <div className={`bg-gray-800 text-white p-8 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
             <div className="text-center">
               <EditableText
                 tag="p"
@@ -4591,7 +4603,7 @@ ${sectionsHTML}
               />
               <div className="flex gap-4 justify-center">
                 {(content.socials || []).map((social: string, idx: number) => (
-                  <span key={idx} className="text-amber-500 hover:text-amber-400 cursor-pointer">{social}</span>
+                  <span key={idx} className="text-[#98b290] hover:text-[#98b290] cursor-pointer">{social}</span>
                 ))}
               </div>
             </div>
@@ -4612,15 +4624,15 @@ ${sectionsHTML}
             <div className="relative min-h-[100px]">
               {/* Sidebar panel (shown when visible in builder) */}
               {sidebarVisible && (
-                <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-100 border-2 border-amber-400 border-dashed rounded-lg p-6 shadow-xl ${heightClass}`} style={{zIndex: 35}}>
+                <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-100 border-2 border-[#98b290] border-dashed rounded-lg p-6 shadow-xl ${heightClass}`} style={{zIndex: 35}}>
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="font-bold text-lg text-gray-800">Navigation</h3>
-                    <div className="text-xs text-amber-600 font-medium">Menu-click mode</div>
+                    <div className="text-xs text-[#5a7a54] font-medium">Menu-click mode</div>
                   </div>
                   {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
                   <div className="space-y-2">
                     {(content.links || []).map((link: any, idx: number) => (
-                      <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
+                      <div key={idx} className="p-2 bg-white rounded hover:bg-[#e8f0e6] transition">
                         <a
                           href={getLinkHref(link)}
                           className="text-gray-700 block"
@@ -4635,7 +4647,7 @@ ${sectionsHTML}
               )}
 
               {/* Content placeholder */}
-              <div className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition border-2 border-dashed border-gray-300 rounded-lg p-8 min-h-[120px] ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+              <div className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition border-2 border-dashed border-gray-300 rounded-lg p-8 min-h-[120px] ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
                 <p className="text-sm text-gray-500 text-center">
                   {sidebarVisible ? 'Content appears here (sidebar visible in overlay)' : 'Hover section and click menu icon to show sidebar'}
                 </p>
@@ -4668,7 +4680,7 @@ ${sectionsHTML}
               </div>
 
               {/* Content area with margin */}
-              <div className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+              <div className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
                 <p className="text-sm text-gray-500 text-center">
                   Content appears beside the permanently fixed sidebar
                 </p>
@@ -4680,13 +4692,13 @@ ${sectionsHTML}
           return sectionWrapper(
             <div className="relative min-h-[400px]">
               {/* Static sidebar */}
-              <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-200 border-l-4 border-amber-500 p-6 ${heightClass}`} style={{zIndex: 30}}>
+              <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-200 border-l-4 border-[#98b290] p-6 ${heightClass}`} style={{zIndex: 30}}>
                 <h3 className="font-bold text-lg mb-4 text-gray-800">Navigation</h3>
                 <div className="text-xs text-gray-600 mb-2">Static position</div>
                 {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
                 <div className="space-y-2">
                   {(content.links || []).map((link: any, idx: number) => (
-                    <div key={idx} className="p-2 bg-white rounded hover:bg-amber-50 transition">
+                    <div key={idx} className="p-2 bg-white rounded hover:bg-[#e8f0e6] transition">
                       <a
                         href={getLinkHref(link)}
                         className="text-gray-700 block"
@@ -4700,7 +4712,7 @@ ${sectionsHTML}
               </div>
 
               {/* Content area with margin */}
-              <div className={`cursor-pointer hover:ring-2 hover:ring-amber-500 transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-amber-500' : ''}`}>
+              <div className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
                 <p className="text-sm text-gray-500 text-center">
                   Content appears beside the static sidebar
                 </p>
@@ -4711,7 +4723,7 @@ ${sectionsHTML}
 
       default:
         return sectionWrapper(
-          <div className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-amber-500 transition ${selectedSection?.id === section.id ? 'border-amber-500' : ''}`}>
+          <div className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#98b290] transition ${selectedSection?.id === section.id ? 'border-[#98b290]' : ''}`}>
             <p className="text-gray-500 text-center">Section: {section.type}</p>
           </div>
         )
@@ -4803,7 +4815,7 @@ ${sectionsHTML}
                     setShowFileMenu(true)
                   }
                 }}
-                className="px-3 h-full hover:bg-amber-50 transition"
+                className="px-3 h-full hover:bg-[#e8f0e6] transition"
               >
                 File
               </button>
@@ -4852,7 +4864,7 @@ ${sectionsHTML}
                           handleExportAsHTMLTemplate()
                           setShowFileMenu(false)
                         }}
-                        className="w-full text-left px-4 py-2 hover:bg-amber-50 text-xs font-medium text-amber-700"
+                        className="w-full text-left px-4 py-2 hover:bg-[#e8f0e6] text-xs font-medium text-[#5a7a54]"
                       >
                         HTML Template (Publish)
                       </button>
@@ -4897,7 +4909,7 @@ ${sectionsHTML}
                     setShowEditMenu(true)
                   }
                 }}
-                className="px-3 h-full hover:bg-amber-50 transition"
+                className="px-3 h-full hover:bg-[#e8f0e6] transition"
               >
                 Edit
               </button>
@@ -4940,7 +4952,7 @@ ${sectionsHTML}
                       onClick={() => setEditSubTab('settings')}
                       className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                         editSubTab === 'settings'
-                          ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                          ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
                           : 'bg-white text-gray-600 hover:bg-gray-50'
                       }`}
                     >
@@ -4950,7 +4962,7 @@ ${sectionsHTML}
                       onClick={() => setEditSubTab('css')}
                       className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                         editSubTab === 'css'
-                          ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                          ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
                           : 'bg-white text-gray-600 hover:bg-gray-50'
                       }`}
                     >
@@ -4960,7 +4972,7 @@ ${sectionsHTML}
                       onClick={() => setEditSubTab('page')}
                       className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                         editSubTab === 'page'
-                          ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                          ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
                           : 'bg-white text-gray-600 hover:bg-gray-50'
                       }`}
                     >
@@ -5045,7 +5057,7 @@ ${sectionsHTML}
                         value={template.description}
                         onChange={(e) => setTemplate({ ...template, description: e.target.value })}
                         rows={3}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                         placeholder="Template description..."
                       />
                     </div>
@@ -5056,7 +5068,7 @@ ${sectionsHTML}
                       <select
                         value={template.business_type}
                         onChange={(e) => setTemplate({ ...template, business_type: e.target.value })}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                       >
                         <option value="restaurant">Restaurant</option>
                         <option value="barber">Barber</option>
@@ -5074,7 +5086,7 @@ ${sectionsHTML}
                       <select
                         value={template.exclusive_to || ''}
                         onChange={(e) => setTemplate({ ...template, exclusive_to: e.target.value as 'pro' | 'niche' | null })}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                       >
                         <option value="">None (All Users)</option>
                         <option value="niche">Niche Package</option>
@@ -5091,7 +5103,7 @@ ${sectionsHTML}
                           const type = e.target.value;
                           setTemplate({ ...template, technologies: [type] });
                         }}
-                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                        className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                       >
                         <option value="html5">HTML5</option>
                         <option value="react">React</option>
@@ -5115,7 +5127,7 @@ ${sectionsHTML}
                                   setTemplate({ ...template, features: feats.filter(f => f !== feature) });
                                 }
                               }}
-                              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                              className="rounded border-gray-300 text-[#5a7a54] focus:ring-[#98b290]"
                             />
                             <span className="capitalize">{feature.replace('-', ' ')}</span>
                           </label>
@@ -5167,7 +5179,7 @@ ${sectionsHTML}
                     setShowViewMenu(true)
                   }
                 }}
-                className="px-3 h-full hover:bg-amber-50 transition"
+                className="px-3 h-full hover:bg-[#e8f0e6] transition"
               >
                 View
               </button>
@@ -5176,15 +5188,7 @@ ${sectionsHTML}
                   <div className="py-1">
                     <button
                       onClick={() => {
-                        if (!template || !template.template_slug) {
-                          alert('Please save your template first to generate live preview.')
-                          setShowViewMenu(false)
-                          return
-                        }
-
-                        // Open physical index.html file in new tab
-                        const previewUrl = `http://localhost:8000/template_directory/${template.template_slug}/index.html`
-                        window.open(previewUrl, '_blank')
+                        handleLivePreview()
                         setShowViewMenu(false)
                       }}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
@@ -5223,7 +5227,7 @@ ${sectionsHTML}
                     setShowInsertMenu(true)
                   }
                 }}
-                className="px-3 h-full hover:bg-amber-50 transition"
+                className="px-3 h-full hover:bg-[#e8f0e6] transition"
               >
                 Insert
               </button>
@@ -5244,7 +5248,7 @@ ${sectionsHTML}
               )}
             </div>
             <button
-              className="px-3 h-full hover:bg-amber-50 transition"
+              className="px-3 h-full hover:bg-[#e8f0e6] transition"
               onMouseEnter={() => {
                 if (showFileMenu || showEditMenu || showInsertMenu) {
                   setShowFileMenu(false)
@@ -5328,13 +5332,21 @@ ${sectionsHTML}
             type="text"
             value={template.name}
             onChange={(e) => setTemplate({ ...template, name: e.target.value })}
-            className="px-2 py-0.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500 text-center w-64"
+            className="px-2 py-0.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64"
           />
         </div>
 
         {/* Right Section - Actions & User */}
         <div className="flex items-center h-full text-xs space-x-1 pr-2">
-          <button className="px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition">
+          <button
+            onClick={handleLivePreview}
+            className="px-3 py-1 bg-[#98b290] hover:bg-[#7a9274] text-white rounded transition flex items-center gap-1"
+            title="Open Live Preview in New Tab"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+            </svg>
             Preview
           </button>
           <div className="ml-2 px-2 text-gray-600 border-l border-gray-200">
@@ -5349,7 +5361,7 @@ ${sectionsHTML}
         <div className="flex items-center space-x-1">
           <button
             onClick={() => setShowLeftSidebar(!showLeftSidebar)}
-            className={`p-1.5 rounded transition ${showLeftSidebar ? 'bg-amber-100 text-amber-700' : 'bg-white hover:bg-gray-100 text-gray-600'}`}
+            className={`p-1.5 rounded transition ${showLeftSidebar ? 'bg-[#d4e5d0] text-[#5a7a54]' : 'bg-white hover:bg-gray-100 text-gray-600'}`}
             title="Toggle Components Panel"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5358,7 +5370,7 @@ ${sectionsHTML}
           </button>
           <button
             onClick={() => setShowRightSidebar(!showRightSidebar)}
-            className={`p-1.5 rounded transition ${showRightSidebar ? 'bg-amber-100 text-amber-700' : 'bg-white hover:bg-gray-100 text-gray-600'}`}
+            className={`p-1.5 rounded transition ${showRightSidebar ? 'bg-[#d4e5d0] text-[#5a7a54]' : 'bg-white hover:bg-gray-100 text-gray-600'}`}
             title="Toggle Properties Panel"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5371,7 +5383,7 @@ ${sectionsHTML}
         <div className="flex items-center space-x-1 bg-gray-100 rounded p-0.5">
           <button
             onClick={() => setViewport('desktop')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'desktop' ? 'bg-amber-500 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
+            className={`px-3 py-1 rounded text-xs transition ${viewport === 'desktop' ? 'bg-[#98b290] text-white' : 'hover:bg-gray-200 text-gray-700'}`}
             title="Desktop View"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5380,7 +5392,7 @@ ${sectionsHTML}
           </button>
           <button
             onClick={() => setViewport('tablet')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'tablet' ? 'bg-amber-500 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
+            className={`px-3 py-1 rounded text-xs transition ${viewport === 'tablet' ? 'bg-[#98b290] text-white' : 'hover:bg-gray-200 text-gray-700'}`}
             title="Tablet View"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5389,7 +5401,7 @@ ${sectionsHTML}
           </button>
           <button
             onClick={() => setViewport('mobile')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'mobile' ? 'bg-amber-500 text-white' : 'hover:bg-gray-200 text-gray-700'}`}
+            className={`px-3 py-1 rounded text-xs transition ${viewport === 'mobile' ? 'bg-[#98b290] text-white' : 'hover:bg-gray-200 text-gray-700'}`}
             title="Mobile View"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -5406,14 +5418,14 @@ ${sectionsHTML}
 
       {/* Published Template Indicator Banner */}
       {isPublished && (
-        <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-b border-amber-200 px-4 py-2 flex items-center justify-between">
+        <div className="bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] border-b border-[#d4e5d0] px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-[#5a7a54]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div>
-              <span className="text-sm font-medium text-amber-800">Published Template</span>
-              <p className="text-xs text-amber-700">This template is published and available to users. Changes will update the published version.</p>
+              <span className="text-sm font-medium text-[#4a6344]">Published Template</span>
+              <p className="text-xs text-[#5a7a54]">This template is published and available to users. Changes will update the published version.</p>
             </div>
           </div>
           <button
@@ -5428,7 +5440,7 @@ ${sectionsHTML}
                 })
               }
             }}
-            className="px-3 py-1 bg-white border border-amber-300 text-amber-700 rounded text-xs hover:bg-amber-50 transition"
+            className="px-3 py-1 bg-white border border-[#b8ceb4] text-[#5a7a54] rounded text-xs hover:bg-[#e8f0e6] transition"
           >
             Unpublish
           </button>
@@ -5447,7 +5459,7 @@ ${sectionsHTML}
             >
               <div className="p-3">
                 {/* Section Library */}
-                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">Section Library</h2>
+                <h2 className="text-xs font-semibold text-[#5a7a54] uppercase mb-3">Section Library</h2>
 
                 {/* Core Sections */}
                 <div className="mb-3">
@@ -5475,7 +5487,7 @@ ${sectionsHTML}
                             title={section.description}
                           >
                             {renderSectionThumbnail(section)}
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
                               {section.label}
                             </div>
                           </div>
@@ -5511,7 +5523,7 @@ ${sectionsHTML}
                             title={section.description}
                           >
                             {renderSectionThumbnail(section)}
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
                               {section.label}
                             </div>
                           </div>
@@ -5547,7 +5559,7 @@ ${sectionsHTML}
                             title={section.description}
                           >
                             {renderSectionThumbnail(section)}
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-amber-700 transition">
+                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
                               {section.label}
                             </div>
                           </div>
@@ -5563,7 +5575,7 @@ ${sectionsHTML}
             {/* Left Resize Handle */}
             <div
               onMouseDown={handleLeftMouseDown}
-              className="w-1 bg-gray-200 hover:bg-amber-400 cursor-col-resize transition flex-shrink-0"
+              className="w-1 bg-gray-200 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
             />
           </>
         )}
@@ -5588,7 +5600,7 @@ ${sectionsHTML}
                     const selectedPage = template.pages.find(p => p.id === parseInt(e.target.value))
                     if (selectedPage) setCurrentPage(selectedPage)
                   }}
-                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  className="px-2 py-1 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                 >
                   {template.pages.map((page) => (
                     <option key={page.id} value={page.id}>
@@ -5634,7 +5646,7 @@ ${sectionsHTML}
                 )}
                 <button
                   onClick={() => setShowAddPageModal(true)}
-                  className="px-2 py-1 text-xs bg-amber-500 hover:bg-amber-600 text-white rounded transition"
+                  className="px-2 py-1 text-xs bg-[#98b290] hover:bg-[#7a9274] text-white rounded transition"
                   title="Add New Page"
                 >
                   + Add Page
@@ -5659,7 +5671,7 @@ ${sectionsHTML}
             {/* Right Resize Handle */}
             <div
               onMouseDown={handleRightMouseDown}
-              className="w-1 bg-gray-200 hover:bg-amber-400 cursor-col-resize transition flex-shrink-0"
+              className="w-1 bg-gray-200 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
             />
 
             <aside
@@ -5668,7 +5680,7 @@ ${sectionsHTML}
               className="bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0"
             >
               <div className="p-3">
-                <h2 className="text-xs font-semibold text-amber-600 uppercase mb-3">
+                <h2 className="text-xs font-semibold text-[#5a7a54] uppercase mb-3">
                   {showCSSPanel ? 'CSS Editor' : 'Properties'}
                 </h2>
                 {showCSSPanel ? (
@@ -5679,7 +5691,7 @@ ${sectionsHTML}
                         onClick={() => setCssTab('site')}
                         className={`flex-1 px-3 py-2 text-xs font-medium transition ${
                           cssTab === 'site'
-                            ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                            ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
                             : 'bg-white text-gray-600 hover:bg-gray-50'
                         }`}
                       >
@@ -5689,7 +5701,7 @@ ${sectionsHTML}
                         onClick={() => setCssTab('page')}
                         className={`flex-1 px-3 py-2 text-xs font-medium transition ${
                           cssTab === 'page'
-                            ? 'bg-amber-50 text-amber-700 border-b-2 border-amber-500'
+                            ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
                             : 'bg-white text-gray-600 hover:bg-gray-50'
                         }`}
                       >
@@ -5788,7 +5800,7 @@ ${sectionsHTML}
                                 addToHistory(updatedTemplate)
                               }
                             }}
-                            className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                             placeholder="Enter section name"
                           />
                           <button
@@ -5957,7 +5969,7 @@ ${sectionsHTML}
                                           }}
                                           className={`w-full px-3 py-2 border rounded text-sm font-medium transition flex items-center justify-between ${
                                             isExpanded
-                                              ? 'bg-gradient-to-r from-amber-50 to-amber-100 border-amber-400 text-amber-700'
+                                              ? 'bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
                                               : 'bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border-gray-300 text-gray-700'
                                           }`}
                                         >
@@ -5966,7 +5978,7 @@ ${sectionsHTML}
                                         </button>
 
                                         {isExpanded && (
-                                          <div className="mt-2 p-3 border border-amber-200 rounded bg-white">
+                                          <div className="mt-2 p-3 border border-[#d4e5d0] rounded bg-white">
                                             <p className="text-[9px] text-gray-400 mb-2">
                                               Target: <code className="bg-gray-100 px-1 rounded">.col-{colWidth}</code> or position-based
                                             </p>
@@ -6025,7 +6037,7 @@ ${sectionsHTML}
                                     navigation: e.target.checked
                                   })
                                 }}
-                                className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                className="rounded border-gray-300 text-[#5a7a54] focus:ring-[#98b290]"
                               />
                               <span>Show Navigation Links</span>
                             </label>
@@ -6085,7 +6097,7 @@ ${sectionsHTML}
                           <select
                             value={selectedSection.content?.positioned || 'permanently-fixed'}
                             onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, positioned: e.target.value })}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                           >
                             <option value="menu-click">Appear on menu click</option>
                             <option value="permanently-fixed">Permanently fixed</option>
@@ -6104,7 +6116,7 @@ ${sectionsHTML}
                               type="checkbox"
                               checked={selectedSection.content?.fullHeight !== false}
                               onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, fullHeight: e.target.checked })}
-                              className="rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                              className="rounded border-gray-300 text-[#5a7a54] focus:ring-[#98b290]"
                             />
                             <span>Full Height (100vh)</span>
                           </label>
@@ -6128,7 +6140,7 @@ ${sectionsHTML}
                                   newLinks[idx] = e.target.value
                                   handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
                                 }}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                                 placeholder={`Link ${idx + 1}`}
                               />
                             ))}
@@ -6166,7 +6178,7 @@ ${sectionsHTML}
                   onChange={(e) => setNewPageName(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddPage()}
                   placeholder="e.g., About Us, Services, Contact"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                   autoFocus
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -6186,7 +6198,7 @@ ${sectionsHTML}
                 <button
                   onClick={handleAddPage}
                   disabled={!newPageName.trim()}
-                  className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-[#98b290] hover:bg-[#7a9274] text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Add Page
                 </button>
@@ -6211,7 +6223,7 @@ ${sectionsHTML}
                   value={editPageName}
                   onChange={(e) => setEditPageName(e.target.value)}
                   placeholder="e.g., About Us, Services, Contact"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                   autoFocus
                 />
               </div>
@@ -6224,7 +6236,7 @@ ${sectionsHTML}
                   value={editPageSlug}
                   onChange={(e) => setEditPageSlug(e.target.value)}
                   placeholder="e.g., about-us, services, contact"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   The URL path for this page (e.g., /about-us)
@@ -6239,7 +6251,7 @@ ${sectionsHTML}
                   onChange={(e) => setEditPageMetaDescription(e.target.value)}
                   placeholder="Brief description for search engines (150-160 characters recommended)"
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   {editPageMetaDescription.length} characters
@@ -6260,7 +6272,7 @@ ${sectionsHTML}
                 <button
                   onClick={handleSaveEditPage}
                   disabled={!editPageName.trim() || !editPageSlug.trim()}
-                  className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 px-4 py-2 bg-[#98b290] hover:bg-[#7a9274] text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Save Changes
                 </button>
@@ -6274,7 +6286,7 @@ ${sectionsHTML}
     {/* Drag Overlay - Shows preview of dragged item */}
     <DragOverlay>
       {activeId && activeDragData ? (
-        <div className="bg-white shadow-2xl rounded-lg p-4 border-2 border-amber-500 opacity-90">
+        <div className="bg-white shadow-2xl rounded-lg p-4 border-2 border-[#98b290] opacity-90">
           <div className="text-sm font-semibold text-gray-700 capitalize">
             {activeDragData.source === 'library'
               ? `Adding: ${activeDragData.section.label || activeDragData.section.type}`
@@ -7255,7 +7267,7 @@ ${sectionsHTML}
                           setEditableHTML(generatePageHTML())
                           setIsEditingHTML(true)
                         }}
-                        className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 text-sm font-medium transition"
+                        className="px-4 py-2 bg-[#98b290] text-white rounded hover:bg-[#7a9274] text-sm font-medium transition"
                       >
                         Edit
                       </button>
@@ -7349,7 +7361,7 @@ ${sectionsHTML}
                   <textarea
                     value={editableHTML}
                     onChange={(e) => setEditableHTML(e.target.value)}
-                    className="w-full h-full p-4 bg-gray-900 text-green-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full h-full p-4 bg-gray-900 text-green-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                     spellCheck={false}
                   />
                 )}
@@ -7387,7 +7399,7 @@ ${sectionsHTML}
                           setEditableCSS(generateStylesheet())
                           setIsEditingCSS(true)
                         }}
-                        className="px-4 py-2 bg-amber-500 text-white rounded hover:bg-amber-600 text-sm font-medium transition"
+                        className="px-4 py-2 bg-[#98b290] text-white rounded hover:bg-[#7a9274] text-sm font-medium transition"
                       >
                         Edit
                       </button>
@@ -7481,7 +7493,7 @@ ${sectionsHTML}
                   <textarea
                     value={editableCSS}
                     onChange={(e) => setEditableCSS(e.target.value)}
-                    className="w-full h-full p-4 bg-gray-900 text-cyan-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    className="w-full h-full p-4 bg-gray-900 text-cyan-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                     spellCheck={false}
                   />
                 )}
@@ -7500,3 +7512,4 @@ ${sectionsHTML}
   </DndContext>
   )
 }
+
