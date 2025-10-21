@@ -33,6 +33,7 @@ interface TemplateSection {
   order: number
   section_name?: string
   section_id?: string
+  is_locked?: boolean
 }
 
 interface ContentCSS {
@@ -469,6 +470,7 @@ export default function TemplateBuilder() {
   const imageGalleryRef = useRef(false)
   const [showSourceCodeModal, setShowSourceCodeModal] = useState(false)
   const [showStylesheetModal, setShowStylesheetModal] = useState(false)
+  const [showSitemapModal, setShowSitemapModal] = useState(false)
   const [editableHTML, setEditableHTML] = useState('')
   const [editableCSS, setEditableCSS] = useState('')
   const [isEditingHTML, setIsEditingHTML] = useState(false)
@@ -1039,7 +1041,7 @@ padding: 1rem;`
       rows: 1,
       colWidths: [12], // col-12 (100%)
       defaultContent: {
-        columns: [{ content: 'Column content', colWidth: 12 }],
+        columns: [{ content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>', colWidth: 12 }],
         content_css: createDefaultContentCSS(1),
         section_css: getDefaultSectionCSS()
       }
@@ -1053,8 +1055,8 @@ padding: 1rem;`
       colWidths: [6, 6], // 2x col-6 (50% each)
       defaultContent: {
         columns: [
-          { content: 'Column 1', colWidth: 6 },
-          { content: 'Column 2', colWidth: 6 }
+          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>', colWidth: 6 },
+          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.</p>', colWidth: 6 }
         ],
         content_css: createDefaultContentCSS(2),
         section_css: getDefaultSectionCSS()
@@ -1069,9 +1071,9 @@ padding: 1rem;`
       colWidths: [4, 4, 4], // 3x col-4 (33.33% each)
       defaultContent: {
         columns: [
-          { content: 'Column 1', colWidth: 4 },
-          { content: 'Column 2', colWidth: 4 },
-          { content: 'Column 3', colWidth: 4 }
+          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.</p>', colWidth: 4 },
+          { content: '<p>Ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 4 },
+          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat.</p>', colWidth: 4 }
         ],
         content_css: createDefaultContentCSS(3),
         section_css: getDefaultSectionCSS()
@@ -1086,10 +1088,10 @@ padding: 1rem;`
       colWidths: [3, 3, 3, 3], // 4x col-3 (25% each)
       defaultContent: {
         columns: [
-          { content: 'Col 1', colWidth: 3 },
-          { content: 'Col 2', colWidth: 3 },
-          { content: 'Col 3', colWidth: 3 },
-          { content: 'Col 4', colWidth: 3 }
+          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>', colWidth: 3 },
+          { content: '<p>Sed do eiusmod tempor incididunt ut labore et dolore.</p>', colWidth: 3 },
+          { content: '<p>Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 3 },
+          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate.</p>', colWidth: 3 }
         ],
         content_css: createDefaultContentCSS(4),
         section_css: getDefaultSectionCSS()
@@ -1104,10 +1106,10 @@ padding: 1rem;`
       colWidths: [6, 6, 6, 6], // 4x col-6 (2 rows of 50/50)
       defaultContent: {
         columns: [
-          { content: 'Box 1', colWidth: 6 },
-          { content: 'Box 2', colWidth: 6 },
-          { content: 'Box 3', colWidth: 6 },
-          { content: 'Box 4', colWidth: 6 }
+          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.</p>', colWidth: 6 },
+          { content: '<p>Ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 6 },
+          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat.</p>', colWidth: 6 },
+          { content: '<p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit.</p>', colWidth: 6 }
         ],
         content_css: createDefaultContentCSS(4),
         section_css: getDefaultSectionCSS()
@@ -1121,7 +1123,14 @@ padding: 1rem;`
       rows: 2,
       colWidths: [4, 4, 4, 4, 4, 4], // 6x col-4 (2 rows of 33/33/33)
       defaultContent: {
-        columns: Array(6).fill(null).map((_, i) => ({ content: `Box ${i + 1}`, colWidth: 4 })),
+        columns: [
+          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>', colWidth: 4 },
+          { content: '<p>Sed do eiusmod tempor incididunt ut labore et dolore.</p>', colWidth: 4 },
+          { content: '<p>Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 4 },
+          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate.</p>', colWidth: 4 },
+          { content: '<p>Excepteur sint occaecat cupidatat non proident sunt.</p>', colWidth: 4 },
+          { content: '<p>Culpa qui officia deserunt mollit anim id est laborum.</p>', colWidth: 4 }
+        ],
         content_css: createDefaultContentCSS(6),
         section_css: getDefaultSectionCSS()
       }
@@ -1145,21 +1154,6 @@ padding: 1rem;`
     { type: 'footer-simple', label: 'Simple Footer', description: 'Basic footer with copyright text', position: 'bottom', defaultContent: { text: '© 2025 Company Name. All rights reserved.' } },
     { type: 'footer-columns', label: 'Column Footer', description: 'Multi-column footer with links', position: 'bottom', defaultContent: { columns: [{ title: 'Company', links: ['About', 'Contact'] }, { title: 'Services', links: ['Service 1', 'Service 2'] }] } },
     { type: 'footer-social', label: 'Social Footer', description: 'Footer with social media icons', position: 'bottom', defaultContent: { text: '© 2025 Company', socials: ['Facebook', 'Twitter', 'Instagram'] } },
-  ]
-
-  const specialSections = [
-    { type: 'hero', label: 'Hero Banner', description: 'Large banner with heading and call-to-action', defaultContent: { title: 'Welcome', subtitle: 'Your subtitle here', cta_text: 'Get Started' } },
-    { type: 'gallery', label: 'Image Gallery', description: 'Grid of images with lightbox', defaultContent: { heading: 'Gallery', images: [] } },
-    { type: 'contact-form', label: 'Contact Form', description: 'Form with name, email, and message fields', defaultContent: { heading: 'Contact Us', fields: ['name', 'email', 'message'] } },
-    { type: 'booking-form', label: 'Booking Form', description: 'Appointment booking form with date/time', defaultContent: { heading: 'Book Now', fields: ['name', 'date', 'time'] } },
-    { type: 'login-box', label: 'Login Box', description: 'User authentication login form', defaultContent: { heading: 'Sign In' } },
-    { type: 'testimonials', label: 'Testimonials', description: 'Customer reviews and feedback display', defaultContent: { heading: 'What Our Customers Say', testimonials: [] } },
-  ]
-
-  const predefinedPages = [
-    { name: 'About Us', description: 'Standard about page with company info', sections: [{ type: 'hero', content: { title: 'About Us', subtitle: 'Learn more about our company' } }, { type: 'grid-2x1', content: { columns: [{ content: 'Our Story' }, { content: 'Our Mission' }] } }] },
-    { name: 'Contact', description: 'Contact page with form and info', sections: [{ type: 'hero', content: { title: 'Contact Us', subtitle: 'Get in touch' } }, { type: 'contact-form', content: { heading: 'Send us a message' } }] },
-    { name: 'Services', description: 'Services overview page', sections: [{ type: 'hero', content: { title: 'Our Services', subtitle: 'What we offer' } }, { type: 'grid-3x1', content: { columns: [{ content: 'Service 1' }, { content: 'Service 2' }, { content: 'Service 3' }] } }] },
   ]
 
   const renderSectionThumbnail = (section: any) => {
@@ -1221,14 +1215,6 @@ padding: 1rem;`
       return
     }
 
-    // Check if this is a top-positioned section (navbar/header/sidebar)
-    const isTopSection = sectionConfig.type.startsWith('navbar-') ||
-                        sectionConfig.type.startsWith('header-') ||
-                        sectionConfig.type.startsWith('sidebar-nav-')
-
-    // Check if this is a footer section
-    const isFooterSection = sectionConfig.type.startsWith('footer-')
-
     const sectionName = sectionConfig.name || sectionConfig.type
     const newSection: TemplateSection = {
       id: Date.now(),
@@ -1236,94 +1222,22 @@ padding: 1rem;`
       section_name: sectionName,
       section_id: generateIdentifier(sectionName),
       content: sectionConfig.defaultContent,
-      order: isTopSection ? 0 : currentPage.sections.length
+      order: currentPage.sections.length
     }
 
     const updatedPages = template.pages.map(p => {
       if (p.id === currentPage.id) {
-        if (isTopSection) {
-          // Find the position after existing navbars/headers/sidebars
-          let insertPosition = 0
-          for (let i = 0; i < p.sections.length; i++) {
-            const section = p.sections[i]
-            if (section.type.startsWith('navbar-') ||
-                section.type.startsWith('header-') ||
-                section.type.startsWith('sidebar-nav-')) {
-              insertPosition = i + 1
-            } else {
-              break
-            }
-          }
+        // Simply add the new section at the end
+        const newSections = [...p.sections, newSection]
 
-          // Insert at the calculated position
-          const newSections = [
-            ...p.sections.slice(0, insertPosition),
-            newSection,
-            ...p.sections.slice(insertPosition)
-          ]
+        // Reorder all sections
+        newSections.forEach((section, idx) => {
+          section.order = idx
+        })
 
-          // Reorder all sections
-          newSections.forEach((section, idx) => {
-            section.order = idx
-          })
-
-          return {
-            ...p,
-            sections: newSections
-          }
-        } else if (isFooterSection) {
-          // Find the position before existing footers (to insert at end but before other footers)
-          let insertPosition = p.sections.length
-          for (let i = p.sections.length - 1; i >= 0; i--) {
-            const section = p.sections[i]
-            if (section.type.startsWith('footer-')) {
-              insertPosition = i
-            } else {
-              break
-            }
-          }
-
-          // Insert at the calculated position
-          const newSections = [
-            ...p.sections.slice(0, insertPosition),
-            newSection,
-            ...p.sections.slice(insertPosition)
-          ]
-
-          // Reorder all sections
-          newSections.forEach((section, idx) => {
-            section.order = idx
-          })
-
-          return {
-            ...p,
-            sections: newSections
-          }
-        } else {
-          // Insert before footers for regular sections
-          let insertPosition = p.sections.length
-          for (let i = 0; i < p.sections.length; i++) {
-            const section = p.sections[i]
-            if (section.type.startsWith('footer-')) {
-              insertPosition = i
-              break
-            }
-          }
-
-          const newSections = [
-            ...p.sections.slice(0, insertPosition),
-            newSection,
-            ...p.sections.slice(insertPosition)
-          ]
-
-          newSections.forEach((section, idx) => {
-            section.order = idx
-          })
-
-          return {
-            ...p,
-            sections: newSections
-          }
+        return {
+          ...p,
+          sections: newSections
         }
       }
       return p
@@ -1368,49 +1282,7 @@ padding: 1rem;`
     if (direction === 'up' && index === 0) return
     if (direction === 'down' && index === currentPage.sections.length - 1) return
 
-    const currentSection = currentPage.sections[index]
     const swapIndex = direction === 'up' ? index - 1 : index + 1
-    const targetSection = currentPage.sections[swapIndex]
-
-    // Check if current section is a navigation section
-    const isCurrentNavSection = currentSection.type.startsWith('navbar-') ||
-                                currentSection.type.startsWith('header-') ||
-                                currentSection.type.startsWith('sidebar-nav-')
-
-    // Check if target section is a navigation section
-    const isTargetNavSection = targetSection.type.startsWith('navbar-') ||
-                               targetSection.type.startsWith('header-') ||
-                               targetSection.type.startsWith('sidebar-nav-')
-
-    // Check if current section is a footer section
-    const isCurrentFooterSection = currentSection.type.startsWith('footer-')
-
-    // Check if target section is a footer section
-    const isTargetFooterSection = targetSection.type.startsWith('footer-')
-
-    // Prevent non-nav sections from moving above nav sections
-    if (direction === 'up' && !isCurrentNavSection && isTargetNavSection) {
-      alert('Regular sections cannot be moved above navigation sections')
-      return
-    }
-
-    // Prevent nav sections from moving below non-nav sections
-    if (direction === 'down' && isCurrentNavSection && !isTargetNavSection && !isTargetFooterSection) {
-      alert('Navigation sections cannot be moved below regular sections')
-      return
-    }
-
-    // Prevent non-footer sections from moving below footer sections
-    if (direction === 'down' && !isCurrentFooterSection && isTargetFooterSection) {
-      alert('Regular sections cannot be moved below footer sections')
-      return
-    }
-
-    // Prevent footer sections from moving above non-footer sections
-    if (direction === 'up' && isCurrentFooterSection && !isTargetFooterSection) {
-      alert('Footer sections cannot be moved above regular sections')
-      return
-    }
 
     const newSections = [...currentPage.sections]
 
@@ -1432,6 +1304,29 @@ padding: 1rem;`
     const updatedTemplate = { ...template, pages: updatedPages }
     setTemplate(updatedTemplate)
     setCurrentPage({ ...currentPage, sections: newSections })
+    addToHistory(updatedTemplate)
+  }
+
+  const handleToggleSectionLock = (sectionId: number) => {
+    if (!template || !currentPage) return
+
+    const updatedSections = currentPage.sections.map(s => {
+      if (s.id === sectionId) {
+        return { ...s, is_locked: !s.is_locked }
+      }
+      return s
+    })
+
+    const updatedPages = template.pages.map(p => {
+      if (p.id === currentPage.id) {
+        return { ...p, sections: updatedSections }
+      }
+      return p
+    })
+
+    const updatedTemplate = { ...template, pages: updatedPages }
+    setTemplate(updatedTemplate)
+    setCurrentPage({ ...currentPage, sections: updatedSections })
     addToHistory(updatedTemplate)
   }
 
@@ -1518,14 +1413,6 @@ padding: 1rem;`
     if (activeData?.source === 'library') {
       const sectionConfig = activeData.section
 
-      // Check if this is a top-positioned section (navbar/header/sidebar)
-      const isTopSection = sectionConfig.type.startsWith('navbar-') ||
-                          sectionConfig.type.startsWith('header-') ||
-                          sectionConfig.type.startsWith('sidebar-nav-')
-
-      // Check if this is a footer section
-      const isFooterSection = sectionConfig.type.startsWith('footer-')
-
       const sectionName = sectionConfig.name || sectionConfig.type
       const newSection: TemplateSection = {
         id: Date.now(),
@@ -1538,40 +1425,13 @@ padding: 1rem;`
 
       let insertPosition = currentPage.sections.length // Default: end of list
 
-      // Headers and nav ALWAYS insert at top, regardless of drop position
-      if (isTopSection) {
-        // Find the position after existing navbars/headers/sidebars
-        insertPosition = 0
-        for (let i = 0; i < currentPage.sections.length; i++) {
-          const section = currentPage.sections[i]
-          if (section.type.startsWith('navbar-') ||
-              section.type.startsWith('header-') ||
-              section.type.startsWith('sidebar-nav-')) {
-            insertPosition = i + 1
-          } else {
-            break
-          }
-        }
-      } else if (isFooterSection) {
-        // Find the position before existing footers
+      // Respect drop position for all section types
+      if (over && over.data.current?.source === 'canvas') {
+        const overIndex = over.data.current.index
+        insertPosition = overIndex
+      } else if (over && over.data.current?.type === 'bottom') {
+        // Dropping on bottom drop zone - insert at end
         insertPosition = currentPage.sections.length
-        for (let i = currentPage.sections.length - 1; i >= 0; i--) {
-          const section = currentPage.sections[i]
-          if (section.type.startsWith('footer-')) {
-            insertPosition = i
-          } else {
-            break
-          }
-        }
-      } else {
-        // Regular sections: respect drop position
-        if (over && over.data.current?.source === 'canvas') {
-          const overIndex = over.data.current.index
-          insertPosition = overIndex
-        } else if (over && over.data.current?.type === 'bottom') {
-          // Dropping on bottom drop zone - insert at end
-          insertPosition = currentPage.sections.length
-        }
       }
 
       // Insert the new section at the calculated position
@@ -1611,44 +1471,7 @@ padding: 1rem;`
 
       if (oldIndex === newIndex) return
 
-      const section = activeData.section
-      const targetSection = overData.section
-
-      // Check movement restrictions
-      const isNavSection = section.type.startsWith('navbar-') ||
-                          section.type.startsWith('header-') ||
-                          section.type.startsWith('sidebar-nav-')
-      const isTargetNavSection = targetSection.type.startsWith('navbar-') ||
-                                 targetSection.type.startsWith('header-') ||
-                                 targetSection.type.startsWith('sidebar-nav-')
-      const isFooterSection = section.type.startsWith('footer-')
-      const isTargetFooterSection = targetSection.type.startsWith('footer-')
-
-      // Prevent non-nav sections from moving into nav area
-      if (!isNavSection && isTargetNavSection) {
-        alert('Regular sections cannot be moved into the navigation area')
-        return
-      }
-
-      // Prevent nav sections from moving into content area
-      if (isNavSection && !isTargetNavSection && !isTargetFooterSection) {
-        alert('Navigation sections cannot be moved into the content area')
-        return
-      }
-
-      // Prevent non-footer sections from moving into footer area
-      if (!isFooterSection && isTargetFooterSection) {
-        alert('Regular sections cannot be moved into the footer area')
-        return
-      }
-
-      // Prevent footer sections from moving into content area
-      if (isFooterSection && !isTargetFooterSection) {
-        alert('Footer sections cannot be moved into the content area')
-        return
-      }
-
-      // Perform the reorder
+      // Perform the reorder - no restrictions, all sections can move anywhere
       const newSections = arrayMove(currentPage.sections, oldIndex, newIndex)
 
       // Update order values
@@ -3787,10 +3610,14 @@ ${sectionsHTML}
     const sectionWrapper = (children: React.ReactNode) => (
       <div
         key={section.id}
-        className={`relative group ${isSidebar ? 'z-20' : ''}`}
+        className={`relative group ${isSidebar ? 'z-20' : ''} ${section.is_locked ? 'cursor-not-allowed' : ''}`}
         onMouseEnter={() => setHoveredSection(section.id)}
         onMouseLeave={() => setHoveredSection(null)}
-        onClick={() => setSelectedSection(section)}
+        onClick={() => {
+          if (!section.is_locked) {
+            setSelectedSection(section)
+          }
+        }}
       >
         {/* Position Indicator Badge */}
         {(section.type === 'navbar-sticky' || isTopLocked || isBottomLocked) && (
@@ -3814,6 +3641,18 @@ ${sectionsHTML}
         )}
 
         {children}
+
+        {/* Locked Section Overlay */}
+        {section.is_locked && (
+          <div className="builder-ui absolute inset-0 bg-amber-500 bg-opacity-5 pointer-events-none border-2 border-amber-400 border-dashed rounded z-10">
+            <div className="builder-ui absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1.5">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              LOCKED
+            </div>
+          </div>
+        )}
 
         {/* Hover Overlay */}
         {isHovered && (
@@ -3874,7 +3713,7 @@ ${sectionsHTML}
             )}
 
             {/* Normal sections: show up/down controls */}
-            {!isPositionLocked && !isSidebar && (
+            {!isSidebar && (
               <>
                 <button
                   onClick={(e) => {
@@ -3906,14 +3745,23 @@ ${sectionsHTML}
               </>
             )}
 
-            {/* Position-locked sections: show lock icon */}
-            {isPositionLocked && (
-              <div className="builder-ui p-1 text-gray-400" title="Position locked">
-                <svg className="builder-ui w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            {/* Edit lock toggle - available for all sections */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleToggleSectionLock(section.id)
+              }}
+              className={`builder-ui p-1 hover:bg-[#e8f0e6] rounded transition ${section.is_locked ? 'bg-amber-50' : ''}`}
+              title={section.is_locked ? 'Unlock Editing' : 'Lock Editing'}
+            >
+              <svg className={`builder-ui w-4 h-4 ${section.is_locked ? 'text-amber-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {section.is_locked ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
-              </div>
-            )}
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                )}
+              </svg>
+            </button>
 
             <button
               onClick={(e) => {
@@ -5213,6 +5061,15 @@ ${sectionsHTML}
                     >
                       Stylesheet
                     </button>
+                    <button
+                      onClick={() => {
+                        setShowSitemapModal(true)
+                        setShowViewMenu(false)
+                      }}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    >
+                      Sitemap
+                    </button>
                   </div>
                 </div>
               )}
@@ -5760,15 +5617,38 @@ ${sectionsHTML}
                     </button>
                   </div>
                 ) : selectedSection ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <label className="text-xs text-gray-500 block mb-1">Section Name</label>
-                        <div className="flex gap-1">
-                          <input
-                            type="text"
-                            value={selectedSection.section_name || selectedSection.type}
-                            onChange={(e) => {
+                  selectedSection.is_locked ? (
+                    <div className="space-y-3">
+                      <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 text-center">
+                        <svg className="w-12 h-12 text-amber-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <h3 className="text-sm font-semibold text-amber-800 mb-1">Section Locked</h3>
+                        <p className="text-xs text-amber-600 mb-3">
+                          This section is locked and cannot be edited.
+                        </p>
+                        <button
+                          onClick={() => handleToggleSectionLock(selectedSection.id)}
+                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition"
+                        >
+                          Unlock Section
+                        </button>
+                      </div>
+                      <div className="text-xs text-gray-500 space-y-1">
+                        <p><strong>Section:</strong> {selectedSection.section_name || selectedSection.type}</p>
+                        <p><strong>ID:</strong> {selectedSection.section_id || 'Not set'}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <label className="text-xs text-gray-500 block mb-1">Section Name</label>
+                          <div className="flex gap-1">
+                            <input
+                              type="text"
+                              value={selectedSection.section_name || selectedSection.type}
+                              onChange={(e) => {
                               const newName = e.target.value
                               const updatedSection = {
                                 ...selectedSection,
@@ -6151,6 +6031,7 @@ ${sectionsHTML}
                       </>
                     )}
                   </div>
+                  )
                 ) : (
                   <div className="text-xs text-gray-500 text-center py-8">
                     Click a section in the canvas to edit its properties
@@ -7505,6 +7386,138 @@ ${sectionsHTML}
               <p className="text-sm text-gray-600">
                 {isEditingCSS ? 'Editing mode - Changes will update template styles' : 'Dynamic preview - Updates as you build'} • Cascade Order: Grid System → Site CSS → Page CSS → Section CSS → Row CSS → Column CSS → Responsive Breakpoints
               </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Sitemap Modal */}
+      {showSitemapModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-gray-800">Site Map</h2>
+                  <p className="text-sm text-gray-600 mt-1">Manage your site's page structure</p>
+                </div>
+                <button
+                  onClick={() => setShowSitemapModal(false)}
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="space-y-2">
+                {template?.pages.map((page, index) => (
+                  <div
+                    key={page.id}
+                    className={`group flex items-center gap-3 p-3 rounded-lg border-2 transition ${
+                      page.id === currentPage?.id
+                        ? 'border-[#98b290] bg-[#f0f5ef]'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    {/* Tree Lines */}
+                    <div className="flex-shrink-0 w-8 flex flex-col items-center">
+                      {index === 0 && page.is_homepage ? (
+                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      )}
+                    </div>
+
+                    {/* Page Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-900 truncate">{page.name}</h3>
+                        {page.is_homepage && (
+                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
+                            HOME
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">/{page.slug}</p>
+                      <p className="text-xs text-gray-400 mt-1">{page.sections?.length || 0} sections</p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => {
+                          if (page.id !== currentPage?.id) {
+                            setCurrentPage(page)
+                          }
+                        }}
+                        className="p-1.5 hover:bg-gray-200 rounded transition"
+                        title="View Page"
+                      >
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setEditPageId(page.id)
+                          setEditPageName(page.name)
+                          setEditPageSlug(page.slug)
+                          setEditPageIsHomepage(page.is_homepage)
+                          setEditPageMetaDescription(page.meta_description || '')
+                          setShowEditPageModal(true)
+                          setShowSitemapModal(false)
+                        }}
+                        className="p-1.5 hover:bg-blue-50 rounded transition"
+                        title="Edit Page"
+                      >
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete "${page.name}"?`)) {
+                            handleDeletePage(page.id)
+                            if (page.id === currentPage?.id) {
+                              setCurrentPage(template.pages[0])
+                            }
+                          }
+                        }}
+                        disabled={template.pages.length === 1}
+                        className="p-1.5 hover:bg-red-50 rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
+                        title={template.pages.length === 1 ? "Cannot delete the last page" : "Delete Page"}
+                      >
+                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Page Button */}
+              <button
+                onClick={() => {
+                  setShowAddPageModal(true)
+                  setShowSitemapModal(false)
+                }}
+                className="w-full mt-4 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#98b290] hover:bg-[#f0f5ef] transition flex items-center justify-center gap-2 text-gray-600 hover:text-[#98b290]"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span className="font-medium">Add New Page</span>
+              </button>
             </div>
           </div>
         </div>
