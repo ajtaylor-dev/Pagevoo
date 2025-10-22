@@ -1562,8 +1562,325 @@ None - All features tested and working during implementation.
 ✅ Testing checklist ready
 🔄 Ready for comprehensive functional testing
 
+## Session 26 (2025-10-22) - Image Organization System & Width/Height Controls
+
+**What We Accomplished:**
+1. Implemented organized image gallery system with temporary folders
+2. Fixed image path updates when templates are saved
+3. Enhanced save prompting for new templates
+4. Started implementing width/height controls for sections/rows/columns
+
+### Part 1: Image Gallery Organization System
+
+**User Request:**
+"when a user creates a website, there files should be saved in their website_directory. The template should be no different, I want HTML/CSS files also generated in template_directory/template_name"
+
+"Once the template is saved, then the image gallery should move to within the template_directory/template_name/public/images folder, then the temporary folder stored in the image_galleries directory can be deleted"
+
+**Implementation:**
+
+**New Directory Structure:**
+```
+pagevoo-backend/public/
+├── image_galleries/              # Temporary storage (NEW)
+│   └── template_{id}/            # Before template is saved
+│       └── image1.jpg
+│       └── image2.png
+│
+└── template_directory/
+    └── {template_slug}/          # After template is saved
+        ├── index.html
+        ├── about.html
+        └── public/               # Changed from 'assets'
+            ├── css/
+            │   └── style.css
+            ├── js/
+            └── images/           # Images moved here
+                └── image1.jpg
+                └── image2.png
+```
+
+**Backend Changes:**
+
+1. **TemplateController.php (Lines 357-384):**
+   - Updated `uploadGalleryImage()` to use `image_galleries/template_{id}/`
+   - Temporary storage before template is saved
+
+2. **TemplateFileGenerator.php:**
+   - **Constructor (Lines 25-29):** Creates `image_galleries` directory
+   - **generateTemplateFiles (Lines 50-54):** Changed to `/public/` structure
+   - **copyTemplateImages (Lines 104-163):** NEW enhanced method:
+     - Moves files from `image_galleries` to `template/public/images/`
+     - Updates database paths automatically
+     - Deletes temporary `image_galleries/template_{id}/` folder
+   - **deleteTemplateFiles (Lines 605-626):** Cleans up both directories
+   - **updateCssImagePaths (Lines 165-219):** Updates CSS `background-image` URLs
+   - **updateHtmlImagePaths (Lines 222-284):** Updates HTML `<img src="">` tags
+
+3. **.gitignore:**
+   - Added `/public/image_galleries`
+   - Added `/public/template_directory`
+
+**Workflow:**
+1. Upload images → Stored in `/image_galleries/template_{id}/`
+2. Save template → Images moved to `/template_directory/{slug}/public/images/`
+3. Database paths updated
+4. CSS URLs updated
+5. HTML image sources updated
+6. Temporary folder deleted
+
+**Files Modified:**
+- `app/Http/Controllers/Api/V1/TemplateController.php`
+- `app/Services/TemplateFileGenerator.php`
+- `.gitignore`
+
+### Part 2: CSS Image Path Updates
+
+**Problem:**
+"when the template is saved, the css still points background image to 'http://localhost:8000/image_galleries/template_56/1761135815_github.jpg'"
+
+**Solution - updateCssImagePaths() (Lines 165-219):**
+Updates CSS in all locations:
+- `template.custom_css`
+- `page.css`
+- `section.css`
+- `section.content.css`
+- `section.content.content_css.row`
+- `section.content.content_css.column_X`
+
+**Solution - updateHtmlImagePaths() (Lines 222-284):**
+Updates HTML in:
+- Section content fields
+- Column content
+- All text fields containing images
+
+**Transformation:**
+```
+OLD: background-image: url('http://localhost:8000/image_galleries/template_56/image.jpg');
+NEW: background-image: url('http://localhost:8000/template_directory/template_53/public/images/image.jpg');
+
+OLD: <img src="http://localhost:8000/image_galleries/template_56/image.jpg">
+NEW: <img src="http://localhost:8000/template_directory/template_53/public/images/image.jpg">
+```
+
+### Part 3: Template ID Auto-Increment Discussion
+
+**User Question:**
+"the folder in the image gallery is a template sequential id number, where is this id number coming from, is there a way to reset this number"
+
+**Explanation Given:**
+- Template ID is database auto-increment primary key
+- MySQL never reuses deleted IDs (standard practice)
+- Current status: 6 templates exist, next ID = 61 (55 deleted during testing)
+- User chose to keep standard behavior (option 1)
+
+**Decision:** Keep standard auto-increment (no reset needed)
+
+### Part 4: Save Prompt Enhancement
+
+**Problem:**
+"I have notice that when uploading images to the gallery and then saving the template it does not prompt for naming template"
+
+**Fix (TemplateBuilder.tsx Lines 2600-2621):**
+```typescript
+const handleSave = async () => {
+  // Debug: Log template ID
+  console.log('Template ID:', template.id, 'Type:', typeof template.id)
+
+  // Enhanced check for new templates
+  if (!template.id || template.id === 0) {
+    const templateName = prompt('Enter a template name:', template.name || 'Untitled Template')
+    if (!templateName || templateName.trim() === '') {
+      return
+    }
+
+    setTemplate({ ...template, name: templateName.trim() })
+    return performSaveAsCreate(templateName.trim())
+  }
+
+  // Existing template - update
+  // ...
+}
+```
+
+**Changes:**
+- Changed condition from `template.id === 0` to `!template.id || template.id === 0`
+- Added debug logging
+- Works for both File > Save and save icon
+
+### Part 5: Width & Height Controls Implementation (IN PROGRESS)
+
+**User Request:**
+"implement a height and width settings for section, column and row css. Make sure whatever defaults are there now are the ones selected. I need the option to set auto, 100%, 100vh, match parent, and specific numbers (in px)."
+
+**Implementation (StyleEditor.tsx):**
+
+**1. Added to Interface (Lines 34-36):**
+```typescript
+interface StyleProperty {
+  // ... existing properties
+  // Dimensions
+  width?: string
+  height?: string
+}
+```
+
+**2. Added Dimension Options (Lines 133-140):**
+```typescript
+const DIMENSION_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: '100%', label: '100%' },
+  { value: '100vh', label: '100vh' },
+  { value: '100vw', label: '100vw' },
+  { value: 'fit-content', label: 'Fit Content' },
+  { value: 'custom', label: 'Custom (px)' },
+]
+```
+
+**3. Added Parsing (Lines 254-260):**
+```typescript
+// Width
+const widthMatch = css.match(/width:\s*([^;]+);?/i)
+if (widthMatch) props.width = widthMatch[1].trim()
+
+// Height
+const heightMatch = css.match(/height:\s*([^;]+);?/i)
+if (heightMatch) props.height = heightMatch[1].trim()
+```
+
+**4. Added CSS Generation (Lines 361-362):**
+```typescript
+if (props.width) css += `width: ${props.width};\n`
+if (props.height) css += `height: ${props.height};\n`
+```
+
+**5. Added UI Controls (Lines 827-932):**
+- Width dropdown with preset options
+- Height dropdown with preset options
+- Custom input fields (when selecting "Custom")
+- Helper functions to detect custom values
+
+**6. Helper Functions (Lines 175-184):**
+```typescript
+const isCustomWidth = (width: string | undefined) => {
+  if (!width) return false
+  return !['auto', '100%', '100vh', '100vw', 'fit-content'].includes(width)
+}
+
+const isCustomHeight = (height: string | undefined) => {
+  if (!height) return false
+  return !['auto', '100%', '100vh', '100vw', 'fit-content'].includes(height)
+}
+```
+
+**Current Status:**
+⚠️ **IN PROGRESS** - Custom input boxes not appearing yet
+- Dropdown selections work
+- Preset values (auto, 100%, 100vh, etc.) work
+- Custom px input fields need debugging
+
+**What's Working:**
+✅ Dropdown shows correct options
+✅ Selecting presets updates CSS
+✅ Parsing existing width/height from CSS
+✅ CSS generation includes width/height
+
+**What's NOT Working:**
+❌ Custom input field not appearing when "Custom (px)" selected
+❌ Need to investigate conditional rendering logic
+
+**Next Steps:**
+1. Debug why `isCustomWidth()` / `isCustomHeight()` not triggering input display
+2. Verify state updates when selecting "Custom (px)"
+3. Test custom px value entry
+4. Test across sections, rows, and columns
+
+### Files Modified This Session
+
+**Backend:**
+1. `app/Http/Controllers/Api/V1/TemplateController.php` - Image upload to temporary folder
+2. `app/Services/TemplateFileGenerator.php` - Image moving, path updates, cleanup
+3. `.gitignore` - Added image_galleries and template_directory
+
+**Frontend:**
+1. `pagevoo-frontend/src/pages/TemplateBuilder.tsx` - Enhanced save prompt (Lines 2600-2621)
+2. `pagevoo-frontend/src/components/StyleEditor.tsx` - Width/height controls (in progress)
+
+### Technical Notes
+
+**Image Path Update Strategy:**
+- Old pattern: `url("image_galleries/template_{id}/")`
+- New pattern: `url("template_directory/{slug}/public/images/")`
+- Updates happen automatically on template save
+- All CSS and HTML references updated atomically
+
+**Database Auto-Increment:**
+- Template IDs are never reused (MySQL standard)
+- Temporary folders use template ID for uniqueness
+- Final folders use template_slug for SEO-friendly names
+
+**Width/Height Control Design:**
+- Dropdown for common presets
+- Custom input appears conditionally
+- Defaults to 'auto' (no CSS output)
+- Supports viewport units (vh, vw)
+
+### Known Issues
+
+**Width/Height Controls:**
+⚠️ Custom input boxes not displaying when "Custom (px)" selected
+- Helper functions implemented
+- Conditional logic in place
+- Need to debug state flow
+
+**To Investigate:**
+1. Check if `updateProperty()` is triggering re-render
+2. Verify `properties.width` / `properties.height` state updates
+3. Check if `isCustomWidth()` / `isCustomHeight()` returning correct boolean
+4. Add console logging to debug
+
+### Testing Status
+
+✅ Image organization system - WORKING
+✅ Path updates (CSS and HTML) - WORKING
+✅ Temporary folder cleanup - WORKING
+✅ Save prompt - WORKING
+⚠️ Width/height controls - PARTIAL (dropdowns work, custom input needs fix)
+
+### Code References
+
+**Image Organization:**
+- Upload to temp: TemplateController.php:357-384
+- Move on save: TemplateFileGenerator.php:104-163
+- Update CSS paths: TemplateFileGenerator.php:165-219
+- Update HTML paths: TemplateFileGenerator.php:222-284
+- Delete cleanup: TemplateFileGenerator.php:605-626
+
+**Save Prompt:**
+- Enhanced check: TemplateBuilder.tsx:2600-2621
+
+**Width/Height Controls:**
+- Interface: StyleEditor.tsx:34-36
+- Options: StyleEditor.tsx:133-140
+- Helpers: StyleEditor.tsx:175-184
+- Parsing: StyleEditor.tsx:254-260
+- Generation: StyleEditor.tsx:361-362
+- UI: StyleEditor.tsx:827-932
+
+## Current Status
+
+✅ Session 22 - COMPLETE
+✅ Session 23 - COMPLETE
+✅ Session 24 - COMPLETE
+✅ Session 25 - COMPLETE
+✅ Session 26 - PARTIAL (Image organization complete, width/height controls in progress)
+✅ Image gallery organization system - WORKING
+✅ CSS/HTML path updates - WORKING
+✅ Save prompt enhancement - WORKING
+⚠️ Width/height custom inputs - NEEDS DEBUGGING
+
 ## Last Updated
-2025-10-21 (Session 25 completed - Section locking, Sitemap, Lorem ipsum, Code cleanup, Testing checklist)
+2025-10-22 (Session 26 in progress - Image organization complete, width/height controls partially implemented)
 
 ---
 Note: This is a continuation of claude_memory_2.txt. Previous sessions (1-21) documented there.

@@ -354,21 +354,21 @@ class TemplateController extends BaseController
                 return $this->sendError('Validation Error', 422, $validator->errors());
             }
 
-            // Create template directory if it doesn't exist
-            $templateDir = public_path("template_directory/template_{$template->id}/images");
-            \Log::info('Template directory: ' . $templateDir);
+            // Create temporary image gallery directory (will be moved on template save)
+            $galleryDir = public_path("image_galleries/template_{$template->id}");
+            \Log::info('Gallery directory: ' . $galleryDir);
 
-            if (!file_exists($templateDir)) {
+            if (!file_exists($galleryDir)) {
                 \Log::info('Creating directory...');
-                mkdir($templateDir, 0755, true);
+                mkdir($galleryDir, 0755, true);
             }
 
             // Upload file
             $file = $request->file('image');
             $filename = time() . '_' . $file->getClientOriginalName();
             $fileSize = $file->getSize(); // Get size BEFORE moving
-            \Log::info('Moving file to: ' . $templateDir . '/' . $filename);
-            $file->move($templateDir, $filename);
+            \Log::info('Moving file to: ' . $galleryDir . '/' . $filename);
+            $file->move($galleryDir, $filename);
 
             // Add image to template's images array
             $images = $template->images ?? [];
@@ -377,7 +377,7 @@ class TemplateController extends BaseController
             $newImage = [
                 'id' => uniqid(),
                 'filename' => $filename,
-                'path' => "template_directory/template_{$template->id}/images/{$filename}",
+                'path' => "image_galleries/template_{$template->id}/{$filename}",
                 'size' => $fileSize,
                 'uploaded_at' => now()->toDateTimeString()
             ];

@@ -31,9 +31,6 @@ interface StyleProperty {
   linkActiveColor?: string
   linkTextDecoration?: string
   linkHoverTextDecoration?: string
-  // Dimensions
-  width?: string
-  height?: string
 }
 
 interface StyleEditorProps {
@@ -130,15 +127,6 @@ const TEXT_DECORATION_OPTIONS = [
   { value: 'line-through', label: 'Line Through' },
 ]
 
-const DIMENSION_OPTIONS = [
-  { value: 'auto', label: 'Auto' },
-  { value: '100%', label: '100%' },
-  { value: '100vh', label: '100vh' },
-  { value: '100vw', label: '100vw' },
-  { value: 'fit-content', label: 'Fit Content' },
-  { value: 'custom', label: 'Custom (px)' },
-]
-
 export function StyleEditor({ value, onChange, context, showFontSelector = false, galleryImages, onOpenGallery }: StyleEditorProps) {
   const [activeTab, setActiveTab] = useState<'simplified' | 'code'>('simplified')
   const [properties, setProperties] = useState<StyleProperty>({
@@ -171,17 +159,6 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const [editingLinkHoverColor, setEditingLinkHoverColor] = useState(false)
   const [editingLinkVisitedColor, setEditingLinkVisitedColor] = useState(false)
   const [editingLinkActiveColor, setEditingLinkActiveColor] = useState(false)
-
-  // Helper to determine if width/height is custom
-  const isCustomWidth = (width: string | undefined) => {
-    if (!width) return false
-    return !['auto', '100%', '100vh', '100vw', 'fit-content'].includes(width)
-  }
-
-  const isCustomHeight = (height: string | undefined) => {
-    if (!height) return false
-    return !['auto', '100%', '100vh', '100vw', 'fit-content'].includes(height)
-  }
 
   // Parse CSS string to extract visual properties
   const parseCSS = (css: string): StyleProperty => {
@@ -261,14 +238,6 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     // Opacity
     const opacityMatch = css.match(/opacity:\s*([\d.]+);?/i)
     if (opacityMatch) props.opacity = parseFloat(opacityMatch[1])
-
-    // Width
-    const widthMatch = css.match(/width:\s*([^;]+);?/i)
-    if (widthMatch) props.width = widthMatch[1].trim()
-
-    // Height
-    const heightMatch = css.match(/height:\s*([^;]+);?/i)
-    if (heightMatch) props.height = heightMatch[1].trim()
 
     // Link color (a { color: ... })
     const linkColorMatch = css.match(/a\s*\{[^}]*color:\s*([^;}\n]+)/i)
@@ -369,8 +338,6 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     if (props.borderColor) css += `border-color: ${props.borderColor};\n`
     if (props.borderStyle) css += `border-style: ${props.borderStyle};\n`
     if (props.position && props.position !== 'static') css += `position: ${props.position};\n`
-    if (props.width) css += `width: ${props.width};\n`
-    if (props.height) css += `height: ${props.height};\n`
     if (props.backgroundImage) {
       css += `background-image: url('${props.backgroundImage}');\n`
       if (props.backgroundSize) css += `background-size: ${props.backgroundSize};\n`
@@ -835,103 +802,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </Select>
           </div>
 
-          {/* Width */}
-          <div>
-            <Label className="text-xs font-medium">Width</Label>
-            <div className="space-y-1 mt-1">
-              <Select
-                value={
-                  !properties.width ? 'auto' :
-                  properties.width === 'auto' ? 'auto' :
-                  properties.width === '100%' ? '100%' :
-                  properties.width === '100vh' ? '100vh' :
-                  properties.width === '100vw' ? '100vw' :
-                  properties.width === 'fit-content' ? 'fit-content' :
-                  'custom'
-                }
-                onValueChange={(value) => {
-                  if (value === 'custom') {
-                    updateProperty('width', '300px') // Default custom value
-                    return
-                  }
-                  updateProperty('width', value === 'auto' ? undefined : value)
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DIMENSION_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value} className="text-xs">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isCustomWidth(properties.width) && (
-                <Input
-                  value={properties.width?.replace('px', '') || ''}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    updateProperty('width', val ? `${val}px` : undefined)
-                  }}
-                  className="h-8 text-xs"
-                  placeholder="Custom width in px"
-                  type="number"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Height */}
-          <div>
-            <Label className="text-xs font-medium">Height</Label>
-            <div className="space-y-1 mt-1">
-              <Select
-                value={
-                  !properties.height ? 'auto' :
-                  properties.height === 'auto' ? 'auto' :
-                  properties.height === '100%' ? '100%' :
-                  properties.height === '100vh' ? '100vh' :
-                  properties.height === '100vw' ? '100vw' :
-                  properties.height === 'fit-content' ? 'fit-content' :
-                  'custom'
-                }
-                onValueChange={(value) => {
-                  if (value === 'custom') {
-                    updateProperty('height', '100px') // Default custom value
-                    return
-                  }
-                  updateProperty('height', value === 'auto' ? undefined : value)
-                }}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DIMENSION_OPTIONS.map(option => (
-                    <SelectItem key={option.value} value={option.value} className="text-xs">
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {isCustomHeight(properties.height) && (
-                <Input
-                  value={properties.height?.replace('px', '') || ''}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    updateProperty('height', val ? `${val}px` : undefined)
-                  }}
-                  className="h-8 text-xs"
-                  placeholder="Custom height in px"
-                  type="number"
-                />
-              )}
-            </div>
-          </div>
-
-          {/* Background Image - Available for all contexts */}
+          {/* Background Image - Show for all contexts */}
           <div>
             <Label className="text-xs font-medium">Background Image</Label>
             <div className="space-y-2 mt-1">
@@ -939,7 +810,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 value={properties.backgroundImage || ''}
                 onChange={(e) => updateProperty('backgroundImage', e.target.value)}
                 className="h-8 text-xs"
-                placeholder="https://example.com/image.jpg or choose from gallery"
+                placeholder="Enter URL or choose from gallery below"
               />
               <button
                 onClick={() => setShowGalleryModal(true)}
@@ -950,7 +821,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 </svg>
                 Choose from Gallery
               </button>
-              {properties.backgroundImage && (
+                {properties.backgroundImage && (
                   <>
                     <div className="p-2 border border-gray-200 rounded">
                       <p className="text-[9px] text-gray-600 mb-1">Preview:</p>
@@ -1044,9 +915,9 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                     </div>
                   </>
                 )}
-              </div>
+            </div>
 
-              {/* Gallery Modal */}
+            {/* Gallery Modal */}
               {showGalleryModal && (
                 <div
                   className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"

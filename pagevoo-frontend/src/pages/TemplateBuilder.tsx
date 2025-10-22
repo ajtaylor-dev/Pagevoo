@@ -2603,8 +2603,11 @@ padding: 1rem;`
       return
     }
 
-    // If template.id === 0 (new template), prompt for name like Word
-    if (template.id === 0) {
+    // Debug: Log template ID
+    console.log('Template ID:', template.id, 'Type:', typeof template.id)
+
+    // If template.id === 0 or undefined (new template), prompt for name like Word
+    if (!template.id || template.id === 0) {
       const templateName = prompt('Enter a template name:', template.name || 'Untitled Template')
       if (!templateName || templateName.trim() === '') {
         return // User cancelled or entered empty name

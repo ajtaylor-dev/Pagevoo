@@ -21,6 +21,12 @@ class TemplateFileGenerator
         if (!File::exists($this->baseDirectory)) {
             File::makeDirectory($this->baseDirectory, 0755, true);
         }
+
+        // Ensure image_galleries directory exists
+        $imageGalleriesDir = public_path('image_galleries');
+        if (!File::exists($imageGalleriesDir)) {
+            File::makeDirectory($imageGalleriesDir, 0755, true);
+        }
     }
 
     /**
@@ -41,17 +47,17 @@ class TemplateFileGenerator
             File::makeDirectory($templatePath, 0755, true);
         }
 
-        // Create assets directories
-        $assetsPath = $templatePath . '/assets';
-        File::ensureDirectoryExists($assetsPath . '/css', 0755, true);
-        File::ensureDirectoryExists($assetsPath . '/js', 0755, true);
-        File::ensureDirectoryExists($assetsPath . '/images', 0755, true);
+        // Create public/assets directories
+        $publicPath = $templatePath . '/public';
+        File::ensureDirectoryExists($publicPath . '/css', 0755, true);
+        File::ensureDirectoryExists($publicPath . '/js', 0755, true);
+        File::ensureDirectoryExists($publicPath . '/images', 0755, true);
 
-        // Copy images from template gallery
-        $this->copyTemplateImages($template, $assetsPath . '/images');
+        // Move images from temporary gallery to template folder
+        $this->copyTemplateImages($template, $publicPath . '/images');
 
         // Generate CSS file
-        $this->generateStylesheet($template, $assetsPath . '/css/style.css');
+        $this->generateStylesheet($template, $publicPath . '/css/style.css');
 
         // Generate HTML files for each page
         foreach ($template->pages as $page) {
@@ -102,7 +108,8 @@ class TemplateFileGenerator
     }
 
     /**
-     * Copy template images to assets folder
+     * Move template images from image_galleries to template assets folder
+     * Also updates image paths in database and deletes temporary gallery folder
      */
     protected function copyTemplateImages(Template $template, string $targetPath): void
     {
@@ -112,12 +119,201 @@ class TemplateFileGenerator
 
         File::ensureDirectoryExists($targetPath, 0755, true);
 
+        $updatedImages = [];
+        $hasChanges = false;
+
         foreach ($template->images as $image) {
             $sourcePath = public_path($image['path'] ?? '');
+
             if (File::exists($sourcePath)) {
                 $filename = basename($sourcePath);
-                File::copy($sourcePath, $targetPath . '/' . $filename);
+                $newPath = $targetPath . '/' . $filename;
+
+                // Check if image is still in image_galleries (needs to be moved)
+                if (str_contains($image['path'], 'image_galleries/')) {
+                    // Move the file
+                    File::move($sourcePath, $newPath);
+
+                    // Update path in database
+                    $image['path'] = "template_directory/{$template->template_slug}/public/images/{$filename}";
+                    $hasChanges = true;
+                } else {
+                    // Image already in template directory, just copy
+                    File::copy($sourcePath, $newPath);
+                }
             }
+
+            $updatedImages[] = $image;
+        }
+
+        // Update template with new image paths if changes were made
+        if ($hasChanges) {
+            $template->update(['images' => $updatedImages]);
+
+            // Also update CSS references and HTML img src in all sections
+            $this->updateCssImagePaths($template);
+            $this->updateHtmlImagePaths($template);
+        }
+
+        // Delete temporary image_galleries folder after moving all images
+        $tempGalleryPath = public_path("image_galleries/template_{$template->id}");
+        if (File::exists($tempGalleryPath)) {
+            File::deleteDirectory($tempGalleryPath);
+            \Log::info("Deleted temporary gallery folder: {$tempGalleryPath}");
+        }
+    }
+
+    /**
+     * Update CSS references from image_galleries to template directory
+     */
+    protected function updateCssImagePaths(Template $template): void
+    {
+        $oldUrlPattern = url("image_galleries/template_{$template->id}/");
+        $newUrlPattern = url("template_directory/{$template->template_slug}/public/images/");
+
+        $hasUpdates = false;
+
+        // Update custom_css at template level
+        if ($template->custom_css) {
+            $updatedCss = str_replace($oldUrlPattern, $newUrlPattern, $template->custom_css);
+            if ($updatedCss !== $template->custom_css) {
+                $template->custom_css = $updatedCss;
+                $hasUpdates = true;
+            }
+        }
+
+        // Update CSS in all pages
+        foreach ($template->pages as $page) {
+            $pageUpdated = false;
+
+            // Update page-level CSS
+            if ($page->css) {
+                $updatedCss = str_replace($oldUrlPattern, $newUrlPattern, $page->css);
+                if ($updatedCss !== $page->css) {
+                    $page->css = $updatedCss;
+                    $pageUpdated = true;
+                }
+            }
+
+            // Update section-level CSS
+            foreach ($page->sections as $section) {
+                $sectionUpdated = false;
+
+                // Update css column if it exists
+                if ($section->css) {
+                    $updatedCss = str_replace($oldUrlPattern, $newUrlPattern, $section->css);
+                    if ($updatedCss !== $section->css) {
+                        $section->css = $updatedCss;
+                        $sectionUpdated = true;
+                    }
+                }
+
+                // Update CSS in content JSON (section.content.css, section.content.content_css, etc.)
+                $content = $section->content;
+                if (is_array($content)) {
+                    $contentUpdated = false;
+
+                    // Check section.content.css
+                    if (isset($content['css']) && is_string($content['css']) && str_contains($content['css'], 'image_galleries')) {
+                        $content['css'] = str_replace($oldUrlPattern, $newUrlPattern, $content['css']);
+                        $contentUpdated = true;
+                    }
+
+                    // Check section.content.content_css (row and column CSS)
+                    if (isset($content['content_css']) && is_array($content['content_css'])) {
+                        foreach ($content['content_css'] as $key => $cssValue) {
+                            if (is_string($cssValue) && str_contains($cssValue, 'image_galleries')) {
+                                $content['content_css'][$key] = str_replace($oldUrlPattern, $newUrlPattern, $cssValue);
+                                $contentUpdated = true;
+                            }
+                        }
+                    }
+
+                    if ($contentUpdated) {
+                        $section->content = $content;
+                        $sectionUpdated = true;
+                    }
+                }
+
+                if ($sectionUpdated) {
+                    $section->save();
+                    $pageUpdated = true;
+                }
+            }
+
+            if ($pageUpdated) {
+                $page->save();
+                $hasUpdates = true;
+            }
+        }
+
+        if ($hasUpdates) {
+            $template->save();
+            \Log::info("Updated CSS image paths from image_galleries to template directory");
+        }
+    }
+
+    /**
+     * Update HTML img src references from image_galleries to template directory
+     */
+    protected function updateHtmlImagePaths(Template $template): void
+    {
+        $oldUrlPattern = url("image_galleries/template_{$template->id}/");
+        $newUrlPattern = url("template_directory/{$template->template_slug}/public/images/");
+
+        $hasUpdates = false;
+
+        // Update HTML content in all pages and sections
+        foreach ($template->pages as $page) {
+            $pageUpdated = false;
+
+            foreach ($page->sections as $section) {
+                $content = $section->content;
+
+                if (!is_array($content)) {
+                    continue;
+                }
+
+                $sectionUpdated = false;
+
+                // Update all string fields in content (title, subtitle, heading, etc.)
+                foreach ($content as $key => $value) {
+                    if (is_string($value) && str_contains($value, 'image_galleries')) {
+                        $updatedValue = str_replace($oldUrlPattern, $newUrlPattern, $value);
+                        if ($updatedValue !== $value) {
+                            $content[$key] = $updatedValue;
+                            $sectionUpdated = true;
+                        }
+                    }
+                }
+
+                // Update columns array if it exists (for grid sections)
+                if (isset($content['columns']) && is_array($content['columns'])) {
+                    foreach ($content['columns'] as $colIndex => $column) {
+                        if (isset($column['content']) && is_string($column['content']) && str_contains($column['content'], 'image_galleries')) {
+                            $updatedContent = str_replace($oldUrlPattern, $newUrlPattern, $column['content']);
+                            if ($updatedContent !== $column['content']) {
+                                $content['columns'][$colIndex]['content'] = $updatedContent;
+                                $sectionUpdated = true;
+                            }
+                        }
+                    }
+                }
+
+                if ($sectionUpdated) {
+                    $section->content = $content;
+                    $section->save();
+                    $pageUpdated = true;
+                }
+            }
+
+            if ($pageUpdated) {
+                $hasUpdates = true;
+            }
+        }
+
+        if ($hasUpdates) {
+            \Log::info("Updated HTML image paths from image_galleries to template directory");
         }
     }
 
@@ -452,7 +648,7 @@ class TemplateFileGenerator
         if ($page->meta_description) {
             $html .= "  <meta name=\"description\" content=\"{$page->meta_description}\">\n";
         }
-        $html .= "  <link rel=\"stylesheet\" href=\"assets/css/style.css\">\n";
+        $html .= "  <link rel=\"stylesheet\" href=\"public/css/style.css\">\n";
         $html .= "</head>\n";
         $html .= "<body>\n\n";
 
@@ -572,18 +768,25 @@ class TemplateFileGenerator
      */
     public function deleteTemplateFiles(Template $template): bool
     {
-        if (!$template->template_slug) {
-            return false;
+        $deleted = false;
+
+        // Delete template directory
+        if ($template->template_slug) {
+            $templatePath = $this->getTemplatePath($template);
+            if (File::exists($templatePath)) {
+                File::deleteDirectory($templatePath);
+                $deleted = true;
+            }
         }
 
-        $templatePath = $this->getTemplatePath($template);
-
-        if (File::exists($templatePath)) {
-            File::deleteDirectory($templatePath);
-            return true;
+        // Delete temporary image gallery if it exists
+        $tempGalleryPath = public_path("image_galleries/template_{$template->id}");
+        if (File::exists($tempGalleryPath)) {
+            File::deleteDirectory($tempGalleryPath);
+            $deleted = true;
         }
 
-        return false;
+        return $deleted;
     }
 
     /**

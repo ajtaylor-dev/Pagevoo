@@ -28,7 +28,9 @@
       "Bash(powershell:*)",
       "Bash(timeout 15 npm run dev)",
       "Bash(timeout:*)",
-      "Bash(del nul)"
+      "Bash(del nul)",
+      "Bash(git checkout:*)",
+      "Read(//d//**)"
     ],
     "deny": [],
     "ask": []
