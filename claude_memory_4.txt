@@ -166,7 +166,29 @@ if (activeTab === 'simplified') {
 
 ### Next Session Planning
 
-**Potential Areas**:
+**CRITICAL PRIORITY - Default CSS Values Consistency**:
+
+**Problem**: Default CSS values across site, page, section, column, and row are inconsistent. When a section/row/column is added or modified, the default values shown in dropdown options, input boxes, and checkboxes don't match the actual CSS code generated.
+
+**Required Fix**:
+1. Audit all default values in StyleEditor.tsx for each context (site/page/section/row/column)
+2. Ensure dropdown selections reflect actual CSS defaults
+3. Ensure input boxes show correct default values
+4. Ensure CSS generation matches UI defaults from the moment element is created
+5. Create consistent defaults across all element types
+6. Test that adding a new section/row/column immediately shows correct defaults in both UI and CSS code
+
+**Example Issues to Fix**:
+- Display dropdown might show "Block" but CSS doesn't include `display: block`
+- Width/height might show "Auto" but CSS doesn't reflect this
+- Position, overflow, float defaults need verification
+- All sliders (padding, margin, etc.) need default value consistency
+
+**Goal**: When user adds/selects any element, the StyleEditor UI should immediately show the exact state that matches the generated CSS, with no discrepancies.
+
+---
+
+**Other Potential Areas** (lower priority):
 1. Additional CSS properties (flex properties, grid properties, text-align, etc.)
 2. Testing and refinement of new layout controls
 3. Additional template features
