@@ -1,0 +1,179 @@
+# Pagevoo Development Memory - Part 4
+
+**Project**: Pagevoo Template Builder
+**Stack**: React 19 + TypeScript + Vite (Frontend) | Laravel 12 + MySQL (Backend)
+**Started**: Session 26 (continued from claude_memory_3.txt)
+
+---
+
+## Session 26 (Completed) - Dimension Controls & Layout Options
+
+### Date: 2025-10-23
+
+### Overview
+Fixed critical bugs in width/height controls and added comprehensive layout options (display, overflow, float) to the StyleEditor component.
+
+### Issues Fixed
+
+#### 1. Width/Height Custom Input Race Condition
+**Problem**: Width value would reset to 0px when changing height dropdown or typing in height input.
+
+**Root Cause**: React state batching and asynchronous updates caused race conditions where:
+- Dropdown handlers used stale `properties` state
+- Input `onChange` handlers called `updateProperty` which spread stale state
+- Multiple state updates fired simultaneously, losing values
+
+**Solution**: Implemented "preserve dimension values" pattern across ALL dimension controls:
+- Width dropdown handler
+- Height dropdown handler
+- Min-width dropdown handler
+- Min-height dropdown handler
+- Width input onChange
+- Height input onChange
+- Min-width input onChange
+- Min-height input onChange
+
+**Pattern Applied**:
+```typescript
+// In dropdown/input handlers when value === 'custom' or onChange
+const newProps = { ...properties }
+if (customWidthInput) newProps.width = customWidthInput
+if (customHeightInput) newProps.height = customHeightInput
+if (customMinWidthInput) newProps.minWidth = customMinWidthInput
+if (customMinHeightInput) newProps.minHeight = customMinHeightInput
+newProps.[currentDimension] = [newValue]
+
+setProperties(newProps)
+if (activeTab === 'simplified') {
+  const newCSS = generateCSS(newProps)
+  setRawCSS(newCSS)
+  onChange(newCSS)
+}
+```
+
+**Files Modified**:
+- `pagevoo-frontend/src/components/StyleEditor.tsx`
+  - Width dropdown: lines 963-988
+  - Height dropdown: lines 1028-1053
+  - Min-width dropdown: lines 1118-1143
+  - Min-height dropdown: lines 1196-1221
+  - Width input: lines 1001-1036
+  - Height input: lines 1091-1126
+  - Min-width input: lines 1180-1215
+  - Min-height input: lines 1270-1305
+
+**Testing Workflow**:
+1. Set width to "50%" ✅
+2. Select custom height → shows 100px ✅
+3. Type "200px" in height input ✅
+4. Width remains "50%" (not 0px) ✅
+5. CSS code shows: `width: 50%; height: 200px;` ✅
+
+### Features Added
+
+#### 2. Display Property Dropdown
+**Purpose**: Control CSS display property for layout flexibility
+
+**Options**:
+- Block
+- Inline Block
+- Flex
+- Inline Flex
+- Grid
+- Inline Grid
+- Inline
+- None
+
+**Availability**: Sections, rows, and columns only (not page-level)
+
+**Implementation**:
+- Interface: Added `display?: string` to `StyleProperty` (line 40)
+- Options: `DISPLAY_OPTIONS` array (lines 168-177)
+- Parsing: CSS regex extraction (lines 360-362)
+- Generation: CSS output (line 475)
+- UI: Dropdown control (lines 985-1005)
+
+#### 3. Overflow Property Dropdown
+**Purpose**: Control content overflow behavior
+
+**Options**:
+- Visible (default)
+- Hidden
+- Auto
+- Scroll
+- Clip
+
+**Availability**: Sections, rows, and columns only
+
+**Implementation**:
+- Interface: Added `overflow?: string` to `StyleProperty` (line 41)
+- Options: `OVERFLOW_OPTIONS` array (lines 180-186)
+- Parsing: CSS regex extraction (lines 364-366)
+- Generation: CSS output (line 476)
+- UI: Dropdown control (lines 1007-1027)
+
+#### 4. Float Property Dropdown
+**Purpose**: Control element floating and centering
+
+**Options**:
+- None (default)
+- Left (`float: left`)
+- Right (`float: right`)
+- Center (margin auto) (`margin: 0 auto`)
+
+**Special Handling**: "Center" option outputs `margin: 0 auto` instead of `float: center`
+
+**Availability**: Sections, rows, and columns only
+
+**Implementation**:
+- Interface: Added `float?: string` to `StyleProperty` (line 42)
+- Options: `FLOAT_OPTIONS` array (lines 188-193)
+- Parsing: CSS regex extraction with special margin auto detection (lines 368-374)
+  - Detects `float: left/right`
+  - Detects `margin: 0 auto` and sets float to 'center'
+- Generation: Smart CSS output (lines 477-483)
+  - 'center' → `margin: 0 auto;`
+  - 'left'/'right' → `float: left/right;`
+  - 'none' → no output
+- UI: Dropdown control (lines 1053-1073)
+
+**Bug Fix**: Changed variable from `marginMatch` to `marginAutoMatch` to avoid conflict with existing margin parsing (line 373)
+
+### Technical Patterns Discovered
+
+1. **React State Batching**: Multiple `setState` calls in sequence can batch and use stale state
+2. **Local State Buffer**: Using local state (`customWidthInput`, etc.) prevents parent state updates from interfering
+3. **Atomic Updates**: Manually building complete property objects ensures all values update together
+4. **useRef for Initialization**: Tracking initialization state without triggering re-renders
+
+### Files Modified
+
+**StyleEditor.tsx** (`pagevoo-frontend/src/components/StyleEditor.tsx`):
+- Lines 34-42: Interface updates (dimensions + layout properties)
+- Lines 168-193: Option arrays (DISPLAY_OPTIONS, OVERFLOW_OPTIONS, FLOAT_OPTIONS)
+- Lines 352-374: CSS parsing (display, overflow, float)
+- Lines 475-483: CSS generation (display, overflow, float with smart margin handling)
+- Lines 647-672: State initialization in useEffect
+- Lines 963-1305: Dimension controls with race condition fixes
+- Lines 985-1073: Layout controls (display, overflow, flo UI)
+
+### Current Status
+
+✅ Session 26 - COMPLETE
+✅ Width/height race condition - FIXED
+✅ Dimension controls - WORKING (width, height, min-width, min-height)
+✅ Layout controls - ADDED (display, overflow, float)
+
+### Next Session Planning
+
+**Potential Areas**:
+1. Additional CSS properties (flex properties, grid properties, text-align, etc.)
+2. Testing and refinement of new layout controls
+3. Additional template features
+4. Performance optimization
+
+## Last Updated
+2025-10-23 (Session 26 completed - Dimension controls fixed, layout options added)
+
+---
+Note: This is a continuation of claude_memory_3.txt. Sessions 1-25 documented in previous memory files.

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Slider } from '@/components/ui/slider'
 import { HexColorPicker } from 'react-colorful'
@@ -34,6 +34,12 @@ interface StyleProperty {
   // Dimensions
   width?: string
   height?: string
+  minWidth?: string
+  minHeight?: string
+  // Layout
+  display?: string
+  overflow?: string
+  float?: string
 }
 
 interface StyleEditorProps {
@@ -130,13 +136,60 @@ const TEXT_DECORATION_OPTIONS = [
   { value: 'line-through', label: 'Line Through' },
 ]
 
-const DIMENSION_OPTIONS = [
+const WIDTH_OPTIONS = [
+  { value: 'auto', label: 'Auto' },
+  { value: '100%', label: '100%' },
+  { value: 'fit-content', label: 'Fit Content' },
+  { value: 'custom', label: 'Custom' },
+]
+
+const HEIGHT_OPTIONS = [
   { value: 'auto', label: 'Auto' },
   { value: '100%', label: '100%' },
   { value: '100vh', label: '100vh' },
-  { value: '100vw', label: '100vw' },
   { value: 'fit-content', label: 'Fit Content' },
-  { value: 'custom', label: 'Custom (px)' },
+  { value: 'custom', label: 'Custom' },
+]
+
+const MIN_WIDTH_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: '100%', label: '100%' },
+  { value: 'fit-content', label: 'Fit Content' },
+  { value: 'custom', label: 'Custom' },
+]
+
+const MIN_HEIGHT_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: '100%', label: '100%' },
+  { value: '100vh', label: '100vh' },
+  { value: 'fit-content', label: 'Fit Content' },
+  { value: 'custom', label: 'Custom' },
+]
+
+const DISPLAY_OPTIONS = [
+  { value: 'block', label: 'Block' },
+  { value: 'inline-block', label: 'Inline Block' },
+  { value: 'flex', label: 'Flex' },
+  { value: 'inline-flex', label: 'Inline Flex' },
+  { value: 'grid', label: 'Grid' },
+  { value: 'inline-grid', label: 'Inline Grid' },
+  { value: 'inline', label: 'Inline' },
+  { value: 'none', label: 'None' },
+]
+
+const OVERFLOW_OPTIONS = [
+  { value: 'visible', label: 'Visible' },
+  { value: 'hidden', label: 'Hidden' },
+  { value: 'auto', label: 'Auto' },
+  { value: 'scroll', label: 'Scroll' },
+  { value: 'clip', label: 'Clip' },
+]
+
+const FLOAT_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'left', label: 'Left' },
+  { value: 'right', label: 'Right' },
+  { value: 'center', label: 'Center (margin auto)' },
 ]
 
 export function StyleEditor({ value, onChange, context, showFontSelector = false, galleryImages, onOpenGallery }: StyleEditorProps) {
@@ -171,16 +224,42 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const [editingLinkHoverColor, setEditingLinkHoverColor] = useState(false)
   const [editingLinkVisitedColor, setEditingLinkVisitedColor] = useState(false)
   const [editingLinkActiveColor, setEditingLinkActiveColor] = useState(false)
+  const [showCustomWidthInput, setShowCustomWidthInput] = useState(false)
+  const [showCustomHeightInput, setShowCustomHeightInput] = useState(false)
+  const [showCustomMinWidthInput, setShowCustomMinWidthInput] = useState(false)
+  const [showCustomMinHeightInput, setShowCustomMinHeightInput] = useState(false)
 
-  // Helper to determine if width/height is custom
+  // Local state for custom dimension inputs to prevent fighting with parsed CSS
+  const [customWidthInput, setCustomWidthInput] = useState('')
+  const [customHeightInput, setCustomHeightInput] = useState('')
+  const [customMinWidthInput, setCustomMinWidthInput] = useState('')
+  const [customMinHeightInput, setCustomMinHeightInput] = useState('')
+
+  // Refs to track if we've initialized custom inputs from loaded CSS
+  const widthInitialized = useRef(false)
+  const heightInitialized = useRef(false)
+  const minWidthInitialized = useRef(false)
+  const minHeightInitialized = useRef(false)
+
+  // Helper to determine if width/height/min is custom
   const isCustomWidth = (width: string | undefined) => {
     if (!width) return false
-    return !['auto', '100%', '100vh', '100vw', 'fit-content'].includes(width)
+    return !['auto', '100%', 'fit-content'].includes(width)
   }
 
   const isCustomHeight = (height: string | undefined) => {
     if (!height) return false
-    return !['auto', '100%', '100vh', '100vw', 'fit-content'].includes(height)
+    return !['auto', '100%', '100vh', 'fit-content'].includes(height)
+  }
+
+  const isCustomMinWidth = (minWidth: string | undefined) => {
+    if (!minWidth) return false
+    return !['none', '100%', 'fit-content'].includes(minWidth)
+  }
+
+  const isCustomMinHeight = (minHeight: string | undefined) => {
+    if (!minHeight) return false
+    return !['none', '100%', '100vh', 'fit-content'].includes(minHeight)
   }
 
   // Parse CSS string to extract visual properties
@@ -263,12 +342,36 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     if (opacityMatch) props.opacity = parseFloat(opacityMatch[1])
 
     // Width
-    const widthMatch = css.match(/width:\s*([^;]+);?/i)
+    const widthMatch = css.match(/(?<!min-)width:\s*([^;]+);?/i)
     if (widthMatch) props.width = widthMatch[1].trim()
 
     // Height
-    const heightMatch = css.match(/height:\s*([^;]+);?/i)
+    const heightMatch = css.match(/(?<!min-)height:\s*([^;]+);?/i)
     if (heightMatch) props.height = heightMatch[1].trim()
+
+    // Min-width
+    const minWidthMatch = css.match(/min-width:\s*([^;]+);?/i)
+    if (minWidthMatch) props.minWidth = minWidthMatch[1].trim()
+
+    // Min-height
+    const minHeightMatch = css.match(/min-height:\s*([^;]+);?/i)
+    if (minHeightMatch) props.minHeight = minHeightMatch[1].trim()
+
+    // Display
+    const displayMatch = css.match(/display:\s*([^;]+);?/i)
+    if (displayMatch) props.display = displayMatch[1].trim()
+
+    // Overflow
+    const overflowMatch = css.match(/overflow:\s*([^;]+);?/i)
+    if (overflowMatch) props.overflow = overflowMatch[1].trim()
+
+    // Float
+    const floatMatch = css.match(/float:\s*([^;]+);?/i)
+    if (floatMatch) props.float = floatMatch[1].trim()
+
+    // Check if margin is set to "0 auto" which indicates centering
+    const marginAutoMatch = css.match(/margin:\s*0\s+auto;?/i)
+    if (marginAutoMatch) props.float = 'center'
 
     // Link color (a { color: ... })
     const linkColorMatch = css.match(/a\s*\{[^}]*color:\s*([^;}\n]+)/i)
@@ -369,8 +472,19 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     if (props.borderColor) css += `border-color: ${props.borderColor};\n`
     if (props.borderStyle) css += `border-style: ${props.borderStyle};\n`
     if (props.position && props.position !== 'static') css += `position: ${props.position};\n`
+    if (props.display) css += `display: ${props.display};\n`
+    if (props.overflow) css += `overflow: ${props.overflow};\n`
+    if (props.float) {
+      if (props.float === 'center') {
+        css += `margin: 0 auto;\n`
+      } else if (props.float !== 'none') {
+        css += `float: ${props.float};\n`
+      }
+    }
     if (props.width) css += `width: ${props.width};\n`
     if (props.height) css += `height: ${props.height};\n`
+    if (props.minWidth && props.minWidth !== 'none') css += `min-width: ${props.minWidth};\n`
+    if (props.minHeight && props.minHeight !== 'none') css += `min-height: ${props.minHeight};\n`
     if (props.backgroundImage) {
       css += `background-image: url('${props.backgroundImage}');\n`
       if (props.backgroundSize) css += `background-size: ${props.backgroundSize};\n`
@@ -549,6 +663,13 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       borderColor: parsed.borderColor,
       borderStyle: parsed.borderStyle ?? 'solid',
       position: parsed.position ?? 'static',
+      width: parsed.width,
+      height: parsed.height,
+      minWidth: parsed.minWidth,
+      minHeight: parsed.minHeight,
+      display: parsed.display,
+      overflow: parsed.overflow,
+      float: parsed.float,
       backgroundImage: parsed.backgroundImage,
       backgroundSize: parsed.backgroundSize,
       backgroundPosition: parsed.backgroundPosition,
@@ -562,6 +683,56 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       linkTextDecoration: parsed.linkTextDecoration,
       linkHoverTextDecoration: parsed.linkHoverTextDecoration,
     })
+
+    // Initialize custom input visibility and values based on parsed values
+    const customWidth = isCustomWidth(parsed.width)
+    const customHeight = isCustomHeight(parsed.height)
+    const customMinWidth = isCustomMinWidth(parsed.minWidth)
+    const customMinHeight = isCustomMinHeight(parsed.minHeight)
+
+    setShowCustomWidthInput(customWidth)
+    setShowCustomHeightInput(customHeight)
+    setShowCustomMinWidthInput(customMinWidth)
+    setShowCustomMinHeightInput(customMinHeight)
+
+    // Initialize custom input values ONLY on first load if they have custom values
+    // After that, leave them alone to prevent reset issues
+    if (customWidth && !widthInitialized.current && parsed.width) {
+      setCustomWidthInput(parsed.width)
+      widthInitialized.current = true
+    }
+    if (!customWidth) {
+      widthInitialized.current = false
+      setCustomWidthInput('')
+    }
+
+    if (customHeight && !heightInitialized.current && parsed.height) {
+      setCustomHeightInput(parsed.height)
+      heightInitialized.current = true
+    }
+    if (!customHeight) {
+      heightInitialized.current = false
+      setCustomHeightInput('')
+    }
+
+    if (customMinWidth && !minWidthInitialized.current && parsed.minWidth) {
+      setCustomMinWidthInput(parsed.minWidth)
+      minWidthInitialized.current = true
+    }
+    if (!customMinWidth) {
+      minWidthInitialized.current = false
+      setCustomMinWidthInput('')
+    }
+
+    if (customMinHeight && !minHeightInitialized.current && parsed.minHeight) {
+      setCustomMinHeightInput(parsed.minHeight)
+      minHeightInitialized.current = true
+    }
+    if (!customMinHeight) {
+      minHeightInitialized.current = false
+      setCustomMinHeightInput('')
+    }
+
     setRawCSS(value)
   }, [value, editingLinkColor, editingLinkHoverColor, editingLinkVisitedColor, editingLinkActiveColor])
 
@@ -835,6 +1006,72 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </Select>
           </div>
 
+          {/* Display - Only for section, row, column */}
+          {(context === 'section' || context === 'row' || context === 'column') && (
+            <div>
+              <Label className="text-xs font-medium">Display</Label>
+              <Select
+                value={properties.display || 'block'}
+                onValueChange={(value) => updateProperty('display', value)}
+              >
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DISPLAY_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Overflow - Only for section, row, column */}
+          {(context === 'section' || context === 'row' || context === 'column') && (
+            <div>
+              <Label className="text-xs font-medium">Overflow</Label>
+              <Select
+                value={properties.overflow || 'visible'}
+                onValueChange={(value) => updateProperty('overflow', value)}
+              >
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {OVERFLOW_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Float - Only for section, row, column */}
+          {(context === 'section' || context === 'row' || context === 'column') && (
+            <div>
+              <Label className="text-xs font-medium">Float</Label>
+              <Select
+                value={properties.float || 'none'}
+                onValueChange={(value) => updateProperty('float', value)}
+              >
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {FLOAT_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {/* Width */}
           <div>
             <Label className="text-xs font-medium">Width</Label>
@@ -844,40 +1081,81 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                   !properties.width ? 'auto' :
                   properties.width === 'auto' ? 'auto' :
                   properties.width === '100%' ? '100%' :
-                  properties.width === '100vh' ? '100vh' :
-                  properties.width === '100vw' ? '100vw' :
                   properties.width === 'fit-content' ? 'fit-content' :
                   'custom'
                 }
                 onValueChange={(value) => {
                   if (value === 'custom') {
-                    updateProperty('width', '300px') // Default custom value
-                    return
+                    setShowCustomWidthInput(true)
+                    setCustomWidthInput('300px')
+                    widthInitialized.current = true
+
+                    // Preserve other dimension values from local state
+                    const newProps = { ...properties }
+                    if (customHeightInput) newProps.height = customHeightInput
+                    if (customMinWidthInput) newProps.minWidth = customMinWidthInput
+                    if (customMinHeightInput) newProps.minHeight = customMinHeightInput
+                    newProps.width = '300px'
+
+                    setProperties(newProps)
+                    if (activeTab === 'simplified') {
+                      const newCSS = generateCSS(newProps)
+                      setRawCSS(newCSS)
+                      onChange(newCSS)
+                    }
+                  } else {
+                    setShowCustomWidthInput(false)
+                    setCustomWidthInput('')
+                    widthInitialized.current = false
+                    updateProperty('width', value === 'auto' ? undefined : value)
                   }
-                  updateProperty('width', value === 'auto' ? undefined : value)
                 }}
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DIMENSION_OPTIONS.map(option => (
+                  {WIDTH_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value} className="text-xs">
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {isCustomWidth(properties.width) && (
+              {showCustomWidthInput && (
                 <Input
-                  value={properties.width?.replace('px', '') || ''}
+                  value={customWidthInput}
                   onChange={(e) => {
                     const val = e.target.value
-                    updateProperty('width', val ? `${val}px` : undefined)
+                    setCustomWidthInput(val)
+                    // Update CSS immediately on every keystroke
+                    if (val.trim()) {
+                      // Preserve other dimension values from local state
+                      const newProps = { ...properties }
+                      if (customHeightInput) newProps.height = customHeightInput
+                      if (customMinWidthInput) newProps.minWidth = customMinWidthInput
+                      if (customMinHeightInput) newProps.minHeight = customMinHeightInput
+                      newProps.width = val.trim()
+
+                      setProperties(newProps)
+                      if (activeTab === 'simplified') {
+                        const newCSS = generateCSS(newProps)
+                        setRawCSS(newCSS)
+                        onChange(newCSS)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim()
+                    if (!val) {
+                      setShowCustomWidthInput(false)
+                      setCustomWidthInput('')
+                      updateProperty('width', undefined)
+                    }
                   }}
                   className="h-8 text-xs"
-                  placeholder="Custom width in px"
-                  type="number"
+                  placeholder="e.g. 300px, 50%, 20rem"
+                  type="text"
                 />
               )}
             </div>
@@ -893,39 +1171,260 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                   properties.height === 'auto' ? 'auto' :
                   properties.height === '100%' ? '100%' :
                   properties.height === '100vh' ? '100vh' :
-                  properties.height === '100vw' ? '100vw' :
                   properties.height === 'fit-content' ? 'fit-content' :
                   'custom'
                 }
                 onValueChange={(value) => {
                   if (value === 'custom') {
-                    updateProperty('height', '100px') // Default custom value
-                    return
+                    setShowCustomHeightInput(true)
+                    setCustomHeightInput('100px')
+                    heightInitialized.current = true
+
+                    // Preserve other dimension values from local state
+                    const newProps = { ...properties }
+                    if (customWidthInput) newProps.width = customWidthInput
+                    if (customMinWidthInput) newProps.minWidth = customMinWidthInput
+                    if (customMinHeightInput) newProps.minHeight = customMinHeightInput
+                    newProps.height = '100px'
+
+                    setProperties(newProps)
+                    if (activeTab === 'simplified') {
+                      const newCSS = generateCSS(newProps)
+                      setRawCSS(newCSS)
+                      onChange(newCSS)
+                    }
+                  } else {
+                    setShowCustomHeightInput(false)
+                    setCustomHeightInput('')
+                    heightInitialized.current = false
+                    updateProperty('height', value === 'auto' ? undefined : value)
                   }
-                  updateProperty('height', value === 'auto' ? undefined : value)
                 }}
               >
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {DIMENSION_OPTIONS.map(option => (
+                  {HEIGHT_OPTIONS.map(option => (
                     <SelectItem key={option.value} value={option.value} className="text-xs">
                       {option.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {isCustomHeight(properties.height) && (
+              {showCustomHeightInput && (
                 <Input
-                  value={properties.height?.replace('px', '') || ''}
+                  value={customHeightInput}
                   onChange={(e) => {
                     const val = e.target.value
-                    updateProperty('height', val ? `${val}px` : undefined)
+                    setCustomHeightInput(val)
+                    // Update CSS immediately on every keystroke
+                    if (val.trim()) {
+                      // Preserve other dimension values from local state
+                      const newProps = { ...properties }
+                      if (customWidthInput) newProps.width = customWidthInput
+                      if (customMinWidthInput) newProps.minWidth = customMinWidthInput
+                      if (customMinHeightInput) newProps.minHeight = customMinHeightInput
+                      newProps.height = val.trim()
+
+                      setProperties(newProps)
+                      if (activeTab === 'simplified') {
+                        const newCSS = generateCSS(newProps)
+                        setRawCSS(newCSS)
+                        onChange(newCSS)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim()
+                    if (!val) {
+                      setShowCustomHeightInput(false)
+                      setCustomHeightInput('')
+                      updateProperty('height', undefined)
+                    }
                   }}
                   className="h-8 text-xs"
-                  placeholder="Custom height in px"
-                  type="number"
+                  placeholder="e.g. 100px, 50vh, 10rem"
+                  type="text"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Min-Width */}
+          <div>
+            <Label className="text-xs font-medium">Min-Width</Label>
+            <div className="space-y-1 mt-1">
+              <Select
+                value={
+                  !properties.minWidth ? 'none' :
+                  properties.minWidth === 'none' ? 'none' :
+                  properties.minWidth === '100%' ? '100%' :
+                  properties.minWidth === 'fit-content' ? 'fit-content' :
+                  'custom'
+                }
+                onValueChange={(value) => {
+                  if (value === 'custom') {
+                    setShowCustomMinWidthInput(true)
+                    setCustomMinWidthInput('200px')
+                    minWidthInitialized.current = true
+
+                    // Preserve other dimension values from local state
+                    const newProps = { ...properties }
+                    if (customWidthInput) newProps.width = customWidthInput
+                    if (customHeightInput) newProps.height = customHeightInput
+                    if (customMinHeightInput) newProps.minHeight = customMinHeightInput
+                    newProps.minWidth = '200px'
+
+                    setProperties(newProps)
+                    if (activeTab === 'simplified') {
+                      const newCSS = generateCSS(newProps)
+                      setRawCSS(newCSS)
+                      onChange(newCSS)
+                    }
+                  } else {
+                    setShowCustomMinWidthInput(false)
+                    setCustomMinWidthInput('')
+                    minWidthInitialized.current = false
+                    updateProperty('minWidth', value === 'none' ? undefined : value)
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MIN_WIDTH_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {showCustomMinWidthInput && (
+                <Input
+                  value={customMinWidthInput}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setCustomMinWidthInput(val)
+                    // Update CSS immediately on every keystroke
+                    if (val.trim()) {
+                      // Preserve other dimension values from local state
+                      const newProps = { ...properties }
+                      if (customWidthInput) newProps.width = customWidthInput
+                      if (customHeightInput) newProps.height = customHeightInput
+                      if (customMinHeightInput) newProps.minHeight = customMinHeightInput
+                      newProps.minWidth = val.trim()
+
+                      setProperties(newProps)
+                      if (activeTab === 'simplified') {
+                        const newCSS = generateCSS(newProps)
+                        setRawCSS(newCSS)
+                        onChange(newCSS)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim()
+                    if (!val) {
+                      setShowCustomMinWidthInput(false)
+                      setCustomMinWidthInput('')
+                      updateProperty('minWidth', undefined)
+                    }
+                  }}
+                  className="h-8 text-xs"
+                  placeholder="e.g. 200px, 30%, 15rem"
+                  type="text"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Min-Height */}
+          <div>
+            <Label className="text-xs font-medium">Min-Height</Label>
+            <div className="space-y-1 mt-1">
+              <Select
+                value={
+                  !properties.minHeight ? 'none' :
+                  properties.minHeight === 'none' ? 'none' :
+                  properties.minHeight === '100%' ? '100%' :
+                  properties.minHeight === '100vh' ? '100vh' :
+                  properties.minHeight === 'fit-content' ? 'fit-content' :
+                  'custom'
+                }
+                onValueChange={(value) => {
+                  if (value === 'custom') {
+                    setShowCustomMinHeightInput(true)
+                    setCustomMinHeightInput('100px')
+                    minHeightInitialized.current = true
+
+                    // Preserve other dimension values from local state
+                    const newProps = { ...properties }
+                    if (customWidthInput) newProps.width = customWidthInput
+                    if (customHeightInput) newProps.height = customHeightInput
+                    if (customMinWidthInput) newProps.minWidth = customMinWidthInput
+                    newProps.minHeight = '100px'
+
+                    setProperties(newProps)
+                    if (activeTab === 'simplified') {
+                      const newCSS = generateCSS(newProps)
+                      setRawCSS(newCSS)
+                      onChange(newCSS)
+                    }
+                  } else {
+                    setShowCustomMinHeightInput(false)
+                    setCustomMinHeightInput('')
+                    minHeightInitialized.current = false
+                    updateProperty('minHeight', value === 'none' ? undefined : value)
+                  }
+                }}
+              >
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MIN_HEIGHT_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {showCustomMinHeightInput && (
+                <Input
+                  value={customMinHeightInput}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setCustomMinHeightInput(val)
+                    // Update CSS immediately on every keystroke
+                    if (val.trim()) {
+                      // Preserve other dimension values from local state
+                      const newProps = { ...properties }
+                      if (customWidthInput) newProps.width = customWidthInput
+                      if (customHeightInput) newProps.height = customHeightInput
+                      if (customMinWidthInput) newProps.minWidth = customMinWidthInput
+                      newProps.minHeight = val.trim()
+
+                      setProperties(newProps)
+                      if (activeTab === 'simplified') {
+                        const newCSS = generateCSS(newProps)
+                        setRawCSS(newCSS)
+                        onChange(newCSS)
+                      }
+                    }
+                  }}
+                  onBlur={(e) => {
+                    const val = e.target.value.trim()
+                    if (!val) {
+                      setShowCustomMinHeightInput(false)
+                      setCustomMinHeightInput('')
+                      updateProperty('minHeight', undefined)
+                    }
+                  }}
+                  className="h-8 text-xs"
+                  placeholder="e.g. 100px, 30vh, 10rem"
+                  type="text"
                 />
               )}
             </div>
