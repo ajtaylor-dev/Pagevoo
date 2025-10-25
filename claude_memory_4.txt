@@ -194,8 +194,485 @@ if (activeTab === 'simplified') {
 3. Additional template features
 4. Performance optimization
 
+---
+
+## Session 27 (Completed) - CSS Defaults Consistency & Parser Improvements
+
+### Date: 2025-10-24
+
+### Overview
+Fixed critical CSS defaults consistency issues and improved CSS parser to handle shorthand properties and multiple units.
+
+### Issues Fixed
+
+#### 1. CSS Defaults Consistency (Radix UI Select Issue)
+**Problem**: UI dropdown defaults didn't match actual CSS output. Radix UI threw error: "A <Select.Item /> must have a value prop that is not an empty string."
+
+**Solution**: Changed empty string values to 'default' special value
+
+**Changes Made**:
+- Display dropdown: Shows "Default (block)" when undefined (lines 170-179, 1018-1032)
+- Overflow dropdown: Shows "Default (visible)" when undefined (lines 182-188, 1040-1060)
+- Text decoration: Shows "Default (underline)" when undefined (lines 132-138, 1715-1733, 1805-1823)
+- Border style: Disabled when borderWidth is 0 with helper text (lines 970-994)
+- Background properties: Only visible when background image is set (lines 1461-1557)
+
+**Files Modified**: `pagevoo-frontend/src/components/StyleEditor.tsx`
+
+#### 2. Shorthand Border Property Parsing
+**Problem**: Parser couldn't read `border: 2px dashed #d1d5db;` format - only individual properties.
+
+**Solution**: Added regex to parse shorthand border (lines 322-357)
+```typescript
+const borderShorthandMatch = css.match(/border:\s*([^;]+);?/i)
+// Extracts width, style, and color separately
+```
+
+**Result**:
+- ✅ `border: 2px dashed #d1d5db` → borderWidth: 2, borderStyle: 'dashed', borderColor: '#d1d5db'
+- ✅ Supports any order of values
+- ✅ Fallback to individual properties still works
+
+#### 3. REM/EM Unit Support
+**Problem**: Parser only handled `px` units. User CSS had `padding: 1rem`, `border-radius: 0.5rem`
+
+**Solution**: Updated regex patterns to capture and convert units (lines 295-320)
+```typescript
+// Padding - support px, rem, em, %
+const paddingMatch = css.match(/padding:\s*([\d.]+)(px|rem|em|%)?;?/i)
+// Convert rem to px for slider (1rem = 16px)
+props.padding = unit === 'rem' ? value * 16 : value
+```
+
+**Properties Updated**:
+- Padding: 1rem → 16px slider
+- Margin: supports rem/em/%
+- Border-radius: 0.5rem → 8px slider
+
+**Note**: Sliders work in px. Editing slider changes output to px. To use rem, edit in Code tab.
+
+#### 4. Transparent Background Visual Indicator
+**Problem**: No visual indication when background color is undefined/transparent
+
+**Solution**: Added checkerboard pattern + diagonal red line (lines 811-824)
+```typescript
+// Shows checkerboard + red diagonal line when no color
+background: 'linear-gradient(to top right, ...) + repeating-conic-gradient(...)'
+```
+
+**Result**: Clear visual distinction between "no color" and "white color"
+
+#### 5. Regex Cross-Matching Bug
+**Problem**: When moving sliders, CSS would reset incorrectly:
+- `border-color: #d1d5db` matched as `color: #d1d5db`
+- `border-width: 2px` matched as `width: 2px`
+
+**Solution**: Added negative lookbehinds to prevent cross-matching (lines 287-289, 397-399)
+```typescript
+// Text color (but not border-color or background-color)
+const colorMatch = css.match(/(?<!border-)(?<!background-)color:\s*([^;]+);?/i)
+
+// Width (but not min-width or border-width)
+const widthMatch = css.match(/(?<!min-)(?<!border-)width:\s*([^;]+);?/i)
+```
+
+**Result**: Sliders now work correctly without causing CSS resets
+
+#### 6. Font Properties in Section/Row/Column CSS
+**Problem**: Font-family, color, and font-size were being output in section/row/column CSS
+
+**Solution**: Removed font property generation for non-page contexts (line 518-519)
+```typescript
+// Note: font-family, color, and font-size should NOT be output here
+// They should be set inline in WYSIWYG or inherited from site/page CSS
+```
+
+**Result**:
+- Page/Site: Font properties in `body` selector ✅
+- Sections/Rows/Columns: NO font properties (inherit or inline) ✅
+
+### User Testing Results
+
+**Test Case**: Add Core Section (1 column)
+
+**Before Fixes**:
+| Property | Expected | Actual | Issue |
+|----------|----------|--------|-------|
+| Padding | 1rem (16px) | 0px | ❌ Not parsing |
+| Border-Radius | 0.5rem (8px) | 0.5px | ❌ Lost unit |
+| Border-Width | 2px | 0px | ❌ Not parsing shorthand |
+| Border-Color | #d1d5db | undefined | ❌ Not parsing shorthand |
+| Border-Style | dashed | solid (greyed) | ❌ Not parsing shorthand |
+
+**After Fixes**:
+| Property | CSS Code | Simplified Tab | Status |
+|----------|----------|----------------|--------|
+| Padding | 1rem | 16px slider | ✅ |
+| Border-Radius | 0.5rem | 8px slider | ✅ |
+| Border-Width | 2px | 2px slider | ✅ |
+| Border-Color | #d1d5db | #d1d5db | ✅ |
+| Border-Style | dashed | Dashed (enabled) | ✅ |
+| Background | none | Checkerboard + red line | ✅ |
+
+### Technical Improvements
+
+**CSS Parsing Enhancements**:
+- Shorthand border property support
+- Multi-unit support (px, rem, em, %)
+- Negative lookbehinds to prevent cross-matching
+- Better color extraction (hex → rgb → named colors)
+
+**UI/UX Improvements**:
+- Clear "Default (value)" labels
+- Visual transparency indicator
+- Disabled controls when not applicable
+- Smart control visibility
+
+### Files Modified
+
+**pagevoo-frontend/src/components/StyleEditor.tsx**:
+- Lines 132-138: TEXT_DECORATION_OPTIONS with default option
+- Lines 170-179: DISPLAY_OPTIONS with default option
+- Lines 182-188: OVERFLOW_OPTIONS with default option
+- Lines 287-289: Color parsing with negative lookbehind
+- Lines 295-311: Padding/margin with unit support
+- Lines 313-320: Border-radius with unit support
+- Lines 322-357: Shorthand border property parsing
+- Lines 397-399: Width parsing with negative lookbehind
+- Lines 518-520: Removed font properties from section/row/column CSS
+- Lines 811-824: Transparent background visual indicator
+- Lines 970-994: Border style with disabled state
+- Lines 1018-1032: Display dropdown with default
+- Lines 1040-1060: Overflow dropdown with default
+- Lines 1461-1557: Background properties conditional visibility
+- Lines 1715-1733: Link decoration with default
+- Lines 1805-1823: Hover decoration with default
+
+### Documentation Created
+
+**Analysis Documents**:
+- `CSS_Defaults_Analysis.md` - Full problem analysis
+- `CSS_Defaults_Fix_Summary.md` - Implementation details
+- `debug_assist/CSS_Parsing_Fixes_Summary.md` - Response to user testing
+
+#### 7. UI Appearance Updates (Pagevoo Green Theme)
+**Purpose**: Make UI consistent with Pagevoo branding and improve visual hierarchy
+
+**Changes Made**:
+1. **CSS Icon → "CSS" Text** (Lines 5481, 5738)
+   - Replaced SVG icon with simple text label
+   - Better readability and less visual clutter
+
+2. **Expand Arrows → Pagevoo Green SVG Chevrons**
+   - **Problem**: Unicode characters ▶ and ▼ rendered as colored emoji icons (blue boxes with white arrows)
+   - **Root Cause**: Emoji characters have built-in OS-level colors that CSS cannot override
+   - **Attempted Fixes** (all failed):
+     - Tailwind classes `bg-[#5a7a54] text-white`
+     - Added `!important` flags
+     - Inline styles with backgroundColor
+     - Inline styles with !important
+   - **Solution**: Replaced emoji characters with SVG chevron icons matching section library sidebar
+
+   **Implementation**:
+   - Sidebar category buttons: Lines 5328-5410
+   - Row Container Style button: Lines 5794-5805
+   - Column buttons: Lines 5847-5861
+
+   ```typescript
+   <svg
+     className={`w-3 h-3 transition-transform text-[#5a7a54] ${isExpanded ? 'rotate-90' : ''}`}
+     fill="none"
+     stroke="currentColor"
+     viewBox="0 0 24 24"
+   >
+     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+   </svg>
+   ```
+
+   **Features**:
+   - Pagevoo green color (#5a7a54)
+   - Rotation animation on expand (rotate-90)
+   - Consistent with section library design
+   - CSS-controllable (unlike emoji characters)
+
+3. **Removed "Tip" Messages**
+   - Removed 3 blue tip boxes under section types
+   - Cleaner interface, less visual noise
+
+**Result**:
+- ✅ Consistent Pagevoo green theme throughout UI
+- ✅ Matching chevron icons across all expand/collapse buttons
+- ✅ No more emoji rendering issues
+- ✅ Cleaner, more professional appearance
+
+**Files Modified**: `pagevoo-frontend/src/pages/TemplateBuilder.tsx`
+
+### Current Status
+
+✅ Session 27 - COMPLETE
+✅ CSS defaults consistency - FIXED
+✅ Shorthand border parsing - WORKING
+✅ REM/EM unit support - WORKING
+✅ Transparent background indicator - ADDED
+✅ Regex cross-matching - FIXED
+✅ Font properties separation - CORRECTED
+✅ UI appearance updates - COMPLETE
+✅ Pagevoo green theme - CONSISTENT
+✅ All user-reported issues - RESOLVED
+
+### Next Session Planning
+
+**Potential Enhancements**:
+1. Unit dropdown next to sliders (preserve rem/em when editing)
+2. Multi-value padding/margin support (different values per side)
+3. Directional border support (border-top, border-left, etc.)
+4. Context-specific defaults (different for page/section/row/column)
+5. Additional CSS properties (flex, grid, text-align, etc.)
+
+---
+
+## Session 28 (Completed) - Header Tag Settings (H1-H4)
+
+### Date: 2025-10-25
+
+### Overview
+Added comprehensive header tag settings modal for H1-H4 tags in Site CSS. Allows users to customize font size, font weight, line height, and color for each header level.
+
+### Feature Implementation
+
+#### Header Settings Modal
+**Purpose**: Provide centralized control for customizing H1-H4 header tags site-wide
+
+**Availability**: Site CSS only (not page/section/row/column)
+
+**Properties per Header Tag**:
+- Font Size (px)
+- Font Weight (100-900, normal, bold)
+- Line Height (unitless multiplier)
+- Color (hex color picker)
+
+**UI Components**:
+- Button labeled "Header Settings (H1-H4)" next to font family selector
+- Modal dialog with 4 sections (H1, H2, H3, H4)
+- Number inputs for font size and line height
+- Dropdown for font weight
+- Color picker with hex input for each header tag
+
+### Issues Fixed
+
+#### 1. Properties Not Persisting
+**Problem**: When changing header properties in modal, values would immediately reset to undefined
+
+**Root Cause**: The useEffect hook that parses CSS and calls setProperties() wasn't including the 16 header properties in the properties object, causing them to be wiped out on every update
+
+**Solution**: Added all 16 header properties to setProperties call in useEffect (lines 849-864):
+```typescript
+setProperties({
+  // ... other properties ...
+  // Header properties (h1-h4)
+  h1FontSize: parsed.h1FontSize,
+  h1FontWeight: parsed.h1FontWeight,
+  h1LineHeight: parsed.h1LineHeight,
+  h1Color: parsed.h1Color,
+  h2FontSize: parsed.h2FontSize,
+  h2FontWeight: parsed.h2FontWeight,
+  h2LineHeight: parsed.h2LineHeight,
+  h2Color: parsed.h2Color,
+  h3FontSize: parsed.h3FontSize,
+  h3FontWeight: parsed.h3FontWeight,
+  h3LineHeight: parsed.h3LineHeight,
+  h3Color: parsed.h3Color,
+  h4FontSize: parsed.h4FontSize,
+  h4FontWeight: parsed.h4FontWeight,
+  h4LineHeight: parsed.h4LineHeight,
+  h4Color: parsed.h4Color,
+})
+```
+
+**Result**: ✅ Properties now persist when changed in modal
+
+#### 2. Header Styles Affecting Template Builder UI
+**Problem**: Header styles applied globally, changing header appearance in Template Builder interface
+
+**Root Cause**: Generated CSS used unscoped selectors like `h1 {}` which applied to all h1 elements on the page
+
+**Solution**:
+- Changed CSS generation to use scoped selector `#template-canvas h1 {}` (initially)
+- Updated CSS parser to handle both scoped and unscoped formats for backward compatibility
+- Updated TemplateBuilder.tsx scopeToCanvas() function to extract and pass through scoped header selectors (lines 224-241, 310-313)
+
+**Result**: ✅ Header styles only affect canvas content, not Template Builder UI
+
+#### 3. Font Size and Font Weight Not Working (CSS Specificity Issue)
+**Problem**: Only color and line-height worked. Font-size and font-weight had no effect on canvas headers.
+
+**Root Cause**: CSS specificity conflict. Default styles in TemplateBuilder used `#template-canvas .row h1 {}` (specificity: 1 ID + 1 class + 1 element = 112) which was higher than our custom `#template-canvas h1 {}` (specificity: 1 ID + 1 element = 101). The defaults were overriding our custom styles.
+
+**Solution**:
+- Changed generated selectors from `#template-canvas h1 {}` to `#template-canvas .row h1 {}` to match default specificity
+- Updated CSS parser regex to handle both formats with optional `.row` class:
+```typescript
+// Support legacy and current formats
+const h1FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*font-size:\s*(\d+)px/i)
+```
+The pattern `(?:\.row\s+)?` makes the `.row` class optional for backward compatibility
+
+**Result**: ✅ All properties now work correctly (font-size, font-weight, line-height, color)
+
+### Technical Implementation
+
+**StyleEditor.tsx** (`pagevoo-frontend/src/components/StyleEditor.tsx`):
+
+1. **Interface Update (Lines 43-59)**: Added 16 header properties to StyleProperty interface
+   - h1FontSize, h1FontWeight, h1LineHeight, h1Color
+   - h2FontSize, h2FontWeight, h2LineHeight, h2Color
+   - h3FontSize, h3FontWeight, h3LineHeight, h3Color
+   - h4FontSize, h4FontWeight, h4LineHeight, h4Color
+
+2. **State Variables (Lines 235-239)**: Modal and color picker state
+   - showHeaderSettingsModal
+   - showH1ColorPicker, showH2ColorPicker, showH3ColorPicker, showH4ColorPicker
+
+3. **CSS Parsing (Lines 475-525)**: Extract header properties from CSS
+   - Regex patterns support both scoped and unscoped formats
+   - Pattern: `(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*font-size:\s*(\d+)px/i`
+   - Handles backward compatibility with legacy formats
+
+4. **CSS Generation (Lines 585-620)**: Generate scoped CSS with proper specificity
+   ```typescript
+   if (props.h1FontSize || props.h1FontWeight || props.h1LineHeight || props.h1Color) {
+     css += `#template-canvas .row h1 {\n`
+     if (props.h1FontSize) css += `  font-size: ${props.h1FontSize}px;\n`
+     if (props.h1FontWeight) css += `  font-weight: ${props.h1FontWeight};\n`
+     if (props.h1LineHeight) css += `  line-height: ${props.h1LineHeight};\n`
+     if (props.h1Color) css += `  color: ${props.h1Color};\n`
+     css += `}\n\n`
+   }
+   ```
+
+5. **Header Settings Button (Lines 841-855)**: Button to open modal
+   - Only shown when `showFontSelector` is true (Site CSS)
+   - Pagevoo green styling (#5a7a54)
+   - Settings gear icon
+
+6. **Header Settings Modal (Lines 1749-2087)**: Complete modal implementation
+   - 4 sections for H1-H4, each with:
+     - Font size number input (px)
+     - Font weight dropdown (100-900, normal, bold)
+     - Line height number input (unitless)
+     - Color picker with hex input
+   - Uses Radix UI Select components
+   - Uses react-colorful HexColorPicker
+
+**TemplateBuilder.tsx** (`pagevoo-frontend/src/pages/TemplateBuilder.tsx`):
+
+1. **Header Selector Extraction (Lines 224-241)**: Extract scoped header selectors
+   ```typescript
+   const headerPatterns = [
+     /#template-canvas\s+(?:\.row\s+)?h1\s*\{([^}]+)\}/gi,
+     /#template-canvas\s+(?:\.row\s+)?h2\s*\{([^}]+)\}/gi,
+     /#template-canvas\s+(?:\.row\s+)?h3\s*\{([^}]+)\}/gi,
+     /#template-canvas\s+(?:\.row\s+)?h4\s*\{([^}]+)\}/gi
+   ]
+   ```
+
+2. **Add Headers to Result (Lines 310-313)**: Include extracted headers in final CSS
+   - Headers already scoped, just pass them through
+   - Prevents double-scoping
+
+### Testing Results
+
+**Test Case**: Configure H1 header settings in Site CSS
+
+**Before Fixes**:
+| Property | Expected Behavior | Actual Behavior | Issue |
+|----------|------------------|-----------------|-------|
+| Font Size | Should change H1 size on canvas | No change | ❌ CSS specificity too low |
+| Font Weight | Should change H1 weight on canvas | No change | ❌ CSS specificity too low |
+| Line Height | Should change H1 line-height | Working | ✅ Not affected by specificity |
+| Color | Should change H1 color | Working | ✅ Not affected by specificity |
+| Values | Should persist when modal reopened | Reset to undefined | ❌ Not in setProperties |
+
+**After Fixes**:
+| Property | Behavior | Status |
+|----------|----------|--------|
+| Font Size | Changes H1 size on canvas | ✅ |
+| Font Weight | Changes H1 weight on canvas | ✅ |
+| Line Height | Changes H1 line-height | ✅ |
+| Color | Changes H1 color | ✅ |
+| Values | Persist when modal reopened | ✅ |
+| Template Builder | Headers not affected | ✅ |
+
+### CSS Specificity Explained
+
+**Default Styles** (in TemplateBuilder.tsx):
+```css
+#template-canvas .row h1 { font-size: 32px; font-weight: 700; }
+```
+Specificity: 1 ID (#template-canvas) + 1 class (.row) + 1 element (h1) = **112**
+
+**Initial Custom Styles** (not working):
+```css
+#template-canvas h1 { font-size: 48px; }
+```
+Specificity: 1 ID (#template-canvas) + 1 element (h1) = **101**
+Result: Default wins (112 > 101) ❌
+
+**Final Custom Styles** (working):
+```css
+#template-canvas .row h1 { font-size: 48px; }
+```
+Specificity: 1 ID (#template-canvas) + 1 class (.row) + 1 element (h1) = **112**
+Result: Custom wins (same specificity, appears later in cascade) ✅
+
+### Files Modified
+
+**pagevoo-frontend/src/components/StyleEditor.tsx**:
+- Lines 43-59: Header properties added to StyleProperty interface
+- Lines 235-239: Modal and color picker state variables
+- Lines 475-525: CSS parsing for H1-H4 with backward compatibility
+- Lines 585-620: CSS generation with proper specificity (#template-canvas .row h1)
+- Lines 841-855: Header Settings button
+- Lines 849-864: Header properties added to setProperties in useEffect
+- Lines 1749-2087: Complete Header Settings modal implementation
+
+**pagevoo-frontend/src/pages/TemplateBuilder.tsx**:
+- Lines 224-241: Header selector extraction in scopeToCanvas function
+- Lines 310-313: Include extracted headers in final CSS output
+
+### Current Status
+
+🚧 Session 28 - IN PROGRESS
+✅ Header settings modal - IMPLEMENTED
+✅ Properties persistence - FIXED
+✅ Template Builder isolation - FIXED
+⚠️ Font size and font weight - NOT WORKING (only line-height and color work)
+❌ CSS specificity issue - NOT FULLY RESOLVED
+
+### Known Issues
+
+**Font Size and Font Weight Still Not Applying**:
+- Despite generating CSS with `#template-canvas .row h1 {}` for proper specificity
+- Despite updating TemplateBuilder regex patterns to match `.row` class
+- Only line-height and color are actually working on the canvas
+- Font-size and font-weight changes in the modal have no visible effect
+
+**Attempted Fixes**:
+1. Changed selectors from `#template-canvas h1` to `#template-canvas .row h1`
+2. Updated regex patterns in TemplateBuilder to `/#template-canvas\s+(?:\.row\s+)?h1\s*\{([^}]+)\}/gi`
+3. Still not working - needs further investigation
+
+**Next Session TODO**:
+1. Debug why font-size and font-weight are not applying to canvas headers
+2. Check browser dev tools to see actual CSS being applied
+3. Verify CSS is being extracted and passed through correctly in TemplateBuilder
+4. Check for other CSS rules that might be overriding with higher specificity
+5. Potentially need to use `!important` or different selector strategy
+
+---
+
 ## Last Updated
-2025-10-23 (Session 26 completed - Dimension controls fixed, layout options added)
+2025-10-25 (Session 28 in progress - Header tag settings partially working)
 
 ---
 Note: This is a continuation of claude_memory_3.txt. Sessions 1-25 documented in previous memory files.

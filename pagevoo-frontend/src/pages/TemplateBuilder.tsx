@@ -221,6 +221,25 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
       })
     })
 
+    // Extract header selector styles (h1-h4) - they're already scoped, just pass them through
+    let headerSelectors = ''
+    const headerPatterns = [
+      /#template-canvas\s+(?:\.row\s+)?h1\s*\{([^}]+)\}/gi,
+      /#template-canvas\s+(?:\.row\s+)?h2\s*\{([^}]+)\}/gi,
+      /#template-canvas\s+(?:\.row\s+)?h3\s*\{([^}]+)\}/gi,
+      /#template-canvas\s+(?:\.row\s+)?h4\s*\{([^}]+)\}/gi
+    ]
+
+    headerPatterns.forEach((pattern) => {
+      const matches = [...processedCSS.matchAll(pattern)]
+      matches.forEach(match => {
+        // Header selectors are already scoped, just extract them
+        headerSelectors += match[0] + '\n\n'
+        // Remove from processed CSS
+        processedCSS = processedCSS.replace(match[0], '')
+      })
+    })
+
     // Scope any remaining standalone CSS properties to canvas
     const lines = processedCSS.split('\n')
     let result = ''
@@ -286,6 +305,11 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
     // Add link selectors (already scoped to canvas)
     if (linkSelectors.trim()) {
       result = linkSelectors + result
+    }
+
+    // Add header selectors (already scoped to canvas)
+    if (headerSelectors.trim()) {
+      result = headerSelectors + result
     }
 
     console.log('[generateContentCSS] Scoped CSS:', result)
@@ -612,6 +636,11 @@ export default function TemplateBuilder() {
   // Keyboard shortcuts for save, undo, redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+N or Cmd+N for New
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+        e.preventDefault()
+        handleNew()
+      }
       // Ctrl+S or Cmd+S for Save
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
@@ -1152,8 +1181,22 @@ padding: 1rem;`
 
   const footerSections = [
     { type: 'footer-simple', label: 'Simple Footer', description: 'Basic footer with copyright text', position: 'bottom', defaultContent: { text: '© 2025 Company Name. All rights reserved.' } },
-    { type: 'footer-columns', label: 'Column Footer', description: 'Multi-column footer with links', position: 'bottom', defaultContent: { columns: [{ title: 'Company', links: ['About', 'Contact'] }, { title: 'Services', links: ['Service 1', 'Service 2'] }] } },
-    { type: 'footer-social', label: 'Social Footer', description: 'Footer with social media icons', position: 'bottom', defaultContent: { text: '© 2025 Company', socials: ['Facebook', 'Twitter', 'Instagram'] } },
+    {
+      type: 'footer-columns',
+      label: 'Column Footer',
+      description: 'Multi-column footer with copyright',
+      position: 'bottom',
+      defaultContent: {
+        columns: [
+          { content: '<h3 style="text-align: center;">Company</h3><p style="text-align: center;">About Us</p><p style="text-align: center;">Contact</p>', colWidth: 4 },
+          { content: '<h3 style="text-align: center;">Services</h3><p style="text-align: center;">Service 1</p><p style="text-align: center;">Service 2</p>', colWidth: 4 },
+          { content: '<h3 style="text-align: center;">Connect</h3><p style="text-align: center;">Email</p><p style="text-align: center;">Phone</p>', colWidth: 4 }
+        ],
+        copyrightText: '© 2025 Company Name. All rights reserved.',
+        content_css: createDefaultContentCSS(3),
+        section_css: 'background-color: #172554; color: white; padding: 2rem;'
+      }
+    },
   ]
 
   const renderSectionThumbnail = (section: any) => {
@@ -1647,7 +1690,7 @@ padding: 1rem;`
       <div
         id="template-canvas"
         ref={setNodeRef}
-        className={`text-gray-900 min-h-[200px] ${viewportClass} ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-[#98b290] ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-[#e8f0e6]' : ''}`}
+        className={`text-gray-900 flex-1 min-h-0 ${viewportClass} ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-[#98b290] ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-[#e8f0e6]' : ''}`}
       >
         {/* Inject Google Fonts */}
         {googleFontsLink && (
@@ -2796,6 +2839,72 @@ padding: 1rem;`
     }
   }
 
+  // New Template Handler
+  const handleNew = () => {
+    // Check for unsaved changes
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Creating a new template will discard them. Continue?')) {
+        return
+      }
+    }
+
+    // Create a blank template with default homepage
+    const defaultHomepage: TemplatePage = {
+      id: Date.now(),
+      name: 'Home',
+      slug: 'home',
+      is_homepage: true,
+      order: 0,
+      sections: []
+    }
+
+    const newTemplate: Template = {
+      id: 0,
+      name: 'Untitled Template',
+      description: '',
+      business_type: 'restaurant',
+      is_active: false,
+      pages: [defaultHomepage],
+      preview_image: null,
+      exclusive_to: null,
+      technologies: [],
+      features: []
+    }
+
+    // Reset all states
+    setTemplate(newTemplate)
+    setCurrentPage(defaultHomepage)
+    setSelectedSection(null)
+    setHistory([JSON.parse(JSON.stringify(newTemplate))])
+    setHistoryIndex(0)
+    setCanUndo(false)
+    setCanRedo(false)
+    setHasUnsavedChanges(false)
+    setIsPublished(false)
+
+    // Clear URL parameter to remove template ID
+    window.history.pushState({}, '', '/template-builder')
+  }
+
+  // Exit Handler
+  const handleExit = () => {
+    // Check for unsaved changes
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Exiting will discard them. Continue?')) {
+        return
+      }
+    }
+
+    // Close the browser tab/window
+    window.close()
+
+    // Fallback: If window.close() doesn't work (security restrictions),
+    // navigate to dashboard or show message
+    setTimeout(() => {
+      alert('Please close this tab manually or use your browser\'s close button.')
+    }, 100)
+  }
+
   // Live Preview Handler
   const handleLivePreview = () => {
     if (!template || !template.template_slug) {
@@ -3028,24 +3137,17 @@ ${linksHTML}
         } else if (section.type === 'footer-columns') {
           const columns = content.columns || []
           const columnsHTML = columns.map((col: any) => {
-            const linksHTML = (col.links || []).map((link: string) => `        <li><a href="#">${link}</a></li>`).join('\n')
             return `      <div class="footer-column">
-        <h3>${col.title}</h3>
-        <ul>
-${linksHTML}
-        </ul>
+        ${col.content || '<p>Column content</p>'}
       </div>`
           }).join('\n')
+          const copyrightText = content.copyrightText || '© 2025 Company Name. All rights reserved.'
           return `  <footer id="${id}" class="footer-columns">
+    <div class="footer-grid">
 ${columnsHTML}
-  </footer>`
-        } else if (section.type === 'footer-social') {
-          const socials = content.socials || ['Facebook', 'Twitter', 'Instagram']
-          const socialsHTML = socials.map((social: string) => `      <a href="#">${social}</a>`).join('\n')
-          return `  <footer id="${id}" class="footer-social">
-    <p>${content.text || '© 2025 Company'}</p>
-    <div class="social-links">
-${socialsHTML}
+    </div>
+    <div class="footer-copyright">
+      <p>${copyrightText}</p>
     </div>
   </footer>`
         }
@@ -4426,36 +4528,31 @@ ${sectionsHTML}
 
       case 'footer-columns':
         return sectionWrapper(
-          <div className={`bg-gray-800 text-white p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-            <div className="grid grid-cols-4 gap-8 max-w-7xl mx-auto">
+          <div className={`bg-blue-950 text-white cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
+            {/* 3-column grid */}
+            <div className="grid grid-cols-3 gap-8 p-12 max-w-7xl mx-auto">
               {(content.columns || []).map((col: any, idx: number) => (
-                <div key={idx}>
-                  <h3 className="font-bold mb-3">{col.title}</h3>
-                  {col.links?.map((link: string, linkIdx: number) => (
-                    <p key={linkIdx} className="text-sm text-gray-400 mb-1">{link}</p>
-                  ))}
+                <div key={idx} className="min-h-[150px] text-center">
+                  <EditableText
+                    tag="div"
+                    sectionId={section.id}
+                    field={`column_${idx}`}
+                    value={col.content || '<p>Column content</p>'}
+                    className="outline-none hover:bg-white/10 px-2 py-1 rounded transition"
+                  />
                 </div>
               ))}
             </div>
-          </div>
-        )
-
-      case 'footer-social':
-        return sectionWrapper(
-          <div className={`bg-gray-800 text-white p-8 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-            <div className="text-center">
-              <EditableText
-                tag="p"
-                sectionId={section.id}
-                field="text"
-                value={content.text || '© 2025 Company'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'text', e)}
-                className="text-sm mb-4 outline-none hover:bg-white/10 px-2 py-1 rounded transition"
-              />
-              <div className="flex gap-4 justify-center">
-                {(content.socials || []).map((social: string, idx: number) => (
-                  <span key={idx} className="text-[#98b290] hover:text-[#98b290] cursor-pointer">{social}</span>
-                ))}
+            {/* Copyright row */}
+            <div className="bg-[#171717] py-6 border-t border-gray-800">
+              <div className="max-w-7xl mx-auto px-12">
+                <EditableText
+                  tag="p"
+                  sectionId={section.id}
+                  field="copyrightText"
+                  value={content.copyrightText || '© 2025 Company Name. All rights reserved.'}
+                  className="text-sm text-center outline-none hover:bg-white/10 px-2 py-1 rounded transition"
+                />
               </div>
             </div>
           </div>
@@ -4674,6 +4771,17 @@ ${sectionsHTML}
                 <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
                   <button
                     onClick={() => {
+                      handleNew()
+                      setShowFileMenu(false)
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs flex items-center justify-between"
+                  >
+                    <span>New</span>
+                    <span className="text-gray-400 text-[10px]">Ctrl+N</span>
+                  </button>
+                  <div className="border-t border-gray-200 my-1"></div>
+                  <button
+                    onClick={() => {
                       handleSave()
                       setShowFileMenu(false)
                     }}
@@ -4742,10 +4850,13 @@ ${sectionsHTML}
                   </div>
                   <div className="border-t border-gray-200 my-1"></div>
                   <button
-                    onClick={() => setShowFileMenu(false)}
+                    onClick={() => {
+                      handleExit()
+                      setShowFileMenu(false)
+                    }}
                     className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
                   >
-                    Close
+                    Exit
                   </button>
                 </div>
               )}
@@ -5325,11 +5436,11 @@ ${sectionsHTML}
                 <div className="mb-3">
                   <button
                     onClick={() => toggleCategory('core')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
                   >
                     <span>Core Sections</span>
                     <svg
-                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
+                      className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -5361,11 +5472,11 @@ ${sectionsHTML}
                 <div className="mb-3">
                   <button
                     onClick={() => toggleCategory('headerNav')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
                   >
                     <span>Header & Navigation</span>
                     <svg
-                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
+                      className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -5397,11 +5508,11 @@ ${sectionsHTML}
                 <div className="mb-3">
                   <button
                     onClick={() => toggleCategory('footers')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-100 hover:bg-gray-200 rounded text-xs font-medium transition"
+                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
                   >
                     <span>Footers</span>
                     <svg
-                      className={`w-3 h-3 transition-transform ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
+                      className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -5448,7 +5559,7 @@ ${sectionsHTML}
               maxWidth: '100%',
               transition: 'width 0.3s ease'
             }}
-            className="bg-white min-h-full shadow-xl mx-auto ring-1 ring-gray-200"
+            className="bg-white min-h-full shadow-xl mx-auto ring-1 ring-gray-200 flex flex-col"
           >
             {/* Page Selector */}
             <div className="border-b border-gray-200 bg-gray-50 px-4 py-2 flex items-center justify-between">
@@ -5478,11 +5589,7 @@ ${sectionsHTML}
                   className="p-1 hover:bg-gray-200 rounded transition"
                   title="Edit CSS"
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
-                    <path d="M5 3L3 9L5 21H19L21 9L19 3H5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                    <path d="M7 15L9 13L11 15L13 13L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                    <text x="12" y="10" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">CSS</text>
-                  </svg>
+                  <span className="text-xs font-bold text-blue-600">CSS</span>
                 </button>
               </div>
               <div className="flex items-center gap-1">
@@ -5739,11 +5846,7 @@ ${sectionsHTML}
                           className="p-1 hover:bg-gray-200 rounded transition"
                           title="Edit Section CSS"
                         >
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-blue-600">
-                            <path d="M5 3L3 9L5 21H19L21 9L19 3H5Z" stroke="currentColor" strokeWidth="2" strokeLinejoin="round"/>
-                            <path d="M7 15L9 13L11 15L13 13L15 15" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            <text x="12" y="10" fontSize="8" fill="currentColor" textAnchor="middle" fontWeight="bold">CSS</text>
-                          </svg>
+                          <span className="text-xs font-bold text-blue-600">CSS</span>
                         </button>
                       </div>
                     </div>
@@ -5792,12 +5895,6 @@ ${sectionsHTML}
 
                           return (
                             <>
-                              <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
-                                <p className="text-xs text-blue-700">
-                                  <strong>💡 Tip:</strong> Click on any text in the columns to edit it using the floating editor at the bottom.
-                                </p>
-                              </div>
-
                               {/* Row Style Button */}
                               <div className="mb-3">
                                 <button
@@ -5805,14 +5902,21 @@ ${sectionsHTML}
                                     setShowRowStyle(!showRowStyle)
                                     setExpandedColumnIndex(null)
                                   }}
-                                  className="w-full px-3 py-2 bg-gradient-to-r from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border border-purple-300 rounded text-sm font-medium text-purple-700 transition flex items-center justify-between"
+                                  className="w-full px-3 py-2 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-sm font-medium text-[#5a7a54] transition flex items-center justify-between"
                                 >
                                   <span>Row Container Style</span>
-                                  <span className="text-xs">{showRowStyle ? '▼' : '▶'}</span>
+                                  <svg
+                                    className={`w-3 h-3 transition-transform text-[#5a7a54] ${showRowStyle ? 'rotate-90' : ''}`}
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                  >
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                  </svg>
                                 </button>
 
                                 {showRowStyle && (
-                                  <div className="mt-2 p-3 border border-purple-200 rounded bg-white">
+                                  <div className="mt-2 p-3 border border-[#d4e5d0] rounded bg-white">
                                     <p className="text-[9px] text-gray-400 mb-2">
                                       Target: <code className="bg-gray-100 px-1 rounded">.row</code>
                                     </p>
@@ -5853,11 +5957,18 @@ ${sectionsHTML}
                                           className={`w-full px-3 py-2 border rounded text-sm font-medium transition flex items-center justify-between ${
                                             isExpanded
                                               ? 'bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
-                                              : 'bg-gradient-to-r from-gray-50 to-gray-100 hover:from-gray-100 hover:to-gray-200 border-gray-300 text-gray-700'
+                                              : 'bg-gradient-to-r from-[#f0f7ee] to-[#e1eedd] hover:from-[#e8f0e6] hover:to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
                                           }`}
                                         >
                                           <span>Column {idx + 1} <span className="text-xs text-gray-500">(col-{colWidth})</span></span>
-                                          <span className="text-xs">{isExpanded ? '▼' : '▶'}</span>
+                                          <svg
+                                            className={`w-3 h-3 transition-transform text-[#5a7a54] ${isExpanded ? 'rotate-90' : ''}`}
+                                            fill="none"
+                                            stroke="currentColor"
+                                            viewBox="0 0 24 24"
+                                          >
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                          </svg>
                                         </button>
 
                                         {isExpanded && (
@@ -5898,15 +6009,6 @@ ${sectionsHTML}
                     {/* Navigation Section Fields */}
                     {(selectedSection.type.startsWith('navbar-') || selectedSection.type.startsWith('header-') || selectedSection.type.startsWith('sidebar-nav-')) && (
                       <>
-                        {/* Info about text editing */}
-                        {(selectedSection.content?.logo !== undefined || selectedSection.content?.tagline !== undefined) && (
-                          <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
-                            <p className="text-xs text-blue-700">
-                              <strong>💡 Tip:</strong> Click on the logo or tagline text in the section to edit it.
-                            </p>
-                          </div>
-                        )}
-
                         {/* Show Navigation Toggle for header sections */}
                         {(selectedSection.type === 'header-centered' || selectedSection.type === 'header-split') && (
                           <div className="mb-4">
@@ -5961,15 +6063,6 @@ ${sectionsHTML}
                           </>
                         )}
                       </>
-                    )}
-
-                    {/* Section-specific info message */}
-                    {(selectedSection.type === 'hero' || selectedSection.type === 'gallery' || selectedSection.type === 'contact-form' || selectedSection.type === 'booking-form' || selectedSection.type === 'login-box' || selectedSection.type === 'testimonials') && (
-                      <div className="bg-blue-50 border border-blue-200 rounded p-3">
-                        <p className="text-xs text-blue-700">
-                          <strong>💡 Tip:</strong> Click on any text in the section to edit it using the floating editor at the bottom.
-                        </p>
-                      </div>
                     )}
 
                     {/* Sidebar Navigation Fields */}

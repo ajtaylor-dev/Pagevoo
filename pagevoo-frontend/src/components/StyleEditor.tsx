@@ -40,6 +40,23 @@ interface StyleProperty {
   display?: string
   overflow?: string
   float?: string
+  // Header styles (h1-h4)
+  h1FontSize?: number
+  h1FontWeight?: string
+  h1LineHeight?: number
+  h1Color?: string
+  h2FontSize?: number
+  h2FontWeight?: string
+  h2LineHeight?: number
+  h2Color?: string
+  h3FontSize?: number
+  h3FontWeight?: string
+  h3LineHeight?: number
+  h3Color?: string
+  h4FontSize?: number
+  h4FontWeight?: string
+  h4LineHeight?: number
+  h4Color?: string
 }
 
 interface StyleEditorProps {
@@ -130,6 +147,7 @@ const BACKGROUND_ATTACHMENT_OPTIONS = [
 ]
 
 const TEXT_DECORATION_OPTIONS = [
+  { value: 'default', label: 'Default (underline)' },
   { value: 'none', label: 'None' },
   { value: 'underline', label: 'Underline' },
   { value: 'overline', label: 'Overline' },
@@ -167,6 +185,7 @@ const MIN_HEIGHT_OPTIONS = [
 ]
 
 const DISPLAY_OPTIONS = [
+  { value: 'default', label: 'Default (block)' },
   { value: 'block', label: 'Block' },
   { value: 'inline-block', label: 'Inline Block' },
   { value: 'flex', label: 'Flex' },
@@ -178,6 +197,7 @@ const DISPLAY_OPTIONS = [
 ]
 
 const OVERFLOW_OPTIONS = [
+  { value: 'default', label: 'Default (visible)' },
   { value: 'visible', label: 'Visible' },
   { value: 'hidden', label: 'Hidden' },
   { value: 'auto', label: 'Auto' },
@@ -212,6 +232,11 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const [showLinkHoverColorPicker, setShowLinkHoverColorPicker] = useState(false)
   const [showLinkVisitedColorPicker, setShowLinkVisitedColorPicker] = useState(false)
   const [showLinkActiveColorPicker, setShowLinkActiveColorPicker] = useState(false)
+  const [showHeaderSettingsModal, setShowHeaderSettingsModal] = useState(false)
+  const [showH1ColorPicker, setShowH1ColorPicker] = useState(false)
+  const [showH2ColorPicker, setShowH2ColorPicker] = useState(false)
+  const [showH3ColorPicker, setShowH3ColorPicker] = useState(false)
+  const [showH4ColorPicker, setShowH4ColorPicker] = useState(false)
 
   // Local state for hex inputs to prevent parent re-renders on every keystroke
   const [linkColorInput, setLinkColorInput] = useState('')
@@ -281,35 +306,85 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     const bgMatch = css.match(/background(?:-color)?:\s*([^;]+);?/i)
     if (bgMatch) props.backgroundColor = bgMatch[1].trim()
 
-    // Text color
-    const colorMatch = css.match(/color:\s*([^;]+);?/i)
+    // Text color (but not border-color or background-color)
+    const colorMatch = css.match(/(?<!border-)(?<!background-)color:\s*([^;]+);?/i)
     if (colorMatch) props.color = colorMatch[1].trim()
 
     // Font size
     const fontSizeMatch = css.match(/font-size:\s*(\d+)px;?/i)
     if (fontSizeMatch) props.fontSize = parseInt(fontSizeMatch[1])
 
-    // Padding
-    const paddingMatch = css.match(/padding:\s*(\d+)px;?/i)
-    if (paddingMatch) props.padding = parseInt(paddingMatch[1])
+    // Padding - support px, rem, em, % units
+    const paddingMatch = css.match(/padding:\s*([\d.]+)(px|rem|em|%)?;?/i)
+    if (paddingMatch) {
+      const value = parseFloat(paddingMatch[1])
+      const unit = paddingMatch[2] || 'px'
+      // Convert rem to px for slider (1rem = 16px approximation)
+      props.padding = unit === 'rem' ? value * 16 : value
+    }
 
-    // Margin
-    const marginMatch = css.match(/margin:\s*(\d+)px;?/i)
-    if (marginMatch) props.margin = parseInt(marginMatch[1])
+    // Margin - support px, rem, em, % units (but not "0 auto" for centering)
+    const marginMatch = css.match(/margin:\s*([\d.]+)(px|rem|em|%)(?:\s|;)/i)
+    if (marginMatch) {
+      const value = parseFloat(marginMatch[1])
+      const unit = marginMatch[2] || 'px'
+      // Convert rem to px for slider (1rem = 16px approximation)
+      props.margin = unit === 'rem' ? value * 16 : value
+    }
 
-    // Border radius
-    const radiusMatch = css.match(/border-radius:\s*(\d+(?:\.\d+)?)(?:px|rem);?/i)
-    if (radiusMatch) props.borderRadius = parseFloat(radiusMatch[1])
+    // Border radius - support px and rem units
+    const radiusMatch = css.match(/border-radius:\s*([\d.]+)(px|rem|em|%)?;?/i)
+    if (radiusMatch) {
+      const value = parseFloat(radiusMatch[1])
+      const unit = radiusMatch[2] || 'px'
+      // Convert rem to px for slider (1rem = 16px approximation)
+      props.borderRadius = unit === 'rem' ? value * 16 : value
+    }
 
-    // Border width
+    // Border shorthand property (e.g., "border: 2px dashed #d1d5db;")
+    // Format: border: [width] [style] [color] (order can vary)
+    const borderShorthandMatch = css.match(/border:\s*([^;]+);?/i)
+    if (borderShorthandMatch) {
+      const borderValue = borderShorthandMatch[1].trim()
+
+      // Extract width (e.g., "2px", "1rem")
+      const widthMatch = borderValue.match(/([\d.]+)(px|rem|em)/)
+      if (widthMatch) {
+        const value = parseFloat(widthMatch[1])
+        const unit = widthMatch[2]
+        // Convert rem to px (1rem = 16px approximation)
+        props.borderWidth = unit === 'rem' ? value * 16 : value
+      }
+
+      // Extract style (solid, dashed, dotted, double, none)
+      const styleMatch = borderValue.match(/\b(none|solid|dashed|dotted|double)\b/i)
+      if (styleMatch) props.borderStyle = styleMatch[1].toLowerCase()
+
+      // Extract color - try hex first, then rgb/rgba, then named colors (excluding style keywords)
+      const hexColorMatch = borderValue.match(/#[0-9a-f]{3,8}\b/i)
+      if (hexColorMatch) {
+        props.borderColor = hexColorMatch[0]
+      } else {
+        const rgbColorMatch = borderValue.match(/rgba?\([^)]+\)/i)
+        if (rgbColorMatch) {
+          props.borderColor = rgbColorMatch[0]
+        } else {
+          // Named colors (but not border style keywords)
+          const namedColorMatch = borderValue.match(/\b(red|blue|green|black|white|gray|grey|yellow|orange|purple|pink|brown|cyan|magenta|lime|navy|teal|olive|maroon|aqua|fuchsia|silver|transparent)\b/i)
+          if (namedColorMatch) {
+            props.borderColor = namedColorMatch[0]
+          }
+        }
+      }
+    }
+
+    // Individual border properties (fallback if shorthand not used)
     const borderWidthMatch = css.match(/border-width:\s*(\d+)px;?/i)
     if (borderWidthMatch) props.borderWidth = parseInt(borderWidthMatch[1])
 
-    // Border color
     const borderColorMatch = css.match(/border-color:\s*([^;]+);?/i)
     if (borderColorMatch) props.borderColor = borderColorMatch[1].trim()
 
-    // Border style
     const borderStyleMatch = css.match(/border-style:\s*([^;]+);?/i)
     if (borderStyleMatch) props.borderStyle = borderStyleMatch[1].trim()
 
@@ -341,11 +416,11 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     const opacityMatch = css.match(/opacity:\s*([\d.]+);?/i)
     if (opacityMatch) props.opacity = parseFloat(opacityMatch[1])
 
-    // Width
-    const widthMatch = css.match(/(?<!min-)width:\s*([^;]+);?/i)
+    // Width (but not min-width or border-width)
+    const widthMatch = css.match(/(?<!min-)(?<!border-)width:\s*([^;]+);?/i)
     if (widthMatch) props.width = widthMatch[1].trim()
 
-    // Height
+    // Height (but not min-height)
     const heightMatch = css.match(/(?<!min-)height:\s*([^;]+);?/i)
     if (heightMatch) props.height = heightMatch[1].trim()
 
@@ -396,6 +471,58 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     // Link hover text decoration (a:hover { text-decoration: ... })
     const linkHoverTextDecorationMatch = css.match(/a:hover\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
     if (linkHoverTextDecorationMatch) props.linkHoverTextDecoration = linkHoverTextDecorationMatch[1].trim()
+
+    // H1 properties (support scoped selectors with .row and legacy formats)
+    const h1FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*font-size:\s*(\d+)px/i)
+    if (h1FontSizeMatch) props.h1FontSize = parseInt(h1FontSizeMatch[1])
+
+    const h1FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
+    if (h1FontWeightMatch) props.h1FontWeight = h1FontWeightMatch[1].trim()
+
+    const h1LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*line-height:\s*([\d.]+)/i)
+    if (h1LineHeightMatch) props.h1LineHeight = parseFloat(h1LineHeightMatch[1])
+
+    const h1ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (h1ColorMatch) props.h1Color = h1ColorMatch[1].trim()
+
+    // H2 properties (support scoped selectors with .row and legacy formats)
+    const h2FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*font-size:\s*(\d+)px/i)
+    if (h2FontSizeMatch) props.h2FontSize = parseInt(h2FontSizeMatch[1])
+
+    const h2FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
+    if (h2FontWeightMatch) props.h2FontWeight = h2FontWeightMatch[1].trim()
+
+    const h2LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*line-height:\s*([\d.]+)/i)
+    if (h2LineHeightMatch) props.h2LineHeight = parseFloat(h2LineHeightMatch[1])
+
+    const h2ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (h2ColorMatch) props.h2Color = h2ColorMatch[1].trim()
+
+    // H3 properties (support scoped selectors with .row and legacy formats)
+    const h3FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*font-size:\s*(\d+)px/i)
+    if (h3FontSizeMatch) props.h3FontSize = parseInt(h3FontSizeMatch[1])
+
+    const h3FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
+    if (h3FontWeightMatch) props.h3FontWeight = h3FontWeightMatch[1].trim()
+
+    const h3LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*line-height:\s*([\d.]+)/i)
+    if (h3LineHeightMatch) props.h3LineHeight = parseFloat(h3LineHeightMatch[1])
+
+    const h3ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (h3ColorMatch) props.h3Color = h3ColorMatch[1].trim()
+
+    // H4 properties (support scoped selectors with .row and legacy formats)
+    const h4FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*font-size:\s*(\d+)px/i)
+    if (h4FontSizeMatch) props.h4FontSize = parseInt(h4FontSizeMatch[1])
+
+    const h4FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
+    if (h4FontWeightMatch) props.h4FontWeight = h4FontWeightMatch[1].trim()
+
+    const h4LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*line-height:\s*([\d.]+)/i)
+    if (h4LineHeightMatch) props.h4LineHeight = parseFloat(h4LineHeightMatch[1])
+
+    const h4ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (h4ColorMatch) props.h4Color = h4ColorMatch[1].trim()
 
     return props
   }
@@ -455,6 +582,43 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
         css += `}\n\n`
       }
 
+      // Header tag styles (h1-h4) - scoped to #template-canvas .row for higher specificity
+      if (props.h1FontSize || props.h1FontWeight || props.h1LineHeight || props.h1Color) {
+        css += `#template-canvas .row h1 {\n`
+        if (props.h1FontSize) css += `  font-size: ${props.h1FontSize}px;\n`
+        if (props.h1FontWeight) css += `  font-weight: ${props.h1FontWeight};\n`
+        if (props.h1LineHeight) css += `  line-height: ${props.h1LineHeight};\n`
+        if (props.h1Color) css += `  color: ${props.h1Color};\n`
+        css += `}\n\n`
+      }
+
+      if (props.h2FontSize || props.h2FontWeight || props.h2LineHeight || props.h2Color) {
+        css += `#template-canvas .row h2 {\n`
+        if (props.h2FontSize) css += `  font-size: ${props.h2FontSize}px;\n`
+        if (props.h2FontWeight) css += `  font-weight: ${props.h2FontWeight};\n`
+        if (props.h2LineHeight) css += `  line-height: ${props.h2LineHeight};\n`
+        if (props.h2Color) css += `  color: ${props.h2Color};\n`
+        css += `}\n\n`
+      }
+
+      if (props.h3FontSize || props.h3FontWeight || props.h3LineHeight || props.h3Color) {
+        css += `#template-canvas .row h3 {\n`
+        if (props.h3FontSize) css += `  font-size: ${props.h3FontSize}px;\n`
+        if (props.h3FontWeight) css += `  font-weight: ${props.h3FontWeight};\n`
+        if (props.h3LineHeight) css += `  line-height: ${props.h3LineHeight};\n`
+        if (props.h3Color) css += `  color: ${props.h3Color};\n`
+        css += `}\n\n`
+      }
+
+      if (props.h4FontSize || props.h4FontWeight || props.h4LineHeight || props.h4Color) {
+        css += `#template-canvas .row h4 {\n`
+        if (props.h4FontSize) css += `  font-size: ${props.h4FontSize}px;\n`
+        if (props.h4FontWeight) css += `  font-weight: ${props.h4FontWeight};\n`
+        if (props.h4LineHeight) css += `  line-height: ${props.h4LineHeight};\n`
+        if (props.h4Color) css += `  color: ${props.h4Color};\n`
+        css += `}\n\n`
+      }
+
       // Border properties don't make sense for page-level, so skip them
       // Only return the body selector CSS and link styles
       return css
@@ -462,9 +626,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
 
     // For section/row/column context, output properties without selector (parent will wrap them)
     if (props.backgroundColor) css += `background-color: ${props.backgroundColor};\n`
-    if (props.fontFamily) css += `font-family: '${props.fontFamily}', sans-serif;\n`
-    if (props.color) css += `color: ${props.color};\n`
-    if (props.fontSize) css += `font-size: ${props.fontSize}px;\n`
+    // Note: font-family, color, and font-size should NOT be output here
+    // They should be set inline in WYSIWYG or inherited from site/page CSS
     if (props.padding !== undefined) css += `padding: ${props.padding}px;\n`
     if (props.margin !== undefined) css += `margin: ${props.margin}px;\n`
     if (props.borderRadius !== undefined) css += `border-radius: ${props.borderRadius}px;\n`
@@ -682,6 +845,23 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       linkActiveColor: parsed.linkActiveColor,
       linkTextDecoration: parsed.linkTextDecoration,
       linkHoverTextDecoration: parsed.linkHoverTextDecoration,
+      // Header properties (h1-h4)
+      h1FontSize: parsed.h1FontSize,
+      h1FontWeight: parsed.h1FontWeight,
+      h1LineHeight: parsed.h1LineHeight,
+      h1Color: parsed.h1Color,
+      h2FontSize: parsed.h2FontSize,
+      h2FontWeight: parsed.h2FontWeight,
+      h2LineHeight: parsed.h2LineHeight,
+      h2Color: parsed.h2Color,
+      h3FontSize: parsed.h3FontSize,
+      h3FontWeight: parsed.h3FontWeight,
+      h3LineHeight: parsed.h3LineHeight,
+      h3Color: parsed.h3Color,
+      h4FontSize: parsed.h4FontSize,
+      h4FontWeight: parsed.h4FontWeight,
+      h4LineHeight: parsed.h4LineHeight,
+      h4Color: parsed.h4Color,
     })
 
     // Initialize custom input visibility and values based on parsed values
@@ -764,20 +944,45 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </div>
           )}
 
+          {/* Header Settings Button (only for site CSS) */}
+          {showFontSelector && (
+            <div>
+              <button
+                onClick={() => setShowHeaderSettingsModal(true)}
+                className="w-full px-4 py-2 bg-[#5a7a54] text-white rounded text-xs hover:bg-[#4a6a44] transition flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Header Settings (H1-H4)
+              </button>
+            </div>
+          )}
+
           {/* Background Color */}
           <div>
             <Label className="text-xs font-medium">Background Color</Label>
             <div className="flex items-center gap-2 mt-1">
               <button
-                className="w-8 h-8 rounded border-2 border-gray-300"
-                style={{ backgroundColor: properties.backgroundColor || '#FFFFFF' }}
+                className="w-8 h-8 rounded border-2 border-gray-300 relative overflow-hidden"
+                style={
+                  properties.backgroundColor
+                    ? { backgroundColor: properties.backgroundColor }
+                    : {
+                        background:
+                          'linear-gradient(to top right, transparent 0%, transparent calc(50% - 1px), #ef4444 calc(50% - 1px), #ef4444 calc(50% + 1px), transparent calc(50% + 1px), transparent 100%), ' +
+                          'repeating-conic-gradient(#e5e7eb 0% 25%, #f3f4f6 0% 50%) 50% / 8px 8px'
+                      }
+                }
                 onClick={() => setShowBackgroundPicker(!showBackgroundPicker)}
+                title={properties.backgroundColor || 'Transparent (no background color)'}
               />
               <Input
                 value={properties.backgroundColor || ''}
                 onChange={(e) => updateProperty('backgroundColor', e.target.value)}
                 className="h-8 text-xs flex-1"
-                placeholder="e.g., #FFFFFF"
+                placeholder="e.g., #FFFFFF or transparent"
               />
             </div>
             {showBackgroundPicker && (
@@ -970,6 +1175,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 <Select
                   value={properties.borderStyle || 'solid'}
                   onValueChange={(value) => updateProperty('borderStyle', value)}
+                  disabled={!properties.borderWidth || properties.borderWidth === 0}
                 >
                   <SelectTrigger className="h-8 text-xs mt-1">
                     <SelectValue />
@@ -982,37 +1188,44 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                     ))}
                   </SelectContent>
                 </Select>
+                {(!properties.borderWidth || properties.borderWidth === 0) && (
+                  <p className="text-[9px] text-gray-400 mt-1">
+                    Set border width first to enable style selection
+                  </p>
+                )}
               </div>
             </>
           )}
 
-          {/* Position */}
-          <div>
-            <Label className="text-xs font-medium">Position</Label>
-            <Select
-              value={properties.position || 'static'}
-              onValueChange={(value) => updateProperty('position', value)}
-            >
-              <SelectTrigger className="h-8 text-xs mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {POSITION_OPTIONS.map(option => (
-                  <SelectItem key={option.value} value={option.value} className="text-xs">
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Position - Hidden for page/site CSS */}
+          {context !== 'page' && (
+            <div>
+              <Label className="text-xs font-medium">Position</Label>
+              <Select
+                value={properties.position || 'static'}
+                onValueChange={(value) => updateProperty('position', value)}
+              >
+                <SelectTrigger className="h-8 text-xs mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {POSITION_OPTIONS.map(option => (
+                    <SelectItem key={option.value} value={option.value} className="text-xs">
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* Display - Only for section, row, column */}
           {(context === 'section' || context === 'row' || context === 'column') && (
             <div>
               <Label className="text-xs font-medium">Display</Label>
               <Select
-                value={properties.display || 'block'}
-                onValueChange={(value) => updateProperty('display', value)}
+                value={properties.display || 'default'}
+                onValueChange={(value) => updateProperty('display', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
                   <SelectValue />
@@ -1033,8 +1246,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             <div>
               <Label className="text-xs font-medium">Overflow</Label>
               <Select
-                value={properties.overflow || 'visible'}
-                onValueChange={(value) => updateProperty('overflow', value)}
+                value={properties.overflow || 'default'}
+                onValueChange={(value) => updateProperty('overflow', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
                   <SelectValue />
@@ -1072,9 +1285,10 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </div>
           )}
 
-          {/* Width */}
-          <div>
-            <Label className="text-xs font-medium">Width</Label>
+          {/* Width - Hidden for page/site CSS */}
+          {context !== 'page' && (
+            <div>
+              <Label className="text-xs font-medium">Width</Label>
             <div className="space-y-1 mt-1">
               <Select
                 value={
@@ -1159,11 +1373,13 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 />
               )}
             </div>
-          </div>
+            </div>
+          )}
 
-          {/* Height */}
-          <div>
-            <Label className="text-xs font-medium">Height</Label>
+          {/* Height - Hidden for page/site CSS */}
+          {context !== 'page' && (
+            <div>
+              <Label className="text-xs font-medium">Height</Label>
             <div className="space-y-1 mt-1">
               <Select
                 value={
@@ -1249,11 +1465,13 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 />
               )}
             </div>
-          </div>
+            </div>
+          )}
 
-          {/* Min-Width */}
-          <div>
-            <Label className="text-xs font-medium">Min-Width</Label>
+          {/* Min-Width - Hidden for page/site CSS */}
+          {context !== 'page' && (
+            <div>
+              <Label className="text-xs font-medium">Min-Width</Label>
             <div className="space-y-1 mt-1">
               <Select
                 value={
@@ -1338,11 +1556,13 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 />
               )}
             </div>
-          </div>
+            </div>
+          )}
 
-          {/* Min-Height */}
-          <div>
-            <Label className="text-xs font-medium">Min-Height</Label>
+          {/* Min-Height - Hidden for page/site CSS */}
+          {context !== 'page' && (
+            <div>
+              <Label className="text-xs font-medium">Min-Height</Label>
             <div className="space-y-1 mt-1">
               <Select
                 value={
@@ -1428,11 +1648,13 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 />
               )}
             </div>
-          </div>
+            </div>
+          )}
 
-          {/* Background Image - Available for all contexts */}
-          <div>
-            <Label className="text-xs font-medium">Background Image</Label>
+          {/* Background Image - Hidden for site CSS only (not page CSS) */}
+          {!(context === 'page' && showFontSelector) && (
+            <div>
+              <Label className="text-xs font-medium">Background Image</Label>
             <div className="space-y-2 mt-1">
               <Input
                 value={properties.backgroundImage || ''}
@@ -1459,13 +1681,13 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                       />
                     </div>
 
-                    {/* Background Image Properties */}
+                    {/* Background Image Properties - Only show when image is set */}
                     <div className="grid grid-cols-2 gap-2">
                       {/* Background Size */}
                       <div>
                         <Label className="text-[9px] font-medium">Size</Label>
                         <Select
-                          value={properties.backgroundSize || 'auto'}
+                          value={properties.backgroundSize || 'cover'}
                           onValueChange={(value) => updateProperty('backgroundSize', value)}
                         >
                           <SelectTrigger className="h-7 text-[10px] mt-0.5">
@@ -1541,9 +1763,11 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                         </Select>
                       </div>
                     </div>
+                    <p className="text-[9px] text-gray-400 mt-2">
+                      Background image properties control how the image is displayed
+                    </p>
                   </>
                 )}
-              </div>
 
               {/* Gallery Modal */}
               {showGalleryModal && (
@@ -1625,8 +1849,350 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                 </div>
               )}
             </div>
+          </div>
+          )}
 
-          {/* Hyperlink Styling Section */}
+          {/* Header Settings Modal */}
+          {showHeaderSettingsModal && (
+            <div
+              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
+              onClick={() => setShowHeaderSettingsModal(false)}
+            >
+              <div
+                className="bg-white rounded-lg shadow-xl p-6 max-w-3xl w-full mx-4 max-h-[85vh] overflow-y-auto"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Header Tag Settings (H1-H4)</h3>
+                  <button
+                    onClick={() => setShowHeaderSettingsModal(false)}
+                    className="text-gray-400 hover:text-gray-600 transition"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* H1 Settings */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h4 className="text-sm font-semibold mb-3">H1 (Main Heading)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h1FontSize || 32}
+                          onChange={(e) => updateProperty('h1FontSize', parseInt(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="8"
+                          max="96"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Font Weight</Label>
+                        <Select
+                          value={properties.h1FontWeight || 'bold'}
+                          onValueChange={(value) => updateProperty('h1FontWeight', value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Normal (400)</SelectItem>
+                            <SelectItem value="500">Medium (500)</SelectItem>
+                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
+                            <SelectItem value="bold">Bold (700)</SelectItem>
+                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={properties.h1LineHeight || 1.2}
+                          onChange={(e) => updateProperty('h1LineHeight', parseFloat(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="0.5"
+                          max="3"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            className="w-8 h-8 rounded border-2 border-gray-300"
+                            style={{ backgroundColor: properties.h1Color || '#000000' }}
+                            onClick={() => setShowH1ColorPicker(!showH1ColorPicker)}
+                          />
+                          <Input
+                            value={properties.h1Color || ''}
+                            onChange={(e) => updateProperty('h1Color', e.target.value)}
+                            className="h-8 text-xs flex-1"
+                            placeholder="e.g., #000000"
+                          />
+                        </div>
+                        {showH1ColorPicker && (
+                          <div className="absolute z-10 mt-2">
+                            <div
+                              className="fixed inset-0"
+                              onClick={() => setShowH1ColorPicker(false)}
+                            />
+                            <HexColorPicker
+                              color={properties.h1Color || '#000000'}
+                              onChange={(color) => updateProperty('h1Color', color)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* H2 Settings */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h4 className="text-sm font-semibold mb-3">H2 (Section Heading)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h2FontSize || 24}
+                          onChange={(e) => updateProperty('h2FontSize', parseInt(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="8"
+                          max="96"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Font Weight</Label>
+                        <Select
+                          value={properties.h2FontWeight || 'bold'}
+                          onValueChange={(value) => updateProperty('h2FontWeight', value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Normal (400)</SelectItem>
+                            <SelectItem value="500">Medium (500)</SelectItem>
+                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
+                            <SelectItem value="bold">Bold (700)</SelectItem>
+                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={properties.h2LineHeight || 1.3}
+                          onChange={(e) => updateProperty('h2LineHeight', parseFloat(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="0.5"
+                          max="3"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            className="w-8 h-8 rounded border-2 border-gray-300"
+                            style={{ backgroundColor: properties.h2Color || '#000000' }}
+                            onClick={() => setShowH2ColorPicker(!showH2ColorPicker)}
+                          />
+                          <Input
+                            value={properties.h2Color || ''}
+                            onChange={(e) => updateProperty('h2Color', e.target.value)}
+                            className="h-8 text-xs flex-1"
+                            placeholder="e.g., #000000"
+                          />
+                        </div>
+                        {showH2ColorPicker && (
+                          <div className="absolute z-10 mt-2">
+                            <div
+                              className="fixed inset-0"
+                              onClick={() => setShowH2ColorPicker(false)}
+                            />
+                            <HexColorPicker
+                              color={properties.h2Color || '#000000'}
+                              onChange={(color) => updateProperty('h2Color', color)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* H3 Settings */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h4 className="text-sm font-semibold mb-3">H3 (Subsection Heading)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h3FontSize || 20}
+                          onChange={(e) => updateProperty('h3FontSize', parseInt(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="8"
+                          max="96"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Font Weight</Label>
+                        <Select
+                          value={properties.h3FontWeight || '600'}
+                          onValueChange={(value) => updateProperty('h3FontWeight', value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Normal (400)</SelectItem>
+                            <SelectItem value="500">Medium (500)</SelectItem>
+                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
+                            <SelectItem value="bold">Bold (700)</SelectItem>
+                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={properties.h3LineHeight || 1.4}
+                          onChange={(e) => updateProperty('h3LineHeight', parseFloat(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="0.5"
+                          max="3"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            className="w-8 h-8 rounded border-2 border-gray-300"
+                            style={{ backgroundColor: properties.h3Color || '#000000' }}
+                            onClick={() => setShowH3ColorPicker(!showH3ColorPicker)}
+                          />
+                          <Input
+                            value={properties.h3Color || ''}
+                            onChange={(e) => updateProperty('h3Color', e.target.value)}
+                            className="h-8 text-xs flex-1"
+                            placeholder="e.g., #000000"
+                          />
+                        </div>
+                        {showH3ColorPicker && (
+                          <div className="absolute z-10 mt-2">
+                            <div
+                              className="fixed inset-0"
+                              onClick={() => setShowH3ColorPicker(false)}
+                            />
+                            <HexColorPicker
+                              color={properties.h3Color || '#000000'}
+                              onChange={(color) => updateProperty('h3Color', color)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* H4 Settings */}
+                  <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+                    <h4 className="text-sm font-semibold mb-3">H4 (Minor Heading)</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h4FontSize || 16}
+                          onChange={(e) => updateProperty('h4FontSize', parseInt(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="8"
+                          max="96"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Font Weight</Label>
+                        <Select
+                          value={properties.h4FontWeight || '600'}
+                          onValueChange={(value) => updateProperty('h4FontWeight', value)}
+                        >
+                          <SelectTrigger className="h-8 text-xs mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="normal">Normal (400)</SelectItem>
+                            <SelectItem value="500">Medium (500)</SelectItem>
+                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
+                            <SelectItem value="bold">Bold (700)</SelectItem>
+                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Input
+                          type="number"
+                          step="0.1"
+                          value={properties.h4LineHeight || 1.5}
+                          onChange={(e) => updateProperty('h4LineHeight', parseFloat(e.target.value))}
+                          className="h-8 text-xs mt-1"
+                          min="0.5"
+                          max="3"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-2 mt-1">
+                          <button
+                            className="w-8 h-8 rounded border-2 border-gray-300"
+                            style={{ backgroundColor: properties.h4Color || '#000000' }}
+                            onClick={() => setShowH4ColorPicker(!showH4ColorPicker)}
+                          />
+                          <Input
+                            value={properties.h4Color || ''}
+                            onChange={(e) => updateProperty('h4Color', e.target.value)}
+                            className="h-8 text-xs flex-1"
+                            placeholder="e.g., #000000"
+                          />
+                        </div>
+                        {showH4ColorPicker && (
+                          <div className="absolute z-10 mt-2">
+                            <div
+                              className="fixed inset-0"
+                              onClick={() => setShowH4ColorPicker(false)}
+                            />
+                            <HexColorPicker
+                              color={properties.h4Color || '#000000'}
+                              onChange={(color) => updateProperty('h4Color', color)}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <button
+                    onClick={() => setShowHeaderSettingsModal(false)}
+                    className="flex-1 px-4 py-2 bg-[#5a7a54] text-white rounded text-sm hover:bg-[#4a6a44] transition"
+                  >
+                    Done
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Hyperlink Styling Section - Page/Site CSS */}
           <div className="border-t pt-4 mt-4">
             <Label className="text-xs font-medium mb-3 block">Hyperlink Styles</Label>
 
@@ -1704,8 +2270,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             <div className="mb-3">
               <Label className="text-[10px] font-medium text-gray-600">Link Decoration</Label>
               <Select
-                value={properties.linkTextDecoration || 'underline'}
-                onValueChange={(value) => updateProperty('linkTextDecoration', value)}
+                value={properties.linkTextDecoration || 'default'}
+                onValueChange={(value) => updateProperty('linkTextDecoration', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
                   <SelectValue />
@@ -1794,8 +2360,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             <div className="mb-3">
               <Label className="text-[10px] font-medium text-gray-600">Hover Decoration</Label>
               <Select
-                value={properties.linkHoverTextDecoration || 'underline'}
-                onValueChange={(value) => updateProperty('linkHoverTextDecoration', value)}
+                value={properties.linkHoverTextDecoration || 'default'}
+                onValueChange={(value) => updateProperty('linkHoverTextDecoration', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
                   <SelectValue />

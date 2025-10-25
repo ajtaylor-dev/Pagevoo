@@ -92,16 +92,6 @@ function TreeNode({
     onUpdate(link.id!, { linkType: newType, pageId: null, url: '' })
   }
 
-  const getIcon = () => {
-    if (hasChildren) {
-      return isCollapsed ? '📁' : '📂'
-    }
-    if (link.linkType === 'page') {
-      return '📄'
-    }
-    return '🔗'
-  }
-
   return (
     <div ref={setNodeRef} style={style}>
       <div
@@ -139,9 +129,6 @@ function TreeNode({
             {isCollapsed ? '▶' : '▼'}
           </button>
         )}
-
-        {/* Icon */}
-        <span className="text-lg">{getIcon()}</span>
 
         {/* Label editing */}
         {isEditingLabel ? (
