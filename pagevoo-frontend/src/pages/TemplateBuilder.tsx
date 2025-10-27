@@ -221,23 +221,37 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
       })
     })
 
-    // Extract header selector styles (h1-h4) - they're already scoped, just pass them through
+    // Extract header selector styles (h1-h4) and scope them to canvas
     let headerSelectors = ''
     const headerPatterns = [
-      /#template-canvas\s+(?:\.row\s+)?h1\s*\{([^}]+)\}/gi,
-      /#template-canvas\s+(?:\.row\s+)?h2\s*\{([^}]+)\}/gi,
-      /#template-canvas\s+(?:\.row\s+)?h3\s*\{([^}]+)\}/gi,
-      /#template-canvas\s+(?:\.row\s+)?h4\s*\{([^}]+)\}/gi
+      { tag: 'h1', pattern: /(?:\.row\s+)?h1\s*\{([^}]+)\}/gi },
+      { tag: 'h2', pattern: /(?:\.row\s+)?h2\s*\{([^}]+)\}/gi },
+      { tag: 'h3', pattern: /(?:\.row\s+)?h3\s*\{([^}]+)\}/gi },
+      { tag: 'h4', pattern: /(?:\.row\s+)?h4\s*\{([^}]+)\}/gi }
     ]
 
-    headerPatterns.forEach((pattern) => {
+    headerPatterns.forEach(({ tag, pattern }) => {
       const matches = [...processedCSS.matchAll(pattern)]
       matches.forEach(match => {
-        // Header selectors are already scoped, just extract them
-        headerSelectors += match[0] + '\n\n'
+        const selector = match[0].match(/^[^{]+/)[0].trim()
+        const styles = match[1]
+        // Add #template-canvas scoping
+        headerSelectors += `#template-canvas ${selector} {\n  ${styles.trim()}\n}\n\n`
         // Remove from processed CSS
         processedCSS = processedCSS.replace(match[0], '')
       })
+    })
+
+    // Extract paragraph selector styles and scope them to canvas
+    const paragraphPattern = /(?:\.row\s+)?p\s*\{([^}]+)\}/gi
+    const pMatches = [...processedCSS.matchAll(paragraphPattern)]
+    pMatches.forEach(match => {
+      const selector = match[0].match(/^[^{]+/)[0].trim()
+      const styles = match[1]
+      // Add #template-canvas scoping
+      headerSelectors += `#template-canvas ${selector} {\n  ${styles.trim()}\n}\n\n`
+      // Remove from processed CSS
+      processedCSS = processedCSS.replace(match[0], '')
     })
 
     // Scope any remaining standalone CSS properties to canvas
@@ -327,30 +341,9 @@ const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteC
   }
 
   // 3. Base text content styles for canvas (matching live preview)
+  // NOTE: H1-H4 styles are now controlled exclusively via Site CSS > Header Settings modal
+  // This ensures user's custom header styles are not overridden by hardcoded defaults
   css += `/* Text Content Styles */\n\n`
-  css += `#template-canvas .row h1 {\n`
-  css += `  font-size: 2em;\n`
-  css += `  font-weight: bold;\n`
-  css += `  margin: 0.67em 0;\n`
-  css += `}\n\n`
-
-  css += `#template-canvas .row h2 {\n`
-  css += `  font-size: 1.5em;\n`
-  css += `  font-weight: bold;\n`
-  css += `  margin: 0.75em 0;\n`
-  css += `}\n\n`
-
-  css += `#template-canvas .row h3 {\n`
-  css += `  font-size: 1.17em;\n`
-  css += `  font-weight: bold;\n`
-  css += `  margin: 1em 0;\n`
-  css += `}\n\n`
-
-  css += `#template-canvas .row h4 {\n`
-  css += `  font-size: 1em;\n`
-  css += `  font-weight: bold;\n`
-  css += `  margin: 1.33em 0;\n`
-  css += `}\n\n`
 
   css += `#template-canvas .row p {\n`
   css += `  margin: 1em 0;\n`
@@ -953,13 +946,15 @@ export default function TemplateBuilder() {
       return p
     })
 
-    setTemplate({ ...template, pages: updatedPages })
+    const updatedTemplate = { ...template, pages: updatedPages }
+    setTemplate(updatedTemplate)
     setCurrentPage({
       ...currentPage,
       name: editPageName,
       slug: editPageSlug,
       meta_description: editPageMetaDescription
     })
+    addToHistory(updatedTemplate)
     setShowEditPageModal(false)
   }
 
@@ -1496,9 +1491,11 @@ padding: 1rem;`
         return p
       })
 
-      setTemplate({ ...template, pages: updatedPages })
+      const updatedTemplate = { ...template, pages: updatedPages }
+      setTemplate(updatedTemplate)
       setCurrentPage({ ...currentPage, sections: newSections })
       setSelectedSection(newSection)
+      addToHistory(updatedTemplate)
       return
     }
 
@@ -1529,8 +1526,10 @@ padding: 1rem;`
         return p
       })
 
-      setTemplate({ ...template, pages: updatedPages })
+      const updatedTemplate = { ...template, pages: updatedPages }
+      setTemplate(updatedTemplate)
       setCurrentPage({ ...currentPage, sections: newSections })
+      addToHistory(updatedTemplate)
     }
 
     // Case 3: Sidebar left/right drag (handled by modifier keys or special zones)
@@ -1820,6 +1819,12 @@ padding: 1rem;`
   }
 
   const handleCloseTextEditor = () => {
+    // Save current template state to history when closing editor
+    // This captures all changes made during the editing session
+    if (template) {
+      addToHistory(template)
+    }
+
     setEditingText(null)
     setShowCodeView(false)
     setShowColorPicker(false)
@@ -2573,7 +2578,7 @@ padding: 1rem;`
   }
 
   // History management helper function
-  const addToHistory = (newTemplate: Template) => {
+  const addToHistory = (newTemplate: Template, markAsUnsaved: boolean = true) => {
     setHistory(prev => {
       // Remove any history after current index (if user made changes after undo)
       const newHistory = prev.slice(0, historyIndex + 1)
@@ -2596,7 +2601,17 @@ padding: 1rem;`
       return newHistory
     })
 
-    setHasUnsavedChanges(true)
+    if (markAsUnsaved) {
+      setHasUnsavedChanges(true)
+    }
+  }
+
+  // Reset history after save - start fresh with just the saved state
+  const resetHistory = (savedTemplate: Template) => {
+    setHistory([JSON.parse(JSON.stringify(savedTemplate))])
+    setHistoryIndex(0)
+    setCanUndo(false)
+    setCanRedo(false)
   }
 
   // Undo/Redo functions
@@ -2656,6 +2671,28 @@ padding: 1rem;`
         return // User cancelled or entered empty name
       }
 
+      // Check if a template with this name already exists
+      try {
+        const response = await api.getAllTemplatesAdmin()
+        if (response.success && response.data) {
+          const existingTemplate = response.data.find((t: any) =>
+            t.name.toLowerCase() === templateName.trim().toLowerCase()
+          )
+
+          if (existingTemplate) {
+            const confirmOverwrite = confirm(
+              `A template named "${templateName.trim()}" already exists. Do you want to overwrite it?`
+            )
+            if (!confirmOverwrite) {
+              return // User cancelled the overwrite
+            }
+          }
+        }
+      } catch (error) {
+        console.error('Error checking for existing templates:', error)
+        // Continue with save even if check fails
+      }
+
       // Update template name
       setTemplate({ ...template, name: templateName.trim() })
 
@@ -2689,9 +2726,8 @@ padding: 1rem;`
           }
         }
 
-        // Update history with the fresh template
-        addToHistory(freshTemplate)
-
+        // Reset history after save - start fresh with saved state
+        resetHistory(freshTemplate)
         setHasUnsavedChanges(false)
         alert('Template saved successfully!')
       } else {
@@ -2745,9 +2781,8 @@ padding: 1rem;`
         // Set published state to false (it's a draft)
         setIsPublished(false)
 
-        // Update history with new template
-        setHistory([JSON.parse(JSON.stringify(newTemplate))])
-        setHistoryIndex(0)
+        // Reset history after save - start fresh with saved state
+        resetHistory(newTemplate)
         setHasUnsavedChanges(false)
 
         alert('Template created successfully!')
@@ -3302,33 +3337,63 @@ ${sectionsHTML}
 
     // 6. Text Content Styles
     css += `/* Text Content Styles */\n\n`
-    css += `.row h1 {\n`
-    css += `  font-size: 2em;\n`
-    css += `  font-weight: bold;\n`
-    css += `  margin: 0.67em 0;\n`
-    css += `}\n\n`
 
-    css += `.row h2 {\n`
-    css += `  font-size: 1.5em;\n`
-    css += `  font-weight: bold;\n`
-    css += `  margin: 0.75em 0;\n`
-    css += `}\n\n`
+    // Extract H1-H4 styles from Site CSS if they exist (custom header settings)
+    let hasCustomHeaders = false
+    if (template.custom_css) {
+      const h1Match = template.custom_css.match(/(?:\.row\s+)?h1\s*\{([^}]+)\}/i)
+      const h2Match = template.custom_css.match(/(?:\.row\s+)?h2\s*\{([^}]+)\}/i)
+      const h3Match = template.custom_css.match(/(?:\.row\s+)?h3\s*\{([^}]+)\}/i)
+      const h4Match = template.custom_css.match(/(?:\.row\s+)?h4\s*\{([^}]+)\}/i)
 
-    css += `.row h3 {\n`
-    css += `  font-size: 1.17em;\n`
-    css += `  font-weight: bold;\n`
-    css += `  margin: 1em 0;\n`
-    css += `}\n\n`
+      if (h1Match) {
+        const selector = h1Match[0].match(/^[^{]+/)[0].trim()
+        css += `${selector} {\n${h1Match[1]}\n}\n\n`
+        hasCustomHeaders = true
+      }
+      if (h2Match) {
+        const selector = h2Match[0].match(/^[^{]+/)[0].trim()
+        css += `${selector} {\n${h2Match[1]}\n}\n\n`
+        hasCustomHeaders = true
+      }
+      if (h3Match) {
+        const selector = h3Match[0].match(/^[^{]+/)[0].trim()
+        css += `${selector} {\n${h3Match[1]}\n}\n\n`
+        hasCustomHeaders = true
+      }
+      if (h4Match) {
+        const selector = h4Match[0].match(/^[^{]+/)[0].trim()
+        css += `${selector} {\n${h4Match[1]}\n}\n\n`
+        hasCustomHeaders = true
+      }
+    }
 
-    css += `.row h4 {\n`
-    css += `  font-size: 1em;\n`
-    css += `  font-weight: bold;\n`
-    css += `  margin: 1.33em 0;\n`
-    css += `}\n\n`
+    // If no custom header styles, use browser defaults (no hardcoded styles)
+    // This allows the browser's natural heading hierarchy to work
+    if (!hasCustomHeaders) {
+      // Only add margin for spacing, let browser handle font-size and font-weight
+      css += `.row h1, .row h2, .row h3, .row h4 {\n`
+      css += `  margin: 0.67em 0;\n`
+      css += `}\n\n`
+    }
 
-    css += `.row p {\n`
-    css += `  margin: 1em 0;\n`
-    css += `}\n\n`
+    // Extract Paragraph styles from Site CSS if they exist (custom paragraph settings)
+    let hasCustomParagraph = false
+    if (template.custom_css) {
+      const pMatch = template.custom_css.match(/(?:\.row\s+)?p\s*\{([^}]+)\}/i)
+      if (pMatch) {
+        const selector = pMatch[0].match(/^[^{]+/)[0].trim()
+        css += `${selector} {\n${pMatch[1]}\n}\n\n`
+        hasCustomParagraph = true
+      }
+    }
+
+    // If no custom paragraph styles, use default margin
+    if (!hasCustomParagraph) {
+      css += `.row p {\n`
+      css += `  margin: 1em 0;\n`
+      css += `}\n\n`
+    }
 
     css += `.row ul, .row ol {\n`
     css += `  margin: 1em 0;\n`
@@ -3557,12 +3622,13 @@ ${sectionsHTML}
         p.id === currentPage.id ? updatedPage : p
       )
 
-      setTemplate({
+      const updatedTemplate = {
         ...template,
         pages: updatedPages
-      })
+      }
+      setTemplate(updatedTemplate)
       setCurrentPage(updatedPage)
-      setHasUnsavedChanges(true)
+      addToHistory(updatedTemplate)
       setIsEditingHTML(false)
 
       alert('HTML changes applied successfully! Remember to save your template.')
@@ -3652,12 +3718,13 @@ ${sectionsHTML}
         p.id === currentPage.id ? updatedPage : p
       )
 
-      setTemplate({
+      const updatedTemplate = {
         ...template,
         pages: updatedPages
-      })
+      }
+      setTemplate(updatedTemplate)
       setCurrentPage(updatedPage)
-      setHasUnsavedChanges(true)
+      addToHistory(updatedTemplate)
       setIsEditingCSS(false)
 
       alert('CSS changes applied successfully! Remember to save your template.')
@@ -5111,7 +5178,9 @@ ${sectionsHTML}
                           value={template.custom_css || ''}
                           onChange={(css) => {
                             console.log('[Site CSS onChange] New CSS:', css)
-                            setTemplate({ ...template, custom_css: css })
+                            const updatedTemplate = { ...template, custom_css: css }
+                            setTemplate(updatedTemplate)
+                            addToHistory(updatedTemplate)
                           }}
                           context="page"
                           showFontSelector={true}
@@ -5302,7 +5371,11 @@ ${sectionsHTML}
           <input
             type="text"
             value={template.name}
-            onChange={(e) => setTemplate({ ...template, name: e.target.value })}
+            onChange={(e) => {
+              const updatedTemplate = { ...template, name: e.target.value }
+              setTemplate(updatedTemplate)
+              addToHistory(updatedTemplate)
+            }}
             className="px-2 py-0.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64"
           />
         </div>
@@ -5689,7 +5762,9 @@ ${sectionsHTML}
                           value={template?.custom_css || ''}
                           onChange={(css) => {
                             console.log('[Site CSS onChange #2] New CSS:', css)
-                            setTemplate({ ...template!, custom_css: css })
+                            const updatedTemplate = { ...template!, custom_css: css }
+                            setTemplate(updatedTemplate)
+                            addToHistory(updatedTemplate)
                           }}
                           context="page"
                           showFontSelector={true}
@@ -5710,8 +5785,10 @@ ${sectionsHTML}
                             const updatedPages = template.pages.map(p =>
                               p.id === currentPage.id ? { ...p, page_css: css } : p
                             )
-                            setTemplate({ ...template, pages: updatedPages })
+                            const updatedTemplate = { ...template, pages: updatedPages }
+                            setTemplate(updatedTemplate)
                             setCurrentPage({ ...currentPage, page_css: css })
+                            addToHistory(updatedTemplate)
                           }}
                           context="page"
                           galleryImages={template?.images}

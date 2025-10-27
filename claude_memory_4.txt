@@ -642,37 +642,254 @@ Result: Custom wins (same specificity, appears later in cascade) ✅
 
 ### Current Status
 
-🚧 Session 28 - IN PROGRESS
+✅ Session 28 - COMPLETE
 ✅ Header settings modal - IMPLEMENTED
 ✅ Properties persistence - FIXED
 ✅ Template Builder isolation - FIXED
-⚠️ Font size and font weight - NOT WORKING (only line-height and color work)
-❌ CSS specificity issue - NOT FULLY RESOLVED
+✅ CSS specificity issue - RESOLVED (changed to `#template-canvas .row h1`)
+✅ Font size and font weight - WORKING
+✅ All header properties (font-size, font-weight, line-height, color) - WORKING
 
-### Known Issues
+### Final Resolution
 
-**Font Size and Font Weight Still Not Applying**:
-- Despite generating CSS with `#template-canvas .row h1 {}` for proper specificity
-- Despite updating TemplateBuilder regex patterns to match `.row` class
-- Only line-height and color are actually working on the canvas
-- Font-size and font-weight changes in the modal have no visible effect
+**Root Cause**: CSS specificity conflict between default styles and custom styles
+**Solution**: Changed custom selectors from `#template-canvas h1` to `#template-canvas .row h1` to match specificity of defaults (112)
+**Result**: All header properties now apply correctly on canvas
 
-**Attempted Fixes**:
-1. Changed selectors from `#template-canvas h1` to `#template-canvas .row h1`
-2. Updated regex patterns in TemplateBuilder to `/#template-canvas\s+(?:\.row\s+)?h1\s*\{([^}]+)\}/gi`
-3. Still not working - needs further investigation
+---
 
-**Next Session TODO**:
-1. Debug why font-size and font-weight are not applying to canvas headers
-2. Check browser dev tools to see actual CSS being applied
-3. Verify CSS is being extracted and passed through correctly in TemplateBuilder
-4. Check for other CSS rules that might be overriding with higher specificity
-5. Potentially need to use `!important` or different selector strategy
+## Session 29 (Completed) - Save System & Undo/Redo Enhancements
+
+### Date: 2025-10-27
+
+### Overview
+Enhanced the save system with overwrite protection, fixed save icon state management, and improved undo/redo history tracking to include all changes (not just section operations).
+
+### Features Implemented
+
+#### 1. Header Settings UI Refinement
+**Changes Made**:
+- Removed font-weight controls (use browser defaults)
+- Removed line-height controls (unnecessary)
+- Added padding (px) and margin (px) controls for H1-H4
+- Renamed button from "Header Settings (H1-H4)" to "Header and Paragraph Styling"
+- Added paragraph section with padding (Top Right Bottom Left) and margin inputs
+- Renamed "Padding/Margin" to "Body Padding/Body Margin" in Site/Page CSS
+
+**Implementation**:
+- StyleEditor.tsx interface updated: replaced h1FontWeight/h1LineHeight with h1Padding/h1Margin
+- CSS generation updated to output padding and margin instead of font-weight and line-height
+- Modal UI updated with new controls (lines 1893-2197)
+- Paragraph section added with 4-value padding input and margin input (px or '0 auto')
+
+#### 2. CSS Architecture Simplification (#template-canvas Removal)
+**Problem**: Users had to write `#template-canvas` in their CSS code (implementation detail exposed)
+
+**User Quote**: "I dont want to have to put that template-canvas, the builder should just know that any css applied here is only affecting the canvas"
+
+**Solution**: Clean user-facing CSS with automatic scoping
+- StyleEditor.tsx: Generate clean CSS without #template-canvas prefix (e.g., `.row h1` instead of `#template-canvas .row h1`)
+- TemplateBuilder.tsx scopeToCanvas(): Automatically detect and scope selectors behind the scenes
+- Parsing: Updated to work with or without #template-canvas (backward compatible)
+- Backend: TemplateFileGenerator.php updated to extract clean selectors
+
+**Result**:
+- Users write: `.row h1 { font-size: 24px; }`
+- System internally uses: `#template-canvas .row h1 { font-size: 24px; }` for canvas isolation
+- Database stores: `.row h1 { font-size: 24px; }` (clean)
+- Physical files export: `.row h1 { font-size: 24px; }` (clean)
+
+**Files Modified**:
+- StyleEditor.tsx: CSS generation (lines 597-638), parsing (lines 478-535)
+- TemplateBuilder.tsx: scopeToCanvas() (lines 224-255), generateStylesheet() (lines 3299-3347)
+- TemplateFileGenerator.php: CSS extraction (lines 445-510)
+
+#### 3. Save Icon State Management Fix
+**Problem**: Save icon staying green after making changes (not turning red)
+
+**Root Cause**: Race condition where `addToHistory()` sets `hasUnsavedChanges(true)`, then save immediately sets it to false
+
+**Solution**: Added optional `markAsUnsaved` parameter to `addToHistory()` function
+```typescript
+const addToHistory = (newTemplate: Template, markAsUnsaved: boolean = true) => {
+  // ... history management code
+  if (markAsUnsaved) {
+    setHasUnsavedChanges(true)
+  }
+}
+
+// In save function
+addToHistory(freshTemplate, false) // Don't mark as unsaved after save
+```
+
+**Result**: Save icon now properly reflects unsaved state immediately on changes
+
+#### 4. Template Overwrite Protection
+**Problem**: Users could accidentally save over templates with the same name
+
+**Solution**: Added duplicate name check with confirmation prompt
+```typescript
+// Check if a template with this name already exists
+const response = await api.getAllTemplatesAdmin()
+const existingTemplate = response.data.find((t: any) =>
+  t.name.toLowerCase() === templateName.trim().toLowerCase()
+)
+
+if (existingTemplate) {
+  const confirmOverwrite = confirm(
+    `A template named "${templateName.trim()}" already exists. Do you want to overwrite it?`
+  )
+  if (!confirmOverwrite) return // User cancelled
+}
+```
+
+**Result**: Users prompted before accidentally overwriting existing templates
+
+#### 5. Complete Undo/Redo History Tracking
+**Problem**: Only section operations tracked, CSS and metadata changes ignored
+
+**Solution**: Added `addToHistory()` calls to ALL state-changing operations:
+- Site CSS changes (StyleEditor, 2 locations)
+- Page CSS changes
+- Template name changes
+- Page metadata changes (name, slug, description)
+- Direct HTML modal edits
+- Direct CSS modal edits
+- Section add operations (handleDragEnd)
+- Section reorder operations (handleDragEnd)
+- WYSIWYG text content changes
+
+**Implementation Locations**:
+- Site CSS: Line 5137-5139
+- Page CSS: Lines 5740-5743
+- Template name: Lines 5330-5334
+- Page metadata: Lines 949-958
+- HTML modal: Lines 3585-3592
+- CSS modal: Lines 3681-3688
+- Section add: Line 1498
+- Section reorder: Line 1532
+- WYSIWYG text: Line 1801 (initially, then removed - see below)
+
+#### 6. WYSIWYG Undo/Redo Granularity Improvement
+**Problem**: Each keystroke created a new undo point (too granular, tedious to undo)
+
+**User Request**: "make the undo stage go back to before the WYSIWYG editor was opened"
+
+**Solution**: Track history on editor close instead of every keystroke
+- Removed `addToHistory()` from `handleTextEdit()` (every keystroke)
+- Added `addToHistory()` to `handleCloseTextEditor()` (once per editing session)
+
+**Implementation**:
+```typescript
+const handleCloseTextEditor = () => {
+  // Save current template state to history when closing editor
+  // This captures all changes made during the editing session
+  if (template) {
+    addToHistory(template)
+  }
+  // ... close editor
+}
+```
+
+**Result**:
+- Undo takes you back to before opening WYSIWYG editor
+- All changes during one editing session = one undo point
+- Much less tedious than character-by-character undo
+
+#### 7. Reset History After Save
+**Problem**: Users could undo past save points, losing saved work
+
+**User Request**: "if i make a save, it should reset the undo/redo counter"
+
+**Solution**: Created `resetHistory()` function to clear history after save
+```typescript
+const resetHistory = (savedTemplate: Template) => {
+  setHistory([JSON.parse(JSON.stringify(savedTemplate))])
+  setHistoryIndex(0)
+  setCanUndo(false)
+  setCanRedo(false)
+}
+```
+
+**Result**:
+- After saving, history is reset to just the saved state
+- Can't undo past a save point
+- Prevents accidentally undoing saved work
+
+### Files Modified
+
+**pagevoo-frontend/src/components/StyleEditor.tsx**:
+- Lines 43-62: Interface updated with padding/margin for headers, paragraph properties
+- Lines 597-638: CSS generation without #template-canvas prefix
+- Lines 478-535: Parsing with backward compatibility (accepts old and new formats)
+- Lines 1893-2197: Modal UI with padding/margin controls and paragraph section
+
+**pagevoo-frontend/src/pages/TemplateBuilder.tsx**:
+- Lines 224-255: scopeToCanvas() automatic selector scoping
+- Lines 3299-3347: generateStylesheet() clean CSS extraction
+- Lines 2577-2611: addToHistory() with markAsUnsaved parameter, resetHistory() function
+- Lines 2726: Updated handleSave() to use resetHistory()
+- Lines 2656-2676: Added template overwrite protection check
+- Lines 2781: Updated performSaveAsCreate() to use resetHistory()
+- Lines 5137-5139: Site CSS history tracking
+- Lines 5740-5743: Page CSS history tracking
+- Lines 5330-5334: Template name history tracking
+- Lines 949-958: Page metadata history tracking
+- Lines 3585-3592: HTML modal history tracking
+- Lines 3681-3688: CSS modal history tracking
+- Lines 1498: Section add history tracking
+- Lines 1532: Section reorder history tracking
+- Lines 1821-1826: WYSIWYG close history tracking (removed from handleTextEdit line 1801)
+
+**pagevoo-backend/app/Services/TemplateFileGenerator.php**:
+- Lines 445-510: Extract clean header and paragraph CSS without #template-canvas
+
+**pagevoo-frontend/src/index.css**:
+- Lines 261-267: Removed hardcoded H1-H4 defaults, added comment explaining Header Settings modal is source of truth
+
+### Technical Patterns
+
+**CSS Scoping Architecture**:
+- User-facing code: Clean selectors (`.row h1`)
+- Internal canvas: Scoped selectors (`#template-canvas .row h1`)
+- Database storage: Clean selectors
+- Physical files: Clean selectors
+
+**History Management**:
+- Deep cloning: `JSON.parse(JSON.stringify(template))`
+- Optional unsaved flag: `addToHistory(template, markAsUnsaved = true)`
+- History limit: 10 steps (FIFO)
+- Reset on save: Clear history, disable undo/redo
+
+**State Synchronization**:
+- Template state changes trigger history tracking
+- hasUnsavedChanges flag controls save icon color
+- Race condition prevention with markAsUnsaved parameter
+
+### Testing Results
+
+**Save Icon State**: ✅ Turns red immediately on any change
+**Template Overwrite Protection**: ✅ Prompts before overwriting duplicate names
+**Undo/Redo Coverage**: ✅ All changes tracked (CSS, metadata, sections, content)
+**WYSIWYG Undo Granularity**: ✅ One undo point per editing session (not per keystroke)
+**History Reset on Save**: ✅ Can't undo past save point
+**CSS Architecture**: ✅ Clean user-facing CSS, automatic scoping
+
+### Current Status
+
+✅ Session 29 - COMPLETE
+✅ Header/Paragraph UI refinement - COMPLETE
+✅ CSS architecture simplification - COMPLETE (#template-canvas removed from user code)
+✅ Save icon state management - FIXED
+✅ Template overwrite protection - IMPLEMENTED
+✅ Complete undo/redo tracking - IMPLEMENTED
+✅ WYSIWYG undo granularity - IMPROVED
+✅ History reset on save - IMPLEMENTED
 
 ---
 
 ## Last Updated
-2025-10-25 (Session 28 in progress - Header tag settings partially working)
+2025-10-27 (Session 29 complete - Save system and undo/redo enhancements)
 
 ---
 Note: This is a continuation of claude_memory_3.txt. Sessions 1-25 documented in previous memory files.

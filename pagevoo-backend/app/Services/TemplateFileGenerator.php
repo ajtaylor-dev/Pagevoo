@@ -441,33 +441,80 @@ class TemplateFileGenerator
 
         // Text content styling within rows
         $css .= "/* Text Content Styles */\n\n";
-        $css .= ".row h1 {\n";
-        $css .= "  font-size: 2em;\n";
-        $css .= "  font-weight: bold;\n";
-        $css .= "  margin: 0.67em 0;\n";
-        $css .= "}\n\n";
 
-        $css .= ".row h2 {\n";
-        $css .= "  font-size: 1.5em;\n";
-        $css .= "  font-weight: bold;\n";
-        $css .= "  margin: 0.75em 0;\n";
-        $css .= "}\n\n";
+        // Extract H1-H4 styles from Site CSS if they exist (custom header settings)
+        $hasCustomHeaders = false;
+        if ($template->custom_css) {
+            // Extract H1 styles
+            if (preg_match('/(?:\.row\s+)?h1\s*\{([^}]+)\}/i', $template->custom_css, $h1Match)) {
+                // Extract the selector from the match
+                if (preg_match('/^[^{]+/', $h1Match[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $h1Match[1] . "\n";
+                    $css .= "}\n\n";
+                    $hasCustomHeaders = true;
+                }
+            }
 
-        $css .= ".row h3 {\n";
-        $css .= "  font-size: 1.17em;\n";
-        $css .= "  font-weight: bold;\n";
-        $css .= "  margin: 1em 0;\n";
-        $css .= "}\n\n";
+            // Extract H2 styles
+            if (preg_match('/(?:\.row\s+)?h2\s*\{([^}]+)\}/i', $template->custom_css, $h2Match)) {
+                if (preg_match('/^[^{]+/', $h2Match[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $h2Match[1] . "\n";
+                    $css .= "}\n\n";
+                    $hasCustomHeaders = true;
+                }
+            }
 
-        $css .= ".row h4 {\n";
-        $css .= "  font-size: 1em;\n";
-        $css .= "  font-weight: bold;\n";
-        $css .= "  margin: 1.33em 0;\n";
-        $css .= "}\n\n";
+            // Extract H3 styles
+            if (preg_match('/(?:\.row\s+)?h3\s*\{([^}]+)\}/i', $template->custom_css, $h3Match)) {
+                if (preg_match('/^[^{]+/', $h3Match[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $h3Match[1] . "\n";
+                    $css .= "}\n\n";
+                    $hasCustomHeaders = true;
+                }
+            }
 
-        $css .= ".row p {\n";
-        $css .= "  margin: 1em 0;\n";
-        $css .= "}\n\n";
+            // Extract H4 styles
+            if (preg_match('/(?:\.row\s+)?h4\s*\{([^}]+)\}/i', $template->custom_css, $h4Match)) {
+                if (preg_match('/^[^{]+/', $h4Match[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $h4Match[1] . "\n";
+                    $css .= "}\n\n";
+                    $hasCustomHeaders = true;
+                }
+            }
+        }
+
+        // If no custom header styles, use browser defaults (no hardcoded styles)
+        // This allows the browser's natural heading hierarchy to work
+        if (!$hasCustomHeaders) {
+            // Only add margin for spacing, let browser handle font-size and font-weight
+            $css .= ".row h1, .row h2, .row h3, .row h4 {\n";
+            $css .= "  margin: 0.67em 0;\n";
+            $css .= "}\n\n";
+        }
+
+        // Extract Paragraph styles from Site CSS if they exist (custom paragraph settings)
+        $hasCustomParagraph = false;
+        if ($template->custom_css) {
+            if (preg_match('/(?:\.row\s+)?p\s*\{([^}]+)\}/i', $template->custom_css, $pMatch)) {
+                if (preg_match('/^[^{]+/', $pMatch[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $pMatch[1] . "\n";
+                    $css .= "}\n\n";
+                    $hasCustomParagraph = true;
+                }
+            }
+        }
+
+        // If no custom paragraph styles, use default margin
+        if (!$hasCustomParagraph) {
+            $css .= ".row p {\n";
+            $css .= "  margin: 1em 0;\n";
+            $css .= "}\n\n";
+        }
 
         $css .= ".row ul, .row ol {\n";
         $css .= "  margin: 1em 0;\n";

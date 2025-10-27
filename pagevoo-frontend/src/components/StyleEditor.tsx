@@ -42,21 +42,24 @@ interface StyleProperty {
   float?: string
   // Header styles (h1-h4)
   h1FontSize?: number
-  h1FontWeight?: string
-  h1LineHeight?: number
+  h1Padding?: number
+  h1Margin?: number
   h1Color?: string
   h2FontSize?: number
-  h2FontWeight?: string
-  h2LineHeight?: number
+  h2Padding?: number
+  h2Margin?: number
   h2Color?: string
   h3FontSize?: number
-  h3FontWeight?: string
-  h3LineHeight?: number
+  h3Padding?: number
+  h3Margin?: number
   h3Color?: string
   h4FontSize?: number
-  h4FontWeight?: string
-  h4LineHeight?: number
+  h4Padding?: number
+  h4Margin?: number
   h4Color?: string
+  // Paragraph styles
+  pPadding?: string
+  pMargin?: string
 }
 
 interface StyleEditorProps {
@@ -472,57 +475,64 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     const linkHoverTextDecorationMatch = css.match(/a:hover\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
     if (linkHoverTextDecorationMatch) props.linkHoverTextDecoration = linkHoverTextDecorationMatch[1].trim()
 
-    // H1 properties (support scoped selectors with .row and legacy formats)
-    const h1FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*font-size:\s*(\d+)px/i)
+    // H1 properties (matches with or without #template-canvas prefix)
+    const h1FontSizeMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h1\s*\{[^}]*font-size:\s*(\d+)px/i)
     if (h1FontSizeMatch) props.h1FontSize = parseInt(h1FontSizeMatch[1])
 
-    const h1FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
-    if (h1FontWeightMatch) props.h1FontWeight = h1FontWeightMatch[1].trim()
+    const h1PaddingMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h1\s*\{[^}]*padding:\s*(\d+)px/i)
+    if (h1PaddingMatch) props.h1Padding = parseInt(h1PaddingMatch[1])
 
-    const h1LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*line-height:\s*([\d.]+)/i)
-    if (h1LineHeightMatch) props.h1LineHeight = parseFloat(h1LineHeightMatch[1])
+    const h1MarginMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h1\s*\{[^}]*margin:\s*(\d+)px/i)
+    if (h1MarginMatch) props.h1Margin = parseInt(h1MarginMatch[1])
 
-    const h1ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h1\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    const h1ColorMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h1\s*\{[^}]*color:\s*([^;}\n]+)/i)
     if (h1ColorMatch) props.h1Color = h1ColorMatch[1].trim()
 
-    // H2 properties (support scoped selectors with .row and legacy formats)
-    const h2FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*font-size:\s*(\d+)px/i)
+    // H2 properties (matches with or without #template-canvas prefix)
+    const h2FontSizeMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h2\s*\{[^}]*font-size:\s*(\d+)px/i)
     if (h2FontSizeMatch) props.h2FontSize = parseInt(h2FontSizeMatch[1])
 
-    const h2FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
-    if (h2FontWeightMatch) props.h2FontWeight = h2FontWeightMatch[1].trim()
+    const h2PaddingMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h2\s*\{[^}]*padding:\s*(\d+)px/i)
+    if (h2PaddingMatch) props.h2Padding = parseInt(h2PaddingMatch[1])
 
-    const h2LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*line-height:\s*([\d.]+)/i)
-    if (h2LineHeightMatch) props.h2LineHeight = parseFloat(h2LineHeightMatch[1])
+    const h2MarginMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h2\s*\{[^}]*margin:\s*(\d+)px/i)
+    if (h2MarginMatch) props.h2Margin = parseInt(h2MarginMatch[1])
 
-    const h2ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h2\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    const h2ColorMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h2\s*\{[^}]*color:\s*([^;}\n]+)/i)
     if (h2ColorMatch) props.h2Color = h2ColorMatch[1].trim()
 
-    // H3 properties (support scoped selectors with .row and legacy formats)
-    const h3FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*font-size:\s*(\d+)px/i)
+    // H3 properties (matches with or without #template-canvas prefix)
+    const h3FontSizeMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h3\s*\{[^}]*font-size:\s*(\d+)px/i)
     if (h3FontSizeMatch) props.h3FontSize = parseInt(h3FontSizeMatch[1])
 
-    const h3FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
-    if (h3FontWeightMatch) props.h3FontWeight = h3FontWeightMatch[1].trim()
+    const h3PaddingMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h3\s*\{[^}]*padding:\s*(\d+)px/i)
+    if (h3PaddingMatch) props.h3Padding = parseInt(h3PaddingMatch[1])
 
-    const h3LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*line-height:\s*([\d.]+)/i)
-    if (h3LineHeightMatch) props.h3LineHeight = parseFloat(h3LineHeightMatch[1])
+    const h3MarginMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h3\s*\{[^}]*margin:\s*(\d+)px/i)
+    if (h3MarginMatch) props.h3Margin = parseInt(h3MarginMatch[1])
 
-    const h3ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h3\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    const h3ColorMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h3\s*\{[^}]*color:\s*([^;}\n]+)/i)
     if (h3ColorMatch) props.h3Color = h3ColorMatch[1].trim()
 
-    // H4 properties (support scoped selectors with .row and legacy formats)
-    const h4FontSizeMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*font-size:\s*(\d+)px/i)
+    // H4 properties (matches with or without #template-canvas prefix)
+    const h4FontSizeMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h4\s*\{[^}]*font-size:\s*(\d+)px/i)
     if (h4FontSizeMatch) props.h4FontSize = parseInt(h4FontSizeMatch[1])
 
-    const h4FontWeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*font-weight:\s*([^;}\n]+)/i)
-    if (h4FontWeightMatch) props.h4FontWeight = h4FontWeightMatch[1].trim()
+    const h4PaddingMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h4\s*\{[^}]*padding:\s*(\d+)px/i)
+    if (h4PaddingMatch) props.h4Padding = parseInt(h4PaddingMatch[1])
 
-    const h4LineHeightMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*line-height:\s*([\d.]+)/i)
-    if (h4LineHeightMatch) props.h4LineHeight = parseFloat(h4LineHeightMatch[1])
+    const h4MarginMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h4\s*\{[^}]*margin:\s*(\d+)px/i)
+    if (h4MarginMatch) props.h4Margin = parseInt(h4MarginMatch[1])
 
-    const h4ColorMatch = css.match(/(?:#template-canvas\s+(?:\.row\s+)?)?h4\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    const h4ColorMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h4\s*\{[^}]*color:\s*([^;}\n]+)/i)
     if (h4ColorMatch) props.h4Color = h4ColorMatch[1].trim()
+
+    // Paragraph properties (matches with or without #template-canvas prefix)
+    const pPaddingMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?p\s*\{[^}]*padding:\s*([^;}\n]+)/i)
+    if (pPaddingMatch) props.pPadding = pPaddingMatch[1].trim()
+
+    const pMarginMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?p\s*\{[^}]*margin:\s*([^;}\n]+)/i)
+    if (pMarginMatch) props.pMargin = pMarginMatch[1].trim()
 
     return props
   }
@@ -582,40 +592,48 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
         css += `}\n\n`
       }
 
-      // Header tag styles (h1-h4) - scoped to #template-canvas .row for higher specificity
-      if (props.h1FontSize || props.h1FontWeight || props.h1LineHeight || props.h1Color) {
-        css += `#template-canvas .row h1 {\n`
+      // Header tag styles (h1-h4) - scoping to canvas happens automatically
+      if (props.h1FontSize || props.h1Padding !== undefined || props.h1Margin !== undefined || props.h1Color) {
+        css += `.row h1 {\n`
         if (props.h1FontSize) css += `  font-size: ${props.h1FontSize}px;\n`
-        if (props.h1FontWeight) css += `  font-weight: ${props.h1FontWeight};\n`
-        if (props.h1LineHeight) css += `  line-height: ${props.h1LineHeight};\n`
+        if (props.h1Padding !== undefined) css += `  padding: ${props.h1Padding}px;\n`
+        if (props.h1Margin !== undefined) css += `  margin: ${props.h1Margin}px;\n`
         if (props.h1Color) css += `  color: ${props.h1Color};\n`
         css += `}\n\n`
       }
 
-      if (props.h2FontSize || props.h2FontWeight || props.h2LineHeight || props.h2Color) {
-        css += `#template-canvas .row h2 {\n`
+      if (props.h2FontSize || props.h2Padding !== undefined || props.h2Margin !== undefined || props.h2Color) {
+        css += `.row h2 {\n`
         if (props.h2FontSize) css += `  font-size: ${props.h2FontSize}px;\n`
-        if (props.h2FontWeight) css += `  font-weight: ${props.h2FontWeight};\n`
-        if (props.h2LineHeight) css += `  line-height: ${props.h2LineHeight};\n`
+        if (props.h2Padding !== undefined) css += `  padding: ${props.h2Padding}px;\n`
+        if (props.h2Margin !== undefined) css += `  margin: ${props.h2Margin}px;\n`
         if (props.h2Color) css += `  color: ${props.h2Color};\n`
         css += `}\n\n`
       }
 
-      if (props.h3FontSize || props.h3FontWeight || props.h3LineHeight || props.h3Color) {
-        css += `#template-canvas .row h3 {\n`
+      if (props.h3FontSize || props.h3Padding !== undefined || props.h3Margin !== undefined || props.h3Color) {
+        css += `.row h3 {\n`
         if (props.h3FontSize) css += `  font-size: ${props.h3FontSize}px;\n`
-        if (props.h3FontWeight) css += `  font-weight: ${props.h3FontWeight};\n`
-        if (props.h3LineHeight) css += `  line-height: ${props.h3LineHeight};\n`
+        if (props.h3Padding !== undefined) css += `  padding: ${props.h3Padding}px;\n`
+        if (props.h3Margin !== undefined) css += `  margin: ${props.h3Margin}px;\n`
         if (props.h3Color) css += `  color: ${props.h3Color};\n`
         css += `}\n\n`
       }
 
-      if (props.h4FontSize || props.h4FontWeight || props.h4LineHeight || props.h4Color) {
-        css += `#template-canvas .row h4 {\n`
+      if (props.h4FontSize || props.h4Padding !== undefined || props.h4Margin !== undefined || props.h4Color) {
+        css += `.row h4 {\n`
         if (props.h4FontSize) css += `  font-size: ${props.h4FontSize}px;\n`
-        if (props.h4FontWeight) css += `  font-weight: ${props.h4FontWeight};\n`
-        if (props.h4LineHeight) css += `  line-height: ${props.h4LineHeight};\n`
+        if (props.h4Padding !== undefined) css += `  padding: ${props.h4Padding}px;\n`
+        if (props.h4Margin !== undefined) css += `  margin: ${props.h4Margin}px;\n`
         if (props.h4Color) css += `  color: ${props.h4Color};\n`
+        css += `}\n\n`
+      }
+
+      // Paragraph tag styles - scoping to canvas happens automatically
+      if (props.pPadding || props.pMargin) {
+        css += `.row p {\n`
+        if (props.pPadding) css += `  padding: ${props.pPadding};\n`
+        if (props.pMargin) css += `  margin: ${props.pMargin};\n`
         css += `}\n\n`
       }
 
@@ -847,21 +865,24 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       linkHoverTextDecoration: parsed.linkHoverTextDecoration,
       // Header properties (h1-h4)
       h1FontSize: parsed.h1FontSize,
-      h1FontWeight: parsed.h1FontWeight,
-      h1LineHeight: parsed.h1LineHeight,
+      h1Padding: parsed.h1Padding,
+      h1Margin: parsed.h1Margin,
       h1Color: parsed.h1Color,
       h2FontSize: parsed.h2FontSize,
-      h2FontWeight: parsed.h2FontWeight,
-      h2LineHeight: parsed.h2LineHeight,
+      h2Padding: parsed.h2Padding,
+      h2Margin: parsed.h2Margin,
       h2Color: parsed.h2Color,
       h3FontSize: parsed.h3FontSize,
-      h3FontWeight: parsed.h3FontWeight,
-      h3LineHeight: parsed.h3LineHeight,
+      h3Padding: parsed.h3Padding,
+      h3Margin: parsed.h3Margin,
       h3Color: parsed.h3Color,
       h4FontSize: parsed.h4FontSize,
-      h4FontWeight: parsed.h4FontWeight,
-      h4LineHeight: parsed.h4LineHeight,
+      h4Padding: parsed.h4Padding,
+      h4Margin: parsed.h4Margin,
       h4Color: parsed.h4Color,
+      // Paragraph properties
+      pPadding: parsed.pPadding,
+      pMargin: parsed.pMargin,
     })
 
     // Initialize custom input visibility and values based on parsed values
@@ -955,7 +976,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Header Settings (H1-H4)
+                Header and Paragraph Styling
               </button>
             </div>
           )}
@@ -1066,7 +1087,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Padding */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Padding</Label>
+              <Label className="text-xs font-medium">Body Padding</Label>
               <span className="text-xs text-gray-500">{properties.padding || 0}px</span>
             </div>
             <Slider
@@ -1082,7 +1103,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Margin */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Margin</Label>
+              <Label className="text-xs font-medium">Body Margin</Label>
               <span className="text-xs text-gray-500">{properties.margin || 0}px</span>
             </div>
             <Slider
@@ -1891,33 +1912,25 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Font Weight</Label>
-                        <Select
-                          value={properties.h1FontWeight || 'bold'}
-                          onValueChange={(value) => updateProperty('h1FontWeight', value)}
-                        >
-                          <SelectTrigger className="h-8 text-xs mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="normal">Normal (400)</SelectItem>
-                            <SelectItem value="500">Medium (500)</SelectItem>
-                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
-                            <SelectItem value="bold">Bold (700)</SelectItem>
-                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Label className="text-xs font-medium">Padding (px)</Label>
                         <Input
                           type="number"
-                          step="0.1"
-                          value={properties.h1LineHeight || 1.2}
-                          onChange={(e) => updateProperty('h1LineHeight', parseFloat(e.target.value))}
+                          value={properties.h1Padding ?? 0}
+                          onChange={(e) => updateProperty('h1Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
-                          min="0.5"
-                          max="3"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h1Margin ?? 0}
+                          onChange={(e) => updateProperty('h1Margin', parseInt(e.target.value) || 0)}
+                          className="h-8 text-xs mt-1"
+                          min="0"
+                          max="100"
                         />
                       </div>
                       <div>
@@ -1967,33 +1980,25 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Font Weight</Label>
-                        <Select
-                          value={properties.h2FontWeight || 'bold'}
-                          onValueChange={(value) => updateProperty('h2FontWeight', value)}
-                        >
-                          <SelectTrigger className="h-8 text-xs mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="normal">Normal (400)</SelectItem>
-                            <SelectItem value="500">Medium (500)</SelectItem>
-                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
-                            <SelectItem value="bold">Bold (700)</SelectItem>
-                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Label className="text-xs font-medium">Padding (px)</Label>
                         <Input
                           type="number"
-                          step="0.1"
-                          value={properties.h2LineHeight || 1.3}
-                          onChange={(e) => updateProperty('h2LineHeight', parseFloat(e.target.value))}
+                          value={properties.h2Padding ?? 0}
+                          onChange={(e) => updateProperty('h2Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
-                          min="0.5"
-                          max="3"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h2Margin ?? 0}
+                          onChange={(e) => updateProperty('h2Margin', parseInt(e.target.value) || 0)}
+                          className="h-8 text-xs mt-1"
+                          min="0"
+                          max="100"
                         />
                       </div>
                       <div>
@@ -2043,33 +2048,25 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Font Weight</Label>
-                        <Select
-                          value={properties.h3FontWeight || '600'}
-                          onValueChange={(value) => updateProperty('h3FontWeight', value)}
-                        >
-                          <SelectTrigger className="h-8 text-xs mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="normal">Normal (400)</SelectItem>
-                            <SelectItem value="500">Medium (500)</SelectItem>
-                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
-                            <SelectItem value="bold">Bold (700)</SelectItem>
-                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Label className="text-xs font-medium">Padding (px)</Label>
                         <Input
                           type="number"
-                          step="0.1"
-                          value={properties.h3LineHeight || 1.4}
-                          onChange={(e) => updateProperty('h3LineHeight', parseFloat(e.target.value))}
+                          value={properties.h3Padding ?? 0}
+                          onChange={(e) => updateProperty('h3Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
-                          min="0.5"
-                          max="3"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h3Margin ?? 0}
+                          onChange={(e) => updateProperty('h3Margin', parseInt(e.target.value) || 0)}
+                          className="h-8 text-xs mt-1"
+                          min="0"
+                          max="100"
                         />
                       </div>
                       <div>
@@ -2119,33 +2116,25 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Font Weight</Label>
-                        <Select
-                          value={properties.h4FontWeight || '600'}
-                          onValueChange={(value) => updateProperty('h4FontWeight', value)}
-                        >
-                          <SelectTrigger className="h-8 text-xs mt-1">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="normal">Normal (400)</SelectItem>
-                            <SelectItem value="500">Medium (500)</SelectItem>
-                            <SelectItem value="600">Semi-Bold (600)</SelectItem>
-                            <SelectItem value="bold">Bold (700)</SelectItem>
-                            <SelectItem value="800">Extra-Bold (800)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label className="text-xs font-medium">Line Height</Label>
+                        <Label className="text-xs font-medium">Padding (px)</Label>
                         <Input
                           type="number"
-                          step="0.1"
-                          value={properties.h4LineHeight || 1.5}
-                          onChange={(e) => updateProperty('h4LineHeight', parseFloat(e.target.value))}
+                          value={properties.h4Padding ?? 0}
+                          onChange={(e) => updateProperty('h4Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
-                          min="0.5"
-                          max="3"
+                          min="0"
+                          max="100"
+                        />
+                      </div>
+                      <div>
+                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <Input
+                          type="number"
+                          value={properties.h4Margin ?? 0}
+                          onChange={(e) => updateProperty('h4Margin', parseInt(e.target.value) || 0)}
+                          className="h-8 text-xs mt-1"
+                          min="0"
+                          max="100"
                         />
                       </div>
                       <div>
@@ -2176,6 +2165,33 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
                           </div>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Paragraph Settings */}
+                <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 mt-4">
+                  <h4 className="text-sm font-semibold mb-3">Paragraph (P)</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label className="text-xs font-medium">Padding (Top Right Bottom Left)</Label>
+                      <Input
+                        type="text"
+                        value={properties.pPadding || '10px 0px 0px 10px'}
+                        onChange={(e) => updateProperty('pPadding', e.target.value)}
+                        className="h-8 text-xs mt-1"
+                        placeholder="e.g., 10px 0px 0px 10px"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs font-medium">Margin (px or '0 auto')</Label>
+                      <Input
+                        type="text"
+                        value={properties.pMargin || ''}
+                        onChange={(e) => updateProperty('pMargin', e.target.value)}
+                        className="h-8 text-xs mt-1"
+                        placeholder="e.g., 10px 0px or 0 auto"
+                      />
                     </div>
                   </div>
                 </div>
