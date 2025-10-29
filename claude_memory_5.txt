@@ -186,8 +186,74 @@ interface StyleEditorProps {
 ✅ Button labels improved for clarity
 ✅ Body Padding/Margin labels preserved on Page CSS
 
+### Hotfix (Session 31)
+**Issue**: ReferenceError - showBodyLabel not defined
+- **Cause**: Added showBodyLabel to interface but forgot to destructure in function parameters
+- **Fix**: Added `showBodyLabel = false` to StyleEditor function parameters (line 219)
+- **Result**: Site/Page Styling button now works correctly without blank screen
+
+---
+
+## Session 32: Section Styling Button Relocation
+**Date**: 2025-10-29
+**Status**: ✅ COMPLETE
+
+### Change Summary
+Relocated "Section Styling" button for better UI organization and accessibility.
+
+**Before**:
+- Button appeared next to section name/ID in a flex container
+- Small button with minimal styling
+- Less prominent, harder to find
+
+**After**:
+- Button now appears underneath section name and ID
+- Full-width button with prominent styling
+- Clearer visual hierarchy and easier to access
+
+### Technical Implementation
+
+**File**: `pagevoo-frontend/src/pages/TemplateBuilder.tsx` (lines 5500-5596)
+
+**Layout Structure**:
+```tsx
+<div className="space-y-3">
+  {/* Section Name Input */}
+  <div>
+    <label>Section Name</label>
+    <div className="flex gap-1 mb-2">
+      <input value={selectedSection.section_name} />
+      <button>Apply</button>
+    </div>
+  </div>
+
+  {/* ID Display */}
+  <div className="px-2 py-1 bg-blue-50 rounded">
+    <span>ID:</span> {selectedSection.section_id}
+  </div>
+  <p className="text-[9px]">Use this ID in CSS: #{selectedSection.section_id}</p>
+
+  {/* Section Styling Button - NEW LOCATION */}
+  <button className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700">
+    Section Styling
+  </button>
+</div>
+```
+
+**Button Styling Changes**:
+- Added `w-full` for full width
+- Increased padding: `px-3 py-2`
+- Added `font-medium` for better readability
+- Maintained blue color scheme for consistency
+
+### Current Status
+✅ Session 32 - COMPLETE
+✅ Section Styling button relocated beneath section name/ID
+✅ Full-width button with improved prominence
+✅ Better visual hierarchy in section properties panel
+
 ## Last Updated
-2025-10-29 (Session 31 complete - UI Polish & Styling Control Improvements)
+2025-10-29 (Session 32 complete - Section Styling Button Relocation)
 
 ---
 Note: This is a continuation of claude_memory_4.txt. Sessions 1-29 documented in previous memory files.

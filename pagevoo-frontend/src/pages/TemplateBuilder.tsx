@@ -5498,104 +5498,101 @@ ${sectionsHTML}
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <label className="text-xs text-gray-500 block mb-1">Section Name</label>
-                          <div className="flex gap-1">
-                            <input
-                              type="text"
-                              value={selectedSection.section_name || selectedSection.type}
-                              onChange={(e) => {
-                              const newName = e.target.value
-                              const updatedSection = {
-                                ...selectedSection,
-                                section_name: newName,
-                                section_id: selectedSection.section_id || generateIdentifier(newName)
-                              }
-                              setSelectedSection(updatedSection)
-                              // Update in template
-                              if (template && currentPage) {
-                                const updatedPages = template.pages.map(p => {
-                                  if (p.id === currentPage.id) {
-                                    return {
-                                      ...p,
-                                      sections: p.sections.map(s =>
-                                        s.id === selectedSection.id ? updatedSection : s
-                                      )
-                                    }
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Section Name</label>
+                        <div className="flex gap-1 mb-2">
+                          <input
+                            type="text"
+                            value={selectedSection.section_name || selectedSection.type}
+                            onChange={(e) => {
+                            const newName = e.target.value
+                            const updatedSection = {
+                              ...selectedSection,
+                              section_name: newName,
+                              section_id: selectedSection.section_id || generateIdentifier(newName)
+                            }
+                            setSelectedSection(updatedSection)
+                            // Update in template
+                            if (template && currentPage) {
+                              const updatedPages = template.pages.map(p => {
+                                if (p.id === currentPage.id) {
+                                  return {
+                                    ...p,
+                                    sections: p.sections.map(s =>
+                                      s.id === selectedSection.id ? updatedSection : s
+                                    )
                                   }
-                                  return p
-                                })
-                                const updatedTemplate = { ...template, pages: updatedPages }
-                                setTemplate(updatedTemplate)
-                                setCurrentPage({
-                                  ...currentPage,
-                                  sections: currentPage.sections.map(s =>
-                                    s.id === selectedSection.id ? updatedSection : s
-                                  )
-                                })
-                                addToHistory(updatedTemplate)
-                              }
-                            }}
-                            className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
-                            placeholder="Enter section name"
-                          />
-                          <button
-                            onClick={() => {
-                              const newId = generateIdentifier(selectedSection.section_name || selectedSection.type)
-                              const updatedSection = {
-                                ...selectedSection,
-                                section_id: newId
-                              }
-                              setSelectedSection(updatedSection)
-                              // Update in template
-                              if (template && currentPage) {
-                                const updatedPages = template.pages.map(p => {
-                                  if (p.id === currentPage.id) {
-                                    return {
-                                      ...p,
-                                      sections: p.sections.map(s =>
-                                        s.id === selectedSection.id ? updatedSection : s
-                                      )
-                                    }
-                                  }
-                                  return p
-                                })
-                                const updatedTemplate = { ...template, pages: updatedPages }
-                                setTemplate(updatedTemplate)
-                                setCurrentPage({
-                                  ...currentPage,
-                                  sections: currentPage.sections.map(s =>
-                                    s.id === selectedSection.id ? updatedSection : s
-                                  )
-                                })
-                                addToHistory(updatedTemplate)
-                              }
-                            }}
-                            className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition"
-                            title="Generate new ID from section name"
-                          >
-                            Apply
-                          </button>
-                        </div>
-                        <div className="mt-1 px-2 py-1 bg-blue-50 rounded text-[10px] font-mono text-blue-700">
-                          <span className="font-semibold">ID:</span> {selectedSection.section_id || 'Not set'}
-                        </div>
-                        <p className="text-[9px] text-gray-500 mt-0.5">Use this ID in CSS: #{selectedSection.section_id}</p>
-                      </div>
-                      <div className="flex gap-1">
+                                }
+                                return p
+                              })
+                              const updatedTemplate = { ...template, pages: updatedPages }
+                              setTemplate(updatedTemplate)
+                              setCurrentPage({
+                                ...currentPage,
+                                sections: currentPage.sections.map(s =>
+                                  s.id === selectedSection.id ? updatedSection : s
+                                )
+                              })
+                              addToHistory(updatedTemplate)
+                            }
+                          }}
+                          className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
+                          placeholder="Enter section name"
+                        />
                         <button
                           onClick={() => {
-                            setShowSectionCSS(!showSectionCSS)
-                            setShowContentStyle(false)
-                            setShowCSSPanel(false)
+                            const newId = generateIdentifier(selectedSection.section_name || selectedSection.type)
+                            const updatedSection = {
+                              ...selectedSection,
+                              section_id: newId
+                            }
+                            setSelectedSection(updatedSection)
+                            // Update in template
+                            if (template && currentPage) {
+                              const updatedPages = template.pages.map(p => {
+                                if (p.id === currentPage.id) {
+                                  return {
+                                    ...p,
+                                    sections: p.sections.map(s =>
+                                      s.id === selectedSection.id ? updatedSection : s
+                                    )
+                                  }
+                                }
+                                return p
+                              })
+                              const updatedTemplate = { ...template, pages: updatedPages }
+                              setTemplate(updatedTemplate)
+                              setCurrentPage({
+                                ...currentPage,
+                                sections: currentPage.sections.map(s =>
+                                  s.id === selectedSection.id ? updatedSection : s
+                                )
+                              })
+                              addToHistory(updatedTemplate)
+                            }
                           }}
-                          className="p-1 hover:bg-gray-200 rounded transition"
-                          title="Edit Section Styling"
+                          className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition"
+                          title="Generate new ID from section name"
                         >
-                          <span className="text-xs font-bold text-blue-600">Section Styling</span>
+                          Apply
                         </button>
                       </div>
+                      <div className="px-2 py-1 bg-blue-50 rounded text-[10px] font-mono text-blue-700">
+                        <span className="font-semibold">ID:</span> {selectedSection.section_id || 'Not set'}
+                      </div>
+                      <p className="text-[9px] text-gray-500">Use this ID in CSS: #{selectedSection.section_id}</p>
+
+                      <button
+                        onClick={() => {
+                          setShowSectionCSS(!showSectionCSS)
+                          setShowContentStyle(false)
+                          setShowCSSPanel(false)
+                        }}
+                        className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition"
+                        title="Edit Section Styling"
+                      >
+                        Section Styling
+                      </button>
                     </div>
 
                     <div className="border-t border-gray-200 pt-2">
