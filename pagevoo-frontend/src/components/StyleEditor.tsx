@@ -216,7 +216,7 @@ const FLOAT_OPTIONS = [
   { value: 'center', label: 'Center (margin auto)' },
 ]
 
-export function StyleEditor({ value, onChange, context, showFontSelector = false, galleryImages, onOpenGallery }: StyleEditorProps) {
+export function StyleEditor({ value, onChange, context, showFontSelector = false, showBodyLabel = false, galleryImages, onOpenGallery }: StyleEditorProps) {
   const [activeTab, setActiveTab] = useState<'simplified' | 'code'>('simplified')
   const [properties, setProperties] = useState<StyleProperty>({
     fontSize: 16,
