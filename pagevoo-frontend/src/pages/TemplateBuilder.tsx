@@ -991,21 +991,21 @@ export default function TemplateBuilder() {
     if (templateType === 'about') {
       pageName = 'About Us'
       sections = [
-        { id: Date.now(), type: 'header-simple', section_name: 'Header', section_id: generateIdentifier('Header'), content: { title: 'About Us' }, order: 0 },
+        { id: Date.now(), type: 'navbar-basic', section_name: 'Navigation', section_id: generateIdentifier('Navigation'), content: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] }, order: 0 },
         { id: Date.now() + 1, type: 'grid-2x1', section_name: 'Content Grid', section_id: generateIdentifier('Content Grid'), content: { columns: [] }, order: 1 },
         { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
       ]
     } else if (templateType === 'services') {
       pageName = 'Services'
       sections = [
-        { id: Date.now(), type: 'header-simple', section_name: 'Header', section_id: generateIdentifier('Header'), content: { title: 'Our Services' }, order: 0 },
+        { id: Date.now(), type: 'navbar-basic', section_name: 'Navigation', section_id: generateIdentifier('Navigation'), content: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] }, order: 0 },
         { id: Date.now() + 1, type: 'grid-3x1', section_name: 'Services Grid', section_id: generateIdentifier('Services Grid'), content: { columns: [] }, order: 1 },
         { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
       ]
     } else if (templateType === 'contact') {
       pageName = 'Contact'
       sections = [
-        { id: Date.now(), type: 'header-simple', section_name: 'Header', section_id: generateIdentifier('Header'), content: { title: 'Contact Us' }, order: 0 },
+        { id: Date.now(), type: 'navbar-basic', section_name: 'Navigation', section_id: generateIdentifier('Navigation'), content: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] }, order: 0 },
         { id: Date.now() + 1, type: 'contact-form', section_name: 'Contact Form', section_id: generateIdentifier('Contact Form'), content: {}, order: 1 },
         { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
       ]
@@ -1166,12 +1166,6 @@ padding: 1rem;`
     { type: 'navbar-basic', label: 'Basic Navbar', description: 'Simple horizontal navigation bar with links', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] } },
     { type: 'navbar-dropdown', label: 'Dropdown Nav', description: 'Navigation bar with dropdown menus', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'Services', 'About', 'Contact'] } },
     { type: 'navbar-sticky', label: 'Sticky Navbar', description: 'Navigation that sticks to top on scroll', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
-    { type: 'header-simple', label: 'Simple Header', description: 'Clean header with logo and tagline', position: 'top', defaultContent: { logo: 'Company Name', tagline: 'Your tagline here' } },
-    { type: 'header-centered', label: 'Centered Header', description: 'Centered logo with navigation below', position: 'top', defaultContent: { logo: 'Brand', navigation: true, links: ['Home', 'About', 'Services', 'Contact'] } },
-    { type: 'header-split', label: 'Split Header', description: 'Logo left, navigation right layout', position: 'top', defaultContent: { logo: 'Logo', navigation: true, links: ['Home', 'About', 'Services', 'Contact'] } },
-    // Sidebar navigation (can move left/right)
-    { type: 'sidebar-nav-left', label: 'Sidebar Nav (Left)', description: 'Left-side vertical navigation menu', position: 'left', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'], positioned: 'permanently-fixed', fullHeight: true } },
-    { type: 'sidebar-nav-right', label: 'Sidebar Nav (Right)', description: 'Right-side vertical navigation menu', position: 'right', defaultContent: { links: ['Dashboard', 'Profile', 'Settings', 'Logout'], positioned: 'permanently-fixed', fullHeight: true } },
   ]
 
   const footerSections = [
@@ -1368,38 +1362,6 @@ padding: 1rem;`
     addToHistory(updatedTemplate)
   }
 
-  const handleMoveSidebar = (sectionId: number, direction: 'left' | 'right') => {
-    if (!template || !currentPage) return
-
-    const updatedSections = currentPage.sections.map(s => {
-      if (s.id === sectionId) {
-        // Toggle sidebar position
-        const newType = direction === 'left' ? 'sidebar-nav-left' : 'sidebar-nav-right'
-        return { ...s, type: newType }
-      }
-      return s
-    })
-
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return { ...p, sections: updatedSections }
-      }
-      return p
-    })
-
-    const updatedTemplate = { ...template, pages: updatedPages }
-    setTemplate(updatedTemplate)
-    setCurrentPage({ ...currentPage, sections: updatedSections })
-
-    // Update selected section if this was the selected one
-    if (selectedSection?.id === sectionId) {
-      const updatedSection = updatedSections.find(s => s.id === sectionId)
-      if (updatedSection) {
-        setSelectedSection(updatedSection)
-      }
-    }
-    addToHistory(updatedTemplate)
-  }
 
   const handleUpdateSectionContent = (sectionId: number, newContent: any) => {
     if (!template || !currentPage) return
@@ -4395,189 +4357,6 @@ ${sectionsHTML}
           </>
         )
 
-      case 'header-simple':
-        return sectionWrapper(
-          <div
-            className={`text-center cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-            style={{
-              background: 'linear-gradient(to right, #fef3c7, #fde68a)',
-              padding: '3rem',
-              ...generateContainerStyle(content.containerStyle)
-            }}
-          >
-            <EditableText
-              tag="h1"
-              sectionId={section.id}
-              field="logo"
-              value={content.logo || 'Company Name'}
-              onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-              className="text-4xl font-bold text-gray-800 mb-2 outline-none hover:bg-white/50 px-2 py-1 rounded transition"
-            />
-            <EditableText
-              tag="p"
-              sectionId={section.id}
-              field="tagline"
-              value={content.tagline || 'Your tagline here'}
-              onSave={(e) => handleInlineTextEdit(section.id, 'tagline', e)}
-              className="text-gray-600 outline-none hover:bg-white/50 px-2 py-1 rounded transition"
-            />
-          </div>
-        )
-
-      case 'header-centered':
-        return sectionWrapper(
-          <>
-            <div
-              className={`text-center cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-              style={{
-                backgroundColor: '#ffffff',
-                padding: '2rem',
-                borderBottom: '2px solid #e5e7eb',
-                ...generateContainerStyle(content.containerStyle)
-              }}
-            >
-              <EditableText
-                tag="h1"
-                sectionId={section.id}
-                field="logo"
-                value={content.logo || 'Brand'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                className="text-3xl font-bold mb-4 outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
-              />
-              {content.navigation !== false && (
-                <>
-                  {/* Desktop Menu */}
-                  <div className="hidden md:flex gap-6 justify-center">
-                    {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => {
-                      const isActive = isActivePage(link, currentPage?.id || 0)
-                      return (
-                        <a
-                          key={idx}
-                          href={getLinkHref(link)}
-                          className="transition"
-                          style={{
-                            ...generateLinkStyle(content.linkStyling),
-                            ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
-                          }}
-                          onClick={(e) => e.preventDefault()}
-                        >
-                          {getLinkLabel(link)}
-                        </a>
-                      )
-                    })}
-                  </div>
-
-                  {/* Mobile Menu Button */}
-                  <button
-                    className="md:hidden p-2 hover:bg-gray-100 rounded transition"
-                    onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
-                    aria-label="Open menu"
-                  >
-                    <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                  </button>
-                </>
-              )}
-            </div>
-
-            {/* Mobile Menu */}
-            {content.navigation !== false && (
-              <MobileMenu
-                isOpen={!!mobileMenuOpen[section.id]}
-                onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
-                links={content.links || []}
-                linkStyling={content.linkStyling}
-                activeIndicator={content.activeIndicator}
-                currentPageId={currentPage?.id || 0}
-                getLinkHref={getLinkHref}
-                getLinkLabel={getLinkLabel}
-                isActivePage={isActivePage}
-                generateLinkStyle={generateLinkStyle}
-                generateActiveIndicatorStyle={generateActiveIndicatorStyle}
-              />
-            )}
-          </>
-        )
-
-      case 'header-split':
-        return sectionWrapper(
-          <>
-            <div
-              className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-              style={{
-                backgroundColor: '#ffffff',
-                padding: '1.5rem',
-                borderBottom: '2px solid #e5e7eb',
-                ...generateContainerStyle(content.containerStyle)
-              }}
-            >
-              <div className="flex items-center justify-between max-w-7xl mx-auto">
-                <EditableText
-                  tag="h1"
-                  sectionId={section.id}
-                  field="logo"
-                  value={content.logo || 'Logo'}
-                  onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                  className="text-2xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
-                />
-                {content.navigation !== false && (
-                  <>
-                    {/* Desktop Menu */}
-                    <div className="hidden md:flex gap-6">
-                      {(content.links || ['Home', 'About', 'Services', 'Contact']).map((link: any, idx: number) => {
-                        const isActive = isActivePage(link, currentPage?.id || 0)
-                        return (
-                          <a
-                            key={idx}
-                            href={getLinkHref(link)}
-                            className="transition"
-                            style={{
-                              ...generateLinkStyle(content.linkStyling),
-                              ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
-                            }}
-                            onClick={(e) => e.preventDefault()}
-                          >
-                            {getLinkLabel(link)}
-                          </a>
-                        )
-                      })}
-                    </div>
-
-                    {/* Mobile Menu Button */}
-                    <button
-                      className="md:hidden p-2 hover:bg-gray-100 rounded transition"
-                      onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
-                      aria-label="Open menu"
-                    >
-                      <svg className="w-6 h-6 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                      </svg>
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* Mobile Menu */}
-            {content.navigation !== false && (
-              <MobileMenu
-                isOpen={!!mobileMenuOpen[section.id]}
-                onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
-                links={content.links || []}
-                linkStyling={content.linkStyling}
-                activeIndicator={content.activeIndicator}
-                currentPageId={currentPage?.id || 0}
-                getLinkHref={getLinkHref}
-                getLinkLabel={getLinkLabel}
-                isActivePage={isActivePage}
-                generateLinkStyle={generateLinkStyle}
-                generateActiveIndicatorStyle={generateActiveIndicatorStyle}
-              />
-            )}
-          </>
-        )
-
       // Footer sections
       case 'footer-simple':
         return sectionWrapper(
@@ -4624,117 +4403,6 @@ ${sectionsHTML}
             </div>
           </div>
         )
-
-      // Sidebar navigation sections
-      case 'sidebar-nav-left':
-      case 'sidebar-nav-right':
-        const sidebarPosition = section.type === 'sidebar-nav-left' ? 'left' : 'right'
-        const positionType = content.positioned || 'permanently-fixed'
-        const fullHeight = content.fullHeight !== false
-        const heightClass = fullHeight ? 'min-h-[600px]' : 'min-h-[300px]'
-
-        // Different visual indicators based on position type
-        if (positionType === 'menu-click') {
-          return sectionWrapper(
-            <div className="relative min-h-[100px]">
-              {/* Sidebar panel (shown when visible in builder) */}
-              {sidebarVisible && (
-                <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-100 border-2 border-[#98b290] border-dashed rounded-lg p-6 shadow-xl ${heightClass}`} style={{zIndex: 35}}>
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="font-bold text-lg text-gray-800">Navigation</h3>
-                    <div className="text-xs text-[#5a7a54] font-medium">Menu-click mode</div>
-                  </div>
-                  {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
-                  <div className="space-y-2">
-                    {(content.links || []).map((link: any, idx: number) => (
-                      <div key={idx} className="p-2 bg-white rounded hover:bg-[#e8f0e6] transition">
-                        <a
-                          href={getLinkHref(link)}
-                          className="text-gray-700 block"
-                          onClick={(e) => e.preventDefault()}
-                        >
-                          {getLinkLabel(link)}
-                        </a>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Content placeholder */}
-              <div className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition border-2 border-dashed border-gray-300 rounded-lg p-8 min-h-[120px] ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-                <p className="text-sm text-gray-500 text-center">
-                  {sidebarVisible ? 'Content appears here (sidebar visible in overlay)' : 'Hover section and click menu icon to show sidebar'}
-                </p>
-              </div>
-            </div>
-          )
-        } else if (positionType === 'permanently-fixed') {
-          return sectionWrapper(
-            <div className="relative min-h-[400px]">
-              {/* Fixed sidebar */}
-              <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-800 text-white p-6 shadow-xl ${heightClass}`} style={{zIndex: 30}}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-lg">Navigation</h3>
-                  <div className="text-xs text-blue-400 font-medium">📌 Fixed</div>
-                </div>
-                {fullHeight && <div className="text-[10px] text-gray-400 mb-2">Full height (100vh)</div>}
-                <div className="space-y-2">
-                  {(content.links || []).map((link: any, idx: number) => (
-                    <div key={idx} className="p-2 bg-gray-700 rounded hover:bg-gray-600 transition">
-                      <a
-                        href={getLinkHref(link)}
-                        className="text-gray-200 block"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        {getLinkLabel(link)}
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Content area with margin */}
-              <div className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-                <p className="text-sm text-gray-500 text-center">
-                  Content appears beside the permanently fixed sidebar
-                </p>
-              </div>
-            </div>
-          )
-        } else {
-          // static
-          return sectionWrapper(
-            <div className="relative min-h-[400px]">
-              {/* Static sidebar */}
-              <div className={`absolute top-0 ${sidebarPosition === 'left' ? 'left-0' : 'right-0'} w-64 bg-gray-200 border-l-4 border-[#98b290] p-6 ${heightClass}`} style={{zIndex: 30}}>
-                <h3 className="font-bold text-lg mb-4 text-gray-800">Navigation</h3>
-                <div className="text-xs text-gray-600 mb-2">Static position</div>
-                {fullHeight && <div className="text-[10px] text-gray-500 mb-2">Full height</div>}
-                <div className="space-y-2">
-                  {(content.links || []).map((link: any, idx: number) => (
-                    <div key={idx} className="p-2 bg-white rounded hover:bg-[#e8f0e6] transition">
-                      <a
-                        href={getLinkHref(link)}
-                        className="text-gray-700 block"
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        {getLinkLabel(link)}
-                      </a>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Content area with margin */}
-              <div className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition border-2 border-dashed border-gray-300 rounded-lg p-8 ${sidebarPosition === 'left' ? 'ml-72' : 'mr-72'} min-h-[400px] ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-                <p className="text-sm text-gray-500 text-center">
-                  Content appears beside the static sidebar
-                </p>
-              </div>
-            </div>
-          )
-        }
 
       default:
         return sectionWrapper(
@@ -6084,120 +5752,33 @@ ${sectionsHTML}
                         })()}
 
                     {/* Navigation Section Fields */}
-                    {(selectedSection.type.startsWith('navbar-') || selectedSection.type.startsWith('header-') || selectedSection.type.startsWith('sidebar-nav-')) && (
+                    {selectedSection.type.startsWith('navbar-') && (
                       <>
-                        {/* Show Navigation Toggle for header sections */}
-                        {(selectedSection.type === 'header-centered' || selectedSection.type === 'header-split') && (
-                          <div className="mb-4">
-                            <label className="flex items-center gap-2 text-xs font-medium text-gray-700 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={selectedSection.content?.navigation !== false}
-                                onChange={(e) => {
-                                  handleUpdateSectionContent(selectedSection.id, {
-                                    ...selectedSection.content,
-                                    navigation: e.target.checked
-                                  })
-                                }}
-                                className="rounded border-gray-300 text-[#5a7a54] focus:ring-[#98b290]"
-                              />
-                              <span>Show Navigation Links</span>
-                            </label>
-                            <p className="text-[10px] text-gray-500 mt-1 ml-5">
-                              Enable to display navigation links below the header
-                            </p>
-                          </div>
-                        )}
-
                         {/* Navigation Links Manager - Tree View */}
-                        {(!selectedSection.type.startsWith('header-') || selectedSection.content?.navigation !== false) && (
-                          <>
-                            <div>
-                              <label className="text-xs font-medium text-gray-700 block mb-2">Navigation Links</label>
-                              <NavigationTreeManager
-                                links={selectedSection.content?.links || []}
-                                pages={template?.pages || []}
-                                sectionType={selectedSection.type}
-                                onChange={(newLinks) => {
-                                  handleUpdateSectionContent(selectedSection.id, {
-                                    ...selectedSection.content,
-                                    links: newLinks
-                                  })
-                                }}
-                              />
-                            </div>
-
-                            {/* Navigation Styling Panel */}
-                            <div className="mt-4 border-t border-gray-200 pt-4">
-                              <h3 className="text-xs font-semibold text-gray-900 mb-3">Navigation Styling</h3>
-                              <NavigationStylingPanel
-                                content={selectedSection.content || {}}
-                                onUpdate={(updatedContent) => {
-                                  handleUpdateSectionContent(selectedSection.id, updatedContent)
-                                }}
-                              />
-                            </div>
-                          </>
-                        )}
-                      </>
-                    )}
-
-                    {/* Sidebar Navigation Fields */}
-                    {(selectedSection.type === 'sidebar-nav-left' || selectedSection.type === 'sidebar-nav-right') && (
-                      <>
-                        <div>
-                          <label className="text-xs font-medium text-gray-700 block mb-1">Position Behavior</label>
-                          <select
-                            value={selectedSection.content?.positioned || 'permanently-fixed'}
-                            onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, positioned: e.target.value })}
-                            className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
-                          >
-                            <option value="menu-click">Appear on menu click</option>
-                            <option value="permanently-fixed">Permanently fixed</option>
-                            <option value="static">Static</option>
-                          </select>
-                          <p className="text-[10px] text-gray-500 mt-1 leading-tight">
-                            {selectedSection.content?.positioned === 'menu-click' && 'Sidebar appears when user clicks menu button'}
-                            {selectedSection.content?.positioned === 'permanently-fixed' && 'Sidebar stays visible and fixed to viewport'}
-                            {selectedSection.content?.positioned === 'static' && 'Sidebar scrolls with page content'}
-                          </p>
-                        </div>
-
-                        <div>
-                          <label className="text-xs font-medium text-gray-700 flex items-center gap-2 mb-1">
-                            <input
-                              type="checkbox"
-                              checked={selectedSection.content?.fullHeight !== false}
-                              onChange={(e) => handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, fullHeight: e.target.checked })}
-                              className="rounded border-gray-300 text-[#5a7a54] focus:ring-[#98b290]"
-                            />
-                            <span>Full Height (100vh)</span>
-                          </label>
-                          <p className="text-[10px] text-gray-500 ml-5 leading-tight">
-                            {selectedSection.content?.fullHeight !== false
-                              ? 'Sidebar extends to full viewport height'
-                              : 'Sidebar height adjusts to content'}
-                          </p>
-                        </div>
-
                         <div>
                           <label className="text-xs font-medium text-gray-700 block mb-2">Navigation Links</label>
-                          <div className="space-y-2">
-                            {(selectedSection.content?.links || []).map((link: string, idx: number) => (
-                              <input
-                                key={idx}
-                                type="text"
-                                value={link}
-                                onChange={(e) => {
-                                  const newLinks = [...(selectedSection.content?.links || [])]
-                                  newLinks[idx] = e.target.value
-                                  handleUpdateSectionContent(selectedSection.id, { ...selectedSection.content, links: newLinks })
-                                }}
-                                className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
-                                placeholder={`Link ${idx + 1}`}
-                              />
-                            ))}
-                          </div>
+                          <NavigationTreeManager
+                            links={selectedSection.content?.links || []}
+                            pages={template?.pages || []}
+                            sectionType={selectedSection.type}
+                            onChange={(newLinks) => {
+                              handleUpdateSectionContent(selectedSection.id, {
+                                ...selectedSection.content,
+                                links: newLinks
+                              })
+                            }}
+                          />
+                        </div>
+
+                        {/* Navigation Styling Panel */}
+                        <div className="mt-4 border-t border-gray-200 pt-4">
+                          <h3 className="text-xs font-semibold text-gray-900 mb-3">Navigation Styling</h3>
+                          <NavigationStylingPanel
+                            content={selectedSection.content || {}}
+                            onUpdate={(updatedContent) => {
+                              handleUpdateSectionContent(selectedSection.id, updatedContent)
+                            }}
+                          />
                         </div>
                       </>
                     )}

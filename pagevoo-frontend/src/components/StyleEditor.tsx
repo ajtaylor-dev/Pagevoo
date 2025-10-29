@@ -451,29 +451,29 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     const marginAutoMatch = css.match(/margin:\s*0\s+auto;?/i)
     if (marginAutoMatch) props.float = 'center'
 
-    // Link color (a { color: ... })
-    const linkColorMatch = css.match(/a\s*\{[^}]*color:\s*([^;}\n]+)/i)
-    if (linkColorMatch) props.linkColor = linkColorMatch[1].trim()
+    // Link color (supports both "a {" and ".row a {" formats)
+    const linkColorMatch = css.match(/(?:\.row\s+)?a\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkColorMatch) props.linkColor = linkColorMatch[1].trim().replace(/\s*!important\s*$/, '')
 
     // Link hover color (a:hover { color: ... })
-    const linkHoverColorMatch = css.match(/a:hover\s*\{[^}]*color:\s*([^;}\n]+)/i)
-    if (linkHoverColorMatch) props.linkHoverColor = linkHoverColorMatch[1].trim()
+    const linkHoverColorMatch = css.match(/(?:\.row\s+)?a:hover\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkHoverColorMatch) props.linkHoverColor = linkHoverColorMatch[1].trim().replace(/\s*!important\s*$/, '')
 
     // Link visited color (a:visited { color: ... })
-    const linkVisitedColorMatch = css.match(/a:visited\s*\{[^}]*color:\s*([^;}\n]+)/i)
-    if (linkVisitedColorMatch) props.linkVisitedColor = linkVisitedColorMatch[1].trim()
+    const linkVisitedColorMatch = css.match(/(?:\.row\s+)?a:visited\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkVisitedColorMatch) props.linkVisitedColor = linkVisitedColorMatch[1].trim().replace(/\s*!important\s*$/, '')
 
     // Link active color (a:active { color: ... })
-    const linkActiveColorMatch = css.match(/a:active\s*\{[^}]*color:\s*([^;}\n]+)/i)
-    if (linkActiveColorMatch) props.linkActiveColor = linkActiveColorMatch[1].trim()
+    const linkActiveColorMatch = css.match(/(?:\.row\s+)?a:active\s*\{[^}]*color:\s*([^;}\n]+)/i)
+    if (linkActiveColorMatch) props.linkActiveColor = linkActiveColorMatch[1].trim().replace(/\s*!important\s*$/, '')
 
     // Link text decoration (a { text-decoration: ... })
-    const linkTextDecorationMatch = css.match(/a\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
-    if (linkTextDecorationMatch) props.linkTextDecoration = linkTextDecorationMatch[1].trim()
+    const linkTextDecorationMatch = css.match(/(?:\.row\s+)?a\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
+    if (linkTextDecorationMatch) props.linkTextDecoration = linkTextDecorationMatch[1].trim().replace(/\s*!important\s*$/, '')
 
     // Link hover text decoration (a:hover { text-decoration: ... })
-    const linkHoverTextDecorationMatch = css.match(/a:hover\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
-    if (linkHoverTextDecorationMatch) props.linkHoverTextDecoration = linkHoverTextDecorationMatch[1].trim()
+    const linkHoverTextDecorationMatch = css.match(/(?:\.row\s+)?a:hover\s*\{[^}]*text-decoration:\s*([^;}\n]+)/i)
+    if (linkHoverTextDecorationMatch) props.linkHoverTextDecoration = linkHoverTextDecorationMatch[1].trim().replace(/\s*!important\s*$/, '')
 
     // H1 properties (matches with or without #template-canvas prefix)
     const h1FontSizeMatch = css.match(/(?:#template-canvas\s+)?(?:\.row\s+)?h1\s*\{[^}]*font-size:\s*(\d+)px/i)
@@ -565,30 +565,30 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
         css += `body {\n${bodyStyles}}\n\n`
       }
 
-      // Link styles for page/site level
+      // Link styles for page/site level (scoped to .row for proper specificity)
       if (props.linkColor || props.linkTextDecoration) {
-        css += `a {\n`
-        if (props.linkColor) css += `  color: ${props.linkColor};\n`
-        if (props.linkTextDecoration) css += `  text-decoration: ${props.linkTextDecoration};\n`
+        css += `.row a {\n`
+        if (props.linkColor) css += `  color: ${props.linkColor} !important;\n`
+        if (props.linkTextDecoration) css += `  text-decoration: ${props.linkTextDecoration} !important;\n`
         css += `}\n\n`
       }
 
       if (props.linkHoverColor || props.linkHoverTextDecoration) {
-        css += `a:hover {\n`
-        if (props.linkHoverColor) css += `  color: ${props.linkHoverColor};\n`
-        if (props.linkHoverTextDecoration) css += `  text-decoration: ${props.linkHoverTextDecoration};\n`
+        css += `.row a:hover {\n`
+        if (props.linkHoverColor) css += `  color: ${props.linkHoverColor} !important;\n`
+        if (props.linkHoverTextDecoration) css += `  text-decoration: ${props.linkHoverTextDecoration} !important;\n`
         css += `}\n\n`
       }
 
       if (props.linkVisitedColor) {
-        css += `a:visited {\n`
-        css += `  color: ${props.linkVisitedColor};\n`
+        css += `.row a:visited {\n`
+        css += `  color: ${props.linkVisitedColor} !important;\n`
         css += `}\n\n`
       }
 
       if (props.linkActiveColor) {
-        css += `a:active {\n`
-        css += `  color: ${props.linkActiveColor};\n`
+        css += `.row a:active {\n`
+        css += `  color: ${props.linkActiveColor} !important;\n`
         css += `}\n\n`
       }
 
@@ -675,35 +675,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
     }
     if (props.opacity !== undefined && props.opacity !== 1) css += `opacity: ${props.opacity};\n`
 
-    // Note: Link styles for section/row/column need special handling
-    // They will be added with specific selectors (e.g., #section-id a {})
-    // This is handled in the TemplateBuilder when applying section CSS
-    if (props.linkColor || props.linkTextDecoration || props.linkHoverColor ||
-        props.linkHoverTextDecoration || props.linkVisitedColor || props.linkActiveColor) {
-      css += `\n/* Link styles - apply with descendant selector (e.g., #section-id a {}) */\n`
-
-      if (props.linkColor || props.linkTextDecoration) {
-        css += `/* a { */\n`
-        if (props.linkColor) css += `/*   color: ${props.linkColor}; */\n`
-        if (props.linkTextDecoration) css += `/*   text-decoration: ${props.linkTextDecoration}; */\n`
-        css += `/* } */\n`
-      }
-
-      if (props.linkHoverColor || props.linkHoverTextDecoration) {
-        css += `/* a:hover { */\n`
-        if (props.linkHoverColor) css += `/*   color: ${props.linkHoverColor}; */\n`
-        if (props.linkHoverTextDecoration) css += `/*   text-decoration: ${props.linkHoverTextDecoration}; */\n`
-        css += `/* } */\n`
-      }
-
-      if (props.linkVisitedColor) {
-        css += `/* a:visited { color: ${props.linkVisitedColor}; } */\n`
-      }
-
-      if (props.linkActiveColor) {
-        css += `/* a:active { color: ${props.linkActiveColor}; } */\n`
-      }
-    }
+    // Note: Link styles are only available at Site/Page CSS level
+    // They are not included in section/row/column CSS to maintain consistent UX
 
     return css
   }
@@ -1087,7 +1060,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Padding */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Body Padding</Label>
+              <Label className="text-xs font-medium">{showFontSelector ? 'Body Padding' : 'Padding'}</Label>
               <span className="text-xs text-gray-500">{properties.padding || 0}px</span>
             </div>
             <Slider
@@ -1103,7 +1076,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Margin */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">Body Margin</Label>
+              <Label className="text-xs font-medium">{showFontSelector ? 'Body Margin' : 'Margin'}</Label>
               <span className="text-xs text-gray-500">{properties.margin || 0}px</span>
             </div>
             <Slider
@@ -2208,9 +2181,10 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </div>
           )}
 
-          {/* Hyperlink Styling Section - Page/Site CSS */}
-          <div className="border-t pt-4 mt-4">
-            <Label className="text-xs font-medium mb-3 block">Hyperlink Styles</Label>
+          {/* Hyperlink Styling Section - Only for Site/Page CSS */}
+          {showFontSelector && (
+            <div className="border-t pt-4 mt-4">
+              <Label className="text-xs font-medium mb-3 block">Hyperlink Styles</Label>
 
             {/* Link Default Color */}
             <div className="mb-3">
@@ -2536,10 +2510,11 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
               Customize hyperlink appearance for normal, hover, visited, and active states
             </p>
           </div>
+        )}
 
-          {/* Opacity Slider - Show for section and column */}
-          {(context === 'section' || context === 'column') && (
-            <div>
+        {/* Opacity Slider - Show for section and column */}
+        {(context === 'section' || context === 'column') && (
+          <div>
               <div className="flex items-center justify-between">
                 <Label className="text-xs font-medium">Opacity</Label>
                 <span className="text-xs text-gray-500">{((properties.opacity ?? 1) * 100).toFixed(0)}%</span>

@@ -642,7 +642,7 @@ export const NavigationStylingPanel: React.FC<NavigationStylingPanelProps> = ({ 
             <div className="space-y-2">
               <label className="block text-xs font-medium text-gray-700">Trigger Method</label>
               <select
-                value={content.dropdownConfig?.trigger || 'click'}
+                value={content.dropdownConfig?.trigger || 'hover'}
                 onChange={(e) => updateDropdownConfig({ trigger: e.target.value as 'click' | 'hover' | 'hybrid' })}
                 className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
               >
@@ -650,6 +650,7 @@ export const NavigationStylingPanel: React.FC<NavigationStylingPanelProps> = ({ 
                 <option value="hover">Hover (Open on mouseenter, close on mouseleave)</option>
                 <option value="hybrid">Hybrid (Hover to open, click anywhere to close)</option>
               </select>
+              <p className="text-xs text-gray-500">Controls how dropdown menus open and close</p>
             </div>
 
             {/* Hover Delay */}

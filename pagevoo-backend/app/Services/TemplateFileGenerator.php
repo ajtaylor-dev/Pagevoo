@@ -415,6 +415,124 @@ class TemplateFileGenerator
         $css .= "  background-color: #f3f4f6;\n";
         $css .= "}\n\n";
 
+        // Dropdown menu styles for desktop navigation
+        $css .= "/* Dropdown Menu Styles */\n\n";
+        $css .= ".dropdown {\n";
+        $css .= "  position: relative;\n";
+        $css .= "  display: inline-block;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-toggle {\n";
+        $css .= "  display: inline-flex;\n";
+        $css .= "  align-items: center;\n";
+        $css .= "  gap: 0.25rem;\n";
+        $css .= "  cursor: pointer;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-menu {\n";
+        $css .= "  position: absolute;\n";
+        $css .= "  top: 100%;\n";
+        $css .= "  left: 0;\n";
+        $css .= "  display: none;\n";
+        $css .= "  min-width: 200px;\n";
+        $css .= "  background-color: #ffffff;\n";
+        $css .= "  border: 1px solid #e5e7eb;\n";
+        $css .= "  border-radius: 0.375rem;\n";
+        $css .= "  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);\n";
+        $css .= "  padding: 0.5rem 0;\n";
+        $css .= "  margin-top: 0.25rem;\n";
+        $css .= "  z-index: 1000;\n";
+        $css .= "}\n\n";
+
+        // Add a pseudo-element to bridge the gap between toggle and menu (hover only)
+        $css .= ".dropdown[data-trigger='hover']::after {\n";
+        $css .= "  content: '';\n";
+        $css .= "  position: absolute;\n";
+        $css .= "  top: 100%;\n";
+        $css .= "  left: 0;\n";
+        $css .= "  right: 0;\n";
+        $css .= "  height: 0.25rem;\n";
+        $css .= "  display: none;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown[data-trigger='hover']:hover::after {\n";
+        $css .= "  display: block;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown[data-trigger='hover']:hover .dropdown-menu {\n";
+        $css .= "  display: block;\n";
+        $css .= "}\n\n";
+
+        // For click-based dropdowns, show when active
+        $css .= ".dropdown[data-trigger='click'].active .dropdown-menu,\n";
+        $css .= ".dropdown[data-trigger='hybrid'].active .dropdown-menu {\n";
+        $css .= "  display: block;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-menu a {\n";
+        $css .= "  display: block;\n";
+        $css .= "  padding: 0.75rem 1rem;\n";
+        $css .= "  color: #374151;\n";
+        $css .= "  transition: background-color 0.2s ease;\n";
+        $css .= "  white-space: nowrap;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-menu a:hover {\n";
+        $css .= "  background-color: #f3f4f6;\n";
+        $css .= "}\n\n";
+
+        // Mobile dropdown styles
+        $css .= ".mobile-dropdown {\n";
+        $css .= "  display: block;\n";
+        $css .= "}\n\n";
+
+        $css .= ".mobile-dropdown-toggle {\n";
+        $css .= "  display: flex;\n";
+        $css .= "  align-items: center;\n";
+        $css .= "  justify-content: space-between;\n";
+        $css .= "}\n\n";
+
+        $css .= ".mobile-dropdown-toggle a {\n";
+        $css .= "  flex: 1;\n";
+        $css .= "}\n\n";
+
+        $css .= ".mobile-expand-btn {\n";
+        $css .= "  background: none;\n";
+        $css .= "  border: none;\n";
+        $css .= "  padding: 0.5rem;\n";
+        $css .= "  cursor: pointer;\n";
+        $css .= "  display: flex;\n";
+        $css .= "  align-items: center;\n";
+        $css .= "  justify-content: center;\n";
+        $css .= "  color: #6b7280;\n";
+        $css .= "  transition: transform 0.2s ease;\n";
+        $css .= "}\n\n";
+
+        $css .= ".mobile-expand-icon {\n";
+        $css .= "  width: 1rem;\n";
+        $css .= "  height: 1rem;\n";
+        $css .= "}\n\n";
+
+        $css .= ".mobile-dropdown.expanded .mobile-expand-btn {\n";
+        $css .= "  transform: rotate(180deg);\n";
+        $css .= "}\n\n";
+
+        $css .= ".mobile-submenu {\n";
+        $css .= "  display: none;\n";
+        $css .= "  padding-left: 0.5rem;\n";
+        $css .= "}\n\n";
+
+        $css .= ".mobile-dropdown.expanded .mobile-submenu {\n";
+        $css .= "  display: block;\n";
+        $css .= "}\n\n";
+
+        // Mobile sub-link indentation
+        $css .= ".mobile-sub-link {\n";
+        $css .= "  padding-left: 2rem !important;\n";
+        $css .= "  font-size: 0.9rem;\n";
+        $css .= "  color: #6b7280;\n";
+        $css .= "}\n\n";
+
         // Responsive styles for mobile
         $css .= "/* Mobile Navigation */\n\n";
         $css .= "@media (max-width: 767px) {\n";
@@ -514,6 +632,45 @@ class TemplateFileGenerator
             $css .= ".row p {\n";
             $css .= "  margin: 1em 0;\n";
             $css .= "}\n\n";
+        }
+
+        // Extract Link styles from Site CSS if they exist (custom hyperlink settings)
+        if ($template->custom_css) {
+            // Extract .row a { } styles
+            if (preg_match('/(?:\.row\s+)?a\s*\{([^}]+)\}/i', $template->custom_css, $aMatch)) {
+                if (preg_match('/^[^{]+/', $aMatch[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $aMatch[1] . "\n";
+                    $css .= "}\n\n";
+                }
+            }
+
+            // Extract .row a:hover { } styles
+            if (preg_match('/(?:\.row\s+)?a:hover\s*\{([^}]+)\}/i', $template->custom_css, $aHoverMatch)) {
+                if (preg_match('/^[^{]+/', $aHoverMatch[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $aHoverMatch[1] . "\n";
+                    $css .= "}\n\n";
+                }
+            }
+
+            // Extract .row a:visited { } styles
+            if (preg_match('/(?:\.row\s+)?a:visited\s*\{([^}]+)\}/i', $template->custom_css, $aVisitedMatch)) {
+                if (preg_match('/^[^{]+/', $aVisitedMatch[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $aVisitedMatch[1] . "\n";
+                    $css .= "}\n\n";
+                }
+            }
+
+            // Extract .row a:active { } styles
+            if (preg_match('/(?:\.row\s+)?a:active\s*\{([^}]+)\}/i', $template->custom_css, $aActiveMatch)) {
+                if (preg_match('/^[^{]+/', $aActiveMatch[0], $selectorMatch)) {
+                    $css .= trim($selectorMatch[0]) . " {\n";
+                    $css .= $aActiveMatch[1] . "\n";
+                    $css .= "}\n\n";
+                }
+            }
         }
 
         $css .= ".row ul, .row ol {\n";
@@ -672,11 +829,11 @@ class TemplateFileGenerator
     }
 
     /**
-     * Generate HTML file for a page
+     * Generate PHP file for a page
      */
     protected function generatePageHTML(Template $template, TemplatePage $page, string $templatePath): void
     {
-        $filename = $page->is_homepage ? 'index.html' : $page->slug . '.html';
+        $filename = $page->is_homepage ? 'index.php' : $page->slug . '.php';
         $html = $this->buildPageHTML($template, $page);
         File::put($templatePath . '/' . $filename, $html);
     }
@@ -705,14 +862,68 @@ class TemplateFileGenerator
             $html .= "\n\n";
         }
 
-        // Add mobile menu toggle script
+        // Add mobile menu toggle and dropdown click handler scripts
         $html .= "<script>\n";
         $html .= "function toggleMobileMenu(sectionId) {\n";
         $html .= "  const menu = document.getElementById('mobile-menu-' + sectionId);\n";
         $html .= "  if (menu) {\n";
         $html .= "    menu.classList.toggle('active');\n";
         $html .= "  }\n";
-        $html .= "}\n";
+        $html .= "}\n\n";
+
+        $html .= "function toggleMobileDropdown(button) {\n";
+        $html .= "  const dropdown = button.closest('.mobile-dropdown');\n";
+        $html .= "  if (dropdown) {\n";
+        $html .= "    dropdown.classList.toggle('expanded');\n";
+        $html .= "  }\n";
+        $html .= "}\n\n";
+
+        $html .= "// Reset mobile menu on resize to desktop\n";
+        $html .= "let resizeTimer;\n";
+        $html .= "window.addEventListener('resize', function() {\n";
+        $html .= "  clearTimeout(resizeTimer);\n";
+        $html .= "  resizeTimer = setTimeout(function() {\n";
+        $html .= "    if (window.innerWidth >= 768) {\n";
+        $html .= "      const mobileMenus = document.querySelectorAll('.mobile-menu.active');\n";
+        $html .= "      mobileMenus.forEach(function(menu) {\n";
+        $html .= "        menu.classList.remove('active');\n";
+        $html .= "      });\n";
+        $html .= "    }\n";
+        $html .= "  }, 100);\n";
+        $html .= "});\n\n";
+
+        $html .= "// Handle click-based dropdown menus\n";
+        $html .= "document.addEventListener('DOMContentLoaded', function() {\n";
+        $html .= "  const dropdowns = document.querySelectorAll('.dropdown[data-trigger=\"click\"], .dropdown[data-trigger=\"hybrid\"]');\n";
+        $html .= "  \n";
+        $html .= "  dropdowns.forEach(function(dropdown) {\n";
+        $html .= "    const toggle = dropdown.querySelector('.dropdown-toggle');\n";
+        $html .= "    if (!toggle) return;\n";
+        $html .= "    \n";
+        $html .= "    toggle.addEventListener('click', function(e) {\n";
+        $html .= "      e.preventDefault();\n";
+        $html .= "      \n";
+        $html .= "      // Close other dropdowns\n";
+        $html .= "      dropdowns.forEach(function(otherDropdown) {\n";
+        $html .= "        if (otherDropdown !== dropdown) {\n";
+        $html .= "          otherDropdown.classList.remove('active');\n";
+        $html .= "        }\n";
+        $html .= "      });\n";
+        $html .= "      \n";
+        $html .= "      // Toggle current dropdown\n";
+        $html .= "      dropdown.classList.toggle('active');\n";
+        $html .= "    });\n";
+        $html .= "  });\n";
+        $html .= "  \n";
+        $html .= "  // Close dropdowns when clicking outside\n";
+        $html .= "  document.addEventListener('click', function(e) {\n";
+        $html .= "    if (!e.target.closest('.dropdown')) {\n";
+        $html .= "      dropdowns.forEach(function(dropdown) {\n";
+        $html .= "        dropdown.classList.remove('active');\n";
+        $html .= "      });\n";
+        $html .= "    }\n";
+        $html .= "  });\n";
+        $html .= "});\n";
         $html .= "</script>\n\n";
 
         $html .= "</body>\n";
@@ -749,6 +960,9 @@ class TemplateFileGenerator
     protected function buildNavigationHTML(TemplateSection $section, string $sectionId, array $content): string
     {
         $tag = str_starts_with($section->type, 'navbar-') ? 'nav' : 'header';
+        $dropdownConfig = $content['dropdownConfig'] ?? [];
+        $trigger = $dropdownConfig['trigger'] ?? 'hover';
+
         $html = "<{$tag} id=\"{$sectionId}\" class=\"{$section->type}\">\n";
         $html .= "  <div class=\"nav-container\">\n";
         $html .= "    <div class=\"logo\">" . ($content['logo'] ?? 'Logo') . "</div>\n";
@@ -759,8 +973,25 @@ class TemplateFileGenerator
             $html .= "    <div class=\"nav-links desktop-menu\">\n";
             foreach ($links as $link) {
                 $label = is_array($link) ? ($link['label'] ?? 'Link') : $link;
-                $href = is_array($link) && isset($link['url']) ? $link['url'] : '#';
-                $html .= "      <a href=\"{$href}\">{$label}</a>\n";
+                $href = $this->getLinkHref($link, $section);
+                $hasSubItems = is_array($link) && isset($link['subItems']) && count($link['subItems']) > 0;
+
+                if ($hasSubItems) {
+                    // Dropdown menu item with trigger type
+                    $html .= "      <div class=\"dropdown\" data-trigger=\"{$trigger}\">\n";
+                    $html .= "        <a href=\"{$href}\" class=\"dropdown-toggle\">{$label} ▼</a>\n";
+                    $html .= "        <div class=\"dropdown-menu\">\n";
+                    foreach ($link['subItems'] as $subLink) {
+                        $subLabel = is_array($subLink) ? ($subLink['label'] ?? 'Sub Link') : $subLink;
+                        $subHref = $this->getLinkHref($subLink, $section);
+                        $html .= "          <a href=\"{$subHref}\">{$subLabel}</a>\n";
+                    }
+                    $html .= "        </div>\n";
+                    $html .= "      </div>\n";
+                } else {
+                    // Regular link
+                    $html .= "      <a href=\"{$href}\">{$label}</a>\n";
+                }
             }
             $html .= "    </div>\n";
 
@@ -774,10 +1005,34 @@ class TemplateFileGenerator
 
             // Mobile menu panel
             $html .= "  <div class=\"mobile-menu\" id=\"mobile-menu-{$sectionId}\">\n";
-            foreach ($links as $link) {
+            foreach ($links as $linkIndex => $link) {
                 $label = is_array($link) ? ($link['label'] ?? 'Link') : $link;
-                $href = is_array($link) && isset($link['url']) ? $link['url'] : '#';
-                $html .= "    <a href=\"{$href}\">{$label}</a>\n";
+                $href = $this->getLinkHref($link, $section);
+                $hasSubItems = is_array($link) && isset($link['subItems']) && count($link['subItems']) > 0;
+
+                if ($hasSubItems) {
+                    // Parent item with toggle button
+                    $html .= "    <div class=\"mobile-dropdown\">\n";
+                    $html .= "      <div class=\"mobile-dropdown-toggle\">\n";
+                    $html .= "        <a href=\"{$href}\">{$label}</a>\n";
+                    $html .= "        <button class=\"mobile-expand-btn\" onclick=\"toggleMobileDropdown(this)\" aria-label=\"Expand\">\n";
+                    $html .= "          <svg class=\"mobile-expand-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n";
+                    $html .= "            <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path>\n";
+                    $html .= "          </svg>\n";
+                    $html .= "        </button>\n";
+                    $html .= "      </div>\n";
+                    $html .= "      <div class=\"mobile-submenu\">\n";
+                    foreach ($link['subItems'] as $subLink) {
+                        $subLabel = is_array($subLink) ? ($subLink['label'] ?? 'Sub Link') : $subLink;
+                        $subHref = $this->getLinkHref($subLink, $section);
+                        $html .= "        <a href=\"{$subHref}\" class=\"mobile-sub-link\">→ {$subLabel}</a>\n";
+                    }
+                    $html .= "      </div>\n";
+                    $html .= "    </div>\n";
+                } else {
+                    // Regular link
+                    $html .= "    <a href=\"{$href}\">{$label}</a>\n";
+                }
             }
             $html .= "  </div>\n";
         } else {
@@ -786,6 +1041,36 @@ class TemplateFileGenerator
 
         $html .= "</{$tag}>";
         return $html;
+    }
+
+    /**
+     * Get the proper href for a navigation link
+     */
+    protected function getLinkHref($link, TemplateSection $section): string
+    {
+        if (!is_array($link)) {
+            return '#';
+        }
+
+        // Check if it's a page link or external URL
+        $linkType = $link['linkType'] ?? 'url';
+
+        if ($linkType === 'page' && isset($link['pageId'])) {
+            // Find the page by ID
+            $page = $section->templatePage->template->pages->firstWhere('id', $link['pageId']);
+
+            if ($page) {
+                // Homepage links to root
+                if ($page->is_homepage) {
+                    return '/';
+                }
+                // Other pages link to {slug}.php
+                return $page->slug . '.php';
+            }
+        }
+
+        // External URL or fallback
+        return $link['url'] ?? '#';
     }
 
     /**

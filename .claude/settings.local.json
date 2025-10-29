@@ -30,7 +30,8 @@
       "Bash(timeout:*)",
       "Bash(del nul)",
       "Bash(git checkout:*)",
-      "Read(//d//**)"
+      "Read(//d//**)",
+      "Bash(cat:*)"
     ],
     "deny": [],
     "ask": []
