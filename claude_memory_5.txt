@@ -92,8 +92,102 @@ Properly closes without duplicate fragments (lines 5785-5789 were the issue).
 - User confirmed application working normally in browser
 - Memory files updated: claude_memory_4.txt now references continuation in memory_5.txt
 
+---
+
+## Session 31: UI Polish & Styling Control Improvements
+**Date**: 2025-10-29
+**Status**: ✅ COMPLETE
+
+### Issues Addressed
+
+**1. WYSIWYG H1 Selection Not Appearing on Canvas**
+- **Problem**: Selecting H1 from WYSIWYG heading dropdown didn't immediately update canvas
+- **Root Cause**: formatBlock command wasn't triggering canvas re-render
+- **Solution**:
+  - Added forced template state update after heading selection
+  - Changed select from `defaultValue=""` to controlled `value=""`
+  - Reset select after applying to prevent UI confusion
+- **File**: `pagevoo-frontend/src/pages/TemplateBuilder.tsx` (lines 6054-6082)
+
+**2. Header/Paragraph Styling Scope**
+- **Problem**: Header and Paragraph styling appearing on both Site CSS and Page CSS
+- **Requirement**: Should only appear on Site CSS (global styles)
+- **Solution**:
+  - Added new `showBodyLabel` prop to StyleEditor
+  - Separated label control (`showBodyLabel`) from styling sections control (`showFontSelector`)
+  - Site CSS: `showFontSelector={true}` + `showBodyLabel={true}` = Full header/paragraph controls + Body labels
+  - Page CSS: `showBodyLabel={true}` only = Body labels but no header/paragraph sections
+
+**3. Hyperlink Styling Scope**
+- **Problem**: Hyperlink styling appearing on both Site CSS and Page CSS
+- **Requirement**: Should only appear on Site CSS (global styles)
+- **Solution**: Same as #2 - controlled by `showFontSelector` prop
+
+**4. Button Label Improvements**
+- **Changed**: "CSS" → "Site/Page Styling" (next to page dropdown)
+- **Changed**: "CSS" → "Section Styling" (next to section name)
+- **Purpose**: More descriptive, user-friendly labels
+
+### Technical Implementation
+
+**StyleEditor.tsx Changes**:
+```tsx
+interface StyleEditorProps {
+  // ...existing props...
+  showFontSelector?: boolean  // Controls Header/Paragraph + Hyperlink sections
+  showBodyLabel?: boolean     // Controls "Body Padding/Margin" vs "Padding/Margin" labels
+}
+
+// Label logic:
+<Label>{showBodyLabel ? 'Body Padding' : 'Padding'}</Label>
+<Label>{showBodyLabel ? 'Body Margin' : 'Margin'}</Label>
+```
+
+**TemplateBuilder.tsx Changes**:
+```tsx
+// Site CSS (Global Stylesheet)
+<StyleEditor
+  showFontSelector={true}  // Shows Header/Paragraph + Hyperlink sections
+  showBodyLabel={true}     // Shows "Body Padding/Margin" labels
+/>
+
+// Page CSS (Page-Specific)
+<StyleEditor
+  showBodyLabel={true}     // Shows "Body Padding/Margin" labels
+  // No showFontSelector   // Hides Header/Paragraph + Hyperlink sections
+/>
+```
+
+### Files Modified
+1. `pagevoo-frontend/src/pages/TemplateBuilder.tsx`
+   - Heading selector: Lines 6054-6082 (fixed H1 canvas update)
+   - CSS button labels: Lines 5331-5333, 5592-5594 (improved naming)
+   - Site CSS props: Line 5438-5439 (showFontSelector + showBodyLabel)
+   - Page CSS props: Line 5463 (showBodyLabel only)
+
+2. `pagevoo-frontend/src/components/StyleEditor.tsx`
+   - Props interface: Lines 65-79 (added showBodyLabel)
+   - Padding label: Line 1064 (uses showBodyLabel)
+   - Margin label: Line 1080 (uses showBodyLabel)
+
+### Styling Control Matrix
+
+| CSS Type | Body Labels | Header/Paragraph Styling | Hyperlink Styling |
+|----------|-------------|-------------------------|-------------------|
+| Site CSS | ✅ Body Padding/Margin | ✅ H1-H4 + P controls | ✅ a, a:hover, a:visited |
+| Page CSS | ✅ Body Padding/Margin | ❌ Hidden | ❌ Hidden |
+| Section/Row/Column | ❌ Padding/Margin | ❌ Hidden | ❌ Hidden |
+
+### Current Status
+✅ Session 31 - COMPLETE
+✅ H1 selection now updates canvas immediately
+✅ Header/Paragraph styling only on Site CSS
+✅ Hyperlink styling only on Site CSS
+✅ Button labels improved for clarity
+✅ Body Padding/Margin labels preserved on Page CSS
+
 ## Last Updated
-2025-10-29 (Session 30 complete - Navigation cleanup verified, JSX error confirmed resolved)
+2025-10-29 (Session 31 complete - UI Polish & Styling Control Improvements)
 
 ---
 Note: This is a continuation of claude_memory_4.txt. Sessions 1-29 documented in previous memory files.

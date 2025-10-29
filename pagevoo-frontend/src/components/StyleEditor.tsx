@@ -67,6 +67,7 @@ interface StyleEditorProps {
   onChange: (css: string) => void
   context: 'page' | 'section' | 'row' | 'column'
   showFontSelector?: boolean
+  showBodyLabel?: boolean
   galleryImages?: Array<{
     id: string
     filename: string
@@ -1060,7 +1061,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Padding */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">{showFontSelector ? 'Body Padding' : 'Padding'}</Label>
+              <Label className="text-xs font-medium">{showBodyLabel ? 'Body Padding' : 'Padding'}</Label>
               <span className="text-xs text-gray-500">{properties.padding || 0}px</span>
             </div>
             <Slider
@@ -1076,7 +1077,7 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Margin */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">{showFontSelector ? 'Body Margin' : 'Margin'}</Label>
+              <Label className="text-xs font-medium">{showBodyLabel ? 'Body Margin' : 'Margin'}</Label>
               <span className="text-xs text-gray-500">{properties.margin || 0}px</span>
             </div>
             <Slider

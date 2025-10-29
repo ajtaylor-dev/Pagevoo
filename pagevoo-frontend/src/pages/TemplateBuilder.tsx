@@ -5328,9 +5328,9 @@ ${sectionsHTML}
                     setShowRightSidebar(true)
                   }}
                   className="p-1 hover:bg-gray-200 rounded transition"
-                  title="Edit CSS"
+                  title="Edit Site/Page Styling"
                 >
-                  <span className="text-xs font-bold text-blue-600">CSS</span>
+                  <span className="text-xs font-bold text-blue-600">Site/Page Styling</span>
                 </button>
               </div>
               <div className="flex items-center gap-1">
@@ -5436,6 +5436,7 @@ ${sectionsHTML}
                           }}
                           context="page"
                           showFontSelector={true}
+                          showBodyLabel={true}
                         />
                       </div>
                     ) : (
@@ -5459,6 +5460,7 @@ ${sectionsHTML}
                             addToHistory(updatedTemplate)
                           }}
                           context="page"
+                          showBodyLabel={true}
                           galleryImages={template?.images}
                         />
                       </div>
@@ -5589,9 +5591,9 @@ ${sectionsHTML}
                             setShowCSSPanel(false)
                           }}
                           className="p-1 hover:bg-gray-200 rounded transition"
-                          title="Edit Section CSS"
+                          title="Edit Section Styling"
                         >
-                          <span className="text-xs font-bold text-blue-600">CSS</span>
+                          <span className="text-xs font-bold text-blue-600">Section Styling</span>
                         </button>
                       </div>
                     </div>
@@ -6059,12 +6061,18 @@ ${sectionsHTML}
                   if (editorRef.current) {
                     handleTextEditorChange(editorRef.current.innerHTML)
                     updateFormattingState()
+                    // Force canvas update by triggering state change
+                    if (template && editingText) {
+                      setTemplate({ ...template })
+                    }
                   }
                 }, 10)
+                // Reset select to default after applying
+                e.target.value = ''
               }}
               className="px-2 py-1 text-xs border border-gray-300 rounded hover:bg-white transition"
               title="Heading Level"
-              defaultValue=""
+              value=""
             >
               <option value="" disabled>Heading</option>
               <option value="p">Normal</option>
