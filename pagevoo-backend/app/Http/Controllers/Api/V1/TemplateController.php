@@ -491,4 +491,56 @@ class TemplateController extends BaseController
 
         return $this->sendSuccess(null, 'Image renamed successfully');
     }
+
+    /**
+     * Purge all templates (development only)
+     * Deletes all templates from database and removes all template directories
+     */
+    public function purgeAll()
+    {
+        try {
+            // Get all templates
+            $templates = Template::all();
+            $deletedCount = $templates->count();
+
+            // Delete all physical template directories
+            $templateDirectory = public_path('template_directory');
+            if (is_dir($templateDirectory)) {
+                $directories = glob($templateDirectory . '/*', GLOB_ONLYDIR);
+                foreach ($directories as $dir) {
+                    $this->deleteDirectory($dir);
+                }
+            }
+
+            // Delete all templates from database (cascade will delete pages and sections)
+            Template::query()->delete();
+
+            return $this->sendSuccess([
+                'deleted_count' => $deletedCount,
+                'message' => "Successfully purged {$deletedCount} template(s) and all associated files"
+            ], 'All templates purged successfully');
+
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to purge templates: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
+     * Recursively delete directory
+     */
+    private function deleteDirectory($dir)
+    {
+        if (!is_dir($dir)) {
+            return false;
+        }
+
+        $items = array_diff(scandir($dir), ['.', '..']);
+
+        foreach ($items as $item) {
+            $path = $dir . DIRECTORY_SEPARATOR . $item;
+            is_dir($path) ? $this->deleteDirectory($path) : unlink($path);
+        }
+
+        return rmdir($dir);
+    }
 }

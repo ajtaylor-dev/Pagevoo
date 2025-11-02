@@ -270,8 +270,8 @@ export default function NavigationTreeManager({
   onChange,
   sectionType,
 }: NavigationTreeManagerProps) {
-  // Only allow subitems for dropdown navbars
-  const allowSubItems = sectionType === 'navbar-dropdown'
+  // Allow subitems for all navbar types
+  const allowSubItems = sectionType === 'navbar-dropdown' || sectionType === 'navbar'
   const [collapsedIds, setCollapsedIds] = useState<Set<string | number>>(new Set())
   const [selectedIds, setSelectedIds] = useState<Set<string | number>>(new Set())
   const [clipboard, setClipboard] = useState<{ action: 'cut' | 'copy'; items: NavigationLink[] } | null>(null)

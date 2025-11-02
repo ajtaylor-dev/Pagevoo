@@ -206,18 +206,57 @@ export function TemplateManager() {
     );
   }
 
+  const handlePurgeAll = async () => {
+    // First confirmation
+    const firstConfirm = confirm(
+      '⚠️ WARNING: This will permanently delete ALL templates and their files!\n\n' +
+      'This action cannot be undone.\n\n' +
+      'Are you sure you want to continue?'
+    );
+
+    if (!firstConfirm) return;
+
+    // Second confirmation with typing requirement
+    const secondConfirm = prompt(
+      'To confirm deletion, please type: DELETE ALL TEMPLATES'
+    );
+
+    if (secondConfirm !== 'DELETE ALL TEMPLATES') {
+      alert('Purge cancelled. Text did not match.');
+      return;
+    }
+
+    try {
+      const response = await api.purgeAllTemplates();
+      alert(`✅ ${response.message}\n\n${response.data?.message || ''}`);
+      // Refresh the template list
+      fetchTemplates();
+    } catch (error: any) {
+      alert(`❌ Failed to purge templates: ${error.response?.data?.message || error.message}`);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold text-[#4b4b4b]">Template Manager</h2>
-        <a
-          href="/template-builder"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
-        >
-          Create Template
-        </a>
+        <div className="flex gap-2">
+          <button
+            onClick={handlePurgeAll}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
+            title="Development only: Delete all templates"
+          >
+            🗑️ Purge All
+          </button>
+          <a
+            href="/template-builder"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition"
+          >
+            Create Template
+          </a>
+        </div>
       </div>
 
       {/* Filters */}

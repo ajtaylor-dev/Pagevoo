@@ -85,6 +85,7 @@ Route::prefix('v1')->group(function () {
                 Route::post('/', [TemplateController::class, 'store']);
                 Route::put('/{id}', [TemplateController::class, 'update']);
                 Route::delete('/{id}', [TemplateController::class, 'destroy']);
+                Route::post('/purge-all', [TemplateController::class, 'purgeAll']);
                 Route::post('/{id}/upload-image', [TemplateController::class, 'uploadImage']);
                 Route::post('/{id}/gallery/upload', [TemplateController::class, 'uploadGalleryImage']);
                 Route::post('/{id}/gallery/delete', [TemplateController::class, 'deleteGalleryImage']);

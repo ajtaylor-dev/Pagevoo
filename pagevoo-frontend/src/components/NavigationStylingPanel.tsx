@@ -13,6 +13,23 @@ interface DropdownConfig {
   hoverDelay: number
   autoCloseDelay: number
   transitionDuration: number
+  // Dropdown styling
+  dropdownBg?: string
+  dropdownBorder?: string
+  dropdownShadow?: string
+  dropdownPadding?: string
+  dropdownItemHoverBg?: string
+  // Mobile menu styling
+  mobileMenuBg?: string
+  mobileMenuButtonBg?: string
+  mobileMenuButtonColor?: string
+  mobileMenuButtonHoverBg?: string
+}
+
+interface LayoutConfig {
+  logoPosition: 'left' | 'center' | 'right'
+  linksPosition: 'left' | 'center' | 'right'
+  logoWidth: number // percentage
 }
 
 interface LinkStyling {
@@ -64,6 +81,8 @@ interface NavigationContent {
   containerStyle?: ContainerStyle
   dropdownConfig?: DropdownConfig
   activeIndicator?: ActiveIndicator
+  layoutConfig?: LayoutConfig
+  logoWidth?: number // legacy support
 }
 
 interface NavigationStylingPanelProps {
@@ -71,7 +90,7 @@ interface NavigationStylingPanelProps {
   onUpdate: (content: NavigationContent) => void
 }
 
-type TabType = 'links' | 'link-style' | 'container' | 'dropdown' | 'active-indicator'
+type TabType = 'links' | 'link-style' | 'container' | 'layout' | 'dropdown' | 'active-indicator'
 
 export const NavigationStylingPanel: React.FC<NavigationStylingPanelProps> = ({ content, onUpdate }) => {
   const [activeTab, setActiveTab] = useState<TabType>('links')
@@ -87,6 +106,13 @@ export const NavigationStylingPanel: React.FC<NavigationStylingPanelProps> = ({ 
     onUpdate({
       ...content,
       containerStyle: { ...content.containerStyle, ...updates }
+    })
+  }
+
+  const updateLayoutConfig = (updates: Partial<LayoutConfig>) => {
+    onUpdate({
+      ...content,
+      layoutConfig: { ...content.layoutConfig, ...updates } as LayoutConfig
     })
   }
 
@@ -137,6 +163,16 @@ export const NavigationStylingPanel: React.FC<NavigationStylingPanelProps> = ({ 
           }`}
         >
           Container
+        </button>
+        <button
+          onClick={() => setActiveTab('layout')}
+          className={`px-3 py-2 text-xs font-medium transition-colors ${
+            activeTab === 'layout'
+              ? 'bg-white border-b-2 border-amber-500 text-gray-900'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          Layout
         </button>
         <button
           onClick={() => setActiveTab('dropdown')}
@@ -634,6 +670,90 @@ export const NavigationStylingPanel: React.FC<NavigationStylingPanelProps> = ({ 
           </div>
         )}
 
+        {activeTab === 'layout' && (
+          <div className="space-y-4">
+            <h3 className="text-xs font-semibold text-gray-900 mb-3">Layout Configuration</h3>
+
+            {/* Logo Position */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Logo Position</label>
+              <select
+                value={content.layoutConfig?.logoPosition || 'left'}
+                onChange={(e) => updateLayoutConfig({ logoPosition: e.target.value as 'left' | 'center' | 'right' })}
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+
+            {/* Links Position */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Links Position</label>
+              <select
+                value={content.layoutConfig?.linksPosition || 'right'}
+                onChange={(e) => updateLayoutConfig({ linksPosition: e.target.value as 'left' | 'center' | 'right' })}
+                className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+              >
+                <option value="left">Left</option>
+                <option value="center">Center</option>
+                <option value="right">Right</option>
+              </select>
+            </div>
+
+            {/* Logo Width */}
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">Logo Width (%)</label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min="10"
+                  max="50"
+                  value={content.layoutConfig?.logoWidth || content.logoWidth || 25}
+                  onChange={(e) => updateLayoutConfig({ logoWidth: parseInt(e.target.value) })}
+                  className="flex-1"
+                />
+                <span className="text-xs text-gray-600 w-12 text-right">
+                  {content.layoutConfig?.logoWidth || content.logoWidth || 25}%
+                </span>
+              </div>
+              <p className="text-xs text-gray-500">Adjust logo container width</p>
+            </div>
+
+            {/* Layout Presets */}
+            <div className="space-y-2 pt-2 border-t border-gray-200">
+              <label className="block text-xs font-medium text-gray-700 mb-2">Quick Layouts</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => updateLayoutConfig({ logoPosition: 'left', linksPosition: 'right' })}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded hover:bg-gray-50 transition"
+                >
+                  Logo Left, Links Right
+                </button>
+                <button
+                  onClick={() => updateLayoutConfig({ logoPosition: 'center', linksPosition: 'center' })}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded hover:bg-gray-50 transition"
+                >
+                  Both Centered
+                </button>
+                <button
+                  onClick={() => updateLayoutConfig({ logoPosition: 'right', linksPosition: 'left' })}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded hover:bg-gray-50 transition"
+                >
+                  Logo Right, Links Left
+                </button>
+                <button
+                  onClick={() => updateLayoutConfig({ logoPosition: 'left', linksPosition: 'center' })}
+                  className="px-3 py-2 text-xs border border-gray-300 rounded hover:bg-gray-50 transition"
+                >
+                  Logo Left, Links Center
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'dropdown' && (
           <div className="space-y-4">
             <h3 className="text-xs font-semibold text-gray-900 mb-3">Dropdown Behavior</h3>
@@ -709,6 +829,172 @@ export const NavigationStylingPanel: React.FC<NavigationStylingPanelProps> = ({ 
                 <span className="text-xs text-gray-600 w-16 text-right">
                   {content.dropdownConfig?.transitionDuration || 200}ms
                 </span>
+              </div>
+            </div>
+
+            {/* Dropdown Styling Section */}
+            <div className="pt-4 border-t border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-900 mb-3">Dropdown Panel Styling</h3>
+
+              {/* Dropdown Background */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Background Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={content.dropdownConfig?.dropdownBg || '#ffffff'}
+                    onChange={(e) => updateDropdownConfig({ dropdownBg: e.target.value })}
+                    className="w-10 h-8 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={content.dropdownConfig?.dropdownBg || '#ffffff'}
+                    onChange={(e) => updateDropdownConfig({ dropdownBg: e.target.value })}
+                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                    placeholder="#ffffff"
+                  />
+                </div>
+              </div>
+
+              {/* Dropdown Border */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Border</label>
+                <input
+                  type="text"
+                  value={content.dropdownConfig?.dropdownBorder || '1px solid #e5e7eb'}
+                  onChange={(e) => updateDropdownConfig({ dropdownBorder: e.target.value })}
+                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                  placeholder="1px solid #e5e7eb"
+                />
+              </div>
+
+              {/* Dropdown Shadow */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Box Shadow</label>
+                <input
+                  type="text"
+                  value={content.dropdownConfig?.dropdownShadow || '0 4px 6px rgba(0,0,0,0.1)'}
+                  onChange={(e) => updateDropdownConfig({ dropdownShadow: e.target.value })}
+                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                  placeholder="0 4px 6px rgba(0,0,0,0.1)"
+                />
+              </div>
+
+              {/* Dropdown Padding */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Padding</label>
+                <input
+                  type="text"
+                  value={content.dropdownConfig?.dropdownPadding || '8px'}
+                  onChange={(e) => updateDropdownConfig({ dropdownPadding: e.target.value })}
+                  className="w-full px-2 py-1 text-xs border border-gray-300 rounded"
+                  placeholder="8px"
+                />
+              </div>
+
+              {/* Dropdown Item Hover Background */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Item Hover Background</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={content.dropdownConfig?.dropdownItemHoverBg || '#f3f4f6'}
+                    onChange={(e) => updateDropdownConfig({ dropdownItemHoverBg: e.target.value })}
+                    className="w-10 h-8 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={content.dropdownConfig?.dropdownItemHoverBg || '#f3f4f6'}
+                    onChange={(e) => updateDropdownConfig({ dropdownItemHoverBg: e.target.value })}
+                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                    placeholder="#f3f4f6"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Mobile Menu Styling Section */}
+            <div className="pt-4 border-t border-gray-200">
+              <h3 className="text-xs font-semibold text-gray-900 mb-3">Mobile Menu Styling</h3>
+
+              {/* Mobile Menu Background */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Menu Background</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={content.dropdownConfig?.mobileMenuBg || '#ffffff'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuBg: e.target.value })}
+                    className="w-10 h-8 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={content.dropdownConfig?.mobileMenuBg || '#ffffff'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuBg: e.target.value })}
+                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                    placeholder="#ffffff"
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Menu Button Background */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Button Background</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={content.dropdownConfig?.mobileMenuButtonBg || 'transparent'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuButtonBg: e.target.value })}
+                    className="w-10 h-8 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={content.dropdownConfig?.mobileMenuButtonBg || 'transparent'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuButtonBg: e.target.value })}
+                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                    placeholder="transparent"
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Menu Button Color */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Button Icon Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={content.dropdownConfig?.mobileMenuButtonColor || '#000000'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuButtonColor: e.target.value })}
+                    className="w-10 h-8 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={content.dropdownConfig?.mobileMenuButtonColor || '#000000'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuButtonColor: e.target.value })}
+                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                    placeholder="#000000"
+                  />
+                </div>
+              </div>
+
+              {/* Mobile Menu Button Hover Background */}
+              <div className="space-y-2">
+                <label className="block text-xs font-medium text-gray-700">Button Hover Background</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={content.dropdownConfig?.mobileMenuButtonHoverBg || '#f3f4f6'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuButtonHoverBg: e.target.value })}
+                    className="w-10 h-8 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={content.dropdownConfig?.mobileMenuButtonHoverBg || '#f3f4f6'}
+                    onChange={(e) => updateDropdownConfig({ mobileMenuButtonHoverBg: e.target.value })}
+                    className="flex-1 px-2 py-1 text-xs border border-gray-300 rounded"
+                    placeholder="#f3f4f6"
+                  />
+                </div>
               </div>
             </div>
           </div>

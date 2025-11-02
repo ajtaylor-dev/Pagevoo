@@ -339,11 +339,19 @@ class TemplateFileGenerator
         $css .= "  box-sizing: border-box;\n";
         $css .= "  margin: 0;\n";
         $css .= "  padding: 0;\n";
+        $css .= "  border-radius: 0;\n";
         $css .= "}\n\n";
 
         $css .= "body {\n";
+        $css .= "  margin: 0;\n";
+        $css .= "  padding: 0;\n";
         $css .= "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n";
         $css .= "  line-height: 1.6;\n";
+        $css .= "}\n\n";
+
+        // Remove top margin from first element to prevent gap at top of page
+        $css .= "body > *:first-child {\n";
+        $css .= "  margin-top: 0;\n";
         $css .= "}\n\n";
 
         // Default link styles (can be overridden by site/page/section CSS)
@@ -354,29 +362,93 @@ class TemplateFileGenerator
 
         // Navigation Base Styles
         $css .= "/* Navigation Base Styles */\n\n";
-        $css .= "nav[class*=\"navbar-\"], header[class*=\"header-\"] {\n";
-        $css .= "  padding: 1rem;\n";
+        $css .= "nav.navbar, nav[class*=\"navbar-\"], header[class*=\"header-\"] {\n";
+        $css .= "  padding: 16px 0;\n";
         $css .= "  background-color: #ffffff;\n";
         $css .= "  border-bottom: 2px solid #e5e7eb;\n";
+        $css .= "  border-radius: 0;\n";
+        $css .= "  position: relative;\n";
         $css .= "}\n\n";
 
         $css .= ".nav-container {\n";
         $css .= "  display: flex;\n";
         $css .= "  align-items: center;\n";
         $css .= "  justify-content: space-between;\n";
-        $css .= "  max-width: 1280px;\n";
-        $css .= "  margin: 0 auto;\n";
+        $css .= "  flex-wrap: wrap;\n";
+        $css .= "  gap: 8px;\n";
+        $css .= "  width: 100%;\n";
+        $css .= "  padding: 0 16px;\n";
         $css .= "}\n\n";
 
-        $css .= ".logo {\n";
+        $css .= ".nav-logo, .logo {\n";
         $css .= "  font-size: 1.25rem;\n";
         $css .= "  font-weight: bold;\n";
+        $css .= "  min-width: 120px;\n";
         $css .= "}\n\n";
 
         $css .= ".nav-links {\n";
         $css .= "  display: flex;\n";
         $css .= "  gap: 1.5rem;\n";
         $css .= "  align-items: center;\n";
+        $css .= "  flex-wrap: wrap;\n";
+        $css .= "  flex: 1;\n";
+        $css .= "}\n\n";
+
+        $css .= ".nav-link {\n";
+        $css .= "  text-decoration: none;\n";
+        $css .= "  color: inherit;\n";
+        $css .= "  transition: opacity 0.2s;\n";
+        $css .= "}\n\n";
+
+        $css .= ".nav-link:hover {\n";
+        $css .= "  opacity: 0.75;\n";
+        $css .= "}\n\n";
+
+        $css .= ".nav-dropdown {\n";
+        $css .= "  position: relative;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-toggle {\n";
+        $css .= "  cursor: pointer;\n";
+        $css .= "  display: flex;\n";
+        $css .= "  align-items: center;\n";
+        $css .= "  gap: 0.25rem;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-menu {\n";
+        $css .= "  display: none;\n";
+        $css .= "  position: absolute;\n";
+        $css .= "  top: 100%;\n";
+        $css .= "  left: 0;\n";
+        $css .= "  margin-top: 0.25rem;\n";
+        $css .= "  background-color: #ffffff;\n";
+        $css .= "  border: 1px solid #e5e7eb;\n";
+        $css .= "  border-radius: 0.25rem;\n";
+        $css .= "  box-shadow: 0 4px 6px rgba(0,0,0,0.1);\n";
+        $css .= "  padding: 0.5rem;\n";
+        $css .= "  min-width: 150px;\n";
+        $css .= "  z-index: 10;\n";
+        $css .= "}\n\n";
+
+        $css .= ".nav-dropdown[data-trigger=\"hover\"]:hover .dropdown-menu {\n";
+        $css .= "  display: block;\n";
+        $css .= "}\n\n";
+
+        $css .= ".nav-dropdown[data-trigger=\"click\"].active .dropdown-menu {\n";
+        $css .= "  display: block;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-item {\n";
+        $css .= "  display: block;\n";
+        $css .= "  padding: 0.5rem 0.75rem;\n";
+        $css .= "  text-decoration: none;\n";
+        $css .= "  color: inherit;\n";
+        $css .= "  border-radius: 0.25rem;\n";
+        $css .= "  transition: background-color 0.2s;\n";
+        $css .= "}\n\n";
+
+        $css .= ".dropdown-item:hover {\n";
+        $css .= "  background-color: #f3f4f6;\n";
         $css .= "}\n\n";
 
         $css .= ".mobile-menu-btn {\n";
@@ -746,7 +818,7 @@ class TemplateFileGenerator
         }
 
         // Navigation/Header styling
-        if (str_starts_with($section->type, 'navbar-') || str_starts_with($section->type, 'header-')) {
+        if ($section->type === 'navbar' || str_starts_with($section->type, 'navbar-') || str_starts_with($section->type, 'header-')) {
             $this->addNavigationCSS($css, $section, $sectionId, $content);
         }
 
@@ -761,16 +833,34 @@ class TemplateFileGenerator
      */
     protected function addNavigationCSS(string &$css, TemplateSection $section, string $sectionId, array $content): void
     {
+        // Position styling (from position dropdown)
+        if (isset($content['position']) && $content['position'] !== 'static') {
+            $css .= "/* {$section->section_name} - Position */\n";
+            $css .= "#{$sectionId} {\n";
+            $css .= "  position: {$content['position']};\n";
+            if (in_array($content['position'], ['sticky', 'fixed'])) {
+                $css .= "  top: 0;\n";
+                $css .= "  z-index: 100;\n";
+            }
+            $css .= "}\n\n";
+        }
+
         // Container Style
         if (isset($content['containerStyle'])) {
             $cs = $content['containerStyle'];
             $css .= "/* {$section->section_name} - Container */\n";
             $css .= "#{$sectionId} {\n";
             if (isset($cs['background'])) $css .= "  background: {$cs['background']};\n";
-            if (isset($cs['paddingTop'])) $css .= "  padding-top: {$cs['paddingTop']}px;\n";
-            if (isset($cs['paddingRight'])) $css .= "  padding-right: {$cs['paddingRight']}px;\n";
-            if (isset($cs['paddingBottom'])) $css .= "  padding-bottom: {$cs['paddingBottom']}px;\n";
-            if (isset($cs['paddingLeft'])) $css .= "  padding-left: {$cs['paddingLeft']}px;\n";
+            if (isset($cs['paddingTop'])) $css .= "  padding-top: {$cs['paddingTop']};\n";
+            if (isset($cs['paddingRight'])) $css .= "  padding-right: {$cs['paddingRight']};\n";
+            if (isset($cs['paddingBottom'])) $css .= "  padding-bottom: {$cs['paddingBottom']};\n";
+            if (isset($cs['paddingLeft'])) $css .= "  padding-left: {$cs['paddingLeft']};\n";
+            if (isset($cs['marginTop'])) $css .= "  margin-top: {$cs['marginTop']};\n";
+            if (isset($cs['marginRight'])) $css .= "  margin-right: {$cs['marginRight']};\n";
+            if (isset($cs['marginBottom'])) $css .= "  margin-bottom: {$cs['marginBottom']};\n";
+            if (isset($cs['marginLeft'])) $css .= "  margin-left: {$cs['marginLeft']};\n";
+            if (isset($cs['width'])) $css .= "  width: {$cs['width']};\n";
+            if (isset($cs['height'])) $css .= "  height: {$cs['height']};\n";
             if (isset($cs['borderWidth'])) $css .= "  border-width: {$cs['borderWidth']}px;\n";
             if (isset($cs['borderStyle']) && $cs['borderStyle'] !== 'none') $css .= "  border-style: {$cs['borderStyle']};\n";
             if (isset($cs['borderColor'])) $css .= "  border-color: {$cs['borderColor']};\n";
@@ -894,7 +984,7 @@ class TemplateFileGenerator
 
         $html .= "// Handle click-based dropdown menus\n";
         $html .= "document.addEventListener('DOMContentLoaded', function() {\n";
-        $html .= "  const dropdowns = document.querySelectorAll('.dropdown[data-trigger=\"click\"], .dropdown[data-trigger=\"hybrid\"]');\n";
+        $html .= "  const dropdowns = document.querySelectorAll('.nav-dropdown[data-trigger=\"click\"]');\n";
         $html .= "  \n";
         $html .= "  dropdowns.forEach(function(dropdown) {\n";
         $html .= "    const toggle = dropdown.querySelector('.dropdown-toggle');\n";
@@ -917,7 +1007,7 @@ class TemplateFileGenerator
         $html .= "  \n";
         $html .= "  // Close dropdowns when clicking outside\n";
         $html .= "  document.addEventListener('click', function(e) {\n";
-        $html .= "    if (!e.target.closest('.dropdown')) {\n";
+        $html .= "    if (!e.target.closest('.nav-dropdown')) {\n";
         $html .= "      dropdowns.forEach(function(dropdown) {\n";
         $html .= "        dropdown.classList.remove('active');\n";
         $html .= "      });\n";
@@ -941,7 +1031,7 @@ class TemplateFileGenerator
         $content = $section->content ?? [];
 
         // Navigation/Header sections
-        if (str_starts_with($section->type, 'navbar-') || str_starts_with($section->type, 'header-')) {
+        if ($section->type === 'navbar' || str_starts_with($section->type, 'navbar-') || str_starts_with($section->type, 'header-')) {
             return $this->buildNavigationHTML($section, $sectionId, $content);
         }
 
@@ -959,41 +1049,63 @@ class TemplateFileGenerator
      */
     protected function buildNavigationHTML(TemplateSection $section, string $sectionId, array $content): string
     {
-        $tag = str_starts_with($section->type, 'navbar-') ? 'nav' : 'header';
+        $tag = ($section->type === 'navbar' || str_starts_with($section->type, 'navbar-')) ? 'nav' : 'header';
         $dropdownConfig = $content['dropdownConfig'] ?? [];
         $trigger = $dropdownConfig['trigger'] ?? 'hover';
 
+        // Get layout configuration
+        $layoutConfig = $content['layoutConfig'] ?? [];
+        $logoPosition = $layoutConfig['logoPosition'] ?? 'left';
+        $linksPosition = $layoutConfig['linksPosition'] ?? 'right';
+        $logoWidth = $layoutConfig['logoWidth'] ?? ($content['logoWidth'] ?? 25);
+
         $html = "<{$tag} id=\"{$sectionId}\" class=\"{$section->type}\">\n";
         $html .= "  <div class=\"nav-container\">\n";
-        $html .= "    <div class=\"logo\">" . ($content['logo'] ?? 'Logo') . "</div>\n";
 
+        // Generate logo HTML
+        $logoTextAlign = $logoPosition === 'center' ? 'center' : ($logoPosition === 'right' ? 'right' : 'left');
+        $logoWidthStyle = $logoPosition === 'center' ? '100%' : $logoWidth . '%';
+        $logoHTML = "    <div class=\"nav-logo\" style=\"width: {$logoWidthStyle}; text-align: {$logoTextAlign};\">" . ($content['logo'] ?? 'Logo') . "</div>\n";
+
+        // Generate links HTML
+        $linksHTML = '';
         $links = $content['links'] ?? [];
         if (count($links) > 0) {
-            // Desktop menu
-            $html .= "    <div class=\"nav-links desktop-menu\">\n";
+            $linksJustify = $linksPosition === 'center' ? 'center' : ($linksPosition === 'left' ? 'flex-start' : 'flex-end');
+            $linksHTML .= "    <div class=\"nav-links desktop-menu\" style=\"justify-content: {$linksJustify};\">\n";
             foreach ($links as $link) {
                 $label = is_array($link) ? ($link['label'] ?? 'Link') : $link;
                 $href = $this->getLinkHref($link, $section);
                 $hasSubItems = is_array($link) && isset($link['subItems']) && count($link['subItems']) > 0;
 
                 if ($hasSubItems) {
-                    // Dropdown menu item with trigger type
-                    $html .= "      <div class=\"dropdown\" data-trigger=\"{$trigger}\">\n";
-                    $html .= "        <a href=\"{$href}\" class=\"dropdown-toggle\">{$label} ▼</a>\n";
-                    $html .= "        <div class=\"dropdown-menu\">\n";
+                    // Dropdown menu item
+                    $linksHTML .= "      <div class=\"nav-dropdown\" data-trigger=\"{$trigger}\">\n";
+                    $linksHTML .= "        <a href=\"{$href}\" class=\"nav-link dropdown-toggle\">{$label} ▼</a>\n";
+                    $linksHTML .= "        <div class=\"dropdown-menu\">\n";
                     foreach ($link['subItems'] as $subLink) {
                         $subLabel = is_array($subLink) ? ($subLink['label'] ?? 'Sub Link') : $subLink;
                         $subHref = $this->getLinkHref($subLink, $section);
-                        $html .= "          <a href=\"{$subHref}\">{$subLabel}</a>\n";
+                        $linksHTML .= "          <a href=\"{$subHref}\" class=\"dropdown-item\">{$subLabel}</a>\n";
                     }
-                    $html .= "        </div>\n";
-                    $html .= "      </div>\n";
+                    $linksHTML .= "        </div>\n";
+                    $linksHTML .= "      </div>\n";
                 } else {
                     // Regular link
-                    $html .= "      <a href=\"{$href}\">{$label}</a>\n";
+                    $linksHTML .= "      <a href=\"{$href}\" class=\"nav-link\">{$label}</a>\n";
                 }
             }
-            $html .= "    </div>\n";
+            $linksHTML .= "    </div>\n";
+
+            // Arrange logo and links based on position
+            if ($logoPosition === 'left' || $logoPosition === 'center') {
+                $html .= $logoHTML;
+                $html .= $linksHTML;
+            } else {
+                // Logo on right
+                $html .= $linksHTML;
+                $html .= $logoHTML;
+            }
 
             // Mobile menu button
             $html .= "    <button class=\"mobile-menu-btn\" onclick=\"toggleMobileMenu('{$sectionId}')\" aria-label=\"Toggle menu\">\n";
@@ -1036,6 +1148,8 @@ class TemplateFileGenerator
             }
             $html .= "  </div>\n";
         } else {
+            // No links, just show logo
+            $html .= $logoHTML;
             $html .= "  </div>\n";
         }
 

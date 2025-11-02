@@ -1192,8 +1192,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </>
           )}
 
-          {/* Position - Hidden for page/site CSS */}
-          {context !== 'page' && (
+          {/* Position - Hidden for page/site CSS and navbar (navbar uses dedicated position control) */}
+          {context !== 'page' && context !== 'navbar' && (
             <div>
               <Label className="text-xs font-medium">Position</Label>
               <Select
@@ -1646,8 +1646,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
             </div>
           )}
 
-          {/* Background Image - Hidden for site CSS only (not page CSS) */}
-          {!(context === 'page' && showFontSelector) && (
+          {/* Background Image - Hidden for site CSS only (not page CSS) and navbar */}
+          {!(context === 'page' && showFontSelector) && context !== 'navbar' && (
             <div>
               <Label className="text-xs font-medium">Background Image</Label>
             <div className="space-y-2 mt-1">

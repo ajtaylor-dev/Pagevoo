@@ -116,6 +116,8 @@ const generateContainerStyle = (containerStyle: any): React.CSSProperties => {
     marginRight: containerStyle.marginRight,
     marginBottom: containerStyle.marginBottom,
     marginLeft: containerStyle.marginLeft,
+    width: containerStyle.width,
+    height: containerStyle.height,
     borderWidth: containerStyle.borderWidth,
     borderStyle: containerStyle.borderStyle,
     borderColor: containerStyle.borderColor,
@@ -485,6 +487,8 @@ export default function TemplateBuilder() {
   const [showCSSPanel, setShowCSSPanel] = useState(false)
   const [showImageGallery, setShowImageGallery] = useState(false)
   const imageGalleryRef = useRef(false)
+  const [cssInspectorMode, setCssInspectorMode] = useState(false)
+  const [hoveredSectionId, setHoveredSectionId] = useState<number | null>(null)
   const [showSourceCodeModal, setShowSourceCodeModal] = useState(false)
   const [showStylesheetModal, setShowStylesheetModal] = useState(false)
   const [showSitemapModal, setShowSitemapModal] = useState(false)
@@ -991,23 +995,20 @@ export default function TemplateBuilder() {
     if (templateType === 'about') {
       pageName = 'About Us'
       sections = [
-        { id: Date.now(), type: 'navbar-basic', section_name: 'Navigation', section_id: generateIdentifier('Navigation'), content: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] }, order: 0 },
-        { id: Date.now() + 1, type: 'grid-2x1', section_name: 'Content Grid', section_id: generateIdentifier('Content Grid'), content: { columns: [] }, order: 1 },
-        { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
+        { id: Date.now(), type: 'grid-2x1', section_name: 'Content Grid', section_id: generateIdentifier('Content Grid'), content: { columns: [] }, order: 0 },
+        { id: Date.now() + 1, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 1 }
       ]
     } else if (templateType === 'services') {
       pageName = 'Services'
       sections = [
-        { id: Date.now(), type: 'navbar-basic', section_name: 'Navigation', section_id: generateIdentifier('Navigation'), content: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] }, order: 0 },
-        { id: Date.now() + 1, type: 'grid-3x1', section_name: 'Services Grid', section_id: generateIdentifier('Services Grid'), content: { columns: [] }, order: 1 },
-        { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
+        { id: Date.now(), type: 'grid-3x1', section_name: 'Services Grid', section_id: generateIdentifier('Services Grid'), content: { columns: [] }, order: 0 },
+        { id: Date.now() + 1, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 1 }
       ]
     } else if (templateType === 'contact') {
       pageName = 'Contact'
       sections = [
-        { id: Date.now(), type: 'navbar-basic', section_name: 'Navigation', section_id: generateIdentifier('Navigation'), content: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] }, order: 0 },
-        { id: Date.now() + 1, type: 'contact-form', section_name: 'Contact Form', section_id: generateIdentifier('Contact Form'), content: {}, order: 1 },
-        { id: Date.now() + 2, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 2 }
+        { id: Date.now(), type: 'contact-form', section_name: 'Contact Form', section_id: generateIdentifier('Contact Form'), content: {}, order: 0 },
+        { id: Date.now() + 1, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 1 }
       ]
     }
 
@@ -1162,10 +1163,32 @@ padding: 1rem;`
   ]
 
   const headerNavigationSections = [
-    // Top-locked navigation bars
-    { type: 'navbar-basic', label: 'Basic Navbar', description: 'Simple horizontal navigation bar with links', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Services', 'Contact'] } },
-    { type: 'navbar-dropdown', label: 'Dropdown Nav', description: 'Navigation bar with dropdown menus', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'Services', 'About', 'Contact'] } },
-    { type: 'navbar-sticky', label: 'Sticky Navbar', description: 'Navigation that sticks to top on scroll', position: 'top', defaultContent: { logo: 'Logo', links: ['Home', 'About', 'Contact'] } },
+    {
+      type: 'navbar',
+      label: 'Navigation Bar',
+      description: 'Simple navigation with logo and links',
+      position: 'top',
+      defaultContent: {
+        logo: 'Logo',
+        logoWidth: 25,
+        links: ['Home', 'About', 'Services', 'Contact'],
+        position: 'static',
+        content_css: '',
+        containerStyle: {
+          paddingTop: '16px',
+          paddingBottom: '16px',
+          paddingLeft: '0px',
+          paddingRight: '0px',
+          marginTop: '0px',
+          marginBottom: '0px',
+          marginLeft: '0px',
+          marginRight: '0px',
+          width: '100%',
+          height: 'auto',
+          background: '#ffffff'
+        }
+      }
+    }
   ]
 
   const footerSections = [
@@ -2909,8 +2932,14 @@ padding: 1rem;`
       return
     }
 
-    // Open physical index.html file in new tab
-    const previewUrl = `http://localhost:8000/template_directory/${template.template_slug}/index.html`
+    if (!currentPage) {
+      alert('No page selected. Please select a page to preview.')
+      return
+    }
+
+    // Open physical PHP file for the current page being edited
+    const pageFile = currentPage.slug === 'home' ? 'index.php' : `${currentPage.slug}.php`
+    const previewUrl = `http://localhost:8000/template_directory/${template.template_slug}/${pageFile}`
     window.open(previewUrl, '_blank')
   }
 
@@ -3059,22 +3088,60 @@ padding: 1rem;`
       }
 
       // Navbar sections
-      if (section.type.startsWith('navbar-')) {
+      if (section.type === 'navbar' || section.type.startsWith('navbar-')) {
         const links = content.links || []
-        const linksHTML = links.map((link: any) => {
-          // Check if link is object (new format) or string (old format)
-          if (typeof link === 'object') {
-            const href = link.linkType === 'page' && link.pageId
-              ? `#page-${link.pageId}`
-              : link.url || '#'
-            return `      <a href="${href}">${link.label || 'Link'}</a>`
-          }
-          return `      <a href="#">${link}</a>`
-        }).join('\n')
-        return `  <nav id="${id}" class="${section.type}">
-    <div class="logo">${content.logo || 'Logo'}</div>
-    <div class="nav-links">
+        const layoutConfig = content.layoutConfig || {}
+        const logoPosition = layoutConfig.logoPosition || 'left'
+        const linksPosition = layoutConfig.linksPosition || 'right'
+        const logoWidth = layoutConfig.logoWidth || content.logoWidth || 25
+
+        // Generate links HTML with dropdown support
+        const generateLinksHTML = (linksList: any[], isSubMenu = false) => {
+          return linksList.map((link: any) => {
+            if (typeof link === 'object') {
+              const href = link.linkType === 'page' && link.pageId
+                ? `#page-${link.pageId}`
+                : link.url || '#'
+              const label = link.label || 'Link'
+
+              // Check for sub-items (dropdown)
+              if (link.subItems && link.subItems.length > 0) {
+                const subItemsHTML = generateLinksHTML(link.subItems, true)
+                return `        <div class="nav-dropdown">
+          <a href="${href}" class="nav-link dropdown-toggle">${label} ▼</a>
+          <div class="dropdown-menu">
+${subItemsHTML}
+          </div>
+        </div>`
+              }
+
+              return isSubMenu
+                ? `            <a href="${href}" class="dropdown-item">${label}</a>`
+                : `        <a href="${href}" class="nav-link">${label}</a>`
+            }
+            return isSubMenu
+              ? `            <a href="#" class="dropdown-item">${link}</a>`
+              : `        <a href="#" class="nav-link">${link}</a>`
+          }).join('\n')
+        }
+
+        const linksHTML = generateLinksHTML(links)
+        const logoHTML = `      <div class="nav-logo" style="width: ${logoPosition === 'center' ? '100%' : logoWidth + '%'}; text-align: ${logoPosition === 'center' ? 'center' : logoPosition === 'right' ? 'right' : 'left'};">${content.logo || 'Logo'}</div>`
+        const navLinksHTML = `      <div class="nav-links" style="justify-content: ${linksPosition === 'center' ? 'center' : linksPosition === 'left' ? 'flex-start' : 'flex-end'};">
 ${linksHTML}
+      </div>`
+
+        // Arrange logo and links based on position
+        let contentHTML = ''
+        if (logoPosition === 'left' || logoPosition === 'center') {
+          contentHTML = logoHTML + '\n' + navLinksHTML
+        } else {
+          contentHTML = navLinksHTML + '\n' + logoHTML
+        }
+
+        return `  <nav id="${id}" class="${section.type}">
+    <div class="nav-container">
+${contentHTML}
     </div>
   </nav>`
       }
@@ -3197,11 +3264,19 @@ ${sectionsHTML}
     css += `  box-sizing: border-box;\n`
     css += `  margin: 0;\n`
     css += `  padding: 0;\n`
+    css += `  border-radius: 0;\n`
     css += `}\n\n`
 
     css += `body {\n`
+    css += `  margin: 0;\n`
+    css += `  padding: 0;\n`
     css += `  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n`
     css += `  line-height: 1.6;\n`
+    css += `}\n\n`
+
+    // Remove top margin from first element to prevent gap at top of page
+    css += `body > *:first-child {\n`
+    css += `  margin-top: 0;\n`
     css += `}\n\n`
 
     // 2. Default link styles
@@ -3212,29 +3287,89 @@ ${sectionsHTML}
 
     // 3. Navigation Base Styles
     css += `/* Navigation Base Styles */\n\n`
-    css += `nav[class*="navbar-"], header[class*="header-"] {\n`
-    css += `  padding: 1rem;\n`
+    css += `nav.navbar, nav[class*="navbar-"], header[class*="header-"] {\n`
+    css += `  padding: 16px 0;\n`
     css += `  background-color: #ffffff;\n`
     css += `  border-bottom: 2px solid #e5e7eb;\n`
+    css += `  border-radius: 0;\n`
+    css += `  position: relative;\n`
     css += `}\n\n`
 
     css += `.nav-container {\n`
     css += `  display: flex;\n`
     css += `  align-items: center;\n`
     css += `  justify-content: space-between;\n`
-    css += `  max-width: 1280px;\n`
-    css += `  margin: 0 auto;\n`
+    css += `  flex-wrap: wrap;\n`
+    css += `  gap: 8px;\n`
+    css += `  width: 100%;\n`
+    css += `  padding: 0 16px;\n`
     css += `}\n\n`
 
-    css += `.logo {\n`
+    css += `.nav-logo, .logo {\n`
     css += `  font-size: 1.25rem;\n`
     css += `  font-weight: bold;\n`
+    css += `  min-width: 120px;\n`
     css += `}\n\n`
 
     css += `.nav-links {\n`
     css += `  display: flex;\n`
     css += `  gap: 1.5rem;\n`
     css += `  align-items: center;\n`
+    css += `  flex-wrap: wrap;\n`
+    css += `  flex: 1;\n`
+    css += `}\n\n`
+
+    css += `.nav-link {\n`
+    css += `  text-decoration: none;\n`
+    css += `  color: inherit;\n`
+    css += `  transition: opacity 0.2s;\n`
+    css += `}\n\n`
+
+    css += `.nav-link:hover {\n`
+    css += `  opacity: 0.75;\n`
+    css += `}\n\n`
+
+    css += `.nav-dropdown {\n`
+    css += `  position: relative;\n`
+    css += `}\n\n`
+
+    css += `.dropdown-toggle {\n`
+    css += `  cursor: pointer;\n`
+    css += `  display: flex;\n`
+    css += `  align-items: center;\n`
+    css += `  gap: 0.25rem;\n`
+    css += `}\n\n`
+
+    css += `.dropdown-menu {\n`
+    css += `  display: none;\n`
+    css += `  position: absolute;\n`
+    css += `  top: 100%;\n`
+    css += `  left: 0;\n`
+    css += `  margin-top: 0.25rem;\n`
+    css += `  background-color: #ffffff;\n`
+    css += `  border: 1px solid #e5e7eb;\n`
+    css += `  border-radius: 0.25rem;\n`
+    css += `  box-shadow: 0 4px 6px rgba(0,0,0,0.1);\n`
+    css += `  padding: 0.5rem;\n`
+    css += `  min-width: 150px;\n`
+    css += `  z-index: 10;\n`
+    css += `}\n\n`
+
+    css += `.nav-dropdown:hover .dropdown-menu {\n`
+    css += `  display: block;\n`
+    css += `}\n\n`
+
+    css += `.dropdown-item {\n`
+    css += `  display: block;\n`
+    css += `  padding: 0.5rem 0.75rem;\n`
+    css += `  text-decoration: none;\n`
+    css += `  color: inherit;\n`
+    css += `  border-radius: 0.25rem;\n`
+    css += `  transition: background-color 0.2s;\n`
+    css += `}\n\n`
+
+    css += `.dropdown-item:hover {\n`
+    css += `  background-color: #f3f4f6;\n`
     css += `}\n\n`
 
     css += `.mobile-menu-btn {\n`
@@ -3431,7 +3566,7 @@ ${sectionsHTML}
           }
 
           // Navigation/Header Styling (containerStyle, linkStyling)
-          if (section.type.startsWith('navbar-') || section.type.startsWith('header-')) {
+          if (section.type === 'navbar' || section.type.startsWith('navbar-') || section.type.startsWith('header-')) {
             const content = section.content || {}
 
             // Container Style
@@ -3440,10 +3575,16 @@ ${sectionsHTML}
               css += `/* ${section.section_name || section.type} - Container */\n`
               css += `#${sectionId} {\n`
               if (cs.background) css += `  background: ${cs.background};\n`
-              if (cs.paddingTop) css += `  padding-top: ${cs.paddingTop}px;\n`
-              if (cs.paddingRight) css += `  padding-right: ${cs.paddingRight}px;\n`
-              if (cs.paddingBottom) css += `  padding-bottom: ${cs.paddingBottom}px;\n`
-              if (cs.paddingLeft) css += `  padding-left: ${cs.paddingLeft}px;\n`
+              if (cs.paddingTop) css += `  padding-top: ${cs.paddingTop};\n`
+              if (cs.paddingRight) css += `  padding-right: ${cs.paddingRight};\n`
+              if (cs.paddingBottom) css += `  padding-bottom: ${cs.paddingBottom};\n`
+              if (cs.paddingLeft) css += `  padding-left: ${cs.paddingLeft};\n`
+              if (cs.marginTop) css += `  margin-top: ${cs.marginTop};\n`
+              if (cs.marginRight) css += `  margin-right: ${cs.marginRight};\n`
+              if (cs.marginBottom) css += `  margin-bottom: ${cs.marginBottom};\n`
+              if (cs.marginLeft) css += `  margin-left: ${cs.marginLeft};\n`
+              if (cs.width) css += `  width: ${cs.width};\n`
+              if (cs.height) css += `  height: ${cs.height};\n`
               if (cs.borderWidth) css += `  border-width: ${cs.borderWidth}px;\n`
               if (cs.borderStyle && cs.borderStyle !== 'none') css += `  border-style: ${cs.borderStyle};\n`
               if (cs.borderColor) css += `  border-color: ${cs.borderColor};\n`
@@ -3730,7 +3871,7 @@ ${sectionsHTML}
     const content = section.content || {}
 
     // Determine section behavior based on type
-    const isTopLocked = section.type.startsWith('navbar-') || section.type.startsWith('header-')
+    const isTopLocked = section.type === 'navbar' || section.type.startsWith('navbar-') || section.type.startsWith('header-')
     const isBottomLocked = section.type.startsWith('footer-')
     const isSidebar = section.type.startsWith('sidebar-nav-')
     const isLeftSidebar = section.type === 'sidebar-nav-left'
@@ -3754,14 +3895,24 @@ ${sectionsHTML}
         }}
       >
         {/* Position Indicator Badge */}
-        {(section.type === 'navbar-sticky' || isTopLocked || isBottomLocked) && (
+        {((section.type === 'navbar' && content.position && content.position !== 'static' && content.position !== 'relative') || section.type === 'navbar-sticky' || isTopLocked || isBottomLocked) && (
           <div className="builder-ui absolute top-1 left-1 z-30 flex gap-1">
-            {section.type === 'navbar-sticky' && (
+            {((section.type === 'navbar' && content.position === 'sticky') || section.type === 'navbar-sticky') && (
               <span className="builder-ui px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full border border-purple-300">
                 STICKY
               </span>
             )}
-            {isTopLocked && section.type !== 'navbar-sticky' && (
+            {(section.type === 'navbar' && content.position === 'fixed') && (
+              <span className="builder-ui px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full border border-blue-300">
+                FIXED
+              </span>
+            )}
+            {(section.type === 'navbar' && content.position === 'absolute') && (
+              <span className="builder-ui px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-semibold rounded-full border border-yellow-300">
+                ABSOLUTE
+              </span>
+            )}
+            {(isTopLocked && section.type !== 'navbar-sticky' && section.type !== 'navbar') && (
               <span className="builder-ui px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full border border-blue-300">
                 FIXED TOP
               </span>
@@ -3911,6 +4062,133 @@ ${sectionsHTML}
             </button>
           </div>
         )}
+
+        {/* CSS Inspector Tooltip */}
+        {cssInspectorMode && isHovered && (() => {
+          const contentCss = section.content?.content_css
+          const sectionCss = typeof contentCss === 'string' ? contentCss : (contentCss && !contentCss.rows && !contentCss.columns ? JSON.stringify(contentCss, null, 2) : null)
+          const hasRows = contentCss?.rows && Object.keys(contentCss.rows).length > 0
+          const hasColumns = contentCss?.columns && Object.keys(contentCss.columns).length > 0
+
+          // Check for navbar-specific styling
+          const containerStyle = section.content?.containerStyle
+          const linkStyling = section.content?.linkStyling
+          const activeIndicator = section.content?.activeIndicator
+          const dropdownConfig = section.content?.dropdownConfig
+
+          const hasNavbarStyling = containerStyle || linkStyling || activeIndicator || dropdownConfig
+          const hasAnyCss = sectionCss || hasRows || hasColumns || hasNavbarStyling
+
+          // Generate CSS representation from styling objects
+          const generateCssFromStyle = (style: any, label: string) => {
+            if (!style || Object.keys(style).length === 0) return null
+            const cssLines = Object.entries(style)
+              .filter(([_, value]) => value !== undefined && value !== '')
+              .map(([key, value]) => {
+                const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase()
+                return `  ${cssKey}: ${value};`
+              })
+            return cssLines.length > 0 ? `/* ${label} */\n${cssLines.join('\n')}` : null
+          }
+
+          return (
+            <div className="builder-ui absolute bottom-2 left-2 right-2 bg-gray-900 bg-opacity-95 text-white p-3 rounded-lg shadow-2xl z-50 max-h-96 overflow-y-auto">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-bold text-yellow-300">
+                  {section.section_name || section.type} - CSS Inspector
+                </span>
+                <svg className="w-4 h-4 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                </svg>
+              </div>
+
+              {!hasAnyCss && (
+                <div className="text-xs text-gray-400 italic">
+                  No styling applied to this section
+                </div>
+              )}
+
+              {/* Navigation Styling (from Navigation Styling Panel) */}
+              {(section.type === 'navbar' || section.type.startsWith('navbar-')) && hasNavbarStyling && (
+                <div className="mb-3">
+                  <span className="text-xs font-bold text-cyan-300">Navigation Styling:</span>
+                  <div className="mt-1 space-y-2">
+                    {containerStyle && Object.keys(containerStyle).length > 0 && (
+                      <div>
+                        <span className="text-xs text-gray-400">Container:</span>
+                        <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
+                          {generateCssFromStyle(containerStyle, 'Container')}
+                        </pre>
+                      </div>
+                    )}
+                    {linkStyling && Object.keys(linkStyling).length > 0 && (
+                      <div>
+                        <span className="text-xs text-gray-400">Links:</span>
+                        <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
+                          {generateCssFromStyle(linkStyling, 'Links')}
+                        </pre>
+                      </div>
+                    )}
+                    {activeIndicator && Object.keys(activeIndicator).length > 0 && (
+                      <div>
+                        <span className="text-xs text-gray-400">Active Link:</span>
+                        <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
+                          {generateCssFromStyle(activeIndicator, 'Active Indicator')}
+                        </pre>
+                      </div>
+                    )}
+                    {dropdownConfig && section.type === 'navbar-dropdown' && (
+                      <div>
+                        <span className="text-xs text-gray-400">Dropdown Config:</span>
+                        <pre className="text-xs font-mono whitespace-pre-wrap text-orange-300 ml-2">
+                          {`Trigger: ${dropdownConfig.trigger || 'click'}\nHover Delay: ${dropdownConfig.hoverDelay || 0}ms\nTransition: ${dropdownConfig.transitionDuration || 200}ms`}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Section CSS */}
+              {sectionCss && (
+                <div className={hasNavbarStyling ? 'pt-3 border-t border-gray-700' : ''}>
+                  <span className="text-xs font-bold text-yellow-300">Custom Section CSS:</span>
+                  <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 mt-1">
+                    {sectionCss}
+                  </pre>
+                </div>
+              )}
+
+              {hasRows && (
+                <div className="mt-3 pt-3 border-t border-gray-700">
+                  <span className="text-xs font-bold text-blue-300">Row CSS:</span>
+                  {Object.entries(contentCss.rows).map(([rowIdx, css]: [string, any]) => (
+                    <div key={rowIdx} className="mt-2">
+                      <span className="text-xs text-gray-400">Row {parseInt(rowIdx) + 1}:</span>
+                      <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
+                        {css || '/* No CSS */'}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {hasColumns && (
+                <div className="mt-3 pt-3 border-t border-gray-700">
+                  <span className="text-xs font-bold text-purple-300">Column CSS:</span>
+                  {Object.entries(contentCss.columns).map(([colIdx, css]: [string, any]) => (
+                    <div key={colIdx} className="mt-2">
+                      <span className="text-xs text-gray-400">Column {parseInt(colIdx) + 1}:</span>
+                      <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
+                        {css || '/* No CSS */'}
+                      </pre>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })()}
       </div>
     )
 
@@ -4106,154 +4384,86 @@ ${sectionsHTML}
         )
 
       // Navigation and Header sections
-      case 'navbar-basic':
-      case 'navbar-sticky':
-        return sectionWrapper(
-          <>
-            <div
-              className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-              style={{
-                backgroundColor: '#ffffff',
-                borderBottom: '2px solid #e5e7eb',
-                padding: '1rem',
-                ...generateContainerStyle(content.containerStyle)
-              }}
-            >
-              <div className="flex items-center justify-between max-w-7xl mx-auto">
-                <EditableText
-                  tag="div"
-                  sectionId={section.id}
-                  field="logo"
-                  value={content.logo || 'Logo'}
-                  onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                  className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
-                />
+      case 'navbar':
+        const navPosition = content.position || 'static'
+        const logoWidth = content.layoutConfig?.logoWidth || content.logoWidth || 25
+        const links = content.links || []
+        const layoutConfig = content.layoutConfig || {}
+        const dropdownConfig = content.dropdownConfig || {}
+        const linkStyling = content.linkStyling || {}
 
-                {/* Desktop Menu */}
-                <div className="hidden md:flex gap-6">
-                  {(content.links || []).map((link: any, idx: number) => {
-                    const isActive = isActivePage(link, currentPage?.id || 0)
-                    return (
-                      <a
-                        key={idx}
-                        href={getLinkHref(link)}
-                        className="transition"
-                        style={{
-                          ...generateLinkStyle(content.linkStyling),
-                          ...(isActive ? generateActiveIndicatorStyle(content.activeIndicator) : {})
-                        }}
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        {getLinkLabel(link)}
-                      </a>
-                    )
-                  })}
-                </div>
+        // Layout positioning
+        const logoPosition = layoutConfig.logoPosition || 'left'
+        const linksPosition = layoutConfig.linksPosition || 'right'
 
-                {/* Mobile Menu Button */}
-                <button
-                  className="md:hidden p-2 hover:bg-gray-100 rounded transition"
-                  onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
-                  aria-label="Open menu"
-                >
-                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
-              </div>
-            </div>
+        // Link styling
+        const linkTextColor = linkStyling.textColor || '#000000'
+        const linkTextColorHover = linkStyling.textColorHover || '#666666'
 
-            {/* Mobile Menu */}
-            <MobileMenu
-              isOpen={!!mobileMenuOpen[section.id]}
-              onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
-              links={content.links || []}
-              linkStyling={content.linkStyling}
-              activeIndicator={content.activeIndicator}
-              currentPageId={currentPage?.id || 0}
-              getLinkHref={getLinkHref}
-              getLinkLabel={getLinkLabel}
-              isActivePage={isActivePage}
-              generateLinkStyle={generateLinkStyle}
-              generateActiveIndicatorStyle={generateActiveIndicatorStyle}
-            />
-          </>
-        )
+        // Dropdown styling
+        const dropdownBg = dropdownConfig.dropdownBg || '#ffffff'
+        const dropdownBorder = dropdownConfig.dropdownBorder || '1px solid #e5e7eb'
+        const dropdownShadow = dropdownConfig.dropdownShadow || '0 4px 6px rgba(0,0,0,0.1)'
+        const dropdownPadding = dropdownConfig.dropdownPadding || '8px'
+        const dropdownItemHoverBg = dropdownConfig.dropdownItemHoverBg || '#f3f4f6'
 
-      case 'navbar-dropdown':
-        const DropdownNavItem = ({ link, linkStyling, dropdownConfig, activeIndicator, currentPageId }: any) => {
+        // Mobile menu button styling
+        const mobileMenuButtonBg = dropdownConfig.mobileMenuButtonBg || 'transparent'
+        const mobileMenuButtonColor = dropdownConfig.mobileMenuButtonColor || '#000000'
+        const mobileMenuButtonHoverBg = dropdownConfig.mobileMenuButtonHoverBg || '#f3f4f6'
+
+        // Check if any link has subItems for dropdown behavior
+        const trigger = dropdownConfig.trigger || 'hover'
+        const hoverDelay = dropdownConfig.hoverDelay || 200
+
+        const DropdownNavItem = ({ link, currentPageId }: any) => {
           const [isOpen, setIsOpen] = useState(false)
-          const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
-          const [closeTimeout, setCloseTimeout] = useState<NodeJS.Timeout | null>(null)
-
+          const [isHovered, setIsHovered] = useState(false)
           const hasSubItems = typeof link === 'object' && link.subItems && link.subItems.length > 0
-          const trigger = dropdownConfig?.trigger || 'click'
-          const hoverDelay = dropdownConfig?.hoverDelay || 0
-          const autoCloseDelay = dropdownConfig?.autoCloseDelay ?? 0
-          const transitionDuration = dropdownConfig?.transitionDuration || 200
           const isActive = isActivePage(link, currentPageId)
+          const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
           const handleMouseEnter = () => {
-            if (trigger === 'click') return
-
-            // Clear any existing close timeout
-            if (closeTimeout) clearTimeout(closeTimeout)
-
-            // Set hover delay before opening
-            const timeout = setTimeout(() => {
-              setIsOpen(true)
-
-              // Set auto-close timer if configured
-              if (autoCloseDelay > 0) {
-                const closeTimer = setTimeout(() => setIsOpen(false), autoCloseDelay)
-                setCloseTimeout(closeTimer)
-              }
-            }, hoverDelay)
-
-            setHoverTimeout(timeout)
+            setIsHovered(true)
+            if (trigger === 'hover' && hasSubItems) {
+              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+              hoverTimeoutRef.current = setTimeout(() => {
+                setIsOpen(true)
+              }, hoverDelay)
+            }
           }
 
           const handleMouseLeave = () => {
-            if (trigger === 'click') return
-
-            // Clear hover timeout
-            if (hoverTimeout) clearTimeout(hoverTimeout)
-
-            // Close immediately on mouse leave
-            setIsOpen(false)
-
-            // Clear auto-close timeout
-            if (closeTimeout) clearTimeout(closeTimeout)
+            setIsHovered(false)
+            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
+            if (trigger === 'hover') {
+              setIsOpen(false)
+            }
           }
 
-          const handleClick = (e: React.MouseEvent) => {
-            e.preventDefault()
-
-            if (trigger === 'hover') return
-
-            setIsOpen(!isOpen)
-
-            // Set auto-close timer if configured
-            if (!isOpen && autoCloseDelay > 0) {
-              const closeTimer = setTimeout(() => setIsOpen(false), autoCloseDelay)
-              setCloseTimeout(closeTimer)
+          const handleClick = (e: any) => {
+            if (hasSubItems) {
+              e.preventDefault()
+              if (trigger === 'click') {
+                setIsOpen(!isOpen)
+              } else {
+                // In hover mode, clicking also toggles for better UX
+                setIsOpen(!isOpen)
+              }
             }
           }
 
           return (
-            <div
-              className="relative"
-              onMouseEnter={handleMouseEnter}
-              onMouseLeave={handleMouseLeave}
-            >
+            <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
               <a
                 href={getLinkHref(link)}
-                className="cursor-pointer flex items-center gap-1"
-                style={{
-                  ...generateLinkStyle(linkStyling),
-                  ...(isActive ? generateActiveIndicatorStyle(activeIndicator) : {})
-                }}
+                className="cursor-pointer flex items-center gap-1 transition"
                 onClick={handleClick}
+                style={{
+                  color: isHovered ? linkTextColorHover : linkTextColor,
+                  fontWeight: isActive ? 'bold' : 'normal',
+                  textDecoration: isActive ? 'underline' : 'none'
+                }}
               >
                 {getLinkLabel(link)}
                 {hasSubItems && (
@@ -4264,27 +4474,37 @@ ${sectionsHTML}
               </a>
               {isOpen && hasSubItems && (
                 <div
-                  className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded shadow-lg p-2 min-w-[120px] z-10"
+                  className="absolute top-full left-0 mt-1 min-w-[120px] z-10"
                   style={{
-                    animation: `fadeIn ${transitionDuration}ms ease-in-out`
+                    backgroundColor: dropdownBg,
+                    border: dropdownBorder,
+                    boxShadow: dropdownShadow,
+                    padding: dropdownPadding,
+                    borderRadius: '0.25rem'
                   }}
                 >
                   {link.subItems.map((subItem: any, subIdx: number) => {
-                    const isSubItemActive = isActivePage(subItem, currentPageId)
-                    return (
-                      <a
-                        key={subIdx}
-                        href={getLinkHref(subItem)}
-                        className="block text-xs transition py-1 px-2 rounded"
-                        style={{
-                          ...generateLinkStyle(linkStyling),
-                          ...(isSubItemActive ? generateActiveIndicatorStyle(activeIndicator) : {})
-                        }}
-                        onClick={(e) => e.preventDefault()}
-                      >
-                        {getLinkLabel(subItem)}
-                      </a>
-                    )
+                    const DropdownSubItem = () => {
+                      const [isSubHovered, setIsSubHovered] = useState(false)
+                      const isSubItemActive = isActivePage(subItem, currentPageId)
+                      return (
+                        <a
+                          href={getLinkHref(subItem)}
+                          className="block text-sm py-1 px-2 rounded transition"
+                          style={{
+                            color: isSubHovered ? linkTextColorHover : linkTextColor,
+                            fontWeight: isSubItemActive ? 'bold' : 'normal',
+                            backgroundColor: isSubHovered ? dropdownItemHoverBg : 'transparent'
+                          }}
+                          onMouseEnter={() => setIsSubHovered(true)}
+                          onMouseLeave={() => setIsSubHovered(false)}
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          {getLinkLabel(subItem)}
+                        </a>
+                      )
+                    }
+                    return <DropdownSubItem key={subIdx} />
                   })}
                 </div>
               )}
@@ -4294,59 +4514,138 @@ ${sectionsHTML}
 
         return sectionWrapper(
           <>
+            {/* Custom CSS for navbar */}
+            {content.content_css && (
+              <style dangerouslySetInnerHTML={{ __html: `
+                #${section.section_id || `section-${section.id}`} {
+                  ${content.content_css}
+                }
+              ` }} />
+            )}
             <div
+              id={section.section_id || `section-${section.id}`}
               className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
               style={{
-                backgroundColor: '#ffffff',
-                borderBottom: '2px solid #e5e7eb',
-                padding: '1rem',
-                ...generateContainerStyle(content.containerStyle)
+                position: 'relative',
+                // Base padding (matches backend CSS)
+                paddingTop: '16px',
+                paddingBottom: '16px',
+                // Container style overrides (will override base padding if set)
+                ...generateContainerStyle(content.containerStyle || {}),
+                borderBottom: content.containerStyle?.borderWidth ? undefined : '2px solid #e5e7eb',
+                borderRadius: content.containerStyle?.borderRadius || 0
               }}
             >
-              <div className="flex items-center justify-between max-w-7xl mx-auto">
-                <EditableText
-                  tag="div"
-                  sectionId={section.id}
-                  field="logo"
-                  value={content.logo || 'Logo'}
-                  onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
-                  className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
-                />
-
-                {/* Desktop Menu */}
-                <div className="hidden md:flex gap-6">
-                  {(content.links || []).map((link: any, idx: number) => (
-                    <DropdownNavItem
-                      key={idx}
-                      link={link}
-                      linkStyling={content.linkStyling}
-                      dropdownConfig={content.dropdownConfig}
-                      activeIndicator={content.activeIndicator}
-                      currentPageId={currentPage?.id || 0}
-                    />
-                  ))}
+              <div className="flex items-center" style={{
+                width: '100%',
+                padding: '0 16px',
+                flexDirection: logoPosition === 'center' && linksPosition === 'center' ? 'column' : 'row',
+                flexWrap: 'wrap',
+                justifyContent:
+                  logoPosition === 'center' && linksPosition === 'center' ? 'center' :
+                  logoPosition === 'left' && linksPosition === 'right' ? 'space-between' :
+                  logoPosition === 'right' && linksPosition === 'left' ? 'space-between' :
+                  'space-between',
+                gap: logoPosition === 'center' && linksPosition === 'center' ? '16px' : '8px'
+              }}>
+              {/* Render logo first if on left or center, last if on right */}
+              {(logoPosition === 'left' || logoPosition === 'center') && (
+                <div style={{
+                  width: logoPosition === 'center' ? '100%' : `${logoWidth}%`,
+                  minWidth: logoPosition === 'center' ? 'auto' : '120px',
+                  textAlign: logoPosition === 'center' ? 'center' : 'left'
+                }}>
+                  <EditableText
+                    tag="div"
+                    sectionId={section.id}
+                    field="logo"
+                    value={content.logo || 'Logo'}
+                    onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
+                    className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
+                  />
                 </div>
+              )}
 
-                {/* Mobile Menu Button */}
-                <button
-                  className="md:hidden p-2 hover:bg-gray-100 rounded transition"
-                  onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
-                  aria-label="Open menu"
-                >
-                  <svg className="w-6 h-6 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                </button>
+              {/* Navigation Links - Desktop */}
+              <div className="hidden md:flex gap-6 items-center flex-1" style={{
+                flexWrap: 'wrap',
+                justifyContent:
+                  linksPosition === 'center' ? 'center' :
+                  linksPosition === 'left' ? 'flex-start' :
+                  'flex-end',
+                order: logoPosition === 'right' && linksPosition === 'left' ? -1 : 0
+              }}>
+                {links.map((link: any, idx: number) => {
+                  const hasSubItems = typeof link === 'object' && link.subItems && link.subItems.length > 0
+
+                  if (hasSubItems) {
+                    return <DropdownNavItem key={idx} link={link} currentPageId={currentPage?.id || 0} />
+                  }
+
+                  const LinkItem = () => {
+                    const [isHovered, setIsHovered] = useState(false)
+                    const isActive = isActivePage(link, currentPage?.id || 0)
+                    return (
+                      <a
+                        href={getLinkHref(link)}
+                        className="transition"
+                        onMouseEnter={() => setIsHovered(true)}
+                        onMouseLeave={() => setIsHovered(false)}
+                        style={{
+                          color: isHovered ? linkTextColorHover : linkTextColor,
+                          fontWeight: isActive ? 'bold' : 'normal',
+                          textDecoration: isActive ? 'underline' : 'none'
+                        }}
+                        onClick={(e) => e.preventDefault()}
+                      >
+                        {getLinkLabel(link)}
+                      </a>
+                    )
+                  }
+                  return <LinkItem key={idx} />
+                })}
               </div>
+
+              {/* Render logo last if on right */}
+              {logoPosition === 'right' && (
+                <div style={{ width: `${logoWidth}%`, minWidth: '120px', textAlign: 'right' }}>
+                  <EditableText
+                    tag="div"
+                    sectionId={section.id}
+                    field="logo"
+                    value={content.logo || 'Logo'}
+                    onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
+                    className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
+                  />
+                </div>
+              )}
+
+              {/* Mobile Menu Button */}
+              <button
+                className="md:hidden p-2 rounded transition"
+                style={{
+                  backgroundColor: mobileMenuButtonBg,
+                  color: mobileMenuButtonColor
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = mobileMenuButtonHoverBg}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = mobileMenuButtonBg}
+                onClick={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: true })}
+                aria-label="Open menu"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
             </div>
 
             {/* Mobile Menu */}
             <MobileMenu
               isOpen={!!mobileMenuOpen[section.id]}
               onClose={() => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: false })}
-              links={content.links || []}
-              linkStyling={content.linkStyling}
-              activeIndicator={content.activeIndicator}
+              links={links}
+              linkStyling={linkStyling}
+              activeIndicator={{}}
+              mobileMenuBg={dropdownConfig.mobileMenuBg}
               currentPageId={currentPage?.id || 0}
               getLinkHref={getLinkHref}
               getLinkLabel={getLinkLabel}
@@ -4354,7 +4653,20 @@ ${sectionsHTML}
               generateLinkStyle={generateLinkStyle}
               generateActiveIndicatorStyle={generateActiveIndicatorStyle}
             />
+          </div>
           </>
+        )
+
+      // Legacy navbar types (deprecated)
+      case 'navbar-basic':
+      case 'navbar-sticky':
+      case 'navbar-dropdown':
+        return sectionWrapper(
+          <div className="bg-yellow-50 border-2 border-yellow-400 p-4 text-center">
+            <p className="text-sm text-yellow-800 font-medium">
+              ⚠️ This navbar type is deprecated. Please delete this section and add the new unified "Navigation Bar" instead.
+            </p>
+          </div>
         )
 
       // Footer sections
@@ -5332,6 +5644,20 @@ ${sectionsHTML}
                 >
                   <span className="text-xs font-bold text-blue-600">Site/Page Styling</span>
                 </button>
+                <button
+                  onClick={() => setCssInspectorMode(!cssInspectorMode)}
+                  className={`px-2 py-1 rounded text-xs font-medium transition flex items-center gap-1 ${
+                    cssInspectorMode
+                      ? 'bg-[#98b290] text-white'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                  }`}
+                  title={cssInspectorMode ? 'Disable CSS Inspector' : 'Enable CSS Inspector - Hover over sections to see their CSS'}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                  </svg>
+                  {cssInspectorMode ? 'CSS: ON' : 'CSS'}
+                </button>
               </div>
               <div className="flex items-center gap-1">
                 {currentPage && !currentPage.is_homepage && (
@@ -5582,17 +5908,20 @@ ${sectionsHTML}
                       </div>
                       <p className="text-[9px] text-gray-500">Use this ID in CSS: #{selectedSection.section_id}</p>
 
-                      <button
-                        onClick={() => {
-                          setShowSectionCSS(!showSectionCSS)
-                          setShowContentStyle(false)
-                          setShowCSSPanel(false)
-                        }}
-                        className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition"
-                        title="Edit Section Styling"
-                      >
-                        Section Styling
-                      </button>
+                      {/* Section Styling button - hidden for navbar sections (use custom CSS instead) */}
+                      {selectedSection.type !== 'navbar' && (
+                        <button
+                          onClick={() => {
+                            setShowSectionCSS(!showSectionCSS)
+                            setShowContentStyle(false)
+                            setShowCSSPanel(false)
+                          }}
+                          className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition"
+                          title="Edit Section Styling"
+                        >
+                          Section Styling
+                        </button>
+                      )}
                     </div>
 
                     <div className="border-t border-gray-200 pt-2">
@@ -5750,11 +6079,456 @@ ${sectionsHTML}
                           )
                         })()}
 
-                    {/* Navigation Section Fields */}
-                    {selectedSection.type.startsWith('navbar-') && (
+                    {/* Navigation Section Controls */}
+                    {selectedSection.type === 'navbar' && (
                       <>
-                        {/* Navigation Links Manager - Tree View */}
-                        <div>
+                        {/* Background Color */}
+                        <div className="mb-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Background Color</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={selectedSection.content?.containerStyle?.background || '#ffffff'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  containerStyle: {
+                                    ...selectedSection.content?.containerStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="w-10 h-8 rounded border border-gray-300"
+                            />
+                            <input
+                              type="text"
+                              value={selectedSection.content?.containerStyle?.background || '#ffffff'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  containerStyle: {
+                                    ...selectedSection.content?.containerStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              placeholder="#ffffff"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Padding Controls */}
+                        <div className="mb-4 border-t border-gray-200 pt-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Padding</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Top (px)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={selectedSection.content?.containerStyle?.paddingTop?.replace('px', '') || '16'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      paddingTop: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Right (px)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={selectedSection.content?.containerStyle?.paddingRight?.replace('px', '') || '0'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      paddingRight: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Bottom (px)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={selectedSection.content?.containerStyle?.paddingBottom?.replace('px', '') || '16'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      paddingBottom: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Left (px)</label>
+                              <input
+                                type="number"
+                                min="0"
+                                value={selectedSection.content?.containerStyle?.paddingLeft?.replace('px', '') || '0'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      paddingLeft: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Margin Controls */}
+                        <div className="mb-4 border-t border-gray-200 pt-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Margin</label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Top (px)</label>
+                              <input
+                                type="number"
+                                value={selectedSection.content?.containerStyle?.marginTop?.replace('px', '') || '0'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      marginTop: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Right (px)</label>
+                              <input
+                                type="number"
+                                value={selectedSection.content?.containerStyle?.marginRight?.replace('px', '') || '0'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      marginRight: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Bottom (px)</label>
+                              <input
+                                type="number"
+                                value={selectedSection.content?.containerStyle?.marginBottom?.replace('px', '') || '0'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      marginBottom: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Left (px)</label>
+                              <input
+                                type="number"
+                                value={selectedSection.content?.containerStyle?.marginLeft?.replace('px', '') || '0'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    containerStyle: {
+                                      ...selectedSection.content?.containerStyle,
+                                      marginLeft: e.target.value + 'px'
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Width Control */}
+                        <div className="mb-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Width</label>
+                          <input
+                            type="text"
+                            value={selectedSection.content?.containerStyle?.width || '100%'}
+                            onChange={(e) => {
+                              handleUpdateSectionContent(selectedSection.id, {
+                                ...selectedSection.content,
+                                containerStyle: {
+                                  ...selectedSection.content?.containerStyle,
+                                  width: e.target.value
+                                }
+                              })
+                            }}
+                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            placeholder="100% or auto or 1280px"
+                          />
+                        </div>
+
+                        {/* Height Control */}
+                        <div className="mb-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Height</label>
+                          <input
+                            type="text"
+                            value={selectedSection.content?.containerStyle?.height || 'auto'}
+                            onChange={(e) => {
+                              handleUpdateSectionContent(selectedSection.id, {
+                                ...selectedSection.content,
+                                containerStyle: {
+                                  ...selectedSection.content?.containerStyle,
+                                  height: e.target.value
+                                }
+                              })
+                            }}
+                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            placeholder="auto or 80px"
+                          />
+                        </div>
+
+                        {/* Position Control */}
+                        <div className="mb-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Position</label>
+                          <select
+                            value={selectedSection.content?.position || 'static'}
+                            onChange={(e) => {
+                              handleUpdateSectionContent(selectedSection.id, {
+                                ...selectedSection.content,
+                                position: e.target.value
+                              })
+                            }}
+                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                          >
+                            <option value="static">Static</option>
+                            <option value="relative">Relative</option>
+                            <option value="sticky">Sticky (stays on scroll)</option>
+                            <option value="fixed">Fixed</option>
+                            <option value="absolute">Absolute</option>
+                          </select>
+                        </div>
+
+                        {/* Layout Controls */}
+                        <div className="mb-4 border-t border-gray-200 pt-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Layout</label>
+
+                          {/* Logo Position */}
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 block mb-1">Logo Position</label>
+                            <select
+                              value={selectedSection.content?.layoutConfig?.logoPosition || 'left'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  layoutConfig: {
+                                    ...selectedSection.content?.layoutConfig,
+                                    logoPosition: e.target.value
+                                  }
+                                })
+                              }}
+                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            >
+                              <option value="left">Left</option>
+                              <option value="center">Center</option>
+                              <option value="right">Right</option>
+                            </select>
+                          </div>
+
+                          {/* Links Position */}
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 block mb-1">Links Position</label>
+                            <select
+                              value={selectedSection.content?.layoutConfig?.linksPosition || 'right'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  layoutConfig: {
+                                    ...selectedSection.content?.layoutConfig,
+                                    linksPosition: e.target.value
+                                  }
+                                })
+                              }}
+                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            >
+                              <option value="left">Left</option>
+                              <option value="center">Center</option>
+                              <option value="right">Right</option>
+                            </select>
+                          </div>
+
+                          {/* Logo Width */}
+                          {!(selectedSection.content?.layoutConfig?.logoPosition === 'center' &&
+                             selectedSection.content?.layoutConfig?.linksPosition === 'center') && (
+                            <div>
+                              <label className="text-xs text-gray-600 block mb-1">Logo Width (%)</label>
+                              <input
+                                type="number"
+                                min="10"
+                                max="90"
+                                value={selectedSection.content?.layoutConfig?.logoWidth || selectedSection.content?.logoWidth || 25}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    layoutConfig: {
+                                      ...selectedSection.content?.layoutConfig,
+                                      logoWidth: parseInt(e.target.value)
+                                    }
+                                  })
+                                }}
+                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Dropdown Behavior */}
+                        <div className="mb-4 border-t border-gray-200 pt-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Dropdown Behavior</label>
+
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 block mb-1">Trigger Method</label>
+                            <select
+                              value={selectedSection.content?.dropdownConfig?.trigger || 'hover'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  dropdownConfig: {
+                                    ...selectedSection.content?.dropdownConfig,
+                                    trigger: e.target.value
+                                  }
+                                })
+                              }}
+                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            >
+                              <option value="hover">Hover</option>
+                              <option value="click">Click</option>
+                            </select>
+                          </div>
+
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 block mb-1">Hover Delay (ms)</label>
+                            <input
+                              type="number"
+                              min="0"
+                              max="1000"
+                              step="50"
+                              value={selectedSection.content?.dropdownConfig?.hoverDelay || 200}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  dropdownConfig: {
+                                    ...selectedSection.content?.dropdownConfig,
+                                    hoverDelay: parseInt(e.target.value)
+                                  }
+                                })
+                              }}
+                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            />
+                          </div>
+                        </div>
+
+                        {/* Link Styling */}
+                        <div className="mb-4 border-t border-gray-200 pt-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Link Colors</label>
+
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 block mb-1">Text Color</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={selectedSection.content?.linkStyling?.textColor || '#000000'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    linkStyling: {
+                                      ...selectedSection.content?.linkStyling,
+                                      textColor: e.target.value
+                                    }
+                                  })
+                                }}
+                                className="w-10 h-8 rounded border border-gray-300"
+                              />
+                              <input
+                                type="text"
+                                value={selectedSection.content?.linkStyling?.textColor || '#000000'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    linkStyling: {
+                                      ...selectedSection.content?.linkStyling,
+                                      textColor: e.target.value
+                                    }
+                                  })
+                                }}
+                                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                placeholder="#000000"
+                              />
+                            </div>
+                          </div>
+
+                          <div className="mb-3">
+                            <label className="text-xs text-gray-600 block mb-1">Hover Color</label>
+                            <div className="flex gap-2">
+                              <input
+                                type="color"
+                                value={selectedSection.content?.linkStyling?.textColorHover || '#666666'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    linkStyling: {
+                                      ...selectedSection.content?.linkStyling,
+                                      textColorHover: e.target.value
+                                    }
+                                  })
+                                }}
+                                className="w-10 h-8 rounded border border-gray-300"
+                              />
+                              <input
+                                type="text"
+                                value={selectedSection.content?.linkStyling?.textColorHover || '#666666'}
+                                onChange={(e) => {
+                                  handleUpdateSectionContent(selectedSection.id, {
+                                    ...selectedSection.content,
+                                    linkStyling: {
+                                      ...selectedSection.content?.linkStyling,
+                                      textColorHover: e.target.value
+                                    }
+                                  })
+                                }}
+                                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                placeholder="#666666"
+                              />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Navigation Links Manager */}
+                        <div className="mb-4 border-t border-gray-200 pt-4">
                           <label className="text-xs font-medium text-gray-700 block mb-2">Navigation Links</label>
                           <NavigationTreeManager
                             links={selectedSection.content?.links || []}
@@ -5769,17 +6543,75 @@ ${sectionsHTML}
                           />
                         </div>
 
-                        {/* Navigation Styling Panel */}
-                        <div className="mt-4 border-t border-gray-200 pt-4">
-                          <h3 className="text-xs font-semibold text-gray-900 mb-3">Navigation Styling</h3>
-                          <NavigationStylingPanel
-                            content={selectedSection.content || {}}
-                            onUpdate={(updatedContent) => {
-                              handleUpdateSectionContent(selectedSection.id, updatedContent)
-                            }}
-                          />
+                        {/* Generated CSS Preview */}
+                        <div className="mb-4 border-t border-gray-200 pt-4">
+                          <label className="text-xs font-medium text-gray-700 block mb-2">Generated CSS Preview</label>
+                          <p className="text-xs text-gray-500 mb-2">This shows the CSS generated from your settings above</p>
+                          <pre className="bg-gray-50 border border-gray-300 rounded p-3 text-xs overflow-auto max-h-64 font-mono">
+{(() => {
+  const sectionId = selectedSection.section_id || `section-${selectedSection.id}`
+  const content = selectedSection.content || {}
+  let css = ''
+
+  // Position
+  if (content.position && content.position !== 'static') {
+    css += `#${sectionId} {\n`
+    css += `  position: ${content.position};\n`
+    if (content.position === 'sticky' || content.position === 'fixed') {
+      css += `  top: 0;\n`
+      css += `  z-index: 100;\n`
+    }
+    css += `}\n\n`
+  }
+
+  // Container styling
+  if (content.containerStyle) {
+    const cs = content.containerStyle
+    if (cs.background || cs.paddingTop || cs.paddingRight || cs.paddingBottom || cs.paddingLeft || cs.borderWidth) {
+      css += `#${sectionId} {\n`
+      if (cs.background) css += `  background: ${cs.background};\n`
+      if (cs.paddingTop) css += `  padding-top: ${cs.paddingTop};\n`
+      if (cs.paddingRight) css += `  padding-right: ${cs.paddingRight};\n`
+      if (cs.paddingBottom) css += `  padding-bottom: ${cs.paddingBottom};\n`
+      if (cs.paddingLeft) css += `  padding-left: ${cs.paddingLeft};\n`
+      if (cs.borderWidth) css += `  border-width: ${cs.borderWidth};\n`
+      if (cs.borderStyle && cs.borderStyle !== 'none') css += `  border-style: ${cs.borderStyle};\n`
+      if (cs.borderColor) css += `  border-color: ${cs.borderColor};\n`
+      if (cs.borderRadius) css += `  border-radius: ${cs.borderRadius};\n`
+      css += `}\n\n`
+    }
+  }
+
+  // Link styling
+  if (content.linkStyling) {
+    const ls = content.linkStyling
+    if (ls.textColor || ls.bgColor) {
+      css += `#${sectionId} a {\n`
+      if (ls.textColor) css += `  color: ${ls.textColor};\n`
+      if (ls.bgColor) css += `  background-color: ${ls.bgColor};\n`
+      css += `  text-decoration: none;\n`
+      css += `}\n\n`
+    }
+    if (ls.textColorHover || ls.bgColorHover) {
+      css += `#${sectionId} a:hover {\n`
+      if (ls.textColorHover) css += `  color: ${ls.textColorHover};\n`
+      if (ls.bgColorHover) css += `  background-color: ${ls.bgColorHover};\n`
+      css += `}\n\n`
+    }
+  }
+
+  return css || '/* No custom CSS generated yet */\n/* Adjust the controls above to see CSS appear here */'
+})()}
+                          </pre>
                         </div>
                       </>
+                    )}
+
+                    {/* Legacy navbar controls */}
+                    {selectedSection.type.startsWith('navbar-') && (
+                      <div className="p-3 bg-yellow-50 border border-yellow-400 rounded text-xs text-yellow-800">
+                        ⚠️ This navbar type has been removed. Please delete this section.
+                      </div>
                     )}
                       </>
                     )}

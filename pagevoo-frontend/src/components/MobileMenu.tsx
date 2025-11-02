@@ -6,6 +6,7 @@ interface MobileMenuProps {
   links: any[]
   linkStyling?: any
   activeIndicator?: any
+  mobileMenuBg?: string
   currentPageId?: number
   getLinkHref: (link: any) => string
   getLinkLabel: (link: any) => string
@@ -20,6 +21,7 @@ export function MobileMenu({
   links,
   linkStyling,
   activeIndicator,
+  mobileMenuBg = '#ffffff',
   currentPageId = 0,
   getLinkHref,
   getLinkLabel,
@@ -47,8 +49,11 @@ export function MobileMenu({
     <>
       {/* Mobile Menu Panel - Full Width */}
       <div
-        className="w-full bg-white border-t border-gray-200 md:hidden"
-        style={{ animation: 'slideDown 250ms ease-out' }}
+        className="w-full border-t border-gray-200 md:hidden"
+        style={{
+          animation: 'slideDown 250ms ease-out',
+          backgroundColor: mobileMenuBg
+        }}
       >
         {/* Menu Items */}
         <nav className="p-4">
