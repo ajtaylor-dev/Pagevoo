@@ -76,6 +76,7 @@ class TemplateController extends BaseController
             'pages.*.name' => 'required|string',
             'pages.*.slug' => 'required|string',
             'pages.*.page_id' => 'nullable|string',
+            'pages.*.page_css' => 'nullable|string',
             'pages.*.is_homepage' => 'boolean',
             'pages.*.order' => 'integer',
             'pages.*.sections' => 'array',
@@ -111,6 +112,7 @@ class TemplateController extends BaseController
                 'name' => $pageData['name'],
                 'slug' => $pageData['slug'],
                 'page_id' => $pageData['page_id'] ?? null,
+                'page_css' => $pageData['page_css'] ?? null,
                 'is_homepage' => $pageData['is_homepage'] ?? false,
                 'order' => $pageData['order'] ?? 0,
             ]);
@@ -171,6 +173,7 @@ class TemplateController extends BaseController
             'pages.*.name' => 'required|string',
             'pages.*.slug' => 'required|string',
             'pages.*.page_id' => 'nullable|string',
+            'pages.*.page_css' => 'nullable|string',
             'pages.*.is_homepage' => 'boolean',
             'pages.*.order' => 'integer',
             'pages.*.sections' => 'array',
@@ -214,6 +217,7 @@ class TemplateController extends BaseController
                     'name' => $pageData['name'],
                     'slug' => $pageData['slug'],
                     'page_id' => $pageData['page_id'] ?? null,
+                    'page_css' => $pageData['page_css'] ?? null,
                     'is_homepage' => $pageData['is_homepage'] ?? false,
                     'order' => $pageData['order'] ?? 0,
                 ]);

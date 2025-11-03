@@ -958,8 +958,287 @@ This matches CSS cascade behavior where base styles are overridden by more speci
 
 ---
 
+## Session 37: Footer Editability & Save Race Condition Fixes
+**Date**: 2025-11-02
+**Status**: ✅ COMPLETE
+
+### Overview
+Enhanced footer sections to be fully editable with property controls matching navbar pattern. Fixed critical save race conditions affecting page CSS and other rapid edits.
+
+### Issues Fixed
+
+**1. Click-Off Deselection**
+- **Problem**: Clicking empty canvas space didn't clear properties panel
+- **Solution**: Added onClick handler to canvas div to clear selectedSection
+- **Implementation**:
+  - Canvas onClick: `setSelectedSection(null)` (line 1677)
+  - Section onClick: `e.stopPropagation()` to prevent bubbling (line 3893)
+
+**2. Save Race Condition - Critical Bug**
+- **Problem**: Saving immediately after editing sometimes reverted the last change
+- **Root Cause**: React's async `setState` + `useEffect` sync meant `templateRef` lagged behind state updates
+- **Solution**: Update `templateRef.current` immediately in all onChange handlers
+- **Locations Fixed**:
+  - Page CSS onChange (line 5896)
+  - Site CSS onChange (lines 5274, 5873)
+  - Template name onChange (line 5469)
+  - Section name onChange (line 5971)
+  - Section ID regenerate (line 6007)
+- **Pattern**:
+```typescript
+setTemplate(updatedTemplate)
+templateRef.current = updatedTemplate // Sync ref immediately
+```
+
+**3. Backend Not Saving page_css**
+- **Problem**: Page CSS changes reverted after save because backend wasn't persisting the field
+- **Root Cause**: TemplateController.php wasn't including `page_css` in TemplatePage::create()
+- **Solution**: Added `page_css` to validation rules and create calls
+- **Backend Changes**:
+  - Added validation: `'pages.*.page_css' => 'nullable|string'` (lines 79, 174)
+  - Added to store: `'page_css' => $pageData['page_css'] ?? null` (line 115)
+  - Added to update: `'page_css' => $pageData['page_css'] ?? null` (line 217)
+
+**4. Remove Column Borders Button**
+- **Feature**: Added button to remove borders from all columns in grid sections
+- **Location**: Next to "Column Styles" label (lines 6034-6067)
+- **Functionality**: Uses regex to strip all border-related CSS properties
+- **Styling**: Red-themed warning button (bg-red-100 hover:bg-red-200)
+
+### Footer Sections - Made Fully Editable
+
+**Problem**: Footers not appearing in live preview, and properties not controlling styling
+
+**Solutions Implemented**:
+
+**Backend (TemplateFileGenerator.php)**:
+1. **Added Footer HTML Generation** (lines 1220-1252):
+   - `buildFooterHTML()` method for footer-simple and footer-columns
+   - footer-simple: Simple footer with centered copyright text
+   - footer-columns: 3-column footer grid + copyright row
+
+2. **Added Footer CSS Generation** (lines 929-984):
+   - `addFooterCSS()` method with dynamic styles
+   - footer-simple: background, padding, textAlign from sectionStyle
+   - footer-columns: background from sectionStyle, copyright section from copyrightStyle
+
+3. **Integrated Footer Calls**:
+   - HTML generation: Lines 1043-1046
+   - CSS generation: Lines 830-833
+
+**Frontend (TemplateBuilder.tsx)**:
+
+1. **Footer Rendering with Dynamic Styles** (lines 4761-4828):
+   - footer-simple: Uses `sectionStyle` for background, padding, textAlign
+   - footer-columns: Uses `sectionStyle` for main footer, `copyrightStyle` for copyright row
+   - Defaults: 32px padding (simple), 24px copyright padding (columns)
+
+2. **Footer CSS Generation** (lines 3629-3697):
+   - Matches backend CSS output exactly
+   - Dynamic inline styles + generated CSS
+
+3. **Footer Property Controls** (lines 6755-6925):
+
+   **footer-simple** (lines 6755-6832):
+   - Background Color (color picker + hex input)
+   - Padding (text input, default "32px")
+   - Text Align (dropdown: left/center/right)
+
+   **footer-columns** (lines 6834-6925):
+   - Footer Background Color
+   - Copyright Background Color (border divider before this)
+   - Copyright Padding (default "24px")
+
+4. **Footer Controls Flattened Like Navbar**:
+   - **Removed "Section Styling" button** for footers (line 6023)
+   - All controls visible at root level (no nesting)
+   - Consistent styling: `mb-3` spacing, `text-xs text-gray-600` labels
+   - Border dividers between logical groups
+
+5. **Removed Font/Text Color Controls**:
+   - User feedback: "not relevant here (it can be edited in WYSIWYG or site css)"
+   - Removed fontSize and textColor from rendering
+   - Text styling now uses static Tailwind classes: `text-white text-sm`
+
+6. **Changed Defaults from rem to px**:
+   - footer-simple padding: `2rem` → `32px`
+   - footer-columns copyright padding: `1.5rem` → `24px`
+   - All placeholders show px values
+
+### Technical Patterns
+
+**Dynamic Style Objects**:
+```typescript
+// footer-simple
+const simpleFooterStyle = content.sectionStyle || {}
+style={{
+  backgroundColor: simpleFooterStyle.background || '#1f2937',
+  padding: simpleFooterStyle.padding || '32px',
+  textAlign: (simpleFooterStyle.textAlign || 'center') as any
+}}
+
+// footer-columns
+const columnsFooterStyle = content.sectionStyle || {}
+const copyrightStyle = content.copyrightStyle || {}
+```
+
+**Property Panel Pattern** (matching navbar):
+```tsx
+{selectedSection.type === 'footer-simple' && (
+  <>
+    <div className="mb-3">
+      <label className="text-xs text-gray-600 block mb-1">Background Color</label>
+      {/* color picker + hex input */}
+    </div>
+    <div className="mb-3">
+      <label className="text-xs text-gray-600 block mb-1">Padding</label>
+      {/* text input */}
+    </div>
+  </>
+)}
+```
+
+**Race Condition Fix Pattern**:
+```typescript
+const updatedTemplate = { ...template, pages: updatedPages }
+setTemplate(updatedTemplate)
+templateRef.current = updatedTemplate // ← Critical sync line
+addToHistory(updatedTemplate)
+```
+
+### Files Modified
+
+**Frontend**:
+1. **pagevoo-frontend/src/pages/TemplateBuilder.tsx**
+   - Line 439: Added templateRef declaration
+   - Lines 549-552: useEffect to sync ref with state
+   - Line 1677: Canvas onClick for deselection
+   - Line 3893: Section onClick stopPropagation
+   - Lines 2650-2662: handleSave uses templateRef
+   - Lines 3629-3697: Footer CSS generation
+   - Lines 4761-4828: Footer rendering with dynamic styles
+   - Lines 5274, 5469, 5873, 5896, 5971, 6007: templateRef sync in onChange handlers
+   - Lines 6023: Exclude footers from "Section Styling" button
+   - Lines 6034-6067: Remove Borders button
+   - Lines 6755-6925: Footer property controls
+
+**Backend**:
+2. **pagevoo-backend/app/Services/TemplateFileGenerator.php**
+   - Lines 830-833: Footer CSS generation call
+   - Lines 929-984: addFooterCSS() method
+   - Lines 1043-1046: Footer HTML generation call
+   - Lines 1220-1252: buildFooterHTML() method
+
+3. **pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php**
+   - Line 79: Validation rule for page_css (store)
+   - Line 115: Include page_css in TemplatePage::create() (store)
+   - Line 174: Validation rule for page_css (update)
+   - Line 217: Include page_css in TemplatePage::create() (update)
+
+### Testing Results
+
+✅ **Footer Editability**:
+- Background colors change immediately
+- Padding adjusts properly
+- Text alignment works (footer-simple)
+- Copyright section styles independently (footer-columns)
+- Changes persist after save
+
+✅ **Live Preview**:
+- Footers now appear correctly
+- Styling matches canvas preview
+- Dynamic properties applied in generated CSS/HTML
+
+✅ **Save Race Conditions**:
+- Page CSS saves correctly
+- Site CSS saves correctly
+- Section names save correctly
+- Template name saves correctly
+- No more lost edits on rapid save
+
+✅ **Click-Off Deselection**:
+- Clicking empty canvas clears properties panel
+- Clicking sections selects them properly
+
+### Current Status
+✅ Session 37 - COMPLETE
+✅ Footers fully editable with property controls
+✅ Footer styling treated as section-level (like navbar)
+✅ All race condition bugs fixed
+✅ Backend properly saves page_css field
+✅ Click-off deselection working
+✅ Remove Borders button added for grid sections
+
+---
+
+## TODO List - Upcoming Improvements
+
+### 1. CSS Hierarchy Synchronization
+**Priority**: HIGH
+**Description**: Fix lower/level CSS syncing to properly reflect inherited values
+
+**Requirements**:
+- If a style is set on Site CSS, sliders/defaults on Page CSS should reflect that inherited value
+- If a style is set on Page CSS, Section CSS should reflect that inherited value
+- Must follow CSS cascade hierarchy: `inline > row > column > section > page > site`
+- Values should cascade down but remain overridable at each level
+- Visual indicators showing inherited vs explicitly set values
+
+**Technical Approach**:
+- Add inheritance chain tracking to StyleEditor component
+- Calculate effective computed values at each level
+- Update slider/input default values to show inherited values
+- Distinguish between "unset" and "explicitly set to default"
+
+### 2. Enhanced CSS Tooltip with Inheritance Info
+**Priority**: HIGH
+**Description**: Improve "Show CSS" tooltip to display inherited styles and overrides
+
+**Requirements**:
+- Show complete inheritance chain for each property
+- Display which level each style is coming from (site/page/section/row/column/inline)
+- Indicate when a property is overriding a previous level
+- Clear visual hierarchy showing cascade order
+- Include computed final values
+
+**Example Output**:
+```
+Padding-Top:
+  └─ Site CSS: 20px (inherited)
+  └─ Page CSS: — (not set)
+  └─ Section CSS: 40px ← OVERRIDING
+  └─ Computed: 40px
+```
+
+**Technical Approach**:
+- Parse all CSS levels in cascade order
+- Build inheritance tree for each property
+- Generate formatted output showing overrides
+- Use color coding or icons to highlight overrides
+
+### 3. CSS Tooltip Z-Index Fix
+**Priority**: MEDIUM
+**Description**: Fix tooltip z-index so it appears above canvas overflow
+
+**Problem**:
+- CSS tooltips in top sections are hidden by canvas overflow
+- Tooltips need to be on top of everything in the interface
+
+**Solution**:
+- Add high z-index value to tooltip container (e.g., `z-index: 9999`)
+- Ensure tooltip portal renders outside canvas overflow context
+- Use React Portal if necessary to escape overflow container
+- Test across all section positions (top, middle, bottom)
+
+**Files to Modify**:
+- Tooltip component CSS
+- Canvas container overflow rules
+- Properties panel stacking context
+
+---
+
 ## Last Updated
-2025-11-02 (Session 36 complete - Critical consistency fixes & navbar properties)
+2025-11-02 (Session 37 complete - Footer editability & save race condition fixes)
 
 ---
 Note: This is a continuation of claude_memory_4.txt. Sessions 1-29 documented in previous memory files.

@@ -436,6 +436,7 @@ export default function TemplateBuilder() {
   const templateId = searchParams.get('id')
 
   const [template, setTemplate] = useState<Template | null>(null)
+  const templateRef = useRef<Template | null>(null) // Track latest template to avoid race conditions
   const [currentPage, setCurrentPage] = useState<TemplatePage | null>(null)
   const [selectedSection, setSelectedSection] = useState<TemplateSection | null>(null)
   const [loading, setLoading] = useState(true)
@@ -544,6 +545,11 @@ export default function TemplateBuilder() {
       },
     })
   )
+
+  // Keep templateRef in sync with template state to avoid race conditions during save
+  useEffect(() => {
+    templateRef.current = template
+  }, [template])
 
   // Load template data if ID is present, or create blank template
   useEffect(() => {
@@ -1674,6 +1680,7 @@ padding: 1rem;`
       <div
         id="template-canvas"
         ref={setNodeRef}
+        onClick={() => setSelectedSection(null)}
         className={`text-gray-900 flex-1 min-h-0 ${viewportClass} ${activeId && activeDragData?.source === 'library' ? 'ring-2 ring-[#98b290] ring-offset-4 rounded-lg' : ''} ${isOver ? 'bg-[#e8f0e6]' : ''}`}
       >
         {/* Inject Google Fonts */}
@@ -2641,17 +2648,19 @@ padding: 1rem;`
   }
 
   const handleSave = async () => {
-    if (!template) {
+    // Use templateRef.current to get the most recent template state (avoids race conditions)
+    const currentTemplate = templateRef.current
+    if (!currentTemplate) {
       alert('No template to save')
       return
     }
 
     // Debug: Log template ID
-    console.log('Template ID:', template.id, 'Type:', typeof template.id)
+    console.log('Template ID:', currentTemplate.id, 'Type:', typeof currentTemplate.id)
 
     // If template.id === 0 or undefined (new template), prompt for name like Word
-    if (!template.id || template.id === 0) {
-      const templateName = prompt('Enter a template name:', template.name || 'Untitled Template')
+    if (!currentTemplate.id || currentTemplate.id === 0) {
+      const templateName = prompt('Enter a template name:', currentTemplate.name || 'Untitled Template')
       if (!templateName || templateName.trim() === '') {
         return // User cancelled or entered empty name
       }
@@ -2679,7 +2688,9 @@ padding: 1rem;`
       }
 
       // Update template name
-      setTemplate({ ...template, name: templateName.trim() })
+      const updatedTemplate = { ...currentTemplate, name: templateName.trim() }
+      setTemplate(updatedTemplate)
+      templateRef.current = updatedTemplate
 
       // Perform save as create
       return performSaveAsCreate(templateName.trim())
@@ -2695,8 +2706,8 @@ padding: 1rem;`
 
     try {
       // Make sure is_active stays false when saving (don't accidentally publish)
-      const templateToSave = { ...template, is_active: isPublished }
-      const response = await api.updateTemplate(template.id, templateToSave)
+      const templateToSave = { ...currentTemplate, is_active: isPublished }
+      const response = await api.updateTemplate(currentTemplate.id, templateToSave)
 
       if (response.success && response.data) {
         // Update template with fresh data from backend (includes all pages/sections with proper IDs)
@@ -2725,21 +2736,23 @@ padding: 1rem;`
   }
 
   const performSaveAsCreate = async (templateName: string) => {
-    if (!template) return
+    // Use templateRef.current to get the most recent template state (avoids race conditions)
+    const currentTemplate = templateRef.current
+    if (!currentTemplate) return
 
     try {
       // Prepare template data for creation
       const templateData = {
         name: templateName,
-        description: template.description || '',
-        business_type: template.business_type || 'other',
-        preview_image: template.preview_image || '',
+        description: currentTemplate.description || '',
+        business_type: currentTemplate.business_type || 'other',
+        preview_image: currentTemplate.preview_image || '',
         is_active: false, // Always save as unpublished (draft) - only "Export As > HTML Template" publishes
-        exclusive_to: template.exclusive_to || null,
-        technologies: template.technologies || [],
-        features: template.features || [],
-        custom_css: template.custom_css || '',
-        pages: template.pages.map(page => ({
+        exclusive_to: currentTemplate.exclusive_to || null,
+        technologies: currentTemplate.technologies || [],
+        features: currentTemplate.features || [],
+        custom_css: currentTemplate.custom_css || '',
+        pages: currentTemplate.pages.map(page => ({
           name: page.name,
           slug: page.slug,
           page_id: page.page_id || null,
@@ -2760,8 +2773,9 @@ padding: 1rem;`
 
       if (response.success && response.data) {
         // Update template with returned data (includes id, template_slug, etc.)
-        const newTemplate = { ...template, ...response.data }
+        const newTemplate = { ...currentTemplate, ...response.data }
         setTemplate(newTemplate)
+        templateRef.current = newTemplate
 
         // Set published state to false (it's a draft)
         setIsPublished(false)
@@ -2781,12 +2795,14 @@ padding: 1rem;`
   }
 
   const handleSaveAs = async () => {
-    if (!template) {
+    // Use templateRef.current to get the most recent template state (avoids race conditions)
+    const currentTemplate = templateRef.current
+    if (!currentTemplate) {
       alert('No template to save')
       return
     }
 
-    const newName = prompt('Save template as:', template.name ? template.name + ' (Copy)' : 'Untitled Template')
+    const newName = prompt('Save template as:', currentTemplate.name ? currentTemplate.name + ' (Copy)' : 'Untitled Template')
     if (!newName || newName.trim() === '') {
       return // User cancelled
     }
@@ -3609,6 +3625,77 @@ ${sectionsHTML}
               css += `}\n\n`
             }
           }
+
+          // Footer styling
+          if (section.type.startsWith('footer-')) {
+            const sectionId = section.section_id || `section-${section.id}`
+            const content = section.content || {}
+
+            if (section.type === 'footer-simple') {
+              const sectionStyle = content.sectionStyle || {}
+              css += `/* ${section.section_name || section.type} - Footer Simple */\n`
+              css += `#${sectionId} {\n`
+              if (sectionStyle.background) css += `  background-color: ${sectionStyle.background};\n`
+              else css += `  background-color: #1f2937;\n`
+              if (sectionStyle.textColor) css += `  color: ${sectionStyle.textColor};\n`
+              else css += `  color: white;\n`
+              if (sectionStyle.padding) css += `  padding: ${sectionStyle.padding};\n`
+              else css += `  padding: 2rem;\n`
+              if (sectionStyle.textAlign) css += `  text-align: ${sectionStyle.textAlign};\n`
+              else css += `  text-align: center;\n`
+              css += `}\n\n`
+
+              css += `#${sectionId} p {\n`
+              if (sectionStyle.fontSize) css += `  font-size: ${sectionStyle.fontSize};\n`
+              else css += `  font-size: 0.875rem;\n`
+              css += `}\n\n`
+            }
+
+            if (section.type === 'footer-columns') {
+              const sectionStyle = content.sectionStyle || {}
+              const copyrightStyle = content.copyrightStyle || {}
+
+              css += `/* ${section.section_name || section.type} - Footer Columns */\n`
+              css += `#${sectionId} {\n`
+              if (sectionStyle.background) css += `  background-color: ${sectionStyle.background};\n`
+              else css += `  background-color: #172554;\n`
+              if (sectionStyle.textColor) css += `  color: ${sectionStyle.textColor};\n`
+              else css += `  color: white;\n`
+              css += `}\n\n`
+
+              css += `#${sectionId} .footer-grid {\n`
+              css += `  display: grid;\n`
+              css += `  grid-template-columns: repeat(3, 1fr);\n`
+              css += `  gap: 2rem;\n`
+              css += `  padding: 3rem;\n`
+              css += `  max-width: 1280px;\n`
+              css += `  margin: 0 auto;\n`
+              css += `}\n\n`
+
+              css += `#${sectionId} .footer-column {\n`
+              css += `  min-height: 150px;\n`
+              css += `  text-align: center;\n`
+              css += `}\n\n`
+
+              css += `#${sectionId} .footer-copyright {\n`
+              if (copyrightStyle.background) css += `  background-color: ${copyrightStyle.background};\n`
+              else css += `  background-color: #171717;\n`
+              if (copyrightStyle.padding) css += `  padding: ${copyrightStyle.padding};\n`
+              else css += `  padding: 1.5rem;\n`
+              if (copyrightStyle.borderTop) css += `  border-top: ${copyrightStyle.borderTop};\n`
+              else css += `  border-top: 1px solid #374151;\n`
+              css += `}\n\n`
+
+              css += `#${sectionId} .footer-copyright p {\n`
+              if (copyrightStyle.fontSize) css += `  font-size: ${copyrightStyle.fontSize};\n`
+              else css += `  font-size: 0.875rem;\n`
+              css += `  text-align: center;\n`
+              css += `  max-width: 1280px;\n`
+              css += `  margin: 0 auto;\n`
+              css += `  padding: 0 3rem;\n`
+              css += `}\n\n`
+            }
+          }
         })
     }
 
@@ -3888,7 +3975,8 @@ ${sectionsHTML}
         className={`relative group ${isSidebar ? 'z-20' : ''} ${section.is_locked ? 'cursor-not-allowed' : ''}`}
         onMouseEnter={() => setHoveredSection(section.id)}
         onMouseLeave={() => setHoveredSection(null)}
-        onClick={() => {
+        onClick={(e) => {
+          e.stopPropagation()
           if (!section.is_locked) {
             setSelectedSection(section)
           }
@@ -4671,24 +4759,41 @@ ${sectionsHTML}
 
       // Footer sections
       case 'footer-simple':
+        const simpleFooterStyle = content.sectionStyle || {}
         return sectionWrapper(
-          <div className={`bg-gray-800 text-white p-8 text-center cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
+          <div
+            id={section.section_id || `section-${section.id}`}
+            className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
+            style={{
+              backgroundColor: simpleFooterStyle.background || '#1f2937',
+              padding: simpleFooterStyle.padding || '32px',
+              textAlign: (simpleFooterStyle.textAlign || 'center') as any
+            }}
+          >
             <EditableText
               tag="p"
               sectionId={section.id}
               field="text"
               value={content.text || '© 2025 Company Name. All rights reserved.'}
               onSave={(e) => handleInlineTextEdit(section.id, 'text', e)}
-              className="text-sm outline-none hover:bg-white/10 px-2 py-1 rounded transition"
+              className="outline-none hover:bg-white/10 px-2 py-1 rounded transition text-white text-sm"
             />
           </div>
         )
 
       case 'footer-columns':
+        const columnsFooterStyle = content.sectionStyle || {}
+        const copyrightStyle = content.copyrightStyle || {}
         return sectionWrapper(
-          <div className={`bg-blue-950 text-white cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
+          <div
+            id={section.section_id || `section-${section.id}`}
+            className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
+            style={{
+              backgroundColor: columnsFooterStyle.background || '#172554'
+            }}
+          >
             {/* 3-column grid */}
-            <div className="grid grid-cols-3 gap-8 p-12 max-w-7xl mx-auto">
+            <div className="grid grid-cols-3 gap-8 p-12 max-w-7xl mx-auto text-white">
               {(content.columns || []).map((col: any, idx: number) => (
                 <div key={idx} className="min-h-[150px] text-center">
                   <EditableText
@@ -4702,14 +4807,20 @@ ${sectionsHTML}
               ))}
             </div>
             {/* Copyright row */}
-            <div className="bg-[#171717] py-6 border-t border-gray-800">
+            <div
+              style={{
+                backgroundColor: copyrightStyle.background || '#171717',
+                padding: copyrightStyle.padding || '24px',
+                borderTop: copyrightStyle.borderTop || '1px solid #374151'
+              }}
+            >
               <div className="max-w-7xl mx-auto px-12">
                 <EditableText
                   tag="p"
                   sectionId={section.id}
                   field="copyrightText"
                   value={content.copyrightText || '© 2025 Company Name. All rights reserved.'}
-                  className="text-sm text-center outline-none hover:bg-white/10 px-2 py-1 rounded transition"
+                  className="text-center outline-none hover:bg-white/10 px-2 py-1 rounded transition text-white text-sm"
                 />
               </div>
             </div>
@@ -5160,6 +5271,7 @@ ${sectionsHTML}
                             console.log('[Site CSS onChange] New CSS:', css)
                             const updatedTemplate = { ...template, custom_css: css }
                             setTemplate(updatedTemplate)
+                            templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
                             addToHistory(updatedTemplate)
                           }}
                           context="page"
@@ -5354,6 +5466,7 @@ ${sectionsHTML}
             onChange={(e) => {
               const updatedTemplate = { ...template, name: e.target.value }
               setTemplate(updatedTemplate)
+              templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
               addToHistory(updatedTemplate)
             }}
             className="px-2 py-0.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64"
@@ -5758,6 +5871,7 @@ ${sectionsHTML}
                             console.log('[Site CSS onChange #2] New CSS:', css)
                             const updatedTemplate = { ...template!, custom_css: css }
                             setTemplate(updatedTemplate)
+                            templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
                             addToHistory(updatedTemplate)
                           }}
                           context="page"
@@ -5782,6 +5896,7 @@ ${sectionsHTML}
                             )
                             const updatedTemplate = { ...template, pages: updatedPages }
                             setTemplate(updatedTemplate)
+                            templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
                             setCurrentPage({ ...currentPage, page_css: css })
                             addToHistory(updatedTemplate)
                           }}
@@ -5853,6 +5968,7 @@ ${sectionsHTML}
                               })
                               const updatedTemplate = { ...template, pages: updatedPages }
                               setTemplate(updatedTemplate)
+                              templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
                               setCurrentPage({
                                 ...currentPage,
                                 sections: currentPage.sections.map(s =>
@@ -5888,6 +6004,7 @@ ${sectionsHTML}
                               })
                               const updatedTemplate = { ...template, pages: updatedPages }
                               setTemplate(updatedTemplate)
+                              templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
                               setCurrentPage({
                                 ...currentPage,
                                 sections: currentPage.sections.map(s =>
@@ -5908,8 +6025,8 @@ ${sectionsHTML}
                       </div>
                       <p className="text-[9px] text-gray-500">Use this ID in CSS: #{selectedSection.section_id}</p>
 
-                      {/* Section Styling button - hidden for navbar sections (use custom CSS instead) */}
-                      {selectedSection.type !== 'navbar' && (
+                      {/* Section Styling button - hidden for navbar and footer sections (use custom CSS instead) */}
+                      {selectedSection.type !== 'navbar' && !selectedSection.type.startsWith('footer-') && (
                         <button
                           onClick={() => {
                             setShowSectionCSS(!showSectionCSS)
@@ -6014,7 +6131,40 @@ ${sectionsHTML}
 
                               {/* Column Style Buttons */}
                               <div>
-                                <label className="block text-xs font-medium text-gray-700 mb-2">Column Styles</label>
+                                <div className="flex items-center justify-between mb-2">
+                                  <label className="block text-xs font-medium text-gray-700">Column Styles</label>
+                                  <button
+                                    onClick={() => {
+                                      // Remove borders from all columns
+                                      const currentContentCSS = selectedSection.content?.content_css || {}
+                                      const currentColumns = currentContentCSS.columns || {}
+                                      const updatedColumns: { [key: string]: string } = {}
+
+                                      // For each column, remove border properties
+                                      for (let i = 0; i < totalColumns; i++) {
+                                        const existingCSS = currentColumns[i] || getDefaultColumnCSS()
+                                        // Remove border-related properties
+                                        const cleanedCSS = existingCSS
+                                          .replace(/border[^;]*;?/gi, '')
+                                          .replace(/^\s*\n/gm, '') // Remove empty lines
+                                          .trim()
+                                        updatedColumns[i] = cleanedCSS
+                                      }
+
+                                      handleUpdateSectionContent(selectedSection.id, {
+                                        ...selectedSection.content,
+                                        content_css: {
+                                          ...currentContentCSS,
+                                          columns: updatedColumns
+                                        }
+                                      })
+                                    }}
+                                    className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs transition"
+                                    title="Remove borders from all columns"
+                                  >
+                                    Remove Borders
+                                  </button>
+                                </div>
                                 <div className="space-y-2">
                                   {Array.from({ length: totalColumns }, (_, idx) => {
                                     const colWidth = columns[idx]?.colWidth || 12
@@ -6603,6 +6753,179 @@ ${sectionsHTML}
   return css || '/* No custom CSS generated yet */\n/* Adjust the controls above to see CSS appear here */'
 })()}
                           </pre>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Footer Section Controls */}
+                    {selectedSection.type === 'footer-simple' && (
+                      <>
+                        <div className="mb-3">
+                          <label className="text-xs text-gray-600 block mb-1">Background Color</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={selectedSection.content?.sectionStyle?.background || '#1f2937'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  sectionStyle: {
+                                    ...selectedSection.content?.sectionStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="w-10 h-8 rounded border border-gray-300"
+                            />
+                            <input
+                              type="text"
+                              value={selectedSection.content?.sectionStyle?.background || '#1f2937'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  sectionStyle: {
+                                    ...selectedSection.content?.sectionStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              placeholder="#1f2937"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="text-xs text-gray-600 block mb-1">Padding</label>
+                          <input
+                            type="text"
+                            value={selectedSection.content?.sectionStyle?.padding || '32px'}
+                            onChange={(e) => {
+                              handleUpdateSectionContent(selectedSection.id, {
+                                ...selectedSection.content,
+                                sectionStyle: {
+                                  ...selectedSection.content?.sectionStyle,
+                                  padding: e.target.value
+                                }
+                              })
+                            }}
+                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            placeholder="32px"
+                          />
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="text-xs text-gray-600 block mb-1">Text Align</label>
+                          <select
+                            value={selectedSection.content?.sectionStyle?.textAlign || 'center'}
+                            onChange={(e) => {
+                              handleUpdateSectionContent(selectedSection.id, {
+                                ...selectedSection.content,
+                                sectionStyle: {
+                                  ...selectedSection.content?.sectionStyle,
+                                  textAlign: e.target.value
+                                }
+                              })
+                            }}
+                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                          >
+                            <option value="left">Left</option>
+                            <option value="center">Center</option>
+                            <option value="right">Right</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                    {selectedSection.type === 'footer-columns' && (
+                      <>
+                        <div className="mb-3">
+                          <label className="text-xs text-gray-600 block mb-1">Footer Background Color</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={selectedSection.content?.sectionStyle?.background || '#172554'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  sectionStyle: {
+                                    ...selectedSection.content?.sectionStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="w-10 h-8 rounded border border-gray-300"
+                            />
+                            <input
+                              type="text"
+                              value={selectedSection.content?.sectionStyle?.background || '#172554'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  sectionStyle: {
+                                    ...selectedSection.content?.sectionStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              placeholder="#172554"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mb-3 border-t border-gray-200 pt-3">
+                          <label className="text-xs text-gray-600 block mb-1">Copyright Background Color</label>
+                          <div className="flex gap-2">
+                            <input
+                              type="color"
+                              value={selectedSection.content?.copyrightStyle?.background || '#171717'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  copyrightStyle: {
+                                    ...selectedSection.content?.copyrightStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="w-10 h-8 rounded border border-gray-300"
+                            />
+                            <input
+                              type="text"
+                              value={selectedSection.content?.copyrightStyle?.background || '#171717'}
+                              onChange={(e) => {
+                                handleUpdateSectionContent(selectedSection.id, {
+                                  ...selectedSection.content,
+                                  copyrightStyle: {
+                                    ...selectedSection.content?.copyrightStyle,
+                                    background: e.target.value
+                                  }
+                                })
+                              }}
+                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              placeholder="#171717"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="mb-3">
+                          <label className="text-xs text-gray-600 block mb-1">Copyright Padding</label>
+                          <input
+                            type="text"
+                            value={selectedSection.content?.copyrightStyle?.padding || '24px'}
+                            onChange={(e) => {
+                              handleUpdateSectionContent(selectedSection.id, {
+                                ...selectedSection.content,
+                                copyrightStyle: {
+                                  ...selectedSection.content?.copyrightStyle,
+                                  padding: e.target.value
+                                }
+                              })
+                            }}
+                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            placeholder="24px"
+                          />
                         </div>
                       </>
                     )}

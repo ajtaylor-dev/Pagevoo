@@ -826,6 +826,11 @@ class TemplateFileGenerator
         if (str_starts_with($section->type, 'grid-')) {
             $this->addGridCSS($css, $section, $sectionId, $content);
         }
+
+        // Footer styling
+        if (str_starts_with($section->type, 'footer-')) {
+            $this->addFooterCSS($css, $section, $sectionId, $content);
+        }
     }
 
     /**
@@ -915,6 +920,66 @@ class TemplateFileGenerator
                     $css .= "}\n\n";
                 }
             }
+        }
+    }
+
+    /**
+     * Add footer-specific CSS
+     */
+    protected function addFooterCSS(string &$css, TemplateSection $section, string $sectionId, array $content): void
+    {
+        if ($section->type === 'footer-simple') {
+            $sectionStyle = $content['sectionStyle'] ?? [];
+            $css .= "/* {$section->section_name} - Footer Simple */\n";
+            $css .= "#{$sectionId} {\n";
+            $css .= "  background-color: " . ($sectionStyle['background'] ?? '#1f2937') . ";\n";
+            $css .= "  color: " . ($sectionStyle['textColor'] ?? 'white') . ";\n";
+            $css .= "  padding: " . ($sectionStyle['padding'] ?? '2rem') . ";\n";
+            $css .= "  text-align: " . ($sectionStyle['textAlign'] ?? 'center') . ";\n";
+            $css .= "}\n\n";
+
+            $css .= "#{$sectionId} p {\n";
+            $css .= "  font-size: " . ($sectionStyle['fontSize'] ?? '0.875rem') . ";\n";
+            $css .= "}\n\n";
+        }
+
+        if ($section->type === 'footer-columns') {
+            $sectionStyle = $content['sectionStyle'] ?? [];
+            $copyrightStyle = $content['copyrightStyle'] ?? [];
+
+            $css .= "/* {$section->section_name} - Footer Columns */\n";
+            $css .= "#{$sectionId} {\n";
+            $css .= "  background-color: " . ($sectionStyle['background'] ?? '#172554') . ";\n";
+            $css .= "  color: " . ($sectionStyle['textColor'] ?? 'white') . ";\n";
+            $css .= "}\n\n";
+
+            $css .= "#{$sectionId} .footer-grid {\n";
+            $css .= "  display: grid;\n";
+            $css .= "  grid-template-columns: repeat(3, 1fr);\n";
+            $css .= "  gap: 2rem;\n";
+            $css .= "  padding: 3rem;\n";
+            $css .= "  max-width: 1280px;\n";
+            $css .= "  margin: 0 auto;\n";
+            $css .= "}\n\n";
+
+            $css .= "#{$sectionId} .footer-column {\n";
+            $css .= "  min-height: 150px;\n";
+            $css .= "  text-align: center;\n";
+            $css .= "}\n\n";
+
+            $css .= "#{$sectionId} .footer-copyright {\n";
+            $css .= "  background-color: " . ($copyrightStyle['background'] ?? '#171717') . ";\n";
+            $css .= "  padding: " . ($copyrightStyle['padding'] ?? '1.5rem') . ";\n";
+            $css .= "  border-top: " . ($copyrightStyle['borderTop'] ?? '1px solid #374151') . ";\n";
+            $css .= "}\n\n";
+
+            $css .= "#{$sectionId} .footer-copyright p {\n";
+            $css .= "  font-size: " . ($copyrightStyle['fontSize'] ?? '0.875rem') . ";\n";
+            $css .= "  text-align: center;\n";
+            $css .= "  max-width: 1280px;\n";
+            $css .= "  margin: 0 auto;\n";
+            $css .= "  padding: 0 3rem;\n";
+            $css .= "}\n\n";
         }
     }
 
@@ -1038,6 +1103,11 @@ class TemplateFileGenerator
         // Grid sections
         if (str_starts_with($section->type, 'grid-')) {
             return $this->buildGridHTML($section, $sectionId, $content);
+        }
+
+        // Footer sections
+        if (str_starts_with($section->type, 'footer-')) {
+            return $this->buildFooterHTML($section, $sectionId, $content);
         }
 
         // Default section
@@ -1207,6 +1277,43 @@ class TemplateFileGenerator
         $html .= "  </div>\n";
         $html .= "</section>";
         return $html;
+    }
+
+    /**
+     * Build footer section HTML
+     */
+    protected function buildFooterHTML(TemplateSection $section, string $sectionId, array $content): string
+    {
+        if ($section->type === 'footer-simple') {
+            $text = $content['text'] ?? '© 2025 Company Name. All rights reserved.';
+            return "<footer id=\"{$sectionId}\" class=\"footer-simple\">\n  <p>{$text}</p>\n</footer>";
+        }
+
+        if ($section->type === 'footer-columns') {
+            $columns = $content['columns'] ?? [];
+            $html = "<footer id=\"{$sectionId}\" class=\"footer-columns\">\n";
+            $html .= "  <div class=\"footer-grid\">\n";
+
+            foreach ($columns as $col) {
+                $colContent = $col['content'] ?? '<p>Column content</p>';
+                $html .= "    <div class=\"footer-column\">\n";
+                $html .= "      {$colContent}\n";
+                $html .= "    </div>\n";
+            }
+
+            $html .= "  </div>\n";
+
+            $copyrightText = $content['copyrightText'] ?? '© 2025 Company Name. All rights reserved.';
+            $html .= "  <div class=\"footer-copyright\">\n";
+            $html .= "    <p>{$copyrightText}</p>\n";
+            $html .= "  </div>\n";
+            $html .= "</footer>";
+
+            return $html;
+        }
+
+        // Default footer
+        return "<footer id=\"{$sectionId}\" class=\"{$section->type}\">\n  <!-- {$section->type} -->\n</footer>";
     }
 
     /**
