@@ -934,7 +934,7 @@ class TemplateFileGenerator
             $css .= "#{$sectionId} {\n";
             $css .= "  background-color: " . ($sectionStyle['background'] ?? '#1f2937') . ";\n";
             $css .= "  color: " . ($sectionStyle['textColor'] ?? 'white') . ";\n";
-            $css .= "  padding: " . ($sectionStyle['padding'] ?? '2rem') . ";\n";
+            $css .= "  padding: " . ($sectionStyle['padding'] ?? '32px') . ";\n";
             $css .= "  text-align: " . ($sectionStyle['textAlign'] ?? 'center') . ";\n";
             $css .= "}\n\n";
 
@@ -956,8 +956,8 @@ class TemplateFileGenerator
             $css .= "#{$sectionId} .footer-grid {\n";
             $css .= "  display: grid;\n";
             $css .= "  grid-template-columns: repeat(3, 1fr);\n";
-            $css .= "  gap: 2rem;\n";
-            $css .= "  padding: 3rem;\n";
+            $css .= "  gap: 32px;\n";
+            $css .= "  padding: 48px;\n";
             $css .= "  max-width: 1280px;\n";
             $css .= "  margin: 0 auto;\n";
             $css .= "}\n\n";
@@ -969,7 +969,7 @@ class TemplateFileGenerator
 
             $css .= "#{$sectionId} .footer-copyright {\n";
             $css .= "  background-color: " . ($copyrightStyle['background'] ?? '#171717') . ";\n";
-            $css .= "  padding: " . ($copyrightStyle['padding'] ?? '1.5rem') . ";\n";
+            $css .= "  padding: " . ($copyrightStyle['padding'] ?? '24px') . ";\n";
             $css .= "  border-top: " . ($copyrightStyle['borderTop'] ?? '1px solid #374151') . ";\n";
             $css .= "}\n\n";
 
@@ -978,7 +978,7 @@ class TemplateFileGenerator
             $css .= "  text-align: center;\n";
             $css .= "  max-width: 1280px;\n";
             $css .= "  margin: 0 auto;\n";
-            $css .= "  padding: 0 3rem;\n";
+            $css .= "  padding: 0 48px;\n";
             $css .= "}\n\n";
         }
     }

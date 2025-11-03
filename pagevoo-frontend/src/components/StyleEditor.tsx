@@ -76,6 +76,10 @@ interface StyleEditorProps {
     uploaded_at: string
   }>
   onOpenGallery?: () => void
+  // CSS Inheritance - passed from higher levels in the cascade
+  siteCSS?: string      // Site-wide CSS (lowest priority)
+  pageCSS?: string      // Page-specific CSS
+  sectionCSS?: string   // Section CSS (only relevant for row/column contexts)
 }
 
 const GOOGLE_FONTS = [
@@ -216,7 +220,18 @@ const FLOAT_OPTIONS = [
   { value: 'center', label: 'Center (margin auto)' },
 ]
 
-export function StyleEditor({ value, onChange, context, showFontSelector = false, showBodyLabel = false, galleryImages, onOpenGallery }: StyleEditorProps) {
+export function StyleEditor({
+  value,
+  onChange,
+  context,
+  showFontSelector = false,
+  showBodyLabel = false,
+  galleryImages,
+  onOpenGallery,
+  siteCSS = '',
+  pageCSS = '',
+  sectionCSS = ''
+}: StyleEditorProps) {
   const [activeTab, setActiveTab] = useState<'simplified' | 'code'>('simplified')
   const [properties, setProperties] = useState<StyleProperty>({
     fontSize: 16,
@@ -289,6 +304,52 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
   const isCustomMinHeight = (minHeight: string | undefined) => {
     if (!minHeight) return false
     return !['none', '100%', '100vh', 'fit-content'].includes(minHeight)
+  }
+
+  // ========== CSS INHERITANCE CALCULATOR ==========
+  // Calculate inherited values from site → page → section cascade
+  const getInheritedValue = (property: string): {value: any, source: string | null} => {
+    // Helper to parse CSS property from string
+    const extractProperty = (css: string, prop: string): string | null => {
+      if (!css) return null
+      // Handle different property formats: padding, margin, etc.
+      const regex = new RegExp(`${prop}\\s*:\\s*([^;]+);?`, 'i')
+      const match = css.match(regex)
+      return match ? match[1].trim() : null
+    }
+
+    // Check cascade in order: site → page → section
+    let value = null
+    let source = null
+
+    // 1. Site CSS (lowest priority)
+    if (siteCSS) {
+      const siteValue = extractProperty(siteCSS, property)
+      if (siteValue) {
+        value = siteValue
+        source = 'Site CSS'
+      }
+    }
+
+    // 2. Page CSS (overrides site)
+    if (pageCSS && context !== 'page') {
+      const pageValue = extractProperty(pageCSS, property)
+      if (pageValue) {
+        value = pageValue
+        source = 'Page CSS'
+      }
+    }
+
+    // 3. Section CSS (overrides page, only for row/column contexts)
+    if (sectionCSS && (context === 'row' || context === 'column')) {
+      const sectionValue = extractProperty(sectionCSS, property)
+      if (sectionValue) {
+        value = sectionValue
+        source = 'Section CSS'
+      }
+    }
+
+    return { value, source }
   }
 
   // Parse CSS string to extract visual properties
@@ -671,7 +732,8 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
       css += `background-image: url('${props.backgroundImage}');\n`
       if (props.backgroundSize) css += `background-size: ${props.backgroundSize};\n`
       if (props.backgroundPosition) css += `background-position: ${props.backgroundPosition};\n`
-      if (props.backgroundRepeat) css += `background-repeat: ${props.backgroundRepeat};\n`
+      // Always output background-repeat (default to 'no-repeat' if not set to match UI default)
+      css += `background-repeat: ${props.backgroundRepeat || 'no-repeat'};\n`
       if (props.backgroundAttachment) css += `background-attachment: ${props.backgroundAttachment};\n`
     }
     if (props.opacity !== undefined && props.opacity !== 1) css += `opacity: ${props.opacity};\n`
@@ -1061,11 +1123,34 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Padding */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">{showBodyLabel ? 'Body Padding' : 'Padding'}</Label>
-              <span className="text-xs text-gray-500">{properties.padding || 0}px</span>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">{showBodyLabel ? 'Body Padding' : 'Padding'}</Label>
+                {(() => {
+                  const inherited = getInheritedValue('padding')
+                  if (properties.padding === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
+              <span className="text-xs text-gray-500">
+                {(() => {
+                  if (properties.padding !== undefined) return `${properties.padding}px`
+                  const inherited = getInheritedValue('padding')
+                  if (inherited.value) return `${inherited.value} (inherited)`
+                  return '0px'
+                })()}
+              </span>
             </div>
             <Slider
-              value={[properties.padding || 0]}
+              value={[properties.padding !== undefined ? properties.padding : (() => {
+                const inherited = getInheritedValue('padding')
+                return inherited.value ? parseInt(inherited.value) : 0
+              })()]}
               onValueChange={(value) => updateProperty('padding', value[0])}
               min={0}
               max={100}
@@ -1077,11 +1162,34 @@ export function StyleEditor({ value, onChange, context, showFontSelector = false
           {/* Margin */}
           <div>
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-medium">{showBodyLabel ? 'Body Margin' : 'Margin'}</Label>
-              <span className="text-xs text-gray-500">{properties.margin || 0}px</span>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">{showBodyLabel ? 'Body Margin' : 'Margin'}</Label>
+                {(() => {
+                  const inherited = getInheritedValue('margin')
+                  if (properties.margin === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
+              <span className="text-xs text-gray-500">
+                {(() => {
+                  if (properties.margin !== undefined) return `${properties.margin}px`
+                  const inherited = getInheritedValue('margin')
+                  if (inherited.value) return `${inherited.value} (inherited)`
+                  return '0px'
+                })()}
+              </span>
             </div>
             <Slider
-              value={[properties.margin || 0]}
+              value={[properties.margin !== undefined ? properties.margin : (() => {
+                const inherited = getInheritedValue('margin')
+                return inherited.value ? parseInt(inherited.value) : 0
+              })()]}
               onValueChange={(value) => updateProperty('margin', value[0])}
               min={0}
               max={100}

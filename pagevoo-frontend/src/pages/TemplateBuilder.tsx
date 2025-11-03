@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, memo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -123,7 +124,13 @@ const generateContainerStyle = (containerStyle: any): React.CSSProperties => {
     borderColor: containerStyle.borderColor,
     borderRadius: containerStyle.borderRadius,
     boxShadow: containerStyle.shadow,
-    opacity: containerStyle.opacity
+    opacity: containerStyle.opacity,
+    position: containerStyle.position,
+    top: containerStyle.top,
+    bottom: containerStyle.bottom,
+    left: containerStyle.left,
+    right: containerStyle.right,
+    zIndex: containerStyle.zIndex
   }
 }
 
@@ -3966,19 +3973,67 @@ ${sectionsHTML}
     const isPositionLocked = isTopLocked || isBottomLocked
     const isHovered = hoveredSection === section.id
 
+    // Check if previous section is a fixed/sticky navbar
+    const previousSection = index > 0 && currentPage?.sections ? currentPage.sections[index - 1] : null
+    const previousIsFixedNavbar = previousSection &&
+      previousSection.type === 'navbar' &&
+      previousSection.content?.position &&
+      (previousSection.content.position === 'fixed' || previousSection.content.position === 'sticky')
+
+    // Calculate spacing needed for fixed/sticky navbar (default navbar height ~80px)
+    const navbarSpacing = previousIsFixedNavbar ? '80px' : '0px'
+
     // Track sidebar visibility for menu-click mode
     const [sidebarVisible, setSidebarVisible] = useState(content.positioned !== 'menu-click')
 
+    // Ref for tooltip positioning
+    const sectionContainerRef = useRef<HTMLDivElement>(null)
+    const [showTooltip, setShowTooltip] = useState(false)
+    const tooltipHideTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+    // Update tooltip visibility with delay on mouseout
+    useEffect(() => {
+      if (isHovered && cssInspectorMode) {
+        // Clear any pending hide timeout
+        if (tooltipHideTimeoutRef.current) {
+          clearTimeout(tooltipHideTimeoutRef.current)
+          tooltipHideTimeoutRef.current = null
+        }
+        // Show tooltip immediately
+        setShowTooltip(true)
+      } else {
+        // Hide tooltip with 500ms delay
+        tooltipHideTimeoutRef.current = setTimeout(() => {
+          setShowTooltip(false)
+        }, 500)
+      }
+
+      // Cleanup timeout on unmount
+      return () => {
+        if (tooltipHideTimeoutRef.current) {
+          clearTimeout(tooltipHideTimeoutRef.current)
+        }
+      }
+    }, [isHovered, cssInspectorMode])
+
     const sectionWrapper = (children: React.ReactNode) => (
       <div
+        ref={sectionContainerRef}
         key={section.id}
         className={`relative group ${isSidebar ? 'z-20' : ''} ${section.is_locked ? 'cursor-not-allowed' : ''}`}
+        style={{
+          paddingTop: navbarSpacing
+        }}
         onMouseEnter={() => setHoveredSection(section.id)}
         onMouseLeave={() => setHoveredSection(null)}
         onClick={(e) => {
           e.stopPropagation()
           if (!section.is_locked) {
             setSelectedSection(section)
+            // Auto-close CSS panel to show section properties
+            if (showCSSPanel) {
+              setShowCSSPanel(false)
+            }
           }
         }}
       >
@@ -4151,8 +4206,8 @@ ${sectionsHTML}
           </div>
         )}
 
-        {/* CSS Inspector Tooltip */}
-        {cssInspectorMode && isHovered && (() => {
+        {/* CSS Inspector Tooltip - Rendered via Portal */}
+        {cssInspectorMode && showTooltip && (() => {
           const contentCss = section.content?.content_css
           const sectionCss = typeof contentCss === 'string' ? contentCss : (contentCss && !contentCss.rows && !contentCss.columns ? JSON.stringify(contentCss, null, 2) : null)
           const hasRows = contentCss?.rows && Object.keys(contentCss.rows).length > 0
@@ -4167,6 +4222,81 @@ ${sectionsHTML}
           const hasNavbarStyling = containerStyle || linkStyling || activeIndicator || dropdownConfig
           const hasAnyCss = sectionCss || hasRows || hasColumns || hasNavbarStyling
 
+          // Parse CSS string into property map
+          const parseCssString = (cssString: string): Record<string, string> => {
+            if (!cssString) return {}
+            const properties: Record<string, string> = {}
+            // Match CSS property: value pairs
+            const regex = /([a-z-]+)\s*:\s*([^;]+);?/gi
+            let match
+            while ((match = regex.exec(cssString)) !== null) {
+              properties[match[1].trim()] = match[2].trim()
+            }
+            return properties
+          }
+
+          // Convert camelCase object to CSS properties
+          const objectToCssProps = (obj: any): Record<string, string> => {
+            if (!obj || typeof obj !== 'object') return {}
+            const props: Record<string, string> = {}
+            Object.entries(obj).forEach(([key, value]) => {
+              if (value !== undefined && value !== '') {
+                const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase()
+                props[cssKey] = String(value)
+              }
+            })
+            return props
+          }
+
+          // Build inheritance chain for a specific property
+          const buildInheritanceChain = (property: string) => {
+            const chain: Array<{level: string, value: string | null, color: string}> = []
+
+            // 1. Site CSS (lowest priority)
+            const siteProps = parseCssString(template?.custom_css || '')
+            chain.push({
+              level: 'Site CSS',
+              value: siteProps[property] || null,
+              color: 'text-purple-300'
+            })
+
+            // 2. Page CSS
+            const pageProps = parseCssString(currentPage?.page_css || '')
+            chain.push({
+              level: 'Page CSS',
+              value: pageProps[property] || null,
+              color: 'text-blue-300'
+            })
+
+            // 3. Section CSS
+            const sectionProps = parseCssString(section.content?.section_css || '')
+            const containerProps = objectToCssProps(section.content?.containerStyle || {})
+            const mergedSectionProps = {...sectionProps, ...containerProps}
+            chain.push({
+              level: 'Section CSS',
+              value: mergedSectionProps[property] || null,
+              color: 'text-green-300'
+            })
+
+            return chain
+          }
+
+          // Get all unique properties across the cascade
+          const getAllProperties = (): Set<string> => {
+            const props = new Set<string>()
+            const siteProps = parseCssString(template?.custom_css || '')
+            const pageProps = parseCssString(currentPage?.page_css || '')
+            const sectionProps = parseCssString(section.content?.section_css || '')
+            const containerProps = objectToCssProps(section.content?.containerStyle || {})
+
+            Object.keys(siteProps).forEach(p => props.add(p))
+            Object.keys(pageProps).forEach(p => props.add(p))
+            Object.keys(sectionProps).forEach(p => props.add(p))
+            Object.keys(containerProps).forEach(p => props.add(p))
+
+            return props
+          }
+
           // Generate CSS representation from styling objects
           const generateCssFromStyle = (style: any, label: string) => {
             if (!style || Object.keys(style).length === 0) return null
@@ -4179,8 +4309,19 @@ ${sectionsHTML}
             return cssLines.length > 0 ? `/* ${label} */\n${cssLines.join('\n')}` : null
           }
 
-          return (
-            <div className="builder-ui absolute bottom-2 left-2 right-2 bg-gray-900 bg-opacity-95 text-white p-3 rounded-lg shadow-2xl z-50 max-h-96 overflow-y-auto">
+          return createPortal(
+            <div
+              className="builder-ui bg-gray-900 bg-opacity-95 text-white p-4 rounded-lg shadow-2xl overflow-y-auto"
+              style={{
+                position: 'fixed',
+                top: '16px',
+                right: '16px',
+                width: '500px',
+                maxHeight: 'calc(100vh - 32px)', // Full height minus top/bottom spacing
+                zIndex: 9999,
+                pointerEvents: 'auto' // Allow scrolling in tooltip
+              }}
+            >
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-bold text-yellow-300">
                   {section.section_name || section.type} - CSS Inspector
@@ -4274,7 +4415,63 @@ ${sectionsHTML}
                   ))}
                 </div>
               )}
-            </div>
+
+              {/* CSS Cascade / Inheritance Chain */}
+              <div className="mt-3 pt-3 border-t border-gray-700">
+                <span className="text-xs font-bold text-orange-300">CSS Cascade (Inheritance Chain):</span>
+                <div className="mt-2 text-[10px] text-gray-400 italic">
+                  Shows how properties cascade from Site → Page → Section
+                </div>
+                <div className="mt-3 space-y-3">
+                  {Array.from(getAllProperties()).sort().map(property => {
+                    const chain = buildInheritanceChain(property)
+                    // Find the effective value (last non-null in chain)
+                    const effectiveValue = [...chain].reverse().find(c => c.value !== null)
+                    const hasOverride = chain.filter(c => c.value !== null).length > 1
+
+                    return (
+                      <div key={property} className="bg-gray-800 bg-opacity-50 rounded p-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-semibold text-white">{property}:</span>
+                          {hasOverride && (
+                            <span className="text-[9px] bg-red-500 bg-opacity-20 text-red-300 px-1.5 py-0.5 rounded">
+                              OVERRIDE
+                            </span>
+                          )}
+                        </div>
+                        {chain.map((item, idx) => {
+                          const isEffective = item.value !== null && item.value === effectiveValue?.value
+                          return (
+                            <div key={idx} className={`flex items-center gap-2 text-[10px] ml-2 ${item.value === null ? 'opacity-40' : ''}`}>
+                              <span className="text-gray-500 w-16">{item.level}:</span>
+                              {item.value !== null ? (
+                                <>
+                                  <span className={`${item.color} ${isEffective ? 'font-bold' : ''}`}>
+                                    {item.value}
+                                  </span>
+                                  {isEffective && (
+                                    <span className="text-green-400 text-[8px]">← APPLIED</span>
+                                  )}
+                                </>
+                              ) : (
+                                <span className="text-gray-600 italic">—</span>
+                              )}
+                            </div>
+                          )
+                        })}
+                        <div className="mt-1 pt-1 border-t border-gray-700 flex items-center gap-2 text-[10px]">
+                          <span className="text-gray-500">Computed:</span>
+                          <span className="text-yellow-400 font-bold">
+                            {effectiveValue?.value || 'default'}
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>,
+            document.body
           )
         })()}
       </div>
@@ -4614,14 +4811,23 @@ ${sectionsHTML}
               id={section.section_id || `section-${section.id}`}
               className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
               style={{
-                position: 'relative',
                 // Base padding (matches backend CSS)
                 paddingTop: '16px',
                 paddingBottom: '16px',
                 // Container style overrides (will override base padding if set)
                 ...generateContainerStyle(content.containerStyle || {}),
                 borderBottom: content.containerStyle?.borderWidth ? undefined : '2px solid #e5e7eb',
-                borderRadius: content.containerStyle?.borderRadius || 0
+                borderRadius: content.containerStyle?.borderRadius || 0,
+                // Apply navbar positioning (must come after containerStyle to override if needed)
+                position: navPosition as any,
+                // Fixed/sticky navbars need proper z-index and positioning
+                ...(navPosition === 'fixed' || navPosition === 'sticky' ? {
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  zIndex: 1000,
+                  width: '100%'
+                } : {})
               }}
             >
               <div className="flex items-center" style={{
@@ -4647,7 +4853,7 @@ ${sectionsHTML}
                     tag="div"
                     sectionId={section.id}
                     field="logo"
-                    value={content.logo || 'Logo'}
+                    value={(content.logo && content.logo.trim()) || 'Logo'}
                     onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
                     className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
                   />
@@ -4701,7 +4907,7 @@ ${sectionsHTML}
                     tag="div"
                     sectionId={section.id}
                     field="logo"
-                    value={content.logo || 'Logo'}
+                    value={(content.logo && content.logo.trim()) || 'Logo'}
                     onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
                     className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
                   />
@@ -5276,6 +5482,7 @@ ${sectionsHTML}
                           }}
                           context="page"
                           showFontSelector={true}
+                          showBodyLabel={true}
                         />
                       </div>
                     </>
@@ -5903,6 +6110,7 @@ ${sectionsHTML}
                           context="page"
                           showBodyLabel={true}
                           galleryImages={template?.images}
+                          siteCSS={template?.custom_css || ''}
                         />
                       </div>
                     )}
@@ -6066,6 +6274,8 @@ ${sectionsHTML}
                           }
                           context="section"
                           galleryImages={template?.images}
+                          siteCSS={template?.custom_css || ''}
+                          pageCSS={currentPage?.page_css || ''}
                         />
                         <button
                           onClick={() => setShowSectionCSS(false)}
@@ -6124,6 +6334,9 @@ ${sectionsHTML}
                                       }}
                                       context="row"
                                       galleryImages={template?.images}
+                                      siteCSS={template?.custom_css || ''}
+                                      pageCSS={currentPage?.page_css || ''}
+                                      sectionCSS={selectedSection.content?.section_css || ''}
                                     />
                                   </div>
                                 )}
@@ -6217,6 +6430,9 @@ ${sectionsHTML}
                                               }}
                                               context="column"
                                               galleryImages={template?.images}
+                                              siteCSS={template?.custom_css || ''}
+                                              pageCSS={currentPage?.page_css || ''}
+                                              sectionCSS={selectedSection.content?.section_css || ''}
                                             />
                                           </div>
                                         )}
