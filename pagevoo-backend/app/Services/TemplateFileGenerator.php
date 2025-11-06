@@ -342,11 +342,28 @@ class TemplateFileGenerator
         $css .= "  border-radius: 0;\n";
         $css .= "}\n\n";
 
+        // Check if first section of any page is a fixed/sticky navbar
+        $hasFixedNavbar = false;
+        foreach ($template->pages as $page) {
+            $firstSection = $page->sections()->orderBy('order')->first();
+            if ($firstSection &&
+                ($firstSection->type === 'navbar' || str_starts_with($firstSection->type, 'navbar-')) &&
+                isset($firstSection->content['position']) &&
+                ($firstSection->content['position'] === 'fixed' || $firstSection->content['position'] === 'sticky')) {
+                $hasFixedNavbar = true;
+                break;
+            }
+        }
+
         $css .= "body {\n";
         $css .= "  margin: 0;\n";
         $css .= "  padding: 0;\n";
         $css .= "  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n";
         $css .= "  line-height: 1.6;\n";
+        // Add padding-top if there's a fixed/sticky navbar
+        if ($hasFixedNavbar) {
+            $css .= "  padding-top: 80px; /* Space for fixed/sticky navbar */\n";
+        }
         $css .= "}\n\n";
 
         // Remove top margin from first element to prevent gap at top of page
@@ -838,21 +855,11 @@ class TemplateFileGenerator
      */
     protected function addNavigationCSS(string &$css, TemplateSection $section, string $sectionId, array $content): void
     {
-        // Position styling (from position dropdown)
-        if (isset($content['position']) && $content['position'] !== 'static') {
-            $css .= "/* {$section->section_name} - Position */\n";
-            $css .= "#{$sectionId} {\n";
-            $css .= "  position: {$content['position']};\n";
-            if (in_array($content['position'], ['sticky', 'fixed'])) {
-                $css .= "  top: 0;\n";
-                $css .= "  z-index: 100;\n";
-            }
-            $css .= "}\n\n";
-        }
+        // Container Style (including position)
+        if (isset($content['containerStyle']) || isset($content['position'])) {
+            $cs = $content['containerStyle'] ?? [];
+            $navPosition = $content['position'] ?? 'static';
 
-        // Container Style
-        if (isset($content['containerStyle'])) {
-            $cs = $content['containerStyle'];
             $css .= "/* {$section->section_name} - Container */\n";
             $css .= "#{$sectionId} {\n";
             if (isset($cs['background'])) $css .= "  background: {$cs['background']};\n";
@@ -870,6 +877,16 @@ class TemplateFileGenerator
             if (isset($cs['borderStyle']) && $cs['borderStyle'] !== 'none') $css .= "  border-style: {$cs['borderStyle']};\n";
             if (isset($cs['borderColor'])) $css .= "  border-color: {$cs['borderColor']};\n";
             if (isset($cs['borderRadius'])) $css .= "  border-radius: {$cs['borderRadius']}px;\n";
+            // Add position property
+            if ($navPosition && $navPosition !== 'static') {
+                $css .= "  position: {$navPosition};\n";
+                if ($navPosition === 'fixed' || $navPosition === 'sticky') {
+                    $css .= "  top: 0;\n";
+                    $css .= "  left: 0;\n";
+                    $css .= "  right: 0;\n";
+                    $css .= "  z-index: 1000;\n";
+                }
+            }
             $css .= "}\n\n";
         }
 
@@ -887,6 +904,18 @@ class TemplateFileGenerator
             $css .= "#{$sectionId} a:hover {\n";
             if (isset($ls['textColorHover'])) $css .= "  color: {$ls['textColorHover']};\n";
             if (isset($ls['bgColorHover'])) $css .= "  background-color: {$ls['bgColorHover']};\n";
+            $css .= "}\n\n";
+        }
+
+        // Button-styled links hover states (global)
+        if (isset($content['buttonStyling']) && ($content['buttonStyling']['enabled'] ?? false)) {
+            $btnStyle = $content['buttonStyling'];
+            $css .= "/* {$section->section_name} - Button Links Hover */\n";
+            $css .= "#{$sectionId} .nav-link-button:hover,\n";
+            $css .= "#{$sectionId} .dropdown-item-button:hover {\n";
+            $css .= "  background-color: " . ($btnStyle['hoverBackgroundColor'] ?? '#2563eb') . " !important;\n";
+            $css .= "  color: " . ($btnStyle['hoverTextColor'] ?? '#ffffff') . " !important;\n";
+            $css .= "  transition: all 0.2s;\n";
             $css .= "}\n\n";
         }
     }
@@ -1140,29 +1169,80 @@ class TemplateFileGenerator
         // Generate links HTML
         $linksHTML = '';
         $links = $content['links'] ?? [];
+
+        // Check for global button styling
+        $hasButtonStyle = isset($content['buttonStyling']) && ($content['buttonStyling']['enabled'] ?? false);
+        $btnStyle = $hasButtonStyle ? $content['buttonStyling'] : [];
+
         if (count($links) > 0) {
             $linksJustify = $linksPosition === 'center' ? 'center' : ($linksPosition === 'left' ? 'flex-start' : 'flex-end');
             $linksHTML .= "    <div class=\"nav-links desktop-menu\" style=\"justify-content: {$linksJustify};\">\n";
-            foreach ($links as $link) {
+            foreach ($links as $linkIndex => $link) {
                 $label = is_array($link) ? ($link['label'] ?? 'Link') : $link;
                 $href = $this->getLinkHref($link, $section);
                 $hasSubItems = is_array($link) && isset($link['subItems']) && count($link['subItems']) > 0;
 
                 if ($hasSubItems) {
                     // Dropdown menu item
+                    $linkClass = $hasButtonStyle ? "nav-link nav-link-button dropdown-toggle" : "nav-link dropdown-toggle";
+                    $buttonStyles = $hasButtonStyle ? sprintf(
+                        ' style="background-color: %s; color: %s; border: %spx %s %s; border-radius: %spx; padding: %spx %spx %spx %spx; font-size: %spx; font-weight: %s; margin: %spx %spx %spx %spx; text-decoration: none; display: inline-block;"',
+                        $btnStyle['backgroundColor'] ?? '#3b82f6',
+                        $btnStyle['textColor'] ?? '#ffffff',
+                        $btnStyle['borderWidth'] ?? 0,
+                        $btnStyle['borderStyle'] ?? 'solid',
+                        $btnStyle['borderColor'] ?? '#3b82f6',
+                        $btnStyle['borderRadius'] ?? 0,
+                        $btnStyle['paddingTop'] ?? 8,
+                        $btnStyle['paddingRight'] ?? 16,
+                        $btnStyle['paddingBottom'] ?? 8,
+                        $btnStyle['paddingLeft'] ?? 16,
+                        $btnStyle['fontSize'] ?? 14,
+                        $btnStyle['fontWeight'] ?? '500',
+                        $btnStyle['marginTop'] ?? 0,
+                        $btnStyle['marginRight'] ?? 0,
+                        $btnStyle['marginBottom'] ?? 0,
+                        $btnStyle['marginLeft'] ?? 0
+                    ) : '';
+
                     $linksHTML .= "      <div class=\"nav-dropdown\" data-trigger=\"{$trigger}\">\n";
-                    $linksHTML .= "        <a href=\"{$href}\" class=\"nav-link dropdown-toggle\">{$label} ▼</a>\n";
+                    $linksHTML .= "        <a href=\"{$href}\" class=\"{$linkClass}\"{$buttonStyles}>{$label} ▼</a>\n";
                     $linksHTML .= "        <div class=\"dropdown-menu\">\n";
-                    foreach ($link['subItems'] as $subLink) {
+                    foreach ($link['subItems'] as $subIdx => $subLink) {
                         $subLabel = is_array($subLink) ? ($subLink['label'] ?? 'Sub Link') : $subLink;
                         $subHref = $this->getLinkHref($subLink, $section);
-                        $linksHTML .= "          <a href=\"{$subHref}\" class=\"dropdown-item\">{$subLabel}</a>\n";
+
+                        // Use global button styling for sub-items
+                        $subLinkClass = $hasButtonStyle ? "dropdown-item dropdown-item-button" : "dropdown-item";
+
+                        $linksHTML .= "          <a href=\"{$subHref}\" class=\"{$subLinkClass}\"{$buttonStyles}>{$subLabel}</a>\n";
                     }
                     $linksHTML .= "        </div>\n";
                     $linksHTML .= "      </div>\n";
                 } else {
                     // Regular link
-                    $linksHTML .= "      <a href=\"{$href}\" class=\"nav-link\">{$label}</a>\n";
+                    $linkClass = $hasButtonStyle ? "nav-link nav-link-button" : "nav-link";
+                    $buttonStyles = $hasButtonStyle ? sprintf(
+                        ' style="background-color: %s; color: %s; border: %spx %s %s; border-radius: %spx; padding: %spx %spx %spx %spx; font-size: %spx; font-weight: %s; margin: %spx %spx %spx %spx; text-decoration: none; display: inline-block;"',
+                        $btnStyle['backgroundColor'] ?? '#3b82f6',
+                        $btnStyle['textColor'] ?? '#ffffff',
+                        $btnStyle['borderWidth'] ?? 0,
+                        $btnStyle['borderStyle'] ?? 'solid',
+                        $btnStyle['borderColor'] ?? '#3b82f6',
+                        $btnStyle['borderRadius'] ?? 0,
+                        $btnStyle['paddingTop'] ?? 8,
+                        $btnStyle['paddingRight'] ?? 16,
+                        $btnStyle['paddingBottom'] ?? 8,
+                        $btnStyle['paddingLeft'] ?? 16,
+                        $btnStyle['fontSize'] ?? 14,
+                        $btnStyle['fontWeight'] ?? '500',
+                        $btnStyle['marginTop'] ?? 0,
+                        $btnStyle['marginRight'] ?? 0,
+                        $btnStyle['marginBottom'] ?? 0,
+                        $btnStyle['marginLeft'] ?? 0
+                    ) : '';
+
+                    $linksHTML .= "      <a href=\"{$href}\" class=\"{$linkClass}\"{$buttonStyles}>{$label}</a>\n";
                 }
             }
             $linksHTML .= "    </div>\n";
@@ -1185,8 +1265,28 @@ class TemplateFileGenerator
             $html .= "    </button>\n";
             $html .= "  </div>\n";
 
-            // Mobile menu panel
+            // Mobile menu panel (uses global button styling)
             $html .= "  <div class=\"mobile-menu\" id=\"mobile-menu-{$sectionId}\">\n";
+            $mobileButtonStyles = $hasButtonStyle ? sprintf(
+                ' style="background-color: %s; color: %s; border: %spx %s %s; border-radius: %spx; padding: %spx %spx %spx %spx; font-size: %spx; font-weight: %s; margin: %spx %spx %spx %spx; text-decoration: none; display: inline-block; text-align: center;"',
+                $btnStyle['backgroundColor'] ?? '#3b82f6',
+                $btnStyle['textColor'] ?? '#ffffff',
+                $btnStyle['borderWidth'] ?? 0,
+                $btnStyle['borderStyle'] ?? 'solid',
+                $btnStyle['borderColor'] ?? '#3b82f6',
+                $btnStyle['borderRadius'] ?? 0,
+                $btnStyle['paddingTop'] ?? 8,
+                $btnStyle['paddingRight'] ?? 16,
+                $btnStyle['paddingBottom'] ?? 8,
+                $btnStyle['paddingLeft'] ?? 16,
+                $btnStyle['fontSize'] ?? 14,
+                $btnStyle['fontWeight'] ?? '500',
+                $btnStyle['marginTop'] ?? 0,
+                $btnStyle['marginRight'] ?? 0,
+                $btnStyle['marginBottom'] ?? 0,
+                $btnStyle['marginLeft'] ?? 0
+            ) : '';
+
             foreach ($links as $linkIndex => $link) {
                 $label = is_array($link) ? ($link['label'] ?? 'Link') : $link;
                 $href = $this->getLinkHref($link, $section);
@@ -1196,7 +1296,7 @@ class TemplateFileGenerator
                     // Parent item with toggle button
                     $html .= "    <div class=\"mobile-dropdown\">\n";
                     $html .= "      <div class=\"mobile-dropdown-toggle\">\n";
-                    $html .= "        <a href=\"{$href}\">{$label}</a>\n";
+                    $html .= "        <a href=\"{$href}\"{$mobileButtonStyles}>{$label}</a>\n";
                     $html .= "        <button class=\"mobile-expand-btn\" onclick=\"toggleMobileDropdown(this)\" aria-label=\"Expand\">\n";
                     $html .= "          <svg class=\"mobile-expand-icon\" fill=\"none\" stroke=\"currentColor\" viewBox=\"0 0 24 24\">\n";
                     $html .= "            <path stroke-linecap=\"round\" stroke-linejoin=\"round\" stroke-width=\"2\" d=\"M19 9l-7 7-7-7\"></path>\n";
@@ -1207,13 +1307,15 @@ class TemplateFileGenerator
                     foreach ($link['subItems'] as $subLink) {
                         $subLabel = is_array($subLink) ? ($subLink['label'] ?? 'Sub Link') : $subLink;
                         $subHref = $this->getLinkHref($subLink, $section);
-                        $html .= "        <a href=\"{$subHref}\" class=\"mobile-sub-link\">→ {$subLabel}</a>\n";
+
+                        // Use global button styling for mobile sub-items
+                        $html .= "        <a href=\"{$subHref}\" class=\"mobile-sub-link\"{$mobileButtonStyles}>→ {$subLabel}</a>\n";
                     }
                     $html .= "      </div>\n";
                     $html .= "    </div>\n";
                 } else {
                     // Regular link
-                    $html .= "    <a href=\"{$href}\">{$label}</a>\n";
+                    $html .= "    <a href=\"{$href}\"{$mobileButtonStyles}>{$label}</a>\n";
                 }
             }
             $html .= "  </div>\n";

@@ -730,11 +730,11 @@ export function StyleEditor({
     if (props.minHeight && props.minHeight !== 'none') css += `min-height: ${props.minHeight};\n`
     if (props.backgroundImage) {
       css += `background-image: url('${props.backgroundImage}');\n`
-      if (props.backgroundSize) css += `background-size: ${props.backgroundSize};\n`
-      if (props.backgroundPosition) css += `background-position: ${props.backgroundPosition};\n`
-      // Always output background-repeat (default to 'no-repeat' if not set to match UI default)
+      // Always output background properties with defaults to match UI
+      css += `background-size: ${props.backgroundSize || 'cover'};\n`
+      css += `background-position: ${props.backgroundPosition || 'center'};\n`
       css += `background-repeat: ${props.backgroundRepeat || 'no-repeat'};\n`
-      if (props.backgroundAttachment) css += `background-attachment: ${props.backgroundAttachment};\n`
+      css += `background-attachment: ${props.backgroundAttachment || 'scroll'};\n`
     }
     if (props.opacity !== undefined && props.opacity !== 1) css += `opacity: ${props.opacity};\n`
 

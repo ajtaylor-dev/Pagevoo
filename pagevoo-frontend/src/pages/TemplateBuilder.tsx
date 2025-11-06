@@ -536,6 +536,7 @@ export default function TemplateBuilder() {
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [isResizingLeft, setIsResizingLeft] = useState(false)
   const [isResizingRight, setIsResizingRight] = useState(false)
+  const [showNavButtonStyleModal, setShowNavButtonStyleModal] = useState(false)
 
   const leftSidebarRef = useRef<HTMLDivElement>(null)
   const rightSidebarRef = useRef<HTMLDivElement>(null)
@@ -3120,27 +3121,39 @@ padding: 1rem;`
 
         // Generate links HTML with dropdown support
         const generateLinksHTML = (linksList: any[], isSubMenu = false) => {
-          return linksList.map((link: any) => {
+          return linksList.map((link: any, idx: number) => {
             if (typeof link === 'object') {
               const href = link.linkType === 'page' && link.pageId
                 ? `#page-${link.pageId}`
                 : link.url || '#'
               const label = link.label || 'Link'
 
+              // Check for global button styling
+              const hasButtonStyle = content.buttonStyling && content.buttonStyling.enabled
+              const btnStyle = content.buttonStyling || {}
+
               // Check for sub-items (dropdown)
               if (link.subItems && link.subItems.length > 0) {
                 const subItemsHTML = generateLinksHTML(link.subItems, true)
+                const linkClass = hasButtonStyle ? 'nav-link nav-link-button' : 'nav-link'
+                const buttonInlineStyles = hasButtonStyle ? ` style="background-color: ${btnStyle.backgroundColor}; color: ${btnStyle.textColor}; border: ${btnStyle.borderWidth || 0}px ${btnStyle.borderStyle || 'solid'} ${btnStyle.borderColor}; border-radius: ${btnStyle.borderRadius || 0}px; padding: ${btnStyle.paddingTop || 8}px ${btnStyle.paddingRight || 16}px ${btnStyle.paddingBottom || 8}px ${btnStyle.paddingLeft || 16}px; font-size: ${btnStyle.fontSize || 14}px; font-weight: ${btnStyle.fontWeight || '500'}; margin: ${btnStyle.marginTop || 0}px ${btnStyle.marginRight || 0}px ${btnStyle.marginBottom || 0}px ${btnStyle.marginLeft || 0}px; text-decoration: none; display: inline-block;"` : ''
                 return `        <div class="nav-dropdown">
-          <a href="${href}" class="nav-link dropdown-toggle">${label} ▼</a>
+          <a href="${href}" class="${linkClass} dropdown-toggle"${buttonInlineStyles}>${label} ▼</a>
           <div class="dropdown-menu">
 ${subItemsHTML}
           </div>
         </div>`
               }
 
-              return isSubMenu
-                ? `            <a href="${href}" class="dropdown-item">${label}</a>`
-                : `        <a href="${href}" class="nav-link">${label}</a>`
+              if (isSubMenu) {
+                const linkClass = hasButtonStyle ? 'dropdown-item dropdown-item-button' : 'dropdown-item'
+                const buttonInlineStyles = hasButtonStyle ? ` style="background-color: ${btnStyle.backgroundColor}; color: ${btnStyle.textColor}; border: ${btnStyle.borderWidth || 0}px ${btnStyle.borderStyle || 'solid'} ${btnStyle.borderColor}; border-radius: ${btnStyle.borderRadius || 0}px; padding: ${btnStyle.paddingTop || 8}px ${btnStyle.paddingRight || 16}px ${btnStyle.paddingBottom || 8}px ${btnStyle.paddingLeft || 16}px; font-size: ${btnStyle.fontSize || 14}px; font-weight: ${btnStyle.fontWeight || '500'}; margin: ${btnStyle.marginTop || 0}px ${btnStyle.marginRight || 0}px ${btnStyle.marginBottom || 0}px ${btnStyle.marginLeft || 0}px; text-decoration: none; display: inline-block;"` : ''
+                return `            <a href="${href}" class="${linkClass}"${buttonInlineStyles}>${label}</a>`
+              }
+
+              const linkClass = hasButtonStyle ? 'nav-link nav-link-button' : 'nav-link'
+              const buttonInlineStyles = hasButtonStyle ? ` style="background-color: ${btnStyle.backgroundColor}; color: ${btnStyle.textColor}; border: ${btnStyle.borderWidth || 0}px ${btnStyle.borderStyle || 'solid'} ${btnStyle.borderColor}; border-radius: ${btnStyle.borderRadius || 0}px; padding: ${btnStyle.paddingTop || 8}px ${btnStyle.paddingRight || 16}px ${btnStyle.paddingBottom || 8}px ${btnStyle.paddingLeft || 16}px; font-size: ${btnStyle.fontSize || 14}px; font-weight: ${btnStyle.fontWeight || '500'}; margin: ${btnStyle.marginTop || 0}px ${btnStyle.marginRight || 0}px ${btnStyle.marginBottom || 0}px ${btnStyle.marginLeft || 0}px; text-decoration: none; display: inline-block;"` : ''
+              return `        <a href="${href}" class="${linkClass}"${buttonInlineStyles}>${label}</a>`
             }
             return isSubMenu
               ? `            <a href="#" class="dropdown-item">${link}</a>`
@@ -3290,11 +3303,24 @@ ${sectionsHTML}
     css += `  border-radius: 0;\n`
     css += `}\n\n`
 
+    // Check if first section is a fixed/sticky navbar
+    const firstSection = currentPage.sections && currentPage.sections.length > 0
+      ? currentPage.sections.sort((a, b) => a.order - b.order)[0]
+      : null
+    const hasFixedNavbar = firstSection &&
+      (firstSection.type === 'navbar' || firstSection.type.startsWith('navbar-')) &&
+      firstSection.content?.position &&
+      (firstSection.content.position === 'fixed' || firstSection.content.position === 'sticky')
+
     css += `body {\n`
     css += `  margin: 0;\n`
     css += `  padding: 0;\n`
     css += `  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;\n`
     css += `  line-height: 1.6;\n`
+    // Add padding-top if there's a fixed/sticky navbar
+    if (hasFixedNavbar) {
+      css += `  padding-top: 80px; /* Space for fixed/sticky navbar */\n`
+    }
     css += `}\n\n`
 
     // Remove top margin from first element to prevent gap at top of page
@@ -3593,8 +3619,9 @@ ${sectionsHTML}
             const content = section.content || {}
 
             // Container Style
-            if (content.containerStyle) {
-              const cs = content.containerStyle
+            if (content.containerStyle || content.position) {
+              const cs = content.containerStyle || {}
+              const navPosition = content.position || 'static'
               css += `/* ${section.section_name || section.type} - Container */\n`
               css += `#${sectionId} {\n`
               if (cs.background) css += `  background: ${cs.background};\n`
@@ -3612,6 +3639,16 @@ ${sectionsHTML}
               if (cs.borderStyle && cs.borderStyle !== 'none') css += `  border-style: ${cs.borderStyle};\n`
               if (cs.borderColor) css += `  border-color: ${cs.borderColor};\n`
               if (cs.borderRadius) css += `  border-radius: ${cs.borderRadius}px;\n`
+              // Add position property
+              if (navPosition && navPosition !== 'static') {
+                css += `  position: ${navPosition};\n`
+                if (navPosition === 'fixed' || navPosition === 'sticky') {
+                  css += `  top: 0;\n`
+                  css += `  left: 0;\n`
+                  css += `  right: 0;\n`
+                  css += `  z-index: 1000;\n`
+                }
+              }
               css += `}\n\n`
             }
 
@@ -3629,6 +3666,24 @@ ${sectionsHTML}
               css += `#${sectionId} a:hover {\n`
               if (ls.textColorHover) css += `  color: ${ls.textColorHover};\n`
               if (ls.bgColorHover) css += `  background-color: ${ls.bgColorHover};\n`
+              css += `}\n\n`
+            }
+
+            // Button-styled links hover states (global)
+            if (content.buttonStyling && content.buttonStyling.enabled) {
+              const btnStyle = content.buttonStyling
+              css += `/* ${section.section_name || section.type} - Button Links Hover */\n`
+              css += `#${sectionId} .nav-link-button:hover,\n`
+              css += `#${sectionId} .dropdown-item-button:hover {\n`
+              css += `  background-color: ${btnStyle.hoverBackgroundColor} !important;\n`
+              css += `  color: ${btnStyle.hoverTextColor} !important;\n`
+              css += `  transition: all 0.2s;\n`
+              css += `}\n\n`
+
+              // Remove gap when button styling is enabled (margin controls the spacing)
+              css += `/* ${section.section_name || section.type} - Remove Default Gap */\n`
+              css += `#${sectionId} .nav-links {\n`
+              css += `  gap: 0;\n`
               css += `}\n\n`
             }
           }
@@ -3973,16 +4028,6 @@ ${sectionsHTML}
     const isPositionLocked = isTopLocked || isBottomLocked
     const isHovered = hoveredSection === section.id
 
-    // Check if previous section is a fixed/sticky navbar
-    const previousSection = index > 0 && currentPage?.sections ? currentPage.sections[index - 1] : null
-    const previousIsFixedNavbar = previousSection &&
-      previousSection.type === 'navbar' &&
-      previousSection.content?.position &&
-      (previousSection.content.position === 'fixed' || previousSection.content.position === 'sticky')
-
-    // Calculate spacing needed for fixed/sticky navbar (default navbar height ~80px)
-    const navbarSpacing = previousIsFixedNavbar ? '80px' : '0px'
-
     // Track sidebar visibility for menu-click mode
     const [sidebarVisible, setSidebarVisible] = useState(content.positioned !== 'menu-click')
 
@@ -4021,9 +4066,6 @@ ${sectionsHTML}
         ref={sectionContainerRef}
         key={section.id}
         className={`relative group ${isSidebar ? 'z-20' : ''} ${section.is_locked ? 'cursor-not-allowed' : ''}`}
-        style={{
-          paddingTop: navbarSpacing
-        }}
         onMouseEnter={() => setHoveredSection(section.id)}
         onMouseLeave={() => setHoveredSection(null)}
         onClick={(e) => {
@@ -4708,6 +4750,10 @@ ${sectionsHTML}
           const isActive = isActivePage(link, currentPageId)
           const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
+          // Check if global button styling is enabled
+          const hasButtonStyle = content.buttonStyling?.enabled || false
+          const btnStyle = content.buttonStyling || {}
+
           const handleMouseEnter = () => {
             setIsHovered(true)
             if (trigger === 'hover' && hasSubItems) {
@@ -4742,9 +4788,27 @@ ${sectionsHTML}
             <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
               <a
                 href={getLinkHref(link)}
-                className="cursor-pointer flex items-center gap-1 transition"
+                className={`cursor-pointer flex items-center gap-1 transition ${hasButtonStyle ? 'inline-block' : ''}`}
                 onClick={handleClick}
-                style={{
+                style={hasButtonStyle ? {
+                  backgroundColor: isHovered ? btnStyle.hoverBackgroundColor : btnStyle.backgroundColor,
+                  color: isHovered ? btnStyle.hoverTextColor : btnStyle.textColor,
+                  borderWidth: `${btnStyle.borderWidth || 0}px`,
+                  borderStyle: btnStyle.borderStyle || 'solid',
+                  borderColor: btnStyle.borderColor || btnStyle.backgroundColor,
+                  borderRadius: `${btnStyle.borderRadius || 0}px`,
+                  paddingTop: `${btnStyle.paddingTop || 8}px`,
+                  paddingRight: `${btnStyle.paddingRight || 16}px`,
+                  paddingBottom: `${btnStyle.paddingBottom || 8}px`,
+                  paddingLeft: `${btnStyle.paddingLeft || 16}px`,
+                  fontSize: `${btnStyle.fontSize || 14}px`,
+                  fontWeight: btnStyle.fontWeight || '500',
+                  marginTop: `${btnStyle.marginTop || 0}px`,
+                  marginRight: `${btnStyle.marginRight || 0}px`,
+                  marginBottom: `${btnStyle.marginBottom || 0}px`,
+                  marginLeft: `${btnStyle.marginLeft || 0}px`,
+                  textDecoration: 'none'
+                } : {
                   color: isHovered ? linkTextColorHover : linkTextColor,
                   fontWeight: isActive ? 'bold' : 'normal',
                   textDecoration: isActive ? 'underline' : 'none'
@@ -4776,7 +4840,25 @@ ${sectionsHTML}
                         <a
                           href={getLinkHref(subItem)}
                           className="block text-sm py-1 px-2 rounded transition"
-                          style={{
+                          style={hasButtonStyle ? {
+                            backgroundColor: isSubHovered ? btnStyle.hoverBackgroundColor : btnStyle.backgroundColor,
+                            color: isSubHovered ? btnStyle.hoverTextColor : btnStyle.textColor,
+                            borderWidth: `${btnStyle.borderWidth || 0}px`,
+                            borderStyle: btnStyle.borderStyle || 'solid',
+                            borderColor: btnStyle.borderColor || btnStyle.backgroundColor,
+                            borderRadius: `${btnStyle.borderRadius || 0}px`,
+                            paddingTop: `${btnStyle.paddingTop || 8}px`,
+                            paddingRight: `${btnStyle.paddingRight || 16}px`,
+                            paddingBottom: `${btnStyle.paddingBottom || 8}px`,
+                            paddingLeft: `${btnStyle.paddingLeft || 16}px`,
+                            fontSize: `${btnStyle.fontSize || 14}px`,
+                            fontWeight: btnStyle.fontWeight || '500',
+                            marginTop: `${btnStyle.marginTop || 0}px`,
+                            marginRight: `${btnStyle.marginRight || 0}px`,
+                            marginBottom: `${btnStyle.marginBottom || 0}px`,
+                            marginLeft: `${btnStyle.marginLeft || 0}px`,
+                            textDecoration: 'none'
+                          } : {
                             color: isSubHovered ? linkTextColorHover : linkTextColor,
                             fontWeight: isSubItemActive ? 'bold' : 'normal',
                             backgroundColor: isSubHovered ? dropdownItemHoverBg : 'transparent'
@@ -4818,16 +4900,9 @@ ${sectionsHTML}
                 ...generateContainerStyle(content.containerStyle || {}),
                 borderBottom: content.containerStyle?.borderWidth ? undefined : '2px solid #e5e7eb',
                 borderRadius: content.containerStyle?.borderRadius || 0,
-                // Apply navbar positioning (must come after containerStyle to override if needed)
-                position: navPosition as any,
-                // Fixed/sticky navbars need proper z-index and positioning
-                ...(navPosition === 'fixed' || navPosition === 'sticky' ? {
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  zIndex: 1000,
-                  width: '100%'
-                } : {})
+                // In canvas preview, always use relative positioning
+                // (Fixed/sticky only applies in live preview and exported files)
+                position: 'relative'
               }}
             >
               <div className="flex items-center" style={{
@@ -4861,7 +4936,7 @@ ${sectionsHTML}
               )}
 
               {/* Navigation Links - Desktop */}
-              <div className="hidden md:flex gap-6 items-center flex-1" style={{
+              <div className={`hidden md:flex items-center flex-1 ${content.buttonStyling?.enabled ? '' : 'gap-6'}`} style={{
                 flexWrap: 'wrap',
                 justifyContent:
                   linksPosition === 'center' ? 'center' :
@@ -4879,6 +4954,46 @@ ${sectionsHTML}
                   const LinkItem = () => {
                     const [isHovered, setIsHovered] = useState(false)
                     const isActive = isActivePage(link, currentPage?.id || 0)
+
+                    // Check if global button styling is enabled
+                    const hasButtonStyle = content.buttonStyling?.enabled || false
+                    const btnStyle = content.buttonStyling || {}
+
+                    if (hasButtonStyle) {
+                      // Render as button
+                      return (
+                        <a
+                          href={getLinkHref(link)}
+                          className="transition inline-block"
+                          onMouseEnter={() => setIsHovered(true)}
+                          onMouseLeave={() => setIsHovered(false)}
+                          style={{
+                            backgroundColor: isHovered ? btnStyle.hoverBackgroundColor : btnStyle.backgroundColor,
+                            color: isHovered ? btnStyle.hoverTextColor : btnStyle.textColor,
+                            borderWidth: `${btnStyle.borderWidth || 0}px`,
+                            borderStyle: btnStyle.borderStyle || 'solid',
+                            borderColor: btnStyle.borderColor || btnStyle.backgroundColor,
+                            borderRadius: `${btnStyle.borderRadius || 0}px`,
+                            paddingTop: `${btnStyle.paddingTop || 8}px`,
+                            paddingRight: `${btnStyle.paddingRight || 16}px`,
+                            paddingBottom: `${btnStyle.paddingBottom || 8}px`,
+                            paddingLeft: `${btnStyle.paddingLeft || 16}px`,
+                            fontSize: `${btnStyle.fontSize || 14}px`,
+                            fontWeight: btnStyle.fontWeight || '500',
+                            marginTop: `${btnStyle.marginTop || 0}px`,
+                            marginRight: `${btnStyle.marginRight || 0}px`,
+                            marginBottom: `${btnStyle.marginBottom || 0}px`,
+                            marginLeft: `${btnStyle.marginLeft || 0}px`,
+                            textDecoration: 'none'
+                          }}
+                          onClick={(e) => e.preventDefault()}
+                        >
+                          {getLinkLabel(link)}
+                        </a>
+                      )
+                    }
+
+                    // Render as text link
                     return (
                       <a
                         href={getLinkHref(link)}
@@ -4941,6 +5056,7 @@ ${sectionsHTML}
               activeIndicator={{}}
               mobileMenuBg={dropdownConfig.mobileMenuBg}
               currentPageId={currentPage?.id || 0}
+              buttonStyling={content.buttonStyling}
               getLinkHref={getLinkHref}
               getLinkLabel={getLinkLabel}
               isActivePage={isActivePage}
@@ -6820,77 +6936,135 @@ ${sectionsHTML}
 
                         {/* Link Styling */}
                         <div className="mb-4 border-t border-gray-200 pt-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Link Colors</label>
-
-                          <div className="mb-3">
-                            <label className="text-xs text-gray-600 block mb-1">Text Color</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="color"
-                                value={selectedSection.content?.linkStyling?.textColor || '#000000'}
-                                onChange={(e) => {
-                                  handleUpdateSectionContent(selectedSection.id, {
-                                    ...selectedSection.content,
-                                    linkStyling: {
-                                      ...selectedSection.content?.linkStyling,
-                                      textColor: e.target.value
-                                    }
-                                  })
-                                }}
-                                className="w-10 h-8 rounded border border-gray-300"
-                              />
-                              <input
-                                type="text"
-                                value={selectedSection.content?.linkStyling?.textColor || '#000000'}
-                                onChange={(e) => {
-                                  handleUpdateSectionContent(selectedSection.id, {
-                                    ...selectedSection.content,
-                                    linkStyling: {
-                                      ...selectedSection.content?.linkStyling,
-                                      textColor: e.target.value
-                                    }
-                                  })
-                                }}
-                                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                                placeholder="#000000"
-                              />
+                          <div className="flex items-center justify-between mb-3">
+                            <label className="text-xs font-medium text-gray-700">Link Style</label>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-600">
+                                {selectedSection.content?.buttonStyling?.enabled ? 'Buttons' : 'Text Links'}
+                              </span>
+                              <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={selectedSection.content?.buttonStyling?.enabled || false}
+                                  onChange={(e) => {
+                                    const currentButtonStyling = selectedSection.content?.buttonStyling || {}
+                                    handleUpdateSectionContent(selectedSection.id, {
+                                      ...selectedSection.content,
+                                      buttonStyling: {
+                                        enabled: e.target.checked,
+                                        backgroundColor: currentButtonStyling.backgroundColor || '#3b82f6',
+                                        textColor: currentButtonStyling.textColor || '#ffffff',
+                                        hoverBackgroundColor: currentButtonStyling.hoverBackgroundColor || '#2563eb',
+                                        hoverTextColor: currentButtonStyling.hoverTextColor || '#ffffff',
+                                        borderWidth: currentButtonStyling.borderWidth || 0,
+                                        borderStyle: currentButtonStyling.borderStyle || 'solid',
+                                        borderColor: currentButtonStyling.borderColor || '#3b82f6',
+                                        borderRadius: currentButtonStyling.borderRadius || 4,
+                                        paddingTop: currentButtonStyling.paddingTop || 8,
+                                        paddingRight: currentButtonStyling.paddingRight || 16,
+                                        paddingBottom: currentButtonStyling.paddingBottom || 8,
+                                        paddingLeft: currentButtonStyling.paddingLeft || 16,
+                                        fontSize: currentButtonStyling.fontSize || 14,
+                                        fontWeight: currentButtonStyling.fontWeight || '500',
+                                        marginTop: currentButtonStyling.marginTop || 0,
+                                        marginRight: currentButtonStyling.marginRight || 0,
+                                        marginBottom: currentButtonStyling.marginBottom || 0,
+                                        marginLeft: currentButtonStyling.marginLeft || 0
+                                      }
+                                    })
+                                  }}
+                                  className="sr-only peer"
+                                />
+                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#98b290] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#98b290]"></div>
+                              </label>
                             </div>
                           </div>
 
-                          <div className="mb-3">
-                            <label className="text-xs text-gray-600 block mb-1">Hover Color</label>
-                            <div className="flex gap-2">
-                              <input
-                                type="color"
-                                value={selectedSection.content?.linkStyling?.textColorHover || '#666666'}
-                                onChange={(e) => {
-                                  handleUpdateSectionContent(selectedSection.id, {
-                                    ...selectedSection.content,
-                                    linkStyling: {
-                                      ...selectedSection.content?.linkStyling,
-                                      textColorHover: e.target.value
-                                    }
-                                  })
-                                }}
-                                className="w-10 h-8 rounded border border-gray-300"
-                              />
-                              <input
-                                type="text"
-                                value={selectedSection.content?.linkStyling?.textColorHover || '#666666'}
-                                onChange={(e) => {
-                                  handleUpdateSectionContent(selectedSection.id, {
-                                    ...selectedSection.content,
-                                    linkStyling: {
-                                      ...selectedSection.content?.linkStyling,
-                                      textColorHover: e.target.value
-                                    }
-                                  })
-                                }}
-                                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                                placeholder="#666666"
-                              />
-                            </div>
-                          </div>
+                          {selectedSection.content?.buttonStyling?.enabled && (
+                            <button
+                              onClick={() => setShowNavButtonStyleModal(true)}
+                              className="w-full px-3 py-2 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded text-purple-700 text-xs font-medium transition flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                              </svg>
+                              Customize Button Style
+                            </button>
+                          )}
+
+                          {!selectedSection.content?.buttonStyling?.enabled && (
+                            <>
+                              <div className="mb-3">
+                                <label className="text-xs text-gray-600 block mb-1">Text Color</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="color"
+                                    value={selectedSection.content?.linkStyling?.textColor || '#000000'}
+                                    onChange={(e) => {
+                                      handleUpdateSectionContent(selectedSection.id, {
+                                        ...selectedSection.content,
+                                        linkStyling: {
+                                          ...selectedSection.content?.linkStyling,
+                                          textColor: e.target.value
+                                        }
+                                      })
+                                    }}
+                                    className="w-10 h-8 rounded border border-gray-300"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={selectedSection.content?.linkStyling?.textColor || '#000000'}
+                                    onChange={(e) => {
+                                      handleUpdateSectionContent(selectedSection.id, {
+                                        ...selectedSection.content,
+                                        linkStyling: {
+                                          ...selectedSection.content?.linkStyling,
+                                          textColor: e.target.value
+                                        }
+                                      })
+                                    }}
+                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                    placeholder="#000000"
+                                  />
+                                </div>
+                              </div>
+
+                              <div className="mb-3">
+                                <label className="text-xs text-gray-600 block mb-1">Hover Color</label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="color"
+                                    value={selectedSection.content?.linkStyling?.textColorHover || '#666666'}
+                                    onChange={(e) => {
+                                      handleUpdateSectionContent(selectedSection.id, {
+                                        ...selectedSection.content,
+                                        linkStyling: {
+                                          ...selectedSection.content?.linkStyling,
+                                          textColorHover: e.target.value
+                                        }
+                                      })
+                                    }}
+                                    className="w-10 h-8 rounded border border-gray-300"
+                                  />
+                                  <input
+                                    type="text"
+                                    value={selectedSection.content?.linkStyling?.textColorHover || '#666666'}
+                                    onChange={(e) => {
+                                      handleUpdateSectionContent(selectedSection.id, {
+                                        ...selectedSection.content,
+                                        linkStyling: {
+                                          ...selectedSection.content?.linkStyling,
+                                          textColorHover: e.target.value
+                                        }
+                                      })
+                                    }}
+                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                    placeholder="#666666"
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
 
                         {/* Navigation Links Manager */}
@@ -7282,6 +7456,488 @@ ${sectionsHTML}
                   Save Changes
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Button Style Customization Modal */}
+      {showNavButtonStyleModal && selectedSection && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 max-h-[90vh] overflow-y-auto">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">Customize Button Style</h2>
+
+            {/* Live Preview */}
+            <div className="mb-6 p-6 bg-gray-50 border border-gray-200 rounded-lg">
+              <p className="text-xs text-gray-600 mb-3">Preview:</p>
+              <div className="flex items-center justify-center">
+                <button
+                  style={{
+                    backgroundColor: selectedSection.content?.buttonStyling?.backgroundColor || '#3b82f6',
+                    color: selectedSection.content?.buttonStyling?.textColor || '#ffffff',
+                    borderWidth: `${selectedSection.content?.buttonStyling?.borderWidth || 0}px`,
+                    borderStyle: selectedSection.content?.buttonStyling?.borderStyle || 'solid',
+                    borderColor: selectedSection.content?.buttonStyling?.borderColor || '#3b82f6',
+                    borderRadius: `${selectedSection.content?.buttonStyling?.borderRadius || 4}px`,
+                    paddingTop: `${selectedSection.content?.buttonStyling?.paddingTop || 8}px`,
+                    paddingRight: `${selectedSection.content?.buttonStyling?.paddingRight || 16}px`,
+                    paddingBottom: `${selectedSection.content?.buttonStyling?.paddingBottom || 8}px`,
+                    paddingLeft: `${selectedSection.content?.buttonStyling?.paddingLeft || 16}px`,
+                    fontSize: `${selectedSection.content?.buttonStyling?.fontSize || 14}px`,
+                    fontWeight: selectedSection.content?.buttonStyling?.fontWeight || '500',
+                    marginTop: `${selectedSection.content?.buttonStyling?.marginTop || 0}px`,
+                    marginRight: `${selectedSection.content?.buttonStyling?.marginRight || 0}px`,
+                    marginBottom: `${selectedSection.content?.buttonStyling?.marginBottom || 0}px`,
+                    marginLeft: `${selectedSection.content?.buttonStyling?.marginLeft || 0}px`,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Sample Button
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              {/* Colors */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Background Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={selectedSection.content?.buttonStyling?.backgroundColor || '#3b82f6'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          backgroundColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="w-12 h-10 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={selectedSection.content?.buttonStyling?.backgroundColor || '#3b82f6'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          backgroundColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="flex-1 text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Text Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={selectedSection.content?.buttonStyling?.textColor || '#ffffff'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          textColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="w-12 h-10 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={selectedSection.content?.buttonStyling?.textColor || '#ffffff'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          textColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="flex-1 text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hover Background Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={selectedSection.content?.buttonStyling?.hoverBackgroundColor || '#2563eb'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          hoverBackgroundColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="w-12 h-10 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={selectedSection.content?.buttonStyling?.hoverBackgroundColor || '#2563eb'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          hoverBackgroundColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="flex-1 text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hover Text Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={selectedSection.content?.buttonStyling?.hoverTextColor || '#ffffff'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          hoverTextColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="w-12 h-10 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={selectedSection.content?.buttonStyling?.hoverTextColor || '#ffffff'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          hoverTextColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="flex-1 text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+              </div>
+
+              {/* Border */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Border Width (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.borderWidth || 0}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        borderWidth: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Border Style</label>
+                <select
+                  value={selectedSection.content?.buttonStyling?.borderStyle || 'solid'}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        borderStyle: e.target.value
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                >
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                  <option value="double">Double</option>
+                  <option value="none">None</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Border Color</label>
+                <div className="flex gap-2">
+                  <input
+                    type="color"
+                    value={selectedSection.content?.buttonStyling?.borderColor || '#3b82f6'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          borderColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="w-12 h-10 rounded border border-gray-300"
+                  />
+                  <input
+                    type="text"
+                    value={selectedSection.content?.buttonStyling?.borderColor || '#3b82f6'}
+                    onChange={(e) => {
+                      handleUpdateSectionContent(selectedSection.id, {
+                        ...selectedSection.content,
+                        buttonStyling: {
+                          ...selectedSection.content?.buttonStyling,
+                          borderColor: e.target.value
+                        }
+                      })
+                    }}
+                    className="flex-1 text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Border Radius (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.borderRadius || 4}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        borderRadius: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              {/* Padding */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Padding Top (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.paddingTop || 8}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        paddingTop: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Padding Right (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.paddingRight || 16}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        paddingRight: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Padding Bottom (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.paddingBottom || 8}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        paddingBottom: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Padding Left (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.paddingLeft || 16}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        paddingLeft: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              {/* Typography */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Font Size (px)</label>
+                <input
+                  type="number"
+                  min="8"
+                  value={selectedSection.content?.buttonStyling?.fontSize || 14}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        fontSize: parseInt(e.target.value) || 14
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Font Weight</label>
+                <select
+                  value={selectedSection.content?.buttonStyling?.fontWeight || '500'}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        fontWeight: e.target.value
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                >
+                  <option value="300">Light (300)</option>
+                  <option value="400">Normal (400)</option>
+                  <option value="500">Medium (500)</option>
+                  <option value="600">Semibold (600)</option>
+                  <option value="700">Bold (700)</option>
+                  <option value="800">Extra Bold (800)</option>
+                </select>
+              </div>
+
+              {/* Margin */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Margin Top (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.marginTop || 0}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        marginTop: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Margin Right (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.marginRight || 0}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        marginRight: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Margin Bottom (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.marginBottom || 0}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        marginBottom: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Margin Left (px)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={selectedSection.content?.buttonStyling?.marginLeft || 0}
+                  onChange={(e) => {
+                    handleUpdateSectionContent(selectedSection.id, {
+                      ...selectedSection.content,
+                      buttonStyling: {
+                        ...selectedSection.content?.buttonStyling,
+                        marginLeft: parseInt(e.target.value) || 0
+                      }
+                    })
+                  }}
+                  className="w-full text-sm px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6 pt-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowNavButtonStyleModal(false)}
+                className="flex-1 px-4 py-2 bg-[#98b290] hover:bg-[#7a9274] text-white rounded-lg transition"
+              >
+                Done
+              </button>
             </div>
           </div>
         </div>

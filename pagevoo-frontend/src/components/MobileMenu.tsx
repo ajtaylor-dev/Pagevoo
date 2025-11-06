@@ -8,6 +8,7 @@ interface MobileMenuProps {
   activeIndicator?: any
   mobileMenuBg?: string
   currentPageId?: number
+  buttonStyling?: any
   getLinkHref: (link: any) => string
   getLinkLabel: (link: any) => string
   isActivePage: (link: any, pageId: number) => boolean
@@ -23,6 +24,7 @@ export function MobileMenu({
   activeIndicator,
   mobileMenuBg = '#ffffff',
   currentPageId = 0,
+  buttonStyling,
   getLinkHref,
   getLinkLabel,
   isActivePage,
@@ -70,8 +72,31 @@ export function MobileMenu({
                     href={getLinkHref(link)}
                     className="flex-1 py-3 px-3 rounded transition block"
                     style={{
-                      ...generateLinkStyle(linkStyling),
-                      ...(isActive ? generateActiveIndicatorStyle(activeIndicator) : {}),
+                      // Check if global button styling is enabled
+                      ...(buttonStyling && buttonStyling.enabled ? {
+                        backgroundColor: buttonStyling.backgroundColor,
+                        color: buttonStyling.textColor,
+                        borderWidth: `${buttonStyling.borderWidth || 0}px`,
+                        borderStyle: buttonStyling.borderStyle || 'solid',
+                        borderColor: buttonStyling.borderColor || buttonStyling.backgroundColor,
+                        borderRadius: `${buttonStyling.borderRadius || 0}px`,
+                        paddingTop: `${buttonStyling.paddingTop || 8}px`,
+                        paddingRight: `${buttonStyling.paddingRight || 16}px`,
+                        paddingBottom: `${buttonStyling.paddingBottom || 8}px`,
+                        paddingLeft: `${buttonStyling.paddingLeft || 16}px`,
+                        fontSize: `${buttonStyling.fontSize || 14}px`,
+                        fontWeight: buttonStyling.fontWeight || '500',
+                        marginTop: `${buttonStyling.marginTop || 0}px`,
+                        marginRight: `${buttonStyling.marginRight || 0}px`,
+                        marginBottom: `${buttonStyling.marginBottom || 0}px`,
+                        marginLeft: `${buttonStyling.marginLeft || 0}px`,
+                        textDecoration: 'none',
+                        display: 'inline-block',
+                        textAlign: 'center' as const
+                      } : {
+                        ...generateLinkStyle(linkStyling),
+                        ...(isActive ? generateActiveIndicatorStyle(activeIndicator) : {}),
+                      })
                     }}
                     onClick={(e) => {
                       if (hasSubItems) {
@@ -113,8 +138,31 @@ export function MobileMenu({
                           href={getLinkHref(subItem)}
                           className="block py-2 px-3 rounded transition text-sm"
                           style={{
-                            ...generateLinkStyle(linkStyling),
-                            ...(isSubActive ? generateActiveIndicatorStyle(activeIndicator) : {}),
+                            // Check if global button styling is enabled
+                            ...(buttonStyling && buttonStyling.enabled ? {
+                              backgroundColor: buttonStyling.backgroundColor,
+                              color: buttonStyling.textColor,
+                              borderWidth: `${buttonStyling.borderWidth || 0}px`,
+                              borderStyle: buttonStyling.borderStyle || 'solid',
+                              borderColor: buttonStyling.borderColor || buttonStyling.backgroundColor,
+                              borderRadius: `${buttonStyling.borderRadius || 0}px`,
+                              paddingTop: `${buttonStyling.paddingTop || 8}px`,
+                              paddingRight: `${buttonStyling.paddingRight || 16}px`,
+                              paddingBottom: `${buttonStyling.paddingBottom || 8}px`,
+                              paddingLeft: `${buttonStyling.paddingLeft || 16}px`,
+                              fontSize: `${buttonStyling.fontSize || 14}px`,
+                              fontWeight: buttonStyling.fontWeight || '500',
+                              marginTop: `${buttonStyling.marginTop || 0}px`,
+                              marginRight: `${buttonStyling.marginRight || 0}px`,
+                              marginBottom: `${buttonStyling.marginBottom || 0}px`,
+                              marginLeft: `${buttonStyling.marginLeft || 0}px`,
+                              textDecoration: 'none',
+                              display: 'inline-block',
+                              textAlign: 'center' as const
+                            } : {
+                              ...generateLinkStyle(linkStyling),
+                              ...(isSubActive ? generateActiveIndicatorStyle(activeIndicator) : {}),
+                            })
                           }}
                           onClick={onClose}
                         >
