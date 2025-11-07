@@ -3136,9 +3136,9 @@ padding: 1rem;`
               if (link.subItems && link.subItems.length > 0) {
                 const subItemsHTML = generateLinksHTML(link.subItems, true)
                 const linkClass = hasButtonStyle ? 'nav-link nav-link-button' : 'nav-link'
-                const buttonInlineStyles = hasButtonStyle ? ` style="background-color: ${btnStyle.backgroundColor}; color: ${btnStyle.textColor}; border: ${btnStyle.borderWidth || 0}px ${btnStyle.borderStyle || 'solid'} ${btnStyle.borderColor}; border-radius: ${btnStyle.borderRadius || 0}px; padding: ${btnStyle.paddingTop || 8}px ${btnStyle.paddingRight || 16}px ${btnStyle.paddingBottom || 8}px ${btnStyle.paddingLeft || 16}px; font-size: ${btnStyle.fontSize || 14}px; font-weight: ${btnStyle.fontWeight || '500'}; margin: ${btnStyle.marginTop || 0}px ${btnStyle.marginRight || 0}px ${btnStyle.marginBottom || 0}px ${btnStyle.marginLeft || 0}px; text-decoration: none; display: inline-block;"` : ''
+                const buttonInlineStyles = hasButtonStyle ? ` style="background-color: ${btnStyle.backgroundColor}; color: ${btnStyle.textColor}; border: ${btnStyle.borderWidth || 0}px ${btnStyle.borderStyle || 'solid'} ${btnStyle.borderColor}; border-radius: ${btnStyle.borderRadius || 0}px; padding: ${btnStyle.paddingTop || 8}px ${btnStyle.paddingRight || 16}px ${btnStyle.paddingBottom || 8}px ${btnStyle.paddingLeft || 16}px; font-size: ${btnStyle.fontSize || 14}px; font-weight: ${btnStyle.fontWeight || '500'}; margin: ${btnStyle.marginTop || 5}px ${btnStyle.marginRight || 5}px ${btnStyle.marginBottom || 5}px ${btnStyle.marginLeft || 5}px; text-decoration: none; display: inline-block;"` : ''
                 return `        <div class="nav-dropdown">
-          <a href="${href}" class="${linkClass} dropdown-toggle"${buttonInlineStyles}>${label} ▼</a>
+          <a href="${href}" class="${linkClass} dropdown-toggle"${buttonInlineStyles}>${label}</a>
           <div class="dropdown-menu">
 ${subItemsHTML}
           </div>
@@ -3147,7 +3147,7 @@ ${subItemsHTML}
 
               if (isSubMenu) {
                 const linkClass = hasButtonStyle ? 'dropdown-item dropdown-item-button' : 'dropdown-item'
-                const buttonInlineStyles = hasButtonStyle ? ` style="background-color: ${btnStyle.backgroundColor}; color: ${btnStyle.textColor}; border: ${btnStyle.borderWidth || 0}px ${btnStyle.borderStyle || 'solid'} ${btnStyle.borderColor}; border-radius: ${btnStyle.borderRadius || 0}px; padding: ${btnStyle.paddingTop || 8}px ${btnStyle.paddingRight || 16}px ${btnStyle.paddingBottom || 8}px ${btnStyle.paddingLeft || 16}px; font-size: ${btnStyle.fontSize || 14}px; font-weight: ${btnStyle.fontWeight || '500'}; margin: ${btnStyle.marginTop || 0}px ${btnStyle.marginRight || 0}px ${btnStyle.marginBottom || 0}px ${btnStyle.marginLeft || 0}px; text-decoration: none; display: inline-block;"` : ''
+                const buttonInlineStyles = hasButtonStyle ? ` style="background-color: ${btnStyle.backgroundColor}; color: ${btnStyle.textColor}; border: ${btnStyle.borderWidth || 0}px ${btnStyle.borderStyle || 'solid'} ${btnStyle.borderColor}; border-radius: ${btnStyle.borderRadius || 0}px; padding: ${btnStyle.paddingTop || 8}px ${btnStyle.paddingRight || 16}px ${btnStyle.paddingBottom || 8}px ${btnStyle.paddingLeft || 16}px; font-size: ${btnStyle.fontSize || 14}px; font-weight: ${btnStyle.fontWeight || '500'}; margin: ${btnStyle.marginTop || 5}px ${btnStyle.marginRight || 5}px ${btnStyle.marginBottom || 5}px ${btnStyle.marginLeft || 5}px; text-decoration: none; display: inline-block;"` : ''
                 return `            <a href="${href}" class="${linkClass}"${buttonInlineStyles}>${label}</a>`
               }
 
@@ -3404,7 +3404,7 @@ ${sectionsHTML}
     css += `  z-index: 10;\n`
     css += `}\n\n`
 
-    css += `.nav-dropdown:hover .dropdown-menu {\n`
+    css += `.nav-dropdown.active .dropdown-menu {\n`
     css += `  display: block;\n`
     css += `}\n\n`
 
@@ -4412,7 +4412,7 @@ ${sectionsHTML}
                       <div>
                         <span className="text-xs text-gray-400">Dropdown Config:</span>
                         <pre className="text-xs font-mono whitespace-pre-wrap text-orange-300 ml-2">
-                          {`Trigger: ${dropdownConfig.trigger || 'click'}\nHover Delay: ${dropdownConfig.hoverDelay || 0}ms\nTransition: ${dropdownConfig.transitionDuration || 200}ms`}
+                          {`Trigger: click (always)\nTransition: ${dropdownConfig.transitionDuration || 200}ms`}
                         </pre>
                       </div>
                     )}
@@ -4739,53 +4739,52 @@ ${sectionsHTML}
         const mobileMenuButtonColor = dropdownConfig.mobileMenuButtonColor || '#000000'
         const mobileMenuButtonHoverBg = dropdownConfig.mobileMenuButtonHoverBg || '#f3f4f6'
 
-        // Check if any link has subItems for dropdown behavior
-        const trigger = dropdownConfig.trigger || 'hover'
-        const hoverDelay = dropdownConfig.hoverDelay || 200
+        // Dropdowns always use click behavior (hover option removed for simplicity)
 
         const DropdownNavItem = ({ link, currentPageId }: any) => {
           const [isOpen, setIsOpen] = useState(false)
           const [isHovered, setIsHovered] = useState(false)
           const hasSubItems = typeof link === 'object' && link.subItems && link.subItems.length > 0
           const isActive = isActivePage(link, currentPageId)
-          const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+          const dropdownRef = useRef<HTMLDivElement>(null)
 
           // Check if global button styling is enabled
           const hasButtonStyle = content.buttonStyling?.enabled || false
           const btnStyle = content.buttonStyling || {}
 
+          // Close dropdown when clicking outside
+          useEffect(() => {
+            const handleClickOutside = (event: MouseEvent) => {
+              if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setIsOpen(false)
+              }
+            }
+
+            if (isOpen) {
+              document.addEventListener('mousedown', handleClickOutside)
+              return () => {
+                document.removeEventListener('mousedown', handleClickOutside)
+              }
+            }
+          }, [isOpen])
+
           const handleMouseEnter = () => {
             setIsHovered(true)
-            if (trigger === 'hover' && hasSubItems) {
-              if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-              hoverTimeoutRef.current = setTimeout(() => {
-                setIsOpen(true)
-              }, hoverDelay)
-            }
           }
 
           const handleMouseLeave = () => {
             setIsHovered(false)
-            if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current)
-            if (trigger === 'hover') {
-              setIsOpen(false)
-            }
           }
 
           const handleClick = (e: any) => {
             if (hasSubItems) {
               e.preventDefault()
-              if (trigger === 'click') {
-                setIsOpen(!isOpen)
-              } else {
-                // In hover mode, clicking also toggles for better UX
-                setIsOpen(!isOpen)
-              }
+              setIsOpen(!isOpen)
             }
           }
 
           return (
-            <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+            <div ref={dropdownRef} className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
               <a
                 href={getLinkHref(link)}
                 className={`cursor-pointer flex items-center gap-1 transition ${hasButtonStyle ? 'inline-block' : ''}`}
@@ -4803,10 +4802,10 @@ ${sectionsHTML}
                   paddingLeft: `${btnStyle.paddingLeft || 16}px`,
                   fontSize: `${btnStyle.fontSize || 14}px`,
                   fontWeight: btnStyle.fontWeight || '500',
-                  marginTop: `${btnStyle.marginTop || 0}px`,
-                  marginRight: `${btnStyle.marginRight || 0}px`,
-                  marginBottom: `${btnStyle.marginBottom || 0}px`,
-                  marginLeft: `${btnStyle.marginLeft || 0}px`,
+                  marginTop: `${btnStyle.marginTop || 5}px`,
+                  marginRight: `${btnStyle.marginRight || 5}px`,
+                  marginBottom: `${btnStyle.marginBottom || 5}px`,
+                  marginLeft: `${btnStyle.marginLeft || 5}px`,
                   textDecoration: 'none'
                 } : {
                   color: isHovered ? linkTextColorHover : linkTextColor,
@@ -4815,11 +4814,6 @@ ${sectionsHTML}
                 }}
               >
                 {getLinkLabel(link)}
-                {hasSubItems && (
-                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                )}
               </a>
               {isOpen && hasSubItems && (
                 <div
@@ -4853,10 +4847,10 @@ ${sectionsHTML}
                             paddingLeft: `${btnStyle.paddingLeft || 16}px`,
                             fontSize: `${btnStyle.fontSize || 14}px`,
                             fontWeight: btnStyle.fontWeight || '500',
-                            marginTop: `${btnStyle.marginTop || 0}px`,
-                            marginRight: `${btnStyle.marginRight || 0}px`,
-                            marginBottom: `${btnStyle.marginBottom || 0}px`,
-                            marginLeft: `${btnStyle.marginLeft || 0}px`,
+                            marginTop: `${btnStyle.marginTop || 5}px`,
+                            marginRight: `${btnStyle.marginRight || 5}px`,
+                            marginBottom: `${btnStyle.marginBottom || 5}px`,
+                            marginLeft: `${btnStyle.marginLeft || 5}px`,
                             textDecoration: 'none'
                           } : {
                             color: isSubHovered ? linkTextColorHover : linkTextColor,
@@ -4980,10 +4974,10 @@ ${sectionsHTML}
                             paddingLeft: `${btnStyle.paddingLeft || 16}px`,
                             fontSize: `${btnStyle.fontSize || 14}px`,
                             fontWeight: btnStyle.fontWeight || '500',
-                            marginTop: `${btnStyle.marginTop || 0}px`,
-                            marginRight: `${btnStyle.marginRight || 0}px`,
-                            marginBottom: `${btnStyle.marginBottom || 0}px`,
-                            marginLeft: `${btnStyle.marginLeft || 0}px`,
+                            marginTop: `${btnStyle.marginTop || 5}px`,
+                            marginRight: `${btnStyle.marginRight || 5}px`,
+                            marginBottom: `${btnStyle.marginBottom || 5}px`,
+                            marginLeft: `${btnStyle.marginLeft || 5}px`,
                             textDecoration: 'none'
                           }}
                           onClick={(e) => e.preventDefault()}
@@ -6888,52 +6882,6 @@ ${sectionsHTML}
                           )}
                         </div>
 
-                        {/* Dropdown Behavior */}
-                        <div className="mb-4 border-t border-gray-200 pt-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Dropdown Behavior</label>
-
-                          <div className="mb-3">
-                            <label className="text-xs text-gray-600 block mb-1">Trigger Method</label>
-                            <select
-                              value={selectedSection.content?.dropdownConfig?.trigger || 'hover'}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  dropdownConfig: {
-                                    ...selectedSection.content?.dropdownConfig,
-                                    trigger: e.target.value
-                                  }
-                                })
-                              }}
-                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                            >
-                              <option value="hover">Hover</option>
-                              <option value="click">Click</option>
-                            </select>
-                          </div>
-
-                          <div className="mb-3">
-                            <label className="text-xs text-gray-600 block mb-1">Hover Delay (ms)</label>
-                            <input
-                              type="number"
-                              min="0"
-                              max="1000"
-                              step="50"
-                              value={selectedSection.content?.dropdownConfig?.hoverDelay || 200}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  dropdownConfig: {
-                                    ...selectedSection.content?.dropdownConfig,
-                                    hoverDelay: parseInt(e.target.value)
-                                  }
-                                })
-                              }}
-                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                            />
-                          </div>
-                        </div>
-
                         {/* Link Styling */}
                         <div className="mb-4 border-t border-gray-200 pt-4">
                           <div className="flex items-center justify-between mb-3">
@@ -6966,10 +6914,10 @@ ${sectionsHTML}
                                         paddingLeft: currentButtonStyling.paddingLeft || 16,
                                         fontSize: currentButtonStyling.fontSize || 14,
                                         fontWeight: currentButtonStyling.fontWeight || '500',
-                                        marginTop: currentButtonStyling.marginTop || 0,
-                                        marginRight: currentButtonStyling.marginRight || 0,
-                                        marginBottom: currentButtonStyling.marginBottom || 0,
-                                        marginLeft: currentButtonStyling.marginLeft || 0
+                                        marginTop: currentButtonStyling.marginTop || 5,
+                                        marginRight: currentButtonStyling.marginRight || 5,
+                                        marginBottom: currentButtonStyling.marginBottom || 5,
+                                        marginLeft: currentButtonStyling.marginLeft || 5
                                       }
                                     })
                                   }}
@@ -7485,10 +7433,10 @@ ${sectionsHTML}
                     paddingLeft: `${selectedSection.content?.buttonStyling?.paddingLeft || 16}px`,
                     fontSize: `${selectedSection.content?.buttonStyling?.fontSize || 14}px`,
                     fontWeight: selectedSection.content?.buttonStyling?.fontWeight || '500',
-                    marginTop: `${selectedSection.content?.buttonStyling?.marginTop || 0}px`,
-                    marginRight: `${selectedSection.content?.buttonStyling?.marginRight || 0}px`,
-                    marginBottom: `${selectedSection.content?.buttonStyling?.marginBottom || 0}px`,
-                    marginLeft: `${selectedSection.content?.buttonStyling?.marginLeft || 0}px`,
+                    marginTop: `${selectedSection.content?.buttonStyling?.marginTop || 5}px`,
+                    marginRight: `${selectedSection.content?.buttonStyling?.marginRight || 5}px`,
+                    marginBottom: `${selectedSection.content?.buttonStyling?.marginBottom || 5}px`,
+                    marginLeft: `${selectedSection.content?.buttonStyling?.marginLeft || 5}px`,
                     cursor: 'pointer',
                     transition: 'all 0.2s'
                   }}
@@ -7859,13 +7807,13 @@ ${sectionsHTML}
                 <input
                   type="number"
                   min="0"
-                  value={selectedSection.content?.buttonStyling?.marginTop || 0}
+                  value={selectedSection.content?.buttonStyling?.marginTop || 5}
                   onChange={(e) => {
                     handleUpdateSectionContent(selectedSection.id, {
                       ...selectedSection.content,
                       buttonStyling: {
                         ...selectedSection.content?.buttonStyling,
-                        marginTop: parseInt(e.target.value) || 0
+                        marginTop: parseInt(e.target.value) || 5
                       }
                     })
                   }}
@@ -7878,13 +7826,13 @@ ${sectionsHTML}
                 <input
                   type="number"
                   min="0"
-                  value={selectedSection.content?.buttonStyling?.marginRight || 0}
+                  value={selectedSection.content?.buttonStyling?.marginRight || 5}
                   onChange={(e) => {
                     handleUpdateSectionContent(selectedSection.id, {
                       ...selectedSection.content,
                       buttonStyling: {
                         ...selectedSection.content?.buttonStyling,
-                        marginRight: parseInt(e.target.value) || 0
+                        marginRight: parseInt(e.target.value) || 5
                       }
                     })
                   }}
@@ -7897,13 +7845,13 @@ ${sectionsHTML}
                 <input
                   type="number"
                   min="0"
-                  value={selectedSection.content?.buttonStyling?.marginBottom || 0}
+                  value={selectedSection.content?.buttonStyling?.marginBottom || 5}
                   onChange={(e) => {
                     handleUpdateSectionContent(selectedSection.id, {
                       ...selectedSection.content,
                       buttonStyling: {
                         ...selectedSection.content?.buttonStyling,
-                        marginBottom: parseInt(e.target.value) || 0
+                        marginBottom: parseInt(e.target.value) || 5
                       }
                     })
                   }}
@@ -7916,13 +7864,13 @@ ${sectionsHTML}
                 <input
                   type="number"
                   min="0"
-                  value={selectedSection.content?.buttonStyling?.marginLeft || 0}
+                  value={selectedSection.content?.buttonStyling?.marginLeft || 5}
                   onChange={(e) => {
                     handleUpdateSectionContent(selectedSection.id, {
                       ...selectedSection.content,
                       buttonStyling: {
                         ...selectedSection.content?.buttonStyling,
-                        marginLeft: parseInt(e.target.value) || 0
+                        marginLeft: parseInt(e.target.value) || 5
                       }
                     })
                   }}

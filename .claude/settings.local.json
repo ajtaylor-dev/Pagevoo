@@ -31,7 +31,8 @@
       "Bash(del nul)",
       "Bash(git checkout:*)",
       "Read(//d//**)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

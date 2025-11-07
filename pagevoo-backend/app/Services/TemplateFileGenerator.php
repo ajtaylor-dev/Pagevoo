@@ -447,11 +447,7 @@ class TemplateFileGenerator
         $css .= "  z-index: 10;\n";
         $css .= "}\n\n";
 
-        $css .= ".nav-dropdown[data-trigger=\"hover\"]:hover .dropdown-menu {\n";
-        $css .= "  display: block;\n";
-        $css .= "}\n\n";
-
-        $css .= ".nav-dropdown[data-trigger=\"click\"].active .dropdown-menu {\n";
+        $css .= ".nav-dropdown.active .dropdown-menu {\n";
         $css .= "  display: block;\n";
         $css .= "}\n\n";
 
@@ -917,6 +913,12 @@ class TemplateFileGenerator
             $css .= "  color: " . ($btnStyle['hoverTextColor'] ?? '#ffffff') . " !important;\n";
             $css .= "  transition: all 0.2s;\n";
             $css .= "}\n\n";
+
+            // Remove gap when button styling is enabled (margin controls the spacing)
+            $css .= "/* {$section->section_name} - Remove Default Gap */\n";
+            $css .= "#{$sectionId} .nav-links {\n";
+            $css .= "  gap: 0;\n";
+            $css .= "}\n\n";
         }
     }
 
@@ -1076,9 +1078,9 @@ class TemplateFileGenerator
         $html .= "  }, 100);\n";
         $html .= "});\n\n";
 
-        $html .= "// Handle click-based dropdown menus\n";
+        $html .= "// Handle dropdown menus with click behavior\n";
         $html .= "document.addEventListener('DOMContentLoaded', function() {\n";
-        $html .= "  const dropdowns = document.querySelectorAll('.nav-dropdown[data-trigger=\"click\"]');\n";
+        $html .= "  const dropdowns = document.querySelectorAll('.nav-dropdown');\n";
         $html .= "  \n";
         $html .= "  dropdowns.forEach(function(dropdown) {\n";
         $html .= "    const toggle = dropdown.querySelector('.dropdown-toggle');\n";
@@ -1174,6 +1176,19 @@ class TemplateFileGenerator
         $hasButtonStyle = isset($content['buttonStyling']) && ($content['buttonStyling']['enabled'] ?? false);
         $btnStyle = $hasButtonStyle ? $content['buttonStyling'] : [];
 
+        // Auto-migrate old button styling with all margins set to 0 to use new defaults (5px)
+        if ($hasButtonStyle &&
+            isset($btnStyle['marginTop']) && $btnStyle['marginTop'] === 0 &&
+            isset($btnStyle['marginRight']) && $btnStyle['marginRight'] === 0 &&
+            isset($btnStyle['marginBottom']) && $btnStyle['marginBottom'] === 0 &&
+            isset($btnStyle['marginLeft']) && $btnStyle['marginLeft'] === 0) {
+            // All margins are 0 - likely old default, update to new default
+            $btnStyle['marginTop'] = 5;
+            $btnStyle['marginRight'] = 5;
+            $btnStyle['marginBottom'] = 5;
+            $btnStyle['marginLeft'] = 5;
+        }
+
         if (count($links) > 0) {
             $linksJustify = $linksPosition === 'center' ? 'center' : ($linksPosition === 'left' ? 'flex-start' : 'flex-end');
             $linksHTML .= "    <div class=\"nav-links desktop-menu\" style=\"justify-content: {$linksJustify};\">\n";
@@ -1199,14 +1214,14 @@ class TemplateFileGenerator
                         $btnStyle['paddingLeft'] ?? 16,
                         $btnStyle['fontSize'] ?? 14,
                         $btnStyle['fontWeight'] ?? '500',
-                        $btnStyle['marginTop'] ?? 0,
-                        $btnStyle['marginRight'] ?? 0,
-                        $btnStyle['marginBottom'] ?? 0,
-                        $btnStyle['marginLeft'] ?? 0
+                        array_key_exists('marginTop', $btnStyle) ? $btnStyle['marginTop'] : 5,
+                        array_key_exists('marginRight', $btnStyle) ? $btnStyle['marginRight'] : 5,
+                        array_key_exists('marginBottom', $btnStyle) ? $btnStyle['marginBottom'] : 5,
+                        array_key_exists('marginLeft', $btnStyle) ? $btnStyle['marginLeft'] : 5
                     ) : '';
 
                     $linksHTML .= "      <div class=\"nav-dropdown\" data-trigger=\"{$trigger}\">\n";
-                    $linksHTML .= "        <a href=\"{$href}\" class=\"{$linkClass}\"{$buttonStyles}>{$label} ▼</a>\n";
+                    $linksHTML .= "        <a href=\"{$href}\" class=\"{$linkClass}\"{$buttonStyles}>{$label}</a>\n";
                     $linksHTML .= "        <div class=\"dropdown-menu\">\n";
                     foreach ($link['subItems'] as $subIdx => $subLink) {
                         $subLabel = is_array($subLink) ? ($subLink['label'] ?? 'Sub Link') : $subLink;
@@ -1236,10 +1251,10 @@ class TemplateFileGenerator
                         $btnStyle['paddingLeft'] ?? 16,
                         $btnStyle['fontSize'] ?? 14,
                         $btnStyle['fontWeight'] ?? '500',
-                        $btnStyle['marginTop'] ?? 0,
-                        $btnStyle['marginRight'] ?? 0,
-                        $btnStyle['marginBottom'] ?? 0,
-                        $btnStyle['marginLeft'] ?? 0
+                        array_key_exists('marginTop', $btnStyle) ? $btnStyle['marginTop'] : 5,
+                        array_key_exists('marginRight', $btnStyle) ? $btnStyle['marginRight'] : 5,
+                        array_key_exists('marginBottom', $btnStyle) ? $btnStyle['marginBottom'] : 5,
+                        array_key_exists('marginLeft', $btnStyle) ? $btnStyle['marginLeft'] : 5
                     ) : '';
 
                     $linksHTML .= "      <a href=\"{$href}\" class=\"{$linkClass}\"{$buttonStyles}>{$label}</a>\n";
@@ -1281,10 +1296,10 @@ class TemplateFileGenerator
                 $btnStyle['paddingLeft'] ?? 16,
                 $btnStyle['fontSize'] ?? 14,
                 $btnStyle['fontWeight'] ?? '500',
-                $btnStyle['marginTop'] ?? 0,
-                $btnStyle['marginRight'] ?? 0,
-                $btnStyle['marginBottom'] ?? 0,
-                $btnStyle['marginLeft'] ?? 0
+                array_key_exists('marginTop', $btnStyle) ? $btnStyle['marginTop'] : 5,
+                array_key_exists('marginRight', $btnStyle) ? $btnStyle['marginRight'] : 5,
+                array_key_exists('marginBottom', $btnStyle) ? $btnStyle['marginBottom'] : 5,
+                array_key_exists('marginLeft', $btnStyle) ? $btnStyle['marginLeft'] : 5
             ) : '';
 
             foreach ($links as $linkIndex => $link) {
