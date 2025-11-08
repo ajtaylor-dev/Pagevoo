@@ -440,3 +440,253 @@ Note: NPM install error needs manual resolution via cache clear"
 **Risk Level**: Low (can revert anytime)
 **Complexity**: High (9,262 lines to refactor)
 **Progress**: ~10% complete (foundation built)
+
+## Session 41: Phase 2 Component Extraction - Properties Panels
+**Date**: 2025-11-08
+**Status**: ✅ COMPLETE
+
+### Context
+Continuation of Phase 1 foundation work. This session focused on extracting property panel components from the monolithic TemplateBuilder.tsx to improve maintainability and reduce file size.
+
+### Work Completed
+
+#### 1. Component Extractions ✅
+
+**A. ButtonStyleModal Component**
+- **File**: `src/components/modals/ButtonStyleModal.tsx` (458 lines)
+- **Reduction**: 474 lines removed from TemplateBuilder
+- **Purpose**: Navbar button styling controls (colors, borders, padding, typography, margins)
+- **Props**: 
+  - `isOpen`, `onClose`, `selectedSection`, `onUpdateContent`
+- **Features**:
+  - Live preview of button styles
+  - Full styling controls for navbar buttons
+  - Modal-based interface
+
+**B. NavbarProperties Component**
+- **File**: `src/components/properties/NavbarProperties.tsx` (566 lines)
+- **Reduction**: 531 lines removed from TemplateBuilder
+- **Purpose**: Navbar section property controls
+- **Props**:
+  - `selectedSection`, `template`, `onUpdateContent`, `onOpenButtonStyleModal`
+- **Features**:
+  - Background, padding, margin, width, height controls
+  - Layout: logo position, links position, logo width
+  - Link styling: button mode toggle, colors, hover states
+  - Navigation tree management via NavigationTreeManager
+- **Dependencies**: NavigationTreeManager component
+
+**C. FooterProperties Component**
+- **File**: `src/components/properties/FooterProperties.tsx` (213 lines)
+- **Reduction**: 172 lines removed from TemplateBuilder
+- **Purpose**: Footer section property controls (footer-simple, footer-columns)
+- **Props**:
+  - `selectedSection`, `onUpdateContent`
+- **Features**:
+  - Footer-simple: background color, padding, text align
+  - Footer-columns: footer background, copyright background, copyright padding
+  - Legacy navbar warning display
+
+#### 2. Bug Fixes ✅
+
+**A. NavigationTreeManager Import Error**
+- **Issue**: `Uncaught ReferenceError: NavigationTreeManager is not defined`
+- **Fix**: Added missing import to NavbarProperties.tsx
+- **File**: NavbarProperties.tsx:2
+- **Code**: `import NavigationTreeManager from '../NavigationTreeManager'`
+
+**B. Template Prop Missing Error**
+- **Issue**: `Uncaught ReferenceError: template is not defined`
+- **Root Cause**: NavbarProperties needed `template` to pass pages to NavigationTreeManager
+- **Fix**: 
+  - Added Template and TemplatePage type definitions
+  - Updated NavbarPropertiesProps interface to include `template: Template | null`
+  - Updated TemplateBuilder to pass `template` prop to NavbarProperties
+- **Result**: NavigationTreeManager now receives template pages correctly
+
+#### 3. Port Management ✅
+- Cleaned up multiple orphaned dev servers
+- Ensured only port 5173 is in use
+- Used PowerShell taskkill to free ports
+
+### Technical Implementation
+
+**Component Pattern Used**:
+```typescript
+// Local type definitions (avoiding import issues)
+interface TemplateSection {
+  id: number
+  type: string
+  content: any
+  // ...
+}
+
+interface ComponentProps {
+  selectedSection: TemplateSection
+  onUpdateContent: (sectionId: number, content: any) => void
+}
+
+export const Component: React.FC<ComponentProps> = ({
+  selectedSection,
+  onUpdateContent
+}) => {
+  // Component logic
+}
+```
+
+**Key Decisions**:
+1. **Local Type Definitions**: Used inline interfaces instead of imports to avoid module resolution issues
+2. **Props Pattern**: Parent component (TemplateBuilder) passes handlers and data to child components
+3. **Incremental Commits**: Each extraction committed separately for safe rollback points
+4. **HMR Friendly**: All changes applied via Hot Module Replacement without server restarts
+
+### Files Modified
+
+**Created**:
+1. `src/components/modals/ButtonStyleModal.tsx` (458 lines)
+2. `src/components/properties/NavbarProperties.tsx` (566 lines)
+3. `src/components/properties/FooterProperties.tsx` (213 lines)
+
+**Modified**:
+1. `src/pages/TemplateBuilder.tsx` (9,262 → 8,086 lines, -1,177 lines)
+
+### Progress Metrics
+
+**Before Phase 2**:
+- TemplateBuilder.tsx: 9,262 lines
+- Components extracted: 0
+- Maintainability: Poor
+
+**After Phase 2**:
+- TemplateBuilder.tsx: 8,086 lines (-12.7%)
+- Components extracted: 3
+- Total lines extracted: 1,177 lines
+- Maintainability: Significantly improved
+
+**Git Commits**:
+1. Extract ButtonStyleModal component
+2. Extract NavbarProperties component
+3. Extract FooterProperties component
+4. Fix: Add missing NavigationTreeManager import
+5. Fix: Add missing template prop to NavbarProperties
+
+### Testing Results
+
+**Functionality Verified** ✅:
+- Navbar properties panel works correctly
+- Footer properties panel works correctly
+- Button style modal opens and functions properly
+- Navigation tree manager receives pages correctly
+- All property changes update sections correctly
+- HMR updates components without issues
+
+**No Regressions**:
+- All existing functionality preserved
+- No breaking changes
+- User confirmed "thats working" for navbar and footer
+
+### Key Learnings
+
+**1. Module Import Issues**:
+- Browser module resolution can be problematic with path aliases
+- Local type definitions are more reliable for extracted components
+- Avoids TypeScript compilation/import complexity
+
+**2. Component Dependencies**:
+- Must identify all dependencies when extracting (NavigationTreeManager)
+- Props interface must include all required data (template prop)
+- Missing dependencies surface as runtime errors
+
+**3. Incremental Approach**:
+- Extract one component at a time
+- Test after each extraction
+- Commit after verification
+- Easier to debug issues
+
+**4. HMR Benefits**:
+- Vite HMR updates components instantly
+- No need for full page refresh
+- Faster development iteration
+
+### Architecture Improvements
+
+**Before**:
+```
+TemplateBuilder.tsx (9,262 lines)
+├── Inline ButtonStyleModal
+├── Inline NavbarProperties
+├── Inline FooterProperties
+└── Everything else
+```
+
+**After**:
+```
+TemplateBuilder.tsx (8,086 lines)
+└── Imports and uses extracted components
+
+components/
+├── modals/
+│   └── ButtonStyleModal.tsx (458 lines)
+└── properties/
+    ├── NavbarProperties.tsx (566 lines)
+    └── FooterProperties.tsx (213 lines)
+```
+
+### What Didn't Get Extracted
+
+**Canvas Components**: 
+- NavbarCanvas and FooterCanvas rendering is inline in TemplateBuilder
+- Section rendering is tightly coupled to the main component
+- Export/HTML generation functions are separate from UI rendering
+- Not beneficial to extract at this stage
+
+### Current State
+
+**TemplateBuilder.tsx Analysis**:
+- Current size: 8,086 lines
+- Remaining inline sections: Section rendering, drag/drop, text editor
+- Properties panels: ✅ Extracted
+- Modals: ✅ Partially extracted (ButtonStyleModal done)
+- Store usage: ❌ Not yet migrated to Zustand
+
+### Next Steps
+
+**Phase 3 Options** (for future sessions):
+1. **Additional Modal Extraction**:
+   - Add Page Modal
+   - Edit Page Modal
+   - CSS Inspector Modal
+
+2. **Zustand Migration**:
+   - Replace useState with store hooks
+   - Implement history store for undo/redo
+   - Add section store for CRUD operations
+
+3. **Further Component Extraction**:
+   - Extract rich text editor to separate component
+   - Extract drag/drop logic to custom hooks
+   - Extract section rendering to SectionRenderer component
+
+4. **Code Organization**:
+   - Extract HTML/CSS generation to utils/generators/
+   - Create custom hooks for common logic
+   - Add PropTypes or Zod validation
+
+### Session Summary
+
+**Duration**: Full session
+**Files Created**: 3 components
+**Files Modified**: 1 main file
+**Lines Reduced**: 1,177 lines (-12.7%)
+**Commits**: 5 commits
+**Bugs Fixed**: 2 (NavigationTreeManager import, template prop)
+**Functionality**: ✅ All working
+**User Testing**: ✅ Confirmed working
+
+---
+
+**Status**: Phase 2 Component Extraction Complete ✅  
+**Quality**: Production-ready
+**Risk**: Low (incremental changes, all tested)
+**Next Session**: Choose from Phase 3 options above
+
