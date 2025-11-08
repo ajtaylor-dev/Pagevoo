@@ -10,6 +10,7 @@ import NavigationTreeManager from '@/components/NavigationTreeManager'
 import { MobileMenu } from '@/components/MobileMenu'
 import { ButtonStyleModal } from '@/components/modals/ButtonStyleModal'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
+import { FooterProperties } from '../components/properties/FooterProperties'
 import {
   DndContext,
   DragOverlay,
@@ -6565,184 +6566,12 @@ ${sectionsHTML}
                       />
                     )}
 
- {/* Footer Section Controls */}
-                    {selectedSection.type === 'footer-simple' && (
-                      <>
-                        <div className="mb-3">
-                          <label className="text-xs text-gray-600 block mb-1">Background Color</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="color"
-                              value={selectedSection.content?.sectionStyle?.background || '#1f2937'}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  sectionStyle: {
-                                    ...selectedSection.content?.sectionStyle,
-                                    background: e.target.value
-                                  }
-                                })
-                              }}
-                              className="w-10 h-8 rounded border border-gray-300"
-                            />
-                            <input
-                              type="text"
-                              value={selectedSection.content?.sectionStyle?.background || '#1f2937'}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  sectionStyle: {
-                                    ...selectedSection.content?.sectionStyle,
-                                    background: e.target.value
-                                  }
-                                })
-                              }}
-                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                              placeholder="#1f2937"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mb-3">
-                          <label className="text-xs text-gray-600 block mb-1">Padding</label>
-                          <input
-                            type="text"
-                            value={selectedSection.content?.sectionStyle?.padding || '32px'}
-                            onChange={(e) => {
-                              handleUpdateSectionContent(selectedSection.id, {
-                                ...selectedSection.content,
-                                sectionStyle: {
-                                  ...selectedSection.content?.sectionStyle,
-                                  padding: e.target.value
-                                }
-                              })
-                            }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                            placeholder="32px"
-                          />
-                        </div>
-
-                        <div className="mb-3">
-                          <label className="text-xs text-gray-600 block mb-1">Text Align</label>
-                          <select
-                            value={selectedSection.content?.sectionStyle?.textAlign || 'center'}
-                            onChange={(e) => {
-                              handleUpdateSectionContent(selectedSection.id, {
-                                ...selectedSection.content,
-                                sectionStyle: {
-                                  ...selectedSection.content?.sectionStyle,
-                                  textAlign: e.target.value
-                                }
-                              })
-                            }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                          >
-                            <option value="left">Left</option>
-                            <option value="center">Center</option>
-                            <option value="right">Right</option>
-                          </select>
-                        </div>
-                      </>
-                    )}
-
-                    {selectedSection.type === 'footer-columns' && (
-                      <>
-                        <div className="mb-3">
-                          <label className="text-xs text-gray-600 block mb-1">Footer Background Color</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="color"
-                              value={selectedSection.content?.sectionStyle?.background || '#172554'}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  sectionStyle: {
-                                    ...selectedSection.content?.sectionStyle,
-                                    background: e.target.value
-                                  }
-                                })
-                              }}
-                              className="w-10 h-8 rounded border border-gray-300"
-                            />
-                            <input
-                              type="text"
-                              value={selectedSection.content?.sectionStyle?.background || '#172554'}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  sectionStyle: {
-                                    ...selectedSection.content?.sectionStyle,
-                                    background: e.target.value
-                                  }
-                                })
-                              }}
-                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                              placeholder="#172554"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mb-3 border-t border-gray-200 pt-3">
-                          <label className="text-xs text-gray-600 block mb-1">Copyright Background Color</label>
-                          <div className="flex gap-2">
-                            <input
-                              type="color"
-                              value={selectedSection.content?.copyrightStyle?.background || '#171717'}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  copyrightStyle: {
-                                    ...selectedSection.content?.copyrightStyle,
-                                    background: e.target.value
-                                  }
-                                })
-                              }}
-                              className="w-10 h-8 rounded border border-gray-300"
-                            />
-                            <input
-                              type="text"
-                              value={selectedSection.content?.copyrightStyle?.background || '#171717'}
-                              onChange={(e) => {
-                                handleUpdateSectionContent(selectedSection.id, {
-                                  ...selectedSection.content,
-                                  copyrightStyle: {
-                                    ...selectedSection.content?.copyrightStyle,
-                                    background: e.target.value
-                                  }
-                                })
-                              }}
-                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                              placeholder="#171717"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="mb-3">
-                          <label className="text-xs text-gray-600 block mb-1">Copyright Padding</label>
-                          <input
-                            type="text"
-                            value={selectedSection.content?.copyrightStyle?.padding || '24px'}
-                            onChange={(e) => {
-                              handleUpdateSectionContent(selectedSection.id, {
-                                ...selectedSection.content,
-                                copyrightStyle: {
-                                  ...selectedSection.content?.copyrightStyle,
-                                  padding: e.target.value
-                                }
-                              })
-                            }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                            placeholder="24px"
-                          />
-                        </div>
-                      </>
-                    )}
-
-                    {/* Legacy navbar controls */}
-                    {selectedSection.type.startsWith('navbar-') && (
-                      <div className="p-3 bg-yellow-50 border border-yellow-400 rounded text-xs text-yellow-800">
-                        ⚠️ This navbar type has been removed. Please delete this section.
-                      </div>
+                    {/* Footer Section Controls */}
+                    {(selectedSection.type === 'footer-simple' || selectedSection.type === 'footer-columns' || selectedSection.type.startsWith('navbar-')) && (
+                      <FooterProperties
+                        selectedSection={selectedSection}
+                        onUpdateContent={handleUpdateSectionContent}
+                      />
                     )}
                       </>
                     )}
