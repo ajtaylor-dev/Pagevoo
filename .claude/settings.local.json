@@ -35,7 +35,8 @@
       "Bash(npm install:*)",
       "Bash(npm cache clean:*)",
       "Bash(npm --version:*)",
-      "Bash(node --version:*)"
+      "Bash(node --version:*)",
+      "Bash(git rm:*)"
     ],
     "deny": [],
     "ask": []

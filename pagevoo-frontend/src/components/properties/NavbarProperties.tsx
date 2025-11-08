@@ -11,14 +11,26 @@ interface TemplateSection {
   is_locked?: boolean
 }
 
+interface TemplatePage {
+  id: number
+  name: string
+  slug: string
+}
+
+interface Template {
+  pages?: TemplatePage[]
+}
+
 interface NavbarPropertiesProps {
   selectedSection: TemplateSection
+  template: Template | null
   onUpdateContent: (sectionId: number, content: any) => void
   onOpenButtonStyleModal: () => void
 }
 
 export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
   selectedSection,
+  template,
   onUpdateContent,
   onOpenButtonStyleModal
 }) => {

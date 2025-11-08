@@ -6561,6 +6561,7 @@ ${sectionsHTML}
                     {selectedSection.type === 'navbar' && (
                       <NavbarProperties
                         selectedSection={selectedSection}
+                        template={template}
                         onUpdateContent={handleUpdateSectionContent}
                         onOpenButtonStyleModal={() => setShowNavButtonStyleModal(true)}
                       />
