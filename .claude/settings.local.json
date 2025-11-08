@@ -32,7 +32,10 @@
       "Bash(git checkout:*)",
       "Read(//d//**)",
       "Bash(cat:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(npm cache clean:*)",
+      "Bash(npm --version:*)",
+      "Bash(node --version:*)"
     ],
     "deny": [],
     "ask": []
