@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, memo, useCallback } from 'react'
 import { createPortal } from 'react-dom'
+
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
@@ -734,7 +735,7 @@ export default function TemplateBuilder() {
   // Dynamically update HTML when template/page changes
   useEffect(() => {
     if (currentPage && showSourceCodeModal) {
-      const generatedHTML = generatePageHTML()
+      const generatedHTML = generatePageHTML(currentPage)
       setEditableHTML(generatedHTML)
     }
   }, [currentPage, currentPage?.sections, JSON.stringify(currentPage?.sections?.map(s => ({ id: s.id, section_id: s.section_id, section_name: s.section_name }))), showSourceCodeModal])
@@ -6844,7 +6845,7 @@ padding: 1rem;`
                       </button>
                       <button
                         onClick={() => {
-                          const html = generatePageHTML()
+                          const html = generatePageHTML(currentPage)
                           navigator.clipboard.writeText(html)
                           alert('Source code copied to clipboard!')
                         }}
@@ -6854,7 +6855,7 @@ padding: 1rem;`
                       </button>
                       <button
                         onClick={() => {
-                          const html = generatePageHTML()
+                          const html = generatePageHTML(currentPage)
                           const blob = new Blob([html], { type: 'text/html' })
                           const url = URL.createObjectURL(blob)
                           const a = document.createElement('a')
@@ -6925,7 +6926,7 @@ padding: 1rem;`
                 {!isEditingHTML ? (
                   <div className="h-full overflow-auto">
                     <pre className="text-green-400 font-mono text-sm p-4 whitespace-pre-wrap break-words">
-                      <code>{editableHTML || generatePageHTML()}</code>
+                      <code>{editableHTML || generatePageHTML(currentPage)}</code>
                     </pre>
                   </div>
                 ) : (
