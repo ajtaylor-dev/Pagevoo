@@ -4140,14 +4140,63 @@ ${sectionsHTML}
 
     // Grid sections (1x1, 2x1, 3x1, etc.)
     if (section.type.startsWith('grid-')) {
+      const [_, gridConfig] = section.type.split('-')
+      const [cols, rows] = gridConfig.split('x').map(Number)
+      const columns = content.columns || []
+
+      const handleGridColumnEdit = (colIdx: number, e: React.FocusEvent<HTMLElement>) => {
+        const value = e.currentTarget.innerHTML
+        const updatedColumns = [...columns]
+        updatedColumns[colIdx] = { ...updatedColumns[colIdx], content: value }
+
+        if (!currentPage) return
+
+        const updatedSections = currentPage.sections.map(s => {
+          if (s.id === section.id) {
+            return {
+              ...s,
+              content: {
+                ...s.content,
+                columns: updatedColumns
+              }
+            }
+          }
+          return s
+        })
+
+        const updatedPages = template!.pages.map(p => {
+          if (p.id === currentPage.id) {
+            return { ...p, sections: updatedSections }
+          }
+          return p
+        })
+
+        setTemplate({ ...template!, pages: updatedPages })
+        setCurrentPage({ ...currentPage, sections: updatedSections })
+      }
+
       return sectionWrapper(
-        <GridSection
-          section={section}
-          selectedSection={selectedSection}
-          editingText={editingText}
-          onOpenTextEditor={handleOpenTextEditor}
-          onUpdateColumn={handleGridColumnUpdate}
-        />
+        <div
+          id={section.section_id || `section-${section.id}`}
+          className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
+        >
+          <div className="row">
+            {columns.map((col: any, idx: number) => (
+              <div
+                key={idx}
+                className={`col-${col.colWidth || 12}`}
+              >
+                <EditableText
+                  tag="div"
+                  sectionId={section.id}
+                  field={`column_${idx}`}
+                  value={col.content || `Column ${idx + 1}`}
+                  className="outline-none hover:bg-white/50 rounded transition"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       )
     }
 
