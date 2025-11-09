@@ -4316,8 +4316,11 @@ ${sectionsHTML}
               currentPage={currentPage}
               activeId={activeId}
               activeDragData={activeDragData}
+              overId={overId}
               renderSection={renderSection}
               viewport={viewport}
+              template={template}
+              setSelectedSection={setSelectedSection}
             />
           </div>
         </main>
@@ -4353,37 +4356,6 @@ ${sectionsHTML}
               setExpandedColumnIndex={setExpandedColumnIndex}
               setShowNavButtonStyleModal={setShowNavButtonStyleModal}
             />
-          </>
-        )}
-                        })()}
-                    {/* Navigation Section Controls */}
-                    {selectedSection.type === 'navbar' && (
-                      <NavbarProperties
-                        selectedSection={selectedSection}
-                        template={template}
-                        onUpdateContent={handleUpdateSectionContent}
-                        onOpenButtonStyleModal={() => setShowNavButtonStyleModal(true)}
-                      />
-                    )}
-
-                    {/* Footer Section Controls */}
-                    {(selectedSection.type === 'footer-simple' || selectedSection.type === 'footer-columns' || selectedSection.type.startsWith('navbar-')) && (
-                      <FooterProperties
-                        selectedSection={selectedSection}
-                        onUpdateContent={handleUpdateSectionContent}
-                      />
-                    )}
-                      </>
-                    )}
-                  </div>
-                  )
-                ) : (
-                  <div className="text-xs text-gray-500 text-center py-8">
-                    Click a section in the canvas to edit its properties
-                  </div>
-                )}
-              </div>
-            </aside>
           </>
         )}
       </div>
