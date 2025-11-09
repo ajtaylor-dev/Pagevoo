@@ -38,7 +38,8 @@
       "Bash(node --version:*)",
       "Bash(git rm:*)",
       "Bash(nul)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Bash(del pagevoo-frontendsrcpagesTemplateBuilder.tsx.backup)"
     ],
     "deny": [],
     "ask": []
