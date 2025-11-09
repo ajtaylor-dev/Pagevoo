@@ -13,6 +13,9 @@ import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
 import { EditableText } from '../components/EditableText'
+import { HeroSection } from '../components/sections/HeroSection'
+import { GallerySection } from '../components/sections/GallerySection'
+import { FormSection } from '../components/sections/FormSection'
 import {
   generateRandomString,
   sanitizeName,
@@ -4172,85 +4175,33 @@ ${sectionsHTML}
     switch (section.type) {
       case 'hero':
         return sectionWrapper(
-          <div className={`relative min-h-[400px] bg-gradient-to-br from-[#98b290] to-[#7a9274] flex items-center justify-center text-white p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-            <div className="text-center max-w-3xl">
-              <EditableText
-                tag="h1"
-                sectionId={section.id}
-                field="title"
-                value={content.title || 'Welcome'}
-                className="text-5xl font-bold mb-4 outline-none hover:bg-white/10 px-2 py-1 rounded transition"
-              
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "title"}
-                  onOpenEditor={handleOpenTextEditor}/>
-              <EditableText
-                tag="p"
-                sectionId={section.id}
-                field="subtitle"
-                value={content.subtitle || 'Your subtitle here'}
-                className="text-xl mb-6 outline-none hover:bg-white/10 px-2 py-1 rounded transition"
-              
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "subtitle"}
-                  onOpenEditor={handleOpenTextEditor}/>
-              <EditableText
-                tag="button"
-                sectionId={section.id}
-                field="cta_text"
-                value={content.cta_text || 'Get Started'}
-                className="px-8 py-3 bg-white text-gray-800 rounded-lg font-semibold hover:bg-gray-100 transition outline-none"
-              
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "cta_text"}
-                  onOpenEditor={handleOpenTextEditor}/>
-            </div>
-          </div>
+          <HeroSection
+            section={section}
+            selectedSection={selectedSection}
+            editingText={editingText}
+            onOpenTextEditor={handleOpenTextEditor}
+          />
         )
 
       case 'gallery':
         return sectionWrapper(
-          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-            <EditableText
-              tag="h2"
-              sectionId={section.id}
-              field="heading"
-              value={content.heading || 'Gallery'}
-              className="text-3xl font-bold mb-6 text-center outline-none hover:bg-white/50 px-2 py-1 rounded transition"
-            
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
-                  onOpenEditor={handleOpenTextEditor}/>
-            <div className="grid grid-cols-3 gap-4">
-              {Array(6).fill(null).map((_, idx) => (
-                <div key={idx} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-400 text-sm">Image {idx + 1}</span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <GallerySection
+            section={section}
+            selectedSection={selectedSection}
+            editingText={editingText}
+            onOpenTextEditor={handleOpenTextEditor}
+          />
         )
 
       case 'contact-form':
       case 'booking-form':
         return sectionWrapper(
-          <div className={`p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-            <EditableText
-              tag="h2"
-              sectionId={section.id}
-              field="heading"
-              value={content.heading || section.type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-              className="text-3xl font-bold mb-6 text-center outline-none hover:bg-gray-100 px-2 py-1 rounded transition"
-            
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
-                  onOpenEditor={handleOpenTextEditor}/>
-            <div className="max-w-md mx-auto space-y-4">
-              {(content.fields || ['name', 'email', 'message']).map((field: string, idx: number) => (
-                <div key={idx} className="border-2 border-gray-300 rounded p-3 bg-gray-50">
-                  <span className="text-sm text-gray-600 capitalize">{field}</span>
-                </div>
-              ))}
-              <button className="w-full px-6 py-3 bg-[#98b290] text-white rounded-lg font-semibold">
-                Submit
-              </button>
-            </div>
-          </div>
+          <FormSection
+            section={section}
+            selectedSection={selectedSection}
+            editingText={editingText}
+            onOpenTextEditor={handleOpenTextEditor}
+          />
         )
 
       case 'login-box':
