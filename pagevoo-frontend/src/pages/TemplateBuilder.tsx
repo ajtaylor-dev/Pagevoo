@@ -6036,292 +6036,39 @@ ${sectionsHTML}
           </div>
 
           {/* Color Picker Modal */}
-          {showColorPicker && (
-            <div
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
-              onClick={() => setShowColorPicker(false)}
-            >
-              <div
-                className="bg-white rounded-lg shadow-xl p-4 max-w-sm w-full mx-4 max-h-[90vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold">Choose Text Color</h3>
-                  <button
-                    onClick={() => setShowColorPicker(false)}
-                    className="text-gray-400 hover:text-gray-600 transition"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Color Presets */}
-                <div className="grid grid-cols-8 gap-2 mb-3">
-                  {[
-                    '#000000', '#FFFFFF', '#F3F4F6', '#D1D5DB', '#6B7280', '#374151', '#1F2937', '#111827',
-                    '#EF4444', '#F59E0B', '#10B981', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316',
-                    '#DC2626', '#D97706', '#059669', '#2563EB', '#7C3AED', '#DB2777', '#0D9488', '#EA580C',
-                    '#991B1B', '#92400E', '#065F46', '#1E40AF', '#5B21B6', '#9F1239', '#115E59', '#9A3412'
-                  ].map(color => (
-                    <button
-                      key={color}
-                      onClick={() => setTempColor(color)}
-                      className={`w-8 h-8 rounded border-2 transition ${
-                        tempColor === color ? 'border-blue-500 scale-110' : 'border-gray-300'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={color}
-                    />
-                  ))}
-                </div>
-
-                {/* Hex Input */}
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Hex Code</label>
-                  <input
-                    type="text"
-                    value={tempColor}
-                    onChange={(e) => {
-                      const value = e.target.value
-                      if (/^#[0-9A-Fa-f]{0,6}$/.test(value)) {
-                        setTempColor(value)
-                      }
-                    }}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="#000000"
-                    maxLength={7}
-                  />
-                </div>
-
-                {/* Preview */}
-                <div className="mb-3 p-3 border border-gray-300 rounded">
-                  <div
-                    className="w-full h-12 rounded flex items-center justify-center text-sm font-medium"
-                    style={{ backgroundColor: tempColor, color: tempColor }}
-                  >
-                    <span style={{
-                      color: parseInt(tempColor.replace('#', ''), 16) > 0xffffff/2 ? '#000' : '#fff'
-                    }}>
-                      Preview
-                    </span>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowColorPicker(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleApplyColorFromPicker}
-                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <ColorPickerModal
+            isOpen={showColorPicker}
+            onClose={() => setShowColorPicker(false)}
+            tempColor={tempColor}
+            setTempColor={setTempColor}
+            onApply={handleApplyColorFromPicker}
+          />
 
           {/* Link Modal */}
-          {showLinkModal && (
-            <div
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
-              onClick={() => setShowLinkModal(false)}
-            >
-              <div
-                className="bg-white rounded-lg shadow-xl p-4 max-w-md w-full mx-4"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold">Insert/Edit Link</h3>
-                  <button
-                    onClick={() => setShowLinkModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Link Text */}
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Link Text</label>
-                  <input
-                    type="text"
-                    value={linkText}
-                    onChange={(e) => setLinkText(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="Enter link text"
-                  />
-                </div>
-
-                {/* Link URL */}
-                <div className="mb-3">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Link URL</label>
-                  <input
-                    type="url"
-                    value={linkUrl}
-                    onChange={(e) => setLinkUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com"
-                  />
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowLinkModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  {linkUrl && (
-                    <button
-                      onClick={handleRemoveLink}
-                      className="flex-1 px-4 py-2 border border-red-300 text-red-600 rounded text-sm hover:bg-red-50 transition"
-                    >
-                      Remove Link
-                    </button>
-                  )}
-                  <button
-                    onClick={handleApplyLink}
-                    disabled={!linkUrl}
-                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Apply
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <LinkModal
+            isOpen={showLinkModal}
+            onClose={() => setShowLinkModal(false)}
+            linkText={linkText}
+            setLinkText={setLinkText}
+            linkUrl={linkUrl}
+            setLinkUrl={setLinkUrl}
+            onApply={handleApplyLink}
+            onRemove={handleRemoveLink}
+          />
 
           {/* Insert Image Modal */}
-          {showInsertImageModal && (
-            <div
-              className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]"
-              onClick={() => setShowInsertImageModal(false)}
-            >
-              <div
-                className="bg-white rounded-lg shadow-xl p-4 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-semibold">Insert Image</h3>
-                  <button
-                    onClick={() => setShowInsertImageModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </div>
-
-                {/* Mode Selector */}
-                <div className="flex gap-2 mb-4">
-                  <button
-                    onClick={() => setImageInsertMode('url')}
-                    className={`flex-1 px-4 py-2 rounded border transition ${
-                      imageInsertMode === 'url'
-                        ? 'bg-blue-500 text-white border-blue-600'
-                        : 'border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    URL
-                  </button>
-                  <button
-                    onClick={() => setImageInsertMode('gallery')}
-                    className={`flex-1 px-4 py-2 rounded border transition ${
-                      imageInsertMode === 'gallery'
-                        ? 'bg-blue-500 text-white border-blue-600'
-                        : 'border-gray-300 hover:bg-gray-50'
-                    }`}
-                  >
-                    Gallery
-                  </button>
-                </div>
-
-                {/* URL Mode */}
-                {imageInsertMode === 'url' && (
-                  <div className="mb-4">
-                    <label className="block text-xs font-medium text-gray-700 mb-1">Image URL</label>
-                    <input
-                      type="url"
-                      value={imageUrl}
-                      onChange={(e) => setImageUrl(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="https://example.com/image.jpg"
-                    />
-                    {imageUrl && (
-                      <div className="mt-2 p-2 border border-gray-200 rounded">
-                        <p className="text-xs text-gray-600 mb-1">Preview:</p>
-                        <img src={imageUrl} alt="Preview" className="max-w-full h-auto max-h-48 rounded" onError={(e) => {
-                          e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100"%3E%3Crect fill="%23ddd" width="100" height="100"/%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" dy=".3em" fill="%23999"%3EInvalid%3C/text%3E%3C/svg%3E'
-                        }} />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Gallery Mode */}
-                {imageInsertMode === 'gallery' && (
-                  <div className="mb-4">
-                    <p className="text-xs text-gray-600 mb-2">Select an image from your gallery:</p>
-                    {template?.images && template.images.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-2 max-h-64 overflow-y-auto">
-                        {template.images.map((image) => (
-                          <div
-                            key={image.id}
-                            onClick={() => setSelectedGalleryImage(`http://localhost:8000/${image.path}`)}
-                            className={`cursor-pointer border-2 rounded p-1 transition ${
-                              selectedGalleryImage === `http://localhost:8000/${image.path}`
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-gray-200 hover:border-gray-400'
-                            }`}
-                          >
-                            <img
-                              src={`http://localhost:8000/${image.path}`}
-                              alt={image.filename}
-                              className="w-full h-24 object-cover rounded"
-                            />
-                            <p className="text-xs text-gray-600 mt-1 truncate">{image.filename}</p>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500 text-sm">
-                        No images in gallery. Upload images first.
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setShowInsertImageModal(false)}
-                    className="flex-1 px-4 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50 transition"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleInsertImage}
-                    disabled={imageInsertMode === 'url' ? !imageUrl : !selectedGalleryImage}
-                    className="flex-1 px-4 py-2 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Insert Image
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
+          <InsertImageModal
+            isOpen={showInsertImageModal}
+            onClose={() => setShowInsertImageModal(false)}
+            imageInsertMode={imageInsertMode}
+            setImageInsertMode={setImageInsertMode}
+            imageUrl={imageUrl}
+            setImageUrl={setImageUrl}
+            selectedGalleryImage={selectedGalleryImage}
+            setSelectedGalleryImage={setSelectedGalleryImage}
+            template={template}
+            onInsert={handleInsertImage}
+          />
 
           {/* Image Resize Controls */}
           {selectedImage && (
@@ -6563,482 +6310,74 @@ ${sectionsHTML}
       ) : null}
 
       {/* Load Template Modal */}
-      {showLoadModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[80vh] flex flex-col">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Load Template</h2>
-              <button
-                onClick={() => setShowLoadModal(false)}
-                className="text-gray-400 hover:text-gray-600 transition"
-              >
-                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 overflow-y-auto flex-1">
-              {loadingTemplates ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-gray-500">Loading templates...</div>
-                </div>
-              ) : availableTemplates.length === 0 ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="text-gray-500">No templates available</div>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 gap-4">
-                  {availableTemplates.map((tmpl) => (
-                    <div
-                      key={tmpl.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:border-[#98b290] hover:shadow-md transition cursor-pointer"
-                      onClick={() => handleLoadTemplate(tmpl.id)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="text-lg font-semibold text-gray-900">{tmpl.name}</h3>
-                          {tmpl.description && (
-                            <p className="text-sm text-gray-600 mt-1">{tmpl.description}</p>
-                          )}
-                          <div className="flex items-center gap-3 mt-2">
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-gray-100 text-gray-700">
-                              {tmpl.business_type}
-                            </span>
-                            {tmpl.is_active && (
-                              <span className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">
-                                Published
-                              </span>
-                            )}
-                            {tmpl.pages && (
-                              <span className="text-xs text-gray-500">
-                                {tmpl.pages.length} {tmpl.pages.length === 1 ? 'page' : 'pages'}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div className="ml-4">
-                          <svg className="w-6 h-6 text-[#98b290]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-4 border-t border-gray-200 flex justify-end">
-              <button
-                onClick={() => setShowLoadModal(false)}
-                className="px-4 py-2 text-sm text-gray-700 hover:text-gray-900 transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LoadModal
+        isOpen={showLoadModal}
+        onClose={() => setShowLoadModal(false)}
+        loadingTemplates={loadingTemplates}
+        availableTemplates={availableTemplates}
+        onLoadTemplate={handleLoadTemplate}
+      />
 
       {/* Source Code Modal */}
-      {showSourceCodeModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg shadow-xl w-[90vw] h-[85vh] max-w-6xl flex flex-col">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">Page Source Code</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    HTML source code for: <span className="font-medium">{currentPage?.name}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  {!isEditingHTML ? (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditableHTML(generatePageHTML())
-                          setIsEditingHTML(true)
-                        }}
-                        className="px-4 py-2 bg-[#98b290] text-white rounded hover:bg-[#7a9274] text-sm font-medium transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          const html = generatePageHTML()
-                          navigator.clipboard.writeText(html)
-                          alert('Source code copied to clipboard!')
-                        }}
-                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
-                      >
-                        Copy
-                      </button>
-                      <button
-                        onClick={() => {
-                          const html = generatePageHTML()
-                          const blob = new Blob([html], { type: 'text/html' })
-                          const url = URL.createObjectURL(blob)
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = `${currentPage?.slug || 'page'}.html`
-                          document.body.appendChild(a)
-                          a.click()
-                          document.body.removeChild(a)
-                          URL.revokeObjectURL(url)
-                        }}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition"
-                      >
-                        Download
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleApplyHTMLChanges}
-                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
-                      >
-                        Apply Changes
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsEditingHTML(false)
-                          setEditableHTML(generatePageHTML())
-                        }}
-                        className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm font-medium transition"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowSourceCodeModal(false)
-                      setIsEditingHTML(false)
-                    }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Warning Banner - Only show when editing */}
-            {isEditingHTML && (
-              <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-200">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800">Warning: Editing source code directly</p>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      Modifying the HTML structure (especially deleting sections or columns) may cause issues with the template builder canvas. It's recommended to only edit text content and attributes.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Content */}
-            <div className="flex-1 overflow-hidden p-6">
-              <div className="h-full bg-gray-900 rounded-lg overflow-hidden">
-                {!isEditingHTML ? (
-                  <div className="h-full overflow-auto">
-                    <pre className="text-green-400 font-mono text-sm p-4 whitespace-pre-wrap break-words">
-                      <code>{editableHTML || generatePageHTML()}</code>
-                    </pre>
-                  </div>
-                ) : (
-                  <textarea
-                    value={editableHTML}
-                    onChange={(e) => setEditableHTML(e.target.value)}
-                    className="w-full h-full p-4 bg-gray-900 text-green-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                    spellCheck={false}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
-              <p className="text-sm text-gray-600">
-                Generated from {currentPage?.sections?.length || 0} section{(currentPage?.sections?.length || 0) !== 1 ? 's' : ''} • {isEditingHTML ? 'Editing mode - Changes will update template' : 'Dynamic preview - Updates as you build'}
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <SourceCodeModal
+        isOpen={showSourceCodeModal}
+        onClose={() => {
+          setShowSourceCodeModal(false)
+          setIsEditingHTML(false)
+        }}
+        currentPage={currentPage}
+        isEditingHTML={isEditingHTML}
+        setIsEditingHTML={setIsEditingHTML}
+        editableHTML={editableHTML}
+        setEditableHTML={setEditableHTML}
+        onApplyChanges={handleApplyHTMLChanges}
+        generatePageHTML={generatePageHTML}
+      />
 
       {/* Stylesheet Modal */}
-      {showStylesheetModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg shadow-xl w-[90vw] h-[85vh] max-w-6xl flex flex-col">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">Compiled Stylesheet</h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Complete CSS for: <span className="font-medium">{currentPage?.name}</span>
-                  </p>
-                </div>
-                <div className="flex items-center gap-3">
-                  {!isEditingCSS ? (
-                    <>
-                      <button
-                        onClick={() => {
-                          setEditableCSS(generateStylesheet())
-                          setIsEditingCSS(true)
-                        }}
-                        className="px-4 py-2 bg-[#98b290] text-white rounded hover:bg-[#7a9274] text-sm font-medium transition"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => {
-                          const css = generateStylesheet()
-                          navigator.clipboard.writeText(css)
-                          alert('Stylesheet copied to clipboard!')
-                        }}
-                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
-                      >
-                        Copy
-                      </button>
-                      <button
-                        onClick={() => {
-                          const css = generateStylesheet()
-                          const blob = new Blob([css], { type: 'text/css' })
-                          const url = URL.createObjectURL(blob)
-                          const a = document.createElement('a')
-                          a.href = url
-                          a.download = 'style.css'
-                          document.body.appendChild(a)
-                          a.click()
-                          document.body.removeChild(a)
-                          URL.revokeObjectURL(url)
-                        }}
-                        className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm font-medium transition"
-                      >
-                        Download
-                      </button>
-                    </>
-                  ) : (
-                    <>
-                      <button
-                        onClick={handleApplyCSSChanges}
-                        className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 text-sm font-medium transition"
-                      >
-                        Apply Changes
-                      </button>
-                      <button
-                        onClick={() => {
-                          setIsEditingCSS(false)
-                          setEditableCSS(generateStylesheet())
-                        }}
-                        className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500 text-sm font-medium transition"
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  )}
-                  <button
-                    onClick={() => {
-                      setShowStylesheetModal(false)
-                      setIsEditingCSS(false)
-                    }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition"
-                  >
-                    Close
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Warning Banner - Only show when editing */}
-            {isEditingCSS && (
-              <div className="px-6 py-3 bg-yellow-50 border-b border-yellow-200">
-                <div className="flex items-start gap-2">
-                  <svg className="w-5 h-5 text-yellow-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-yellow-800">Warning: Editing stylesheet directly</p>
-                    <p className="text-xs text-yellow-700 mt-1">
-                      Invalid CSS syntax may cause display issues in the template builder. Ensure your CSS is valid before applying changes.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Content */}
-            <div className="flex-1 overflow-hidden p-6">
-              <div className="h-full bg-gray-900 rounded-lg overflow-hidden">
-                {!isEditingCSS ? (
-                  <div className="h-full overflow-auto">
-                    <pre className="text-cyan-400 font-mono text-sm p-4 whitespace-pre-wrap break-words">
-                      <code>{editableCSS || generateStylesheet()}</code>
-                    </pre>
-                  </div>
-                ) : (
-                  <textarea
-                    value={editableCSS}
-                    onChange={(e) => setEditableCSS(e.target.value)}
-                    className="w-full h-full p-4 bg-gray-900 text-cyan-400 font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                    spellCheck={false}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
-              <p className="text-sm text-gray-600">
-                {isEditingCSS ? 'Editing mode - Changes will update template styles' : 'Dynamic preview - Updates as you build'} • Cascade Order: Grid System → Site CSS → Page CSS → Section CSS → Row CSS → Column CSS → Responsive Breakpoints
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
+      <StylesheetModal
+        isOpen={showStylesheetModal}
+        onClose={() => {
+          setShowStylesheetModal(false)
+          setIsEditingCSS(false)
+        }}
+        currentPage={currentPage}
+        template={template}
+        isEditingCSS={isEditingCSS}
+        setIsEditingCSS={setIsEditingCSS}
+        editableCSS={editableCSS}
+        setEditableCSS={setEditableCSS}
+        onApplyChanges={handleApplyCSSChanges}
+        generateStylesheet={generateStylesheet}
+      />
 
       {/* Sitemap Modal */}
-      {showSitemapModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-lg shadow-xl w-[800px] max-h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold text-gray-800">Site Map</h2>
-                  <p className="text-sm text-gray-600 mt-1">Manage your site's page structure</p>
-                </div>
-                <button
-                  onClick={() => setShowSitemapModal(false)}
-                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="space-y-2">
-                {template?.pages.map((page, index) => (
-                  <div
-                    key={page.id}
-                    className={`group flex items-center gap-3 p-3 rounded-lg border-2 transition ${
-                      page.id === currentPage?.id
-                        ? 'border-[#98b290] bg-[#f0f5ef]'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    {/* Tree Lines */}
-                    <div className="flex-shrink-0 w-8 flex flex-col items-center">
-                      {index === 0 && page.is_homepage ? (
-                        <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-                        </svg>
-                      ) : (
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                      )}
-                    </div>
-
-                    {/* Page Info */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-medium text-gray-900 truncate">{page.name}</h3>
-                        {page.is_homepage && (
-                          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full">
-                            HOME
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 truncate">/{page.slug}</p>
-                      <p className="text-xs text-gray-400 mt-1">{page.sections?.length || 0} sections</p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
-                      <button
-                        onClick={() => {
-                          if (page.id !== currentPage?.id) {
-                            setCurrentPage(page)
-                          }
-                        }}
-                        className="p-1.5 hover:bg-gray-200 rounded transition"
-                        title="View Page"
-                      >
-                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setEditPageId(page.id)
-                          setEditPageName(page.name)
-                          setEditPageSlug(page.slug)
-                          setEditPageIsHomepage(page.is_homepage)
-                          setEditPageMetaDescription(page.meta_description || '')
-                          setShowEditPageModal(true)
-                          setShowSitemapModal(false)
-                        }}
-                        className="p-1.5 hover:bg-blue-50 rounded transition"
-                        title="Edit Page"
-                      >
-                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={() => {
-                          if (confirm(`Are you sure you want to delete "${page.name}"?`)) {
-                            handleDeletePage(page.id)
-                            if (page.id === currentPage?.id) {
-                              setCurrentPage(template.pages[0])
-                            }
-                          }
-                        }}
-                        disabled={template.pages.length === 1}
-                        className="p-1.5 hover:bg-red-50 rounded transition disabled:opacity-30 disabled:cursor-not-allowed"
-                        title={template.pages.length === 1 ? "Cannot delete the last page" : "Delete Page"}
-                      >
-                        <svg className="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Add Page Button */}
-              <button
-                onClick={() => {
-                  setShowAddPageModal(true)
-                  setShowSitemapModal(false)
-                }}
-                className="w-full mt-4 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-[#98b290] hover:bg-[#f0f5ef] transition flex items-center justify-center gap-2 text-gray-600 hover:text-[#98b290]"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span className="font-medium">Add New Page</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <SitemapModal
+        isOpen={showSitemapModal}
+        onClose={() => setShowSitemapModal(false)}
+        template={template}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        onOpenAddPageModal={() => {
+          setShowAddPageModal(true)
+          setShowSitemapModal(false)
+        }}
+        onOpenEditPageModal={(page) => {
+          setEditPageId(page.id)
+          setEditPageName(page.name)
+          setEditPageSlug(page.slug)
+          setEditPageIsHomepage(page.is_homepage)
+          setEditPageMetaDescription(page.meta_description || '')
+          setShowEditPageModal(true)
+          setShowSitemapModal(false)
+        }}
+        onDeletePage={(pageId) => {
+          handleDeletePage(pageId)
+          if (pageId === currentPage?.id && template?.pages.length > 0) {
+            setCurrentPage(template.pages[0])
+          }
+        }}
+      />
   </DndContext>
   )
 }
