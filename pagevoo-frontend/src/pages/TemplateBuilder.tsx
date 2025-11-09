@@ -15,6 +15,7 @@ import { SectionThumbnail } from '../components/SectionThumbnail'
 import { EditableText } from '../components/EditableText'
 import { GridSection } from '../components/sections/GridSection'
 import { NavbarSection } from '../components/sections/NavbarSection'
+import { FooterSection } from '../components/sections/FooterSection'
 import {
   generateRandomString,
   sanitizeName,
@@ -4182,75 +4183,14 @@ ${sectionsHTML}
 
       // Footer sections
       case 'footer-simple':
-        const simpleFooterStyle = content.sectionStyle || {}
-        return sectionWrapper(
-          <div
-            id={section.section_id || `section-${section.id}`}
-            className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-            style={{
-              backgroundColor: simpleFooterStyle.background || '#1f2937',
-              padding: simpleFooterStyle.padding || '32px',
-              textAlign: (simpleFooterStyle.textAlign || 'center') as any
-            }}
-          >
-            <EditableText
-              tag="p"
-              sectionId={section.id}
-              field="text"
-              value={content.text || '© 2025 Company Name. All rights reserved.'}
-              className="outline-none hover:bg-white/10 px-2 py-1 rounded transition text-white text-sm"
-            
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "text"}
-                  onOpenEditor={handleOpenTextEditor}/>
-          </div>
-        )
-
       case 'footer-columns':
-        const columnsFooterStyle = content.sectionStyle || {}
-        const copyrightStyle = content.copyrightStyle || {}
         return sectionWrapper(
-          <div
-            id={section.section_id || `section-${section.id}`}
-            className={`cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-            style={{
-              backgroundColor: columnsFooterStyle.background || '#172554'
-            }}
-          >
-            {/* 3-column grid */}
-            <div className="grid grid-cols-3 gap-8 p-12 max-w-7xl mx-auto text-white">
-              {(content.columns || []).map((col: any, idx: number) => (
-                <div key={idx} className="min-h-[150px] text-center">
-                  <EditableText
-                    tag="div"
-                    sectionId={section.id}
-                    field={`column_${idx}`}
-                    value={col.content || '<p>Column content</p>'}
-                    className="outline-none hover:bg-white/10 px-2 py-1 rounded transition"
-                  />
-                </div>
-              ))}
-            </div>
-            {/* Copyright row */}
-            <div
-              style={{
-                backgroundColor: copyrightStyle.background || '#171717',
-                padding: copyrightStyle.padding || '24px',
-                borderTop: copyrightStyle.borderTop || '1px solid #374151'
-              }}
-            >
-              <div className="max-w-7xl mx-auto px-12">
-                <EditableText
-                  tag="p"
-                  sectionId={section.id}
-                  field="copyrightText"
-                  value={content.copyrightText || '© 2025 Company Name. All rights reserved.'}
-                  className="text-center outline-none hover:bg-white/10 px-2 py-1 rounded transition text-white text-sm"
-                
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "copyrightText"}
-                  onOpenEditor={handleOpenTextEditor}/>
-              </div>
-            </div>
-          </div>
+          <FooterSection
+            section={section}
+            selectedSection={selectedSection}
+            editingText={editingText}
+            onOpenTextEditor={handleOpenTextEditor}
+          />
         )
 
       default:
