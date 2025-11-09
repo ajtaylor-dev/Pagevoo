@@ -34,6 +34,15 @@ import { SortableSectionItem } from '../components/dnd/SortableSectionItem'
 import { BottomDropZone } from '../components/dnd/BottomDropZone'
 import { CanvasDropZone } from '../components/dnd/CanvasDropZone'
 import { Toolbar } from '../components/Toolbar'
+import { useSectionHandlers } from '../hooks/useSectionHandlers'
+import { usePageHandlers } from '../hooks/usePageHandlers'
+import { useDragHandlers } from '../hooks/useDragHandlers'
+import { useTextEditor } from '../hooks/useTextEditor'
+import { useFileHandlers } from '../hooks/useFileHandlers'
+import { useCodeHandlers } from '../hooks/useCodeHandlers'
+import { useResizeHandlers } from '../hooks/useResizeHandlers'
+import { useImageHandlers } from '../hooks/useImageHandlers'
+import { useFormattingHandlers } from '../hooks/useFormattingHandlers'
 import {
   generateRandomString,
   sanitizeName,
@@ -42,6 +51,8 @@ import {
   generateLinkStyle,
   generateActiveIndicatorStyle
 } from '../utils/helpers'
+import { getLinkHref, getLinkLabel, getCanvasWidth, handleAddPredefinedPage as addPredefinedPage } from '../utils/templateHelpers'
+import { coreSections, headerNavigationSections, footerSections } from '../constants/sectionTemplates'
 import {
   isActivePage,
   generateContentCSS,
@@ -62,7 +73,6 @@ import {
   SortableContext,
   verticalListSortingStrategy,
   useSortable,
-  arrayMove,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
@@ -209,13 +219,23 @@ export default function TemplateBuilder() {
   const [activeDragData, setActiveDragData] = useState<any>(null)
   const [overId, setOverId] = useState<string | null>(null)
 
-  const [leftWidth, setLeftWidth] = useState(280)
-  const [rightWidth, setRightWidth] = useState(320)
+  // Resize handlers hook
+  const {
+    leftWidth,
+    rightWidth,
+    isResizingLeft,
+    isResizingRight,
+    setLeftWidth,
+    setRightWidth,
+    handleLeftMouseDown,
+    handleRightMouseDown,
+    handleMouseUp,
+    handleMouseMove
+  } = useResizeHandlers({ initialLeftWidth: 280, initialRightWidth: 320 })
+
   const [showLeftSidebar, setShowLeftSidebar] = useState(true)
   const [showRightSidebar, setShowRightSidebar] = useState(true)
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
-  const [isResizingLeft, setIsResizingLeft] = useState(false)
-  const [isResizingRight, setIsResizingRight] = useState(false)
   const [showNavButtonStyleModal, setShowNavButtonStyleModal] = useState(false)
 
   const leftSidebarRef = useRef<HTMLDivElement>(null)
@@ -421,309 +441,35 @@ export default function TemplateBuilder() {
     }
   }, [currentPage, currentPage?.sections, JSON.stringify(currentPage?.sections?.map(s => ({ id: s.id, section_id: s.section_id, section_name: s.section_name }))), template?.custom_css, currentPage?.page_css, showStylesheetModal])
 
-
-  const handleSaveTemplate = async () => {
-    if (!template) {
-      alert('No template loaded')
-      return
-    }
-
-    setLoading(true)
-    try {
-      if (template.id === 0) {
-        // Create new template with pages and sections
-        const response = await api.createTemplate({
-          name: template.name,
-          description: template.description,
-          business_type: template.business_type,
-          is_active: template.is_active,
-          exclusive_to: template.exclusive_to,
-          technologies: template.technologies,
-          features: template.features,
-          custom_css: template.custom_css,
-          pages: template.pages.map(page => ({
-            name: page.name,
-            slug: page.slug,
-            meta_description: page.meta_description,
-            page_css: page.page_css,
-            is_homepage: page.is_homepage,
-            order: page.order,
-            sections: page.sections.map(section => ({
-              type: section.type,
-              content: section.content,
-              order: section.order
-            }))
-          }))
-        })
-        if (response.success && response.data) {
-          alert('Template created successfully!')
-          // Redirect to the new template
-          window.location.href = `/template-builder?id=${response.data.id}`
-        }
-      } else {
-        // Update existing template (metadata and pages/sections)
-        const response = await api.updateTemplate(template.id, {
-          name: template.name,
-          description: template.description,
-          business_type: template.business_type,
-          exclusive_to: template.exclusive_to,
-          technologies: template.technologies,
-          features: template.features,
-          custom_css: template.custom_css,
-          pages: template.pages.map(page => ({
-            id: page.id > 1000000000000 ? undefined : page.id, // Don't send temporary IDs (from Date.now())
-            name: page.name,
-            slug: page.slug,
-            meta_description: page.meta_description,
-            page_css: page.page_css,
-            is_homepage: page.is_homepage,
-            order: page.order,
-            sections: page.sections.map(section => ({
-              id: section.id > 1000000000000 ? undefined : section.id,
-              type: section.type,
-              content: section.content,
-              order: section.order
-            }))
-          }))
-        })
-        if (response.success) {
-          alert('Template saved successfully!')
-          // Reload to get proper IDs from server
-          window.location.reload()
-        }
-      }
-    } catch (error) {
-      console.error('Failed to save template:', error)
-      alert('Failed to save template')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file || !template) return
-
-    // Check if template is saved first
-    if (template.id === 0) {
-      alert('Please save the template first before uploading an image')
-      return
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      alert('Please select an image file')
-      return
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Image size must be less than 5MB')
-      return
-    }
-
-    setUploadingImage(true)
-    try {
-      const formData = new FormData()
-      formData.append('preview_image', file)
-
-      const response = await api.uploadTemplateImage(template.id, formData)
-      if (response.success && response.data) {
-        setTemplate({ ...template, preview_image: response.data.preview_image })
-        alert('Preview image uploaded successfully')
-      }
-    } catch (error) {
-      console.error('Failed to upload image:', error)
-      alert('Failed to upload preview image')
-    } finally {
-      setUploadingImage(false)
-    }
-  }
-
-  // Page Management Functions
-  const handleAddPage = () => {
-    if (!template || !newPageName.trim()) return
-
-    const slug = newPageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
-    const newPage: TemplatePage = {
-      id: Date.now(), // Temporary ID
-      name: newPageName,
-      slug: slug,
-      page_id: generateIdentifier(newPageName),
-      is_homepage: template.pages.length === 0, // First page is homepage
-      order: template.pages.length,
-      sections: []
-    }
-
-    setTemplate({
-      ...template,
-      pages: [...template.pages, newPage]
-    })
-    setCurrentPage(newPage)
-    setNewPageName('')
-    setShowAddPageModal(false)
-  }
-
-  const handleDeletePage = (pageId: number) => {
-    if (!template) return
-    if (template.pages.length === 1) {
-      alert('Cannot delete the only page. Templates must have at least one homepage.')
-      return
-    }
-    if (!confirm('Are you sure you want to delete this page?')) return
-
-    const pageToDelete = template.pages.find(p => p.id === pageId)
-    const updatedPages = template.pages.filter(p => p.id !== pageId)
-
-    // If deleting the homepage, set the first remaining page as the new homepage
-    if (pageToDelete?.is_homepage && updatedPages.length > 0) {
-      updatedPages[0].is_homepage = true
-    }
-    setTemplate({ ...template, pages: updatedPages })
-
-    // If current page was deleted, switch to first page
-    if (currentPage?.id === pageId) {
-      setCurrentPage(updatedPages[0] || null)
-    }
-  }
-
-  const handleMovePage = (pageId: number, direction: 'up' | 'down') => {
-    if (!template) return
-
-    const index = template.pages.findIndex(p => p.id === pageId)
-    if (index === -1) return
-    if (direction === 'up' && index === 0) return
-    if (direction === 'down' && index === template.pages.length - 1) return
-
-    const newPages = [...template.pages]
-    const swapIndex = direction === 'up' ? index - 1 : index + 1
-
-    // Swap
-    ;[newPages[index], newPages[swapIndex]] = [newPages[swapIndex], newPages[index]]
-
-    // Update order values
-    newPages.forEach((page, idx) => {
-      page.order = idx
-    })
-
-    setTemplate({ ...template, pages: newPages })
-  }
-
-  const handleSetHomepage = (pageId: number) => {
-    if (!template) return
-
-    const updatedPages = template.pages.map(p => ({
-      ...p,
-      is_homepage: p.id === pageId
-    }))
-
-    setTemplate({ ...template, pages: updatedPages })
-  }
-
-  const handleOpenEditPageModal = () => {
-    if (!currentPage) return
-    setEditPageName(currentPage.name)
-    setEditPageSlug(currentPage.slug)
-    setEditPageMetaDescription(currentPage.meta_description || '')
-    setShowEditPageModal(true)
-    setShowEditMenu(false)
-  }
-
-  const handleSaveEditPage = () => {
-    if (!template || !currentPage || !editPageName.trim()) return
-
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return {
-          ...p,
-          name: editPageName,
-          slug: editPageSlug,
-          meta_description: editPageMetaDescription
-        }
-      }
-      return p
-    })
-
-    const updatedTemplate = { ...template, pages: updatedPages }
-    setTemplate(updatedTemplate)
-    setCurrentPage({
-      ...currentPage,
-      name: editPageName,
-      slug: editPageSlug,
-      meta_description: editPageMetaDescription
-    })
-    addToHistory(updatedTemplate)
-    setShowEditPageModal(false)
-  }
-
-  const handleCopyPage = () => {
-    if (!template || !currentPage) return
-
-    const copiedPage: TemplatePage = {
-      id: Date.now(),
-      name: `${currentPage.name} (Copy)`,
-      slug: `${currentPage.slug}-copy`,
-      is_homepage: false,
-      order: template.pages.length,
-      sections: currentPage.sections.map(section => ({
-        ...section,
-        id: Date.now() + Math.random() * 1000
-      })),
-      meta_description: currentPage.meta_description
-    }
-
-    setTemplate({
-      ...template,
-      pages: [...template.pages, copiedPage]
-    })
-    setCurrentPage(copiedPage)
-    setShowEditMenu(false)
-  }
-
-  const handleAddPageFromTemplate = (templateType: string) => {
-    if (!template) return
-
-    let pageName = ''
-    let sections: TemplateSection[] = []
-
-    if (templateType === 'about') {
-      pageName = 'About Us'
-      sections = [
-        { id: Date.now(), type: 'grid-2x1', section_name: 'Content Grid', section_id: generateIdentifier('Content Grid'), content: { columns: [] }, order: 0 },
-        { id: Date.now() + 1, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 1 }
-      ]
-    } else if (templateType === 'services') {
-      pageName = 'Services'
-      sections = [
-        { id: Date.now(), type: 'grid-3x1', section_name: 'Services Grid', section_id: generateIdentifier('Services Grid'), content: { columns: [] }, order: 0 },
-        { id: Date.now() + 1, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 1 }
-      ]
-    } else if (templateType === 'contact') {
-      pageName = 'Contact'
-      sections = [
-        { id: Date.now(), type: 'contact-form', section_name: 'Contact Form', section_id: generateIdentifier('Contact Form'), content: {}, order: 0 },
-        { id: Date.now() + 1, type: 'footer-simple', section_name: 'Footer', section_id: generateIdentifier('Footer'), content: {}, order: 1 }
-      ]
-    }
-
-    const slug = pageName.toLowerCase().replace(/\s+/g, '-')
-    const newPage: TemplatePage = {
-      id: Date.now(),
-      name: pageName,
-      slug: slug,
-      page_id: generateIdentifier(pageName),
-      is_homepage: false,
-      order: template.pages.length,
-      sections: sections
-    }
-
-    setTemplate({
-      ...template,
-      pages: [...template.pages, newPage]
-    })
-    setCurrentPage(newPage)
-    setShowInsertMenu(false)
-  }
+  // Page Management Functions (using custom hook)
+  const {
+    handleAddPage,
+    handleDeletePage,
+    handleMovePage,
+    handleSetHomepage,
+    handleOpenEditPageModal,
+    handleSaveEditPage,
+    handleCopyPage,
+    handleAddPageFromTemplate
+  } = usePageHandlers({
+    template,
+    setTemplate,
+    currentPage,
+    setCurrentPage,
+    newPageName,
+    setNewPageName,
+    setShowAddPageModal,
+    editPageName,
+    setEditPageName,
+    editPageSlug,
+    setEditPageSlug,
+    editPageMetaDescription,
+    setEditPageMetaDescription,
+    setShowEditPageModal,
+    setShowEditMenu,
+    setShowInsertMenu,
+    addToHistory
+  })
 
   // Section Management Functions
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['core'])
@@ -736,1340 +482,145 @@ export default function TemplateBuilder() {
     }
   }
 
-  const getDefaultColumnCSS = () => `border: 2px dashed #d1d5db;
-border-radius: 0.5rem;
-min-height: 200px;
-padding: 1rem;`
-
-  const getDefaultSectionCSS = () => `padding: 2rem;`
-
-  const createDefaultContentCSS = (numColumns: number) => {
-    const columns: { [key: string]: string } = {}
-    for (let i = 0; i < numColumns; i++) {
-      columns[i] = getDefaultColumnCSS()
-    }
-    return { columns }
-  }
-
-  const coreSections = [
-    {
-      type: 'grid-1x1',
-      label: '1 Column',
-      description: 'Single full-width column',
-      cols: 1,
-      rows: 1,
-      colWidths: [12], // col-12 (100%)
-      defaultContent: {
-        columns: [{ content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>', colWidth: 12 }],
-        content_css: createDefaultContentCSS(1),
-        section_css: getDefaultSectionCSS()
-      }
-    },
-    {
-      type: 'grid-2x1',
-      label: '2 Columns',
-      description: 'Two equal columns (50/50)',
-      cols: 2,
-      rows: 1,
-      colWidths: [6, 6], // 2x col-6 (50% each)
-      defaultContent: {
-        columns: [
-          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.</p>', colWidth: 6 },
-          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident.</p>', colWidth: 6 }
-        ],
-        content_css: createDefaultContentCSS(2),
-        section_css: getDefaultSectionCSS()
-      }
-    },
-    {
-      type: 'grid-3x1',
-      label: '3 Columns',
-      description: 'Three equal columns (33/33/33)',
-      cols: 3,
-      rows: 1,
-      colWidths: [4, 4, 4], // 3x col-4 (33.33% each)
-      defaultContent: {
-        columns: [
-          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.</p>', colWidth: 4 },
-          { content: '<p>Ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 4 },
-          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat.</p>', colWidth: 4 }
-        ],
-        content_css: createDefaultContentCSS(3),
-        section_css: getDefaultSectionCSS()
-      }
-    },
-    {
-      type: 'grid-4x1',
-      label: '4 Columns',
-      description: 'Four equal columns (25% each)',
-      cols: 4,
-      rows: 1,
-      colWidths: [3, 3, 3, 3], // 4x col-3 (25% each)
-      defaultContent: {
-        columns: [
-          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>', colWidth: 3 },
-          { content: '<p>Sed do eiusmod tempor incididunt ut labore et dolore.</p>', colWidth: 3 },
-          { content: '<p>Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 3 },
-          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate.</p>', colWidth: 3 }
-        ],
-        content_css: createDefaultContentCSS(4),
-        section_css: getDefaultSectionCSS()
-      }
-    },
-    {
-      type: 'grid-2x2',
-      label: '2x2 Grid',
-      description: 'Four boxes in 2x2 layout',
-      cols: 2,
-      rows: 2,
-      colWidths: [6, 6, 6, 6], // 4x col-6 (2 rows of 50/50)
-      defaultContent: {
-        columns: [
-          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt.</p>', colWidth: 6 },
-          { content: '<p>Ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 6 },
-          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat.</p>', colWidth: 6 },
-          { content: '<p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit.</p>', colWidth: 6 }
-        ],
-        content_css: createDefaultContentCSS(4),
-        section_css: getDefaultSectionCSS()
-      }
-    },
-    {
-      type: 'grid-3x2',
-      label: '3x2 Grid',
-      description: 'Six boxes in 3x2 layout',
-      cols: 3,
-      rows: 2,
-      colWidths: [4, 4, 4, 4, 4, 4], // 6x col-4 (2 rows of 33/33/33)
-      defaultContent: {
-        columns: [
-          { content: '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit.</p>', colWidth: 4 },
-          { content: '<p>Sed do eiusmod tempor incididunt ut labore et dolore.</p>', colWidth: 4 },
-          { content: '<p>Ut enim ad minim veniam, quis nostrud exercitation.</p>', colWidth: 4 },
-          { content: '<p>Duis aute irure dolor in reprehenderit in voluptate.</p>', colWidth: 4 },
-          { content: '<p>Excepteur sint occaecat cupidatat non proident sunt.</p>', colWidth: 4 },
-          { content: '<p>Culpa qui officia deserunt mollit anim id est laborum.</p>', colWidth: 4 }
-        ],
-        content_css: createDefaultContentCSS(6),
-        section_css: getDefaultSectionCSS()
-      }
-    },
-  ]
-
-  const headerNavigationSections = [
-    {
-      type: 'navbar',
-      label: 'Navigation Bar',
-      description: 'Simple navigation with logo and links',
-      position: 'top',
-      defaultContent: {
-        logo: 'Logo',
-        logoWidth: 25,
-        links: ['Home', 'About', 'Services', 'Contact'],
-        position: 'static',
-        content_css: '',
-        containerStyle: {
-          paddingTop: '16px',
-          paddingBottom: '16px',
-          paddingLeft: '0px',
-          paddingRight: '0px',
-          marginTop: '0px',
-          marginBottom: '0px',
-          marginLeft: '0px',
-          marginRight: '0px',
-          width: '100%',
-          height: 'auto',
-          background: '#ffffff'
-        }
-      }
-    }
-  ]
-
-  const footerSections = [
-    { type: 'footer-simple', label: 'Simple Footer', description: 'Basic footer with copyright text', position: 'bottom', defaultContent: { text: '© 2025 Company Name. All rights reserved.' } },
-    {
-      type: 'footer-columns',
-      label: 'Column Footer',
-      description: 'Multi-column footer with copyright',
-      position: 'bottom',
-      defaultContent: {
-        columns: [
-          { content: '<h3 style="text-align: center;">Company</h3><p style="text-align: center;">About Us</p><p style="text-align: center;">Contact</p>', colWidth: 4 },
-          { content: '<h3 style="text-align: center;">Services</h3><p style="text-align: center;">Service 1</p><p style="text-align: center;">Service 2</p>', colWidth: 4 },
-          { content: '<h3 style="text-align: center;">Connect</h3><p style="text-align: center;">Email</p><p style="text-align: center;">Phone</p>', colWidth: 4 }
-        ],
-        copyrightText: '© 2025 Company Name. All rights reserved.',
-        content_css: createDefaultContentCSS(3),
-        section_css: 'background-color: #172554; color: white; padding: 2rem;'
-      }
-    },
-  ]
-
 
   const handleAddPredefinedPage = (pageConfig: any) => {
-    if (!template) return
-
-    const slug = pageConfig.name.toLowerCase().replace(/\s+/g, '-')
-    const newPage: TemplatePage = {
-      id: Date.now(),
-      name: pageConfig.name,
-      slug: slug,
-      is_homepage: template.pages.length === 0,
-      order: template.pages.length,
-      sections: pageConfig.sections.map((s: any, idx: number) => ({
-        id: Date.now() + idx,
-        type: s.type,
-        content: s.content,
-        order: idx
-      }))
-    }
-
-    setTemplate({
-      ...template,
-      pages: [...template.pages, newPage]
-    })
-    setCurrentPage(newPage)
-  }
-
-  const handleAddSection = (sectionConfig: any) => {
-    if (!template || !currentPage) {
-      alert('Please create a page first')
-      return
-    }
-
-    const sectionName = sectionConfig.name || sectionConfig.type
-    const newSection: TemplateSection = {
-      id: Date.now(),
-      type: sectionConfig.type,
-      section_name: sectionName,
-      section_id: generateIdentifier(sectionName),
-      content: sectionConfig.defaultContent,
-      order: currentPage.sections.length
-    }
-
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        // Simply add the new section at the end
-        const newSections = [...p.sections, newSection]
-
-        // Reorder all sections
-        newSections.forEach((section, idx) => {
-          section.order = idx
-        })
-
-        return {
-          ...p,
-          sections: newSections
-        }
-      }
-      return p
-    })
-
-    const updatedCurrentPage = updatedPages.find(p => p.id === currentPage.id)
-    if (updatedCurrentPage) {
-      const updatedTemplate = { ...template, pages: updatedPages }
-      setTemplate(updatedTemplate)
-      setCurrentPage(updatedCurrentPage)
-      setSelectedSection(newSection)
-      addToHistory(updatedTemplate)
-    }
-  }
-
-  const handleDeleteSection = (sectionId: number) => {
-    if (!template || !currentPage) return
-    if (!confirm('Are you sure you want to delete this section?')) return
-
-    const updatedSections = currentPage.sections.filter(s => s.id !== sectionId)
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return { ...p, sections: updatedSections }
-      }
-      return p
-    })
-
-    const updatedTemplate = { ...template, pages: updatedPages }
-    setTemplate(updatedTemplate)
-    setCurrentPage({ ...currentPage, sections: updatedSections })
-    if (selectedSection?.id === sectionId) {
-      setSelectedSection(null)
-    }
-    addToHistory(updatedTemplate)
-  }
-
-  const handleMoveSection = (sectionId: number, direction: 'up' | 'down') => {
-    if (!template || !currentPage) return
-
-    const index = currentPage.sections.findIndex(s => s.id === sectionId)
-    if (index === -1) return
-    if (direction === 'up' && index === 0) return
-    if (direction === 'down' && index === currentPage.sections.length - 1) return
-
-    const swapIndex = direction === 'up' ? index - 1 : index + 1
-
-    const newSections = [...currentPage.sections]
-
-    // Swap
-    ;[newSections[index], newSections[swapIndex]] = [newSections[swapIndex], newSections[index]]
-
-    // Update order values
-    newSections.forEach((section, idx) => {
-      section.order = idx
-    })
-
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return { ...p, sections: newSections }
-      }
-      return p
-    })
-
-    const updatedTemplate = { ...template, pages: updatedPages }
-    setTemplate(updatedTemplate)
-    setCurrentPage({ ...currentPage, sections: newSections })
-    addToHistory(updatedTemplate)
-  }
-
-  const handleToggleSectionLock = (sectionId: number) => {
-    if (!template || !currentPage) return
-
-    const updatedSections = currentPage.sections.map(s => {
-      if (s.id === sectionId) {
-        return { ...s, is_locked: !s.is_locked }
-      }
-      return s
-    })
-
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return { ...p, sections: updatedSections }
-      }
-      return p
-    })
-
-    const updatedTemplate = { ...template, pages: updatedPages }
-    setTemplate(updatedTemplate)
-    setCurrentPage({ ...currentPage, sections: updatedSections })
-    addToHistory(updatedTemplate)
-  }
-
-
-  const handleUpdateSectionContent = (sectionId: number, newContent: any) => {
-    if (!template || !currentPage) return
-
-    const updatedSections = currentPage.sections.map(s => {
-      if (s.id === sectionId) {
-        return { ...s, content: newContent }
-      }
-      return s
-    })
-
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return { ...p, sections: updatedSections }
-      }
-      return p
-    })
-
-    const updatedTemplate = { ...template, pages: updatedPages }
-    setTemplate(updatedTemplate)
-    setCurrentPage({ ...currentPage, sections: updatedSections })
-    setSelectedSection({ ...selectedSection!, content: newContent })
-    addToHistory(updatedTemplate)
-  }
-
-  // Grid section column update handler
-  const handleGridColumnUpdate = (sectionId: number, columnIndex: number, newContent: string) => {
-    if (!template || !currentPage) return
-
-    const updatedSections = currentPage.sections.map(s => {
-      if (s.id === sectionId) {
-        const updatedColumns = [...(s.content.columns || [])]
-        updatedColumns[columnIndex] = { ...updatedColumns[columnIndex], content: newContent }
-        return {
-          ...s,
-          content: {
-            ...s.content,
-            columns: updatedColumns
-          }
-        }
-      }
-      return s
-    })
-
-    const updatedPages = template.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return { ...p, sections: updatedSections }
-      }
-      return p
-    })
-
-    setTemplate({ ...template, pages: updatedPages })
-    setCurrentPage({ ...currentPage, sections: updatedSections })
+    addPredefinedPage(pageConfig, template, setTemplate, setCurrentPage)
   }
 
   // Drag and Drop Event Handlers
-  const handleDragStart = (event: DragStartEvent) => {
-    const { active } = event
-    setActiveId(active.id as string)
-    setActiveDragData(active.data.current)
-  }
-
-  const handleDragOver = (event: DragOverEvent) => {
-    const { over } = event
-    setOverId(over ? String(over.id) : null)
-  }
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    setActiveId(null)
-    setActiveDragData(null)
-    setOverId(null)
-
-    if (!currentPage || !template) return
-
-    const activeData = active.data.current
-
-    // Case 1: Dragging from library to canvas
-    if (activeData?.source === 'library') {
-      const sectionConfig = activeData.section
-
-      const sectionName = sectionConfig.name || sectionConfig.type
-      const newSection: TemplateSection = {
-        id: Date.now(),
-        type: sectionConfig.type,
-        section_name: sectionName,
-        section_id: generateIdentifier(sectionName),
-        content: sectionConfig.defaultContent,
-        order: 0
-      }
-
-      let insertPosition = currentPage.sections.length // Default: end of list
-
-      // Respect drop position for all section types
-      if (over && over.data.current?.source === 'canvas') {
-        const overIndex = over.data.current.index
-        insertPosition = overIndex
-      } else if (over && over.data.current?.type === 'bottom') {
-        // Dropping on bottom drop zone - insert at end
-        insertPosition = currentPage.sections.length
-      }
-
-      // Insert the new section at the calculated position
-      const newSections = [
-        ...currentPage.sections.slice(0, insertPosition),
-        newSection,
-        ...currentPage.sections.slice(insertPosition)
-      ]
-
-      // Update order values
-      newSections.forEach((section, idx) => {
-        section.order = idx
-      })
-
-      const updatedPages = template.pages.map(p => {
-        if (p.id === currentPage.id) {
-          return { ...p, sections: newSections }
-        }
-        return p
-      })
-
-      const updatedTemplate = { ...template, pages: updatedPages }
-      setTemplate(updatedTemplate)
-      setCurrentPage({ ...currentPage, sections: newSections })
-      setSelectedSection(newSection)
-      addToHistory(updatedTemplate)
-      return
-    }
-
-    // If no over target for reordering, return
-    if (!over) return
-
-    const overData = over.data.current
-
-    // Case 2: Reordering sections on canvas
-    if (activeData?.source === 'canvas' && overData?.source === 'canvas') {
-      const oldIndex = activeData.index
-      const newIndex = overData.index
-
-      if (oldIndex === newIndex) return
-
-      // Perform the reorder - no restrictions, all sections can move anywhere
-      const newSections = arrayMove(currentPage.sections, oldIndex, newIndex)
-
-      // Update order values
-      newSections.forEach((section, idx) => {
-        section.order = idx
-      })
-
-      const updatedPages = template.pages.map(p => {
-        if (p.id === currentPage.id) {
-          return { ...p, sections: newSections }
-        }
-        return p
-      })
-
-      const updatedTemplate = { ...template, pages: updatedPages }
-      setTemplate(updatedTemplate)
-      setCurrentPage({ ...currentPage, sections: newSections })
-      addToHistory(updatedTemplate)
-    }
-
-    // Case 3: Sidebar left/right drag (handled by modifier keys or special zones)
-    // This is handled separately by the existing handleMoveSidebar function
-  }
-
-  const handleDragCancel = () => {
-    setActiveId(null)
-    setActiveDragData(null)
-    setOverId(null)
-  }
-
-
-
-  // Helper to generate link href based on link data
-  const getLinkHref = (link: any): string => {
-    // Handle old string format
-    if (typeof link === 'string') return '#'
-
-    // Handle new object format
-    if (link.linkType === 'url') {
-      return link.url || '#'
-    } else if (link.linkType === 'page' && link.pageId) {
-      const page = template?.pages.find(p => p.id === link.pageId)
-      if (page) {
-        return page.is_homepage ? '/' : `/${page.slug || page.name.toLowerCase().replace(/\s+/g, '-')}`
-      }
-    }
-    return '#'
-  }
-
-  // Helper to get link label
-  const getLinkLabel = (link: any): string => {
-    return typeof link === 'string' ? link : (link.label || 'Link')
-  }
-
-  // Helper function to handle inline text editing
-  const handleTextEdit = (sectionId: number, field: string, value: string) => {
-    if (!currentPage) return
-
-    const updatedSections = currentPage.sections.map(s => {
-      if (s.id === sectionId) {
-        // Handle grid columns (field format: column_0, column_1, etc.)
-        if (field.startsWith('column_')) {
-          const colIdx = parseInt(field.split('_')[1])
-          const columns = s.content.columns || []
-          const updatedColumns = [...columns]
-          updatedColumns[colIdx] = { ...updatedColumns[colIdx], content: value }
-
-          return {
-            ...s,
-            content: {
-              ...s.content,
-              columns: updatedColumns
-            }
-          }
-        }
-
-        // Handle regular content fields
-        return {
-          ...s,
-          content: {
-            ...s.content,
-            [field]: value
-          }
-        }
-      }
-      return s
-    })
-
-    const updatedPages = template!.pages.map(p => {
-      if (p.id === currentPage.id) {
-        return { ...p, sections: updatedSections }
-      }
-      return p
-    })
-
-    setTemplate({ ...template!, pages: updatedPages })
-    setCurrentPage({ ...currentPage, sections: updatedSections })
-  }
-
-  const handleOpenTextEditor = (sectionId: number, field: string, currentValue: string) => {
-    // Reset editor ref so it reinitializes with new content
-    editorRef.current = null
-
-    setEditingText({ sectionId, field, value: currentValue })
-    setShowCodeView(false)
-
-    // Wait for editor to render, then update formatting state
-    setTimeout(() => {
-      updateFormattingState()
-    }, 50)
-  }
-
-  const handleTextEditorChange = (newValue: string) => {
-    if (!editingText) return
-    setEditingText({ ...editingText, value: newValue })
-    handleTextEdit(editingText.sectionId, editingText.field, newValue)
-  }
-
-  const handleCloseTextEditor = () => {
-    // Save current template state to history when closing editor
-    // This captures all changes made during the editing session
-    if (template) {
-      addToHistory(template)
-    }
-
-    setEditingText(null)
-    setShowCodeView(false)
-    setShowColorPicker(false)
-    setSavedSelection(null)
-    setEditorHeight(300)
-    setIsEditorFullscreen(false)
-  }
-
-  // Handle editor resize drag
-  const handleEditorDragStart = (e: React.MouseEvent) => {
-    setIsDraggingEditor(true)
-    e.preventDefault()
-  }
-
-  const handleEditorDrag = (e: MouseEvent) => {
-    if (!isDraggingEditor) return
-
-    const newHeight = window.innerHeight - e.clientY
-    if (newHeight >= 200 && newHeight <= window.innerHeight - 100) {
-      setEditorHeight(newHeight)
-    }
-  }
-
-  const handleEditorDragEnd = () => {
-    setIsDraggingEditor(false)
-  }
-
-  // Toggle fullscreen
-  const toggleEditorFullscreen = () => {
-    if (isEditorFullscreen) {
-      setEditorHeight(300)
-      setIsEditorFullscreen(false)
-    } else {
-      setEditorHeight(window.innerHeight - 100)
-      setIsEditorFullscreen(true)
-    }
-  }
-
-  // Add/remove mouse event listeners for dragging
-  useEffect(() => {
-    if (isDraggingEditor) {
-      window.addEventListener('mousemove', handleEditorDrag)
-      window.addEventListener('mouseup', handleEditorDragEnd)
-    } else {
-      window.removeEventListener('mousemove', handleEditorDrag)
-      window.removeEventListener('mouseup', handleEditorDragEnd)
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleEditorDrag)
-      window.removeEventListener('mouseup', handleEditorDragEnd)
-    }
-  }, [isDraggingEditor])
-
-  // Save current selection
-  const saveSelection = () => {
-    const selection = window.getSelection()
-    if (selection && selection.rangeCount > 0) {
-      setSavedSelection(selection.getRangeAt(0).cloneRange())
-    }
-  }
-
-  // Restore saved selection
-  const restoreSelection = () => {
-    if (savedSelection && editorRef.current) {
-      editorRef.current.focus()
-      const selection = window.getSelection()
-      if (selection) {
-        selection.removeAllRanges()
-        selection.addRange(savedSelection)
-      }
-    }
-  }
-
-  // Open color picker and save selection
-  const handleOpenColorPicker = () => {
-    saveSelection()
-    setTempColor(currentFormatting.color)
-    setShowColorPicker(true)
-  }
-
-  // Apply color from picker
-  const handleApplyColorFromPicker = () => {
-    restoreSelection()
-    applyColor(tempColor)
-    setShowColorPicker(false)
-  }
-
-  // Open link modal
-  const handleOpenLinkModal = () => {
-    if (!editorRef.current) return
-
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const selectedText = selection.toString()
-
-    // Check if selection is inside a link
-    let element = selection.anchorNode
-    while (element && element !== editorRef.current) {
-      if (element.nodeName === 'A') {
-        const linkElement = element as HTMLAnchorElement
-        setLinkUrl(linkElement.href)
-        setLinkText(linkElement.textContent || '')
-        break
-      }
-      element = element.parentNode
-    }
-
-    // If not editing existing link, use selected text
-    if (!element || element === editorRef.current) {
-      setLinkUrl('')
-      setLinkText(selectedText)
-    }
-
-    saveSelection()
-    setShowLinkModal(true)
-  }
-
-  // Apply link
-  const handleApplyLink = () => {
-    if (!linkUrl) return
-
-    restoreSelection()
-
-    if (!editorRef.current) return
-    editorRef.current.focus()
-
-    // If there's link text and no selection, insert the text first
-    const selection = window.getSelection()
-    if (selection && linkText && selection.toString() === '') {
-      document.execCommand('insertText', false, linkText)
-      // Select the inserted text
-      const range = document.createRange()
-      const textNode = selection.anchorNode
-      if (textNode) {
-        range.setStart(textNode, (selection.anchorOffset || 0) - linkText.length)
-        range.setEnd(textNode, selection.anchorOffset || 0)
-        selection.removeAllRanges()
-        selection.addRange(range)
-      }
-    }
-
-    // Create the link
-    document.execCommand('createLink', false, linkUrl)
-
-    setTimeout(() => {
-      if (editorRef.current) {
-        handleTextEditorChange(editorRef.current.innerHTML)
-      }
-    }, 10)
-
-    setShowLinkModal(false)
-    setLinkUrl('')
-    setLinkText('')
-  }
-
-  // Remove link
-  const handleRemoveLink = () => {
-    restoreSelection()
-
-    if (!editorRef.current) return
-    editorRef.current.focus()
-
-    document.execCommand('unlink')
-
-    setTimeout(() => {
-      if (editorRef.current) {
-        handleTextEditorChange(editorRef.current.innerHTML)
-      }
-    }, 10)
-
-    setShowLinkModal(false)
-    setLinkUrl('')
-    setLinkText('')
-  }
-
-  // Open insert image modal
-  const handleOpenInsertImageModal = () => {
-    saveSelection()
-    setImageInsertMode('url')
-    setImageUrl('')
-    setSelectedGalleryImage(null)
-    setShowInsertImageModal(true)
-  }
-
-  // Insert image from URL or gallery
-  const handleInsertImage = () => {
-    const imgSrc = imageInsertMode === 'url' ? imageUrl : selectedGalleryImage
-
-    if (!imgSrc) {
-      alert('Please provide an image URL or select from gallery')
-      return
-    }
-
-    restoreSelection()
-
-    if (!editorRef.current) return
-    editorRef.current.focus()
-
-    // Insert image using execCommand
-    const img = `<img src="${imgSrc}" alt="Inserted image" style="max-width: 100%; height: auto;" />`
-    document.execCommand('insertHTML', false, img)
-
-    setTimeout(() => {
-      if (editorRef.current) {
-        handleTextEditorChange(editorRef.current.innerHTML)
-      }
-    }, 10)
-
-    setShowInsertImageModal(false)
-    setImageUrl('')
-    setSelectedGalleryImage(null)
-  }
-
-  // Handle paste event for images
-  const handleEditorPaste = async (e: React.ClipboardEvent) => {
-    const items = e.clipboardData?.items
-    if (!items) return
-
-    // Check if clipboard contains an image
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.indexOf('image') !== -1) {
-        e.preventDefault() // Prevent default paste behavior
-
-        const file = items[i].getAsFile()
-        if (!file || !template) return
-
-        try {
-          // Auto-save template if needed
-          let templateId = template.id
-          if (templateId === 0) {
-            alert('Please save the template before pasting images.')
-            return
-          }
-
-          // Show loading indicator
-          alert('Uploading image...')
-
-          // Upload the image to gallery
-          const response = await api.uploadGalleryImage(templateId, file)
-
-          if (response.success && response.data) {
-            // Insert the uploaded image at cursor position
-            const imageUrl = `http://localhost:8000/${response.data.path}`
-
-            if (editorRef.current) {
-              editorRef.current.focus()
-
-              // Insert image at cursor
-              const img = `<img src="${imageUrl}" alt="Pasted image" style="max-width: 100%; height: auto;" />`
-              document.execCommand('insertHTML', false, img)
-
-              setTimeout(() => {
-                if (editorRef.current) {
-                  handleTextEditorChange(editorRef.current.innerHTML)
-                }
-              }, 10)
-
-              // Refresh template to show new image in gallery
-              if (response.data) {
-                setTemplate({
-                  ...template,
-                  images: [...(template.images || []), response.data]
-                })
-              }
-
-              alert('Image uploaded and inserted!')
-            }
-          }
-        } catch (error) {
-          console.error('Error uploading pasted image:', error)
-          alert('Failed to upload image')
-        }
-
-        break
-      }
-    }
-  }
-
-  // Handle image click in editor
-  const handleEditorClick = (e: React.MouseEvent) => {
-    const target = e.target as HTMLElement
-    if (target.tagName === 'IMG') {
-      const img = target as HTMLImageElement
-      setSelectedImage(img)
-
-      // Get current dimensions
-      const width = img.width || img.naturalWidth
-      const height = img.height || img.naturalHeight
-      setImageWidth(width)
-      setImageHeight(height)
-
-      // Calculate aspect ratio
-      const aspectRatio = width / height
-      setImageAspectRatio(aspectRatio)
-
-      // Get current alt text
-      setImageAltText(img.alt || '')
-
-      // Check if image is wrapped in a link
-      const parentLink = img.parentElement
-      if (parentLink && parentLink.tagName === 'A') {
-        setImageLink((parentLink as HTMLAnchorElement).href)
-        setImageLinkTarget((parentLink as HTMLAnchorElement).target as '_self' | '_blank' || '_self')
-      } else {
-        setImageLink('')
-        setImageLinkTarget('_self')
-      }
-
-      // Add selected class for visual feedback
-      const allImages = editorRef.current?.querySelectorAll('img')
-      allImages?.forEach(i => i.classList.remove('selected-image'))
-      img.classList.add('selected-image')
-    } else {
-      // Deselect image if clicking elsewhere
-      setSelectedImage(null)
-      setImageAltText('')
-      setImageLink('')
-      setImageLinkTarget('_self')
-      const allImages = editorRef.current?.querySelectorAll('img')
-      allImages?.forEach(i => i.classList.remove('selected-image'))
-    }
-  }
-
-  // Handle width change
-  const handleWidthChange = (value: number) => {
-    setImageWidth(value)
-    if (constrainProportions) {
-      const newHeight = Math.round(value / imageAspectRatio)
-      setImageHeight(newHeight)
-    }
-  }
-
-  // Handle height change
-  const handleHeightChange = (value: number) => {
-    setImageHeight(value)
-    if (constrainProportions) {
-      const newWidth = Math.round(value * imageAspectRatio)
-      setImageWidth(newWidth)
-    }
-  }
-
-  // Apply link to image
-  const applyImageLink = () => {
-    if (!selectedImage || !editorRef.current) return
-
-    const currentHtml = editorRef.current.innerHTML
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = currentHtml
-
-    const images = tempDiv.querySelectorAll('img')
-    images.forEach(img => {
-      if (img.src === selectedImage.src) {
-        const parentElement = img.parentElement
-
-        // If imageLink is empty, remove link if it exists
-        if (!imageLink.trim()) {
-          if (parentElement && parentElement.tagName === 'A') {
-            // Replace the <a> with just the <img>
-            parentElement.replaceWith(img)
-          }
-        } else {
-          // If image already has a link, update it
-          if (parentElement && parentElement.tagName === 'A') {
-            (parentElement as HTMLAnchorElement).href = imageLink
-            (parentElement as HTMLAnchorElement).target = imageLinkTarget
-          } else {
-            // Wrap image in a new link
-            const link = document.createElement('a')
-            link.href = imageLink
-            link.target = imageLinkTarget
-            img.parentNode?.insertBefore(link, img)
-            link.appendChild(img)
-          }
-        }
-      }
-    })
-
-    // Update the editor content
-    handleTextEditorChange(tempDiv.innerHTML)
-
-    // Re-select the image after render
-    setTimeout(() => {
-      if (editorRef.current) {
-        const updatedImages = editorRef.current.querySelectorAll('img')
-        updatedImages.forEach(img => {
-          if (img.src === selectedImage.src) {
-            setSelectedImage(img as HTMLImageElement)
-            img.classList.add('selected-image')
-          }
-        })
-      }
-    }, 100)
-  }
-
-  // Apply alt text to image
-  const applyImageAltText = () => {
-    if (!selectedImage || !editorRef.current) return
-
-    // Update the image alt text directly in the HTML
-    const currentHtml = editorRef.current.innerHTML
-
-    // Find the image in the HTML and update its alt attribute
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = currentHtml
-
-    const images = tempDiv.querySelectorAll('img')
-    images.forEach(img => {
-      if (img.src === selectedImage.src) {
-        img.setAttribute('alt', imageAltText)
-      }
-    })
-
-    // Update the editor content with the modified HTML
-    handleTextEditorChange(tempDiv.innerHTML)
-
-    // Update the selected image reference after re-render
-    setTimeout(() => {
-      if (editorRef.current) {
-        const updatedImages = editorRef.current.querySelectorAll('img')
-        updatedImages.forEach(img => {
-          if (img.src === selectedImage.src) {
-            setSelectedImage(img as HTMLImageElement)
-            img.classList.add('selected-image')
-          }
-        })
-      }
-    }, 100)
-  }
-
-  // Apply image dimensions
-  const applyImageDimensions = () => {
-    if (!selectedImage) {
-      alert('No image selected!')
-      return
-    }
-
-    if (!imageWidth || !imageHeight || imageWidth < 10 || imageHeight < 10) {
-      alert('Please enter valid dimensions (minimum 10px)')
-      return
-    }
-
-    // Update the image styles directly in the HTML
-    const currentHtml = editorRef.current?.innerHTML || ''
-
-    // Find the image in the HTML and update its style
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = currentHtml
-
-    const images = tempDiv.querySelectorAll('img')
-    images.forEach(img => {
-      if (img.src === selectedImage.src) {
-        // Get current style and remove old width/height/max-width
-        let styleStr = img.getAttribute('style') || ''
-        styleStr = styleStr
-          .replace(/width:\s*[^;]+;?/gi, '')
-          .replace(/height:\s*[^;]+;?/gi, '')
-          .replace(/max-width:\s*[^;]+;?/gi, '')
-          .trim()
-
-        // Add new dimensions
-        if (styleStr && !styleStr.endsWith(';')) styleStr += ';'
-        styleStr += ` width: ${imageWidth}px; height: ${imageHeight}px; max-width: none;`
-
-        img.setAttribute('style', styleStr)
-      }
-    })
-
-    // Update the editor content with the modified HTML
-    if (editorRef.current) {
-      handleTextEditorChange(tempDiv.innerHTML)
-    }
-
-    // Update the selected image reference after re-render
-    setTimeout(() => {
-      if (editorRef.current) {
-        const updatedImages = editorRef.current.querySelectorAll('img')
-        updatedImages.forEach(img => {
-          if (img.src === selectedImage.src) {
-            setSelectedImage(img as HTMLImageElement)
-            img.classList.add('selected-image')
-          }
-        })
-      }
-    }, 100)
-
-    // Show success feedback
-    alert(`Image resized to ${imageWidth}px × ${imageHeight}px`)
-  }
-
-  // Set image width to 100%
-  const setImageWidthTo100 = () => {
-    if (!selectedImage) {
-      alert('No image selected!')
-      return
-    }
-
-    // Update the image styles directly in the HTML
-    const currentHtml = editorRef.current?.innerHTML || ''
-
-    // Find the image in the HTML and update its style
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = currentHtml
-
-    const images = tempDiv.querySelectorAll('img')
-    images.forEach(img => {
-      if (img.src === selectedImage.src) {
-        // Get current style and remove old width/height/max-width
-        let styleStr = img.getAttribute('style') || ''
-        styleStr = styleStr
-          .replace(/width:\s*[^;]+;?/gi, '')
-          .replace(/height:\s*[^;]+;?/gi, '')
-          .replace(/max-width:\s*[^;]+;?/gi, '')
-          .trim()
-
-        // Add 100% width and auto height
-        if (styleStr && !styleStr.endsWith(';')) styleStr += ';'
-        styleStr += ` width: 100%; height: auto; max-width: 100%;`
-
-        img.setAttribute('style', styleStr)
-      }
-    })
-
-    // Update the editor content with the modified HTML
-    if (editorRef.current) {
-      handleTextEditorChange(tempDiv.innerHTML)
-    }
-
-    // Update the selected image reference and state after re-render
-    setTimeout(() => {
-      if (editorRef.current) {
-        const updatedImages = editorRef.current.querySelectorAll('img')
-        updatedImages.forEach(img => {
-          if (img.src === selectedImage.src) {
-            setSelectedImage(img as HTMLImageElement)
-            img.classList.add('selected-image')
-
-            // Update state to reflect actual rendered dimensions
-            const parentWidth = img.parentElement?.offsetWidth || img.offsetWidth
-            setImageWidth(parentWidth)
-            const newHeight = Math.round(parentWidth / imageAspectRatio)
-            setImageHeight(newHeight)
-          }
-        })
-      }
-    }, 100)
-
-    alert('Image width set to 100%')
-  }
-
-  // Update formatting state based on current selection
-  const updateFormattingState = () => {
-    if (!editorRef.current) return
-
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    const range = selection.getRangeAt(0)
-    let element = range.commonAncestorContainer as HTMLElement
-
-    // If text node, get parent element
-    if (element.nodeType === Node.TEXT_NODE) {
-      element = element.parentElement as HTMLElement
-    }
-
-    // Check formatting
-    const bold = document.queryCommandState('bold')
-    const italic = document.queryCommandState('italic')
-    const underline = document.queryCommandState('underline')
-
-    // Get computed styles
-    const computedStyle = window.getComputedStyle(element)
-    const fontSize = computedStyle.fontSize
-    const color = rgbToHex(computedStyle.color)
-
-    // Get alignment
-    const alignment = element.style.textAlign || computedStyle.textAlign || 'left'
-
-    setCurrentFormatting({
-      bold,
-      italic,
-      underline,
-      fontSize,
-      color,
-      alignment
-    })
-  }
-
-  // Convert RGB to Hex
-  const rgbToHex = (rgb: string): string => {
-    if (rgb.startsWith('#')) return rgb
-
-    const match = rgb.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/)
-    if (!match) return '#000000'
-
-    const r = parseInt(match[1])
-    const g = parseInt(match[2])
-    const b = parseInt(match[3])
-
-    return '#' + [r, g, b].map(x => {
-      const hex = x.toString(16)
-      return hex.length === 1 ? '0' + hex : hex
-    }).join('')
-  }
-
-  // Modern formatting functions for WYSIWYG editor
-  const applyFormatting = (command: string, value?: string) => {
-    if (!editorRef.current) return
-
-    // Check if an image is selected and handle image alignment
-    if (selectedImage && (command === 'justifyLeft' || command === 'justifyCenter' || command === 'justifyRight')) {
-      applyImageAlignment(command)
-      return
-    }
-
-    // Focus editor first
-    editorRef.current.focus()
-
-    // Small delay to ensure focus is set before executing command
-    setTimeout(() => {
-      if (!editorRef.current) return
-
-      document.execCommand(command, false, value)
-
-      // Trigger update to sync with canvas
-      setTimeout(() => {
-        if (editorRef.current) {
-          handleTextEditorChange(editorRef.current.innerHTML)
-          updateFormattingState()
-        }
-      }, 10)
-    }, 5)
-  }
-
-  // Apply alignment to selected image
-  const applyImageAlignment = (command: string) => {
-    if (!selectedImage || !editorRef.current) return
-
-    let displayStyle = 'block'
-    let marginStyle = '0'
-
-    if (command === 'justifyLeft') {
-      displayStyle = 'block'
-      marginStyle = '0 auto 0 0'
-    } else if (command === 'justifyCenter') {
-      displayStyle = 'block'
-      marginStyle = '0 auto'
-    } else if (command === 'justifyRight') {
-      displayStyle = 'block'
-      marginStyle = '0 0 0 auto'
-    }
-
-    // Update the image styles directly in the HTML
-    const currentHtml = editorRef.current.innerHTML
-
-    // Find the image in the HTML and update its style
-    const tempDiv = document.createElement('div')
-    tempDiv.innerHTML = currentHtml
-
-    const images = tempDiv.querySelectorAll('img')
-    images.forEach(img => {
-      if (img.src === selectedImage.src) {
-        // Get current style and remove old display/margin
-        let styleStr = img.getAttribute('style') || ''
-        styleStr = styleStr
-          .replace(/display:\s*[^;]+;?/gi, '')
-          .replace(/margin:\s*[^;]+;?/gi, '')
-          .trim()
-
-        // Add new alignment styles
-        if (styleStr && !styleStr.endsWith(';')) styleStr += ';'
-        styleStr += ` display: ${displayStyle}; margin: ${marginStyle};`
-
-        img.setAttribute('style', styleStr)
-      }
-    })
-
-    // Update the editor content with the modified HTML
-    handleTextEditorChange(tempDiv.innerHTML)
-
-    // Update the selected image reference after re-render
-    setTimeout(() => {
-      if (editorRef.current) {
-        const updatedImages = editorRef.current.querySelectorAll('img')
-        updatedImages.forEach(img => {
-          if (img.src === selectedImage.src) {
-            setSelectedImage(img as HTMLImageElement)
-            img.classList.add('selected-image')
-          }
-        })
-      }
-    }, 100)
-  }
-
-  const applyFontSize = (size: string) => {
-    if (!editorRef.current) return
-
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    editorRef.current.focus()
-
-    // Use execCommand with fontSize, then replace with proper styles
-    document.execCommand('fontSize', false, '7')
-
-    setTimeout(() => {
-      if (editorRef.current) {
-        // Replace all font tags with styled spans
-        const fontTags = editorRef.current.querySelectorAll('font[size="7"]')
-        fontTags.forEach(font => {
-          const span = document.createElement('span')
-          span.style.fontSize = size
-          span.innerHTML = font.innerHTML
-          font.replaceWith(span)
-        })
-
-        handleTextEditorChange(editorRef.current.innerHTML)
-        updateFormattingState()
-      }
-    }, 10)
-  }
-
-  const applyColor = (color: string) => {
-    if (!editorRef.current) return
-
-    const selection = window.getSelection()
-    if (!selection || selection.rangeCount === 0) return
-
-    editorRef.current.focus()
-
-    // Use foreColor first
-    document.execCommand('foreColor', false, color)
-
-    // Then ensure it's applied with inline styles by wrapping in span
-    setTimeout(() => {
-      if (editorRef.current) {
-        // Find all font tags and convert to spans with color style
-        const fontTags = editorRef.current.querySelectorAll('font[color]')
-        fontTags.forEach(font => {
-          const span = document.createElement('span')
-          span.style.color = font.getAttribute('color') || color
-          span.innerHTML = font.innerHTML
-          font.replaceWith(span)
-        })
-
-        handleTextEditorChange(editorRef.current.innerHTML)
-        updateFormattingState()
-      }
-    }, 10)
-  }
+  const {
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel
+  } = useDragHandlers({
+    currentPage,
+    setCurrentPage,
+    template,
+    setTemplate,
+    setActiveId,
+    setActiveDragData,
+    setOverId,
+    addToHistory,
+    setSelectedSection
+  })
+
+  // Text Editor Handlers
+  const {
+    handleTextEdit,
+    handleOpenTextEditor,
+    handleTextEditorChange,
+    handleCloseTextEditor,
+    handleEditorDragStart,
+    handleEditorDrag,
+    handleEditorDragEnd,
+    toggleEditorFullscreen,
+    handleOpenColorPicker,
+    handleApplyColorFromPicker,
+    handleOpenLinkModal,
+    handleApplyLink,
+    handleRemoveLink,
+    handleOpenInsertImageModal,
+    handleInsertImage,
+    handleEditorPaste,
+    handleEditorClick,
+    handleWidthChange,
+    handleHeightChange
+  } = useTextEditor({
+    template,
+    setTemplate,
+    currentPage,
+    setCurrentPage,
+    editingText,
+    setEditingText,
+    showCodeView,
+    setShowCodeView,
+    showColorPicker,
+    setShowColorPicker,
+    savedSelection,
+    setSavedSelection,
+    editorHeight,
+    setEditorHeight,
+    isEditorFullscreen,
+    setIsEditorFullscreen,
+    isDraggingEditor,
+    setIsDraggingEditor,
+    tempColor,
+    setTempColor,
+    currentFormatting,
+    setCurrentFormatting,
+    showLinkModal,
+    setShowLinkModal,
+    linkUrl,
+    setLinkUrl,
+    linkText,
+    setLinkText,
+    showInsertImageModal,
+    setShowInsertImageModal,
+    imageInsertMode,
+    setImageInsertMode,
+    imageUrl,
+    setImageUrl,
+    selectedGalleryImage,
+    setSelectedGalleryImage,
+    selectedImage,
+    setSelectedImage,
+    imageWidth,
+    setImageWidth,
+    imageHeight,
+    setImageHeight,
+    constrainProportions,
+    imageAspectRatio,
+    setImageAspectRatio,
+    imageAltText,
+    setImageAltText,
+    imageLink,
+    setImageLink,
+    imageLinkTarget,
+    setImageLinkTarget,
+    editorRef,
+    addToHistory,
+    updateFormattingState,
+    applyColor
+  })
+
+
+  // Image handlers hook
+  const {
+    applyImageLink,
+    applyImageAltText,
+    applyImageDimensions,
+    setImageWidthTo100,
+    applyImageAlignment
+  } = useImageHandlers({
+    editorRef,
+    selectedImage,
+    setSelectedImage,
+    imageLink,
+    imageLinkTarget,
+    imageAltText,
+    imageWidth,
+    imageHeight,
+    setImageWidth,
+    setImageHeight,
+    imageAspectRatio,
+    handleTextEditorChange
+  })
+
+  // Formatting handlers hook
+  const {
+    applyFormatting,
+    applyFontSize,
+    applyColor,
+    updateFormattingState,
+    rgbToHex
+  } = useFormattingHandlers({
+    editorRef,
+    selectedImage,
+    setCurrentFormatting,
+    handleTextEditorChange,
+    applyImageAlignment
+  })
 
   // History management helper function
   const addToHistory = (newTemplate: Template, markAsUnsaved: boolean = true) => {
@@ -2100,6 +651,25 @@ padding: 1rem;`
     }
   }
 
+  // Section handlers hook
+  const {
+    handleAddSection,
+    handleDeleteSection,
+    handleMoveSection,
+    handleToggleSectionLock,
+    handleMoveSidebar,
+    handleUpdateSectionContent,
+    handleGridColumnUpdate
+  } = useSectionHandlers({
+    template,
+    setTemplate,
+    currentPage,
+    setCurrentPage,
+    selectedSection,
+    setSelectedSection,
+    addToHistory
+  })
+
   // Reset history after save - start fresh with just the saved state
   const resetHistory = (savedTemplate: Template) => {
     setHistory([JSON.parse(JSON.stringify(savedTemplate))])
@@ -2108,414 +678,62 @@ padding: 1rem;`
     setCanRedo(false)
   }
 
-  // Undo/Redo functions
-  const handleUndo = () => {
-    if (historyIndex > 0 && template) {
-      const newIndex = historyIndex - 1
-      const previousState = history[newIndex]
+  // File handlers hook
+  const {
+    handleSaveTemplate,
+    handleImageUpload,
+    handleUndo,
+    handleRedo,
+    handleSave,
+    handleSaveAs,
+    handleLoad,
+    handleLoadTemplate,
+    handleNew,
+    handleExit,
+    handleLivePreview,
+    handleExportAsHTMLTemplate,
+    handleExportReact,
+    handleExportHTML
+  } = useFileHandlers({
+    template,
+    setTemplate,
+    templateRef,
+    currentPage,
+    setCurrentPage,
+    setLoading,
+    setUploadingImage,
+    history,
+    setHistory,
+    historyIndex,
+    setHistoryIndex,
+    setCanUndo,
+    setCanRedo,
+    setHasUnsavedChanges,
+    isPublished,
+    setIsPublished,
+    hasUnsavedChanges,
+    setShowLoadModal,
+    setAvailableTemplates,
+    setLoadingTemplates,
+    setSelectedSection,
+    resetHistory
+  })
 
-      setTemplate(JSON.parse(JSON.stringify(previousState)))
-
-      // Find and set current page
-      const currentPageInHistory = previousState.pages.find(p => p.id === currentPage?.id)
-      if (currentPageInHistory) {
-        setCurrentPage(currentPageInHistory)
-      }
-
-      setHistoryIndex(newIndex)
-      setCanUndo(newIndex > 0)
-      setCanRedo(true)
-      setHasUnsavedChanges(true)
-    }
-  }
-
-  const handleRedo = () => {
-    if (historyIndex < history.length - 1 && template) {
-      const newIndex = historyIndex + 1
-      const nextState = history[newIndex]
-
-      setTemplate(JSON.parse(JSON.stringify(nextState)))
-
-      // Find and set current page
-      const currentPageInHistory = nextState.pages.find(p => p.id === currentPage?.id)
-      if (currentPageInHistory) {
-        setCurrentPage(currentPageInHistory)
-      }
-
-      setHistoryIndex(newIndex)
-      setCanUndo(true)
-      setCanRedo(newIndex < history.length - 1)
-      setHasUnsavedChanges(true)
-    }
-  }
-
-  const handleSave = async () => {
-    // Use templateRef.current to get the most recent template state (avoids race conditions)
-    const currentTemplate = templateRef.current
-    if (!currentTemplate) {
-      alert('No template to save')
-      return
-    }
-
-    // Debug: Log template ID
-    console.log('Template ID:', currentTemplate.id, 'Type:', typeof currentTemplate.id)
-
-    // If template.id === 0 or undefined (new template), prompt for name like Word
-    if (!currentTemplate.id || currentTemplate.id === 0) {
-      const templateName = prompt('Enter a template name:', currentTemplate.name || 'Untitled Template')
-      if (!templateName || templateName.trim() === '') {
-        return // User cancelled or entered empty name
-      }
-
-      // Check if a template with this name already exists
-      try {
-        const response = await api.getAllTemplatesAdmin()
-        if (response.success && response.data) {
-          const existingTemplate = response.data.find((t: any) =>
-            t.name.toLowerCase() === templateName.trim().toLowerCase()
-          )
-
-          if (existingTemplate) {
-            const confirmOverwrite = confirm(
-              `A template named "${templateName.trim()}" already exists. Do you want to overwrite it?`
-            )
-            if (!confirmOverwrite) {
-              return // User cancelled the overwrite
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error checking for existing templates:', error)
-        // Continue with save even if check fails
-      }
-
-      // Update template name
-      const updatedTemplate = { ...currentTemplate, name: templateName.trim() }
-      setTemplate(updatedTemplate)
-      templateRef.current = updatedTemplate
-
-      // Perform save as create
-      return performSaveAsCreate(templateName.trim())
-    }
-
-    // Existing template - just save/overwrite
-    // If template is published, show warning
-    if (isPublished) {
-      if (!confirm('This template is published. Saving will update the published version. Continue?')) {
-        return
-      }
-    }
-
-    try {
-      // Make sure is_active stays false when saving (don't accidentally publish)
-      const templateToSave = { ...currentTemplate, is_active: isPublished }
-      const response = await api.updateTemplate(currentTemplate.id, templateToSave)
-
-      if (response.success && response.data) {
-        // Update template with fresh data from backend (includes all pages/sections with proper IDs)
-        const freshTemplate = response.data
-        setTemplate(freshTemplate)
-
-        // Update current page reference to match the new data
-        if (currentPage) {
-          const updatedCurrentPage = freshTemplate.pages.find((p: TemplatePage) => p.slug === currentPage.slug)
-          if (updatedCurrentPage) {
-            setCurrentPage(updatedCurrentPage)
-          }
-        }
-
-        // Reset history after save - start fresh with saved state
-        resetHistory(freshTemplate)
-        setHasUnsavedChanges(false)
-        alert('Template saved successfully!')
-      } else {
-        alert('Failed to save template: ' + (response.message || 'Unknown error'))
-      }
-    } catch (error: any) {
-      console.error('Save error:', error)
-      alert('Failed to save template: ' + (error.response?.data?.message || error.message || 'Unknown error'))
-    }
-  }
-
-  const performSaveAsCreate = async (templateName: string) => {
-    // Use templateRef.current to get the most recent template state (avoids race conditions)
-    const currentTemplate = templateRef.current
-    if (!currentTemplate) return
-
-    try {
-      // Prepare template data for creation
-      const templateData = {
-        name: templateName,
-        description: currentTemplate.description || '',
-        business_type: currentTemplate.business_type || 'other',
-        preview_image: currentTemplate.preview_image || '',
-        is_active: false, // Always save as unpublished (draft) - only "Export As > HTML Template" publishes
-        exclusive_to: currentTemplate.exclusive_to || null,
-        technologies: currentTemplate.technologies || [],
-        features: currentTemplate.features || [],
-        custom_css: currentTemplate.custom_css || '',
-        pages: currentTemplate.pages.map(page => ({
-          name: page.name,
-          slug: page.slug,
-          page_id: page.page_id || null,
-          is_homepage: page.is_homepage || false,
-          order: page.order || 0,
-          sections: page.sections.map(section => ({
-            section_name: section.section_name || section.type,
-            section_id: section.section_id || null,
-            type: section.type,
-            content: section.content || {},
-            css: section.css || {},
-            order: section.order || 0
-          }))
-        }))
-      }
-
-      const response = await api.createTemplate(templateData)
-
-      if (response.success && response.data) {
-        // Update template with returned data (includes id, template_slug, etc.)
-        const newTemplate = { ...currentTemplate, ...response.data }
-        setTemplate(newTemplate)
-        templateRef.current = newTemplate
-
-        // Set published state to false (it's a draft)
-        setIsPublished(false)
-
-        // Reset history after save - start fresh with saved state
-        resetHistory(newTemplate)
-        setHasUnsavedChanges(false)
-
-        alert('Template created successfully!')
-      } else {
-        alert('Failed to save template: ' + (response.message || 'Unknown error'))
-      }
-    } catch (error: any) {
-      console.error('Save error:', error)
-      alert('Failed to save template: ' + (error.response?.data?.message || error.message || 'Unknown error'))
-    }
-  }
-
-  const handleSaveAs = async () => {
-    // Use templateRef.current to get the most recent template state (avoids race conditions)
-    const currentTemplate = templateRef.current
-    if (!currentTemplate) {
-      alert('No template to save')
-      return
-    }
-
-    const newName = prompt('Save template as:', currentTemplate.name ? currentTemplate.name + ' (Copy)' : 'Untitled Template')
-    if (!newName || newName.trim() === '') {
-      return // User cancelled
-    }
-
-    // Create a copy with the new name and id = 0 (force create)
-    await performSaveAsCreate(newName.trim())
-  }
-
-  const handleLoad = async () => {
-    if (hasUnsavedChanges) {
-      if (!confirm('You have unsaved changes. Loading will discard them. Continue?')) {
-        return
-      }
-    }
-
-    // Fetch all templates and show modal
-    setLoadingTemplates(true)
-    setShowLoadModal(true)
-
-    try {
-      const response = await api.getAllTemplatesAdmin()
-      if (response.success && response.data) {
-        setAvailableTemplates(response.data)
-      } else {
-        alert('Failed to load templates list')
-        setShowLoadModal(false)
-      }
-    } catch (error) {
-      console.error('Load templates error:', error)
-      alert('Failed to load templates list')
-      setShowLoadModal(false)
-    } finally {
-      setLoadingTemplates(false)
-    }
-  }
-
-  const handleLoadTemplate = async (templateId: number) => {
-    try {
-      const response = await api.getTemplate(templateId)
-
-      if (response.success && response.data) {
-        const templateData = response.data
-
-        setTemplate(templateData)
-
-        // Set current page to homepage or first page
-        const homepage = templateData.pages.find((p: TemplatePage) => p.is_homepage) || templateData.pages[0]
-        setCurrentPage(homepage)
-
-        // Check if published
-        setIsPublished(templateData.is_active || false)
-
-        // Reset history
-        setHistory([JSON.parse(JSON.stringify(templateData))])
-        setHistoryIndex(0)
-        setCanUndo(false)
-        setCanRedo(false)
-        setHasUnsavedChanges(false)
-
-        // Close modal
-        setShowLoadModal(false)
-
-        alert('Template loaded successfully!')
-      } else {
-        alert('Failed to load template')
-      }
-    } catch (error) {
-      console.error('Load error:', error)
-      alert('Failed to load template')
-    }
-  }
-
-  // New Template Handler
-  const handleNew = () => {
-    // Check for unsaved changes
-    if (hasUnsavedChanges) {
-      if (!confirm('You have unsaved changes. Creating a new template will discard them. Continue?')) {
-        return
-      }
-    }
-
-    // Create a blank template with default homepage
-    const defaultHomepage: TemplatePage = {
-      id: Date.now(),
-      name: 'Home',
-      slug: 'home',
-      is_homepage: true,
-      order: 0,
-      sections: []
-    }
-
-    const newTemplate: Template = {
-      id: 0,
-      name: 'Untitled Template',
-      description: '',
-      business_type: 'restaurant',
-      is_active: false,
-      pages: [defaultHomepage],
-      preview_image: null,
-      exclusive_to: null,
-      technologies: [],
-      features: []
-    }
-
-    // Reset all states
-    setTemplate(newTemplate)
-    setCurrentPage(defaultHomepage)
-    setSelectedSection(null)
-    setHistory([JSON.parse(JSON.stringify(newTemplate))])
-    setHistoryIndex(0)
-    setCanUndo(false)
-    setCanRedo(false)
-    setHasUnsavedChanges(false)
-    setIsPublished(false)
-
-    // Clear URL parameter to remove template ID
-    window.history.pushState({}, '', '/template-builder')
-  }
-
-  // Exit Handler
-  const handleExit = () => {
-    // Check for unsaved changes
-    if (hasUnsavedChanges) {
-      if (!confirm('You have unsaved changes. Exiting will discard them. Continue?')) {
-        return
-      }
-    }
-
-    // Close the browser tab/window
-    window.close()
-
-    // Fallback: If window.close() doesn't work (security restrictions),
-    // navigate to dashboard or show message
-    setTimeout(() => {
-      alert('Please close this tab manually or use your browser\'s close button.')
-    }, 100)
-  }
-
-  // Live Preview Handler
-  const handleLivePreview = () => {
-    if (!template || !template.template_slug) {
-      alert('Please save your template first to generate live preview.')
-      return
-    }
-
-    if (!currentPage) {
-      alert('No page selected. Please select a page to preview.')
-      return
-    }
-
-    // Open physical PHP file for the current page being edited
-    const pageFile = currentPage.slug === 'home' ? 'index.php' : `${currentPage.slug}.php`
-    const previewUrl = `http://localhost:8000/template_directory/${template.template_slug}/${pageFile}`
-    window.open(previewUrl, '_blank')
-  }
-
-  const handleExportAsHTMLTemplate = async () => {
-    if (!template) {
-      alert('No template to export')
-      return
-    }
-
-    // Check if already published
-    if (isPublished) {
-      if (!confirm('This template is already published. Exporting again will update the published version. Continue?')) {
-        return
-      }
-    }
-
-    // Check for unsaved changes
-    if (hasUnsavedChanges) {
-      alert('Please save your changes before publishing the template.')
-      return
-    }
-
-    // Confirm export
-    if (!confirm('Export this template as HTML Template? This will publish the template and make it available to users.')) {
-      return
-    }
-
-    try {
-      // Update template to set is_active = true (published)
-      const updatedTemplate = {
-        ...template,
-        is_active: true
-      }
-
-      const response = await api.updateTemplate(template.id, updatedTemplate)
-
-      if (response.success) {
-        setTemplate(updatedTemplate)
-        setIsPublished(true)
-        alert('Template published successfully! It is now available in the templates list.')
-      } else {
-        alert('Failed to publish template: ' + (response.error || 'Unknown error'))
-      }
-    } catch (error) {
-      console.error('Export error:', error)
-      alert('Failed to publish template')
-    }
-  }
-
-  const handleExportReact = () => {
-    console.log('Export as React - to be implemented')
-    // TODO: Implement React export
-  }
-
-  const handleExportHTML = () => {
-    console.log('Export as HTML - to be implemented')
-    // TODO: Implement HTML export
-  }
+  // Code handlers hook
+  const {
+    handleApplyHTMLChanges,
+    handleApplyCSSChanges
+  } = useCodeHandlers({
+    template,
+    setTemplate,
+    currentPage,
+    setCurrentPage,
+    editableHTML,
+    editableCSS,
+    setIsEditingHTML,
+    setIsEditingCSS,
+    addToHistory
+  })
 
   // Generate HTML source code from current page
   const generatePageHTML = (): string => {
@@ -3290,196 +1508,6 @@ ${sectionsHTML}
     return css
   }
 
-  // Handler for applying HTML changes
-  const handleApplyHTMLChanges = () => {
-    if (!currentPage || !template) return
-
-    // Show confirmation dialog
-    if (!confirm('Applying HTML changes will update your template structure. This may cause issues with the template builder if structural elements have been modified. Continue?')) {
-      return
-    }
-
-    try {
-      // For now, we'll implement a simplified parsing that extracts text content from columns
-      // A full HTML parser would be more complex and is beyond the current scope
-
-      // Parse the edited HTML to extract section content
-      const parser = new DOMParser()
-      const doc = parser.parseFromString(editableHTML, 'text/html')
-
-      // Find all sections in the parsed HTML
-      const sections = doc.querySelectorAll('section')
-
-      // Update sections in currentPage
-      const updatedSections = currentPage.sections.map((section, idx) => {
-        const sectionElement = sections[idx]
-        if (!sectionElement) return section
-
-        // Update text content in columns for grid sections
-        if (section.type.startsWith('grid-')) {
-          const columns = sectionElement.querySelectorAll('[class*="col-"]')
-          const updatedColumns = (section.content?.columns || []).map((col: any, colIdx: number) => {
-            const columnElement = columns[colIdx]
-            if (columnElement) {
-              return {
-                ...col,
-                content: columnElement.innerHTML.trim()
-              }
-            }
-            return col
-          })
-
-          return {
-            ...section,
-            content: {
-              ...section.content,
-              columns: updatedColumns
-            }
-          }
-        }
-
-        // Handle other section types (hero, etc.)
-        // Extract text from heading and paragraph
-        const heading = sectionElement.querySelector('h1, h2')
-        const paragraph = sectionElement.querySelector('p')
-
-        if (heading || paragraph) {
-          return {
-            ...section,
-            content: {
-              ...section.content,
-              heading: heading?.textContent || section.content?.heading,
-              text: paragraph?.textContent || section.content?.text
-            }
-          }
-        }
-
-        return section
-      })
-
-      // Update the page with modified sections
-      const updatedPage = {
-        ...currentPage,
-        sections: updatedSections
-      }
-
-      // Update template with modified page
-      const updatedPages = template.pages.map(p =>
-        p.id === currentPage.id ? updatedPage : p
-      )
-
-      const updatedTemplate = {
-        ...template,
-        pages: updatedPages
-      }
-      setTemplate(updatedTemplate)
-      setCurrentPage(updatedPage)
-      addToHistory(updatedTemplate)
-      setIsEditingHTML(false)
-
-      alert('HTML changes applied successfully! Remember to save your template.')
-    } catch (error) {
-      console.error('Error parsing HTML:', error)
-      alert('Failed to parse HTML. Please check your syntax and try again.')
-    }
-  }
-
-  // Handler for applying CSS changes
-  const handleApplyCSSChanges = () => {
-    if (!currentPage || !template) return
-
-    // Show confirmation dialog
-    if (!confirm('Applying CSS changes will update your styles. Invalid CSS may cause display issues. Continue?')) {
-      return
-    }
-
-    try {
-      // Extract different CSS sections from the edited CSS
-      const cssText = editableCSS
-
-      // Split CSS by comments to identify different sections
-      const siteCSSMatch = cssText.match(/\/\* Site-Wide Styles \*\/\s*\n([\s\S]*?)(?=\/\*|$)/)
-      const pageCSSMatch = cssText.match(/\/\* Page-Specific Styles:.*?\*\/\s*\n([\s\S]*?)(?=\/\*|$)/)
-
-      // Update site CSS if found
-      if (siteCSSMatch && siteCSSMatch[1]) {
-        const siteCSS = siteCSSMatch[1].trim()
-        setTemplate({
-          ...template,
-          custom_css: siteCSS
-        })
-      }
-
-      // Update page CSS if found
-      if (pageCSSMatch && pageCSSMatch[1]) {
-        const pageCSS = pageCSSMatch[1].trim()
-        const updatedPage = {
-          ...currentPage,
-          page_css: pageCSS
-        }
-
-        const updatedPages = template.pages.map(p =>
-          p.id === currentPage.id ? updatedPage : p
-        )
-
-        setTemplate({
-          ...template,
-          pages: updatedPages
-        })
-        setCurrentPage(updatedPage)
-      }
-
-      // Parse section-specific CSS
-      const sectionCSSMatches = cssText.matchAll(/#(section-\d+|[\w-]+)\s*\{([^}]+)\}/g)
-      const updatedSections = [...currentPage.sections]
-
-      for (const match of sectionCSSMatches) {
-        const sectionId = match[1]
-        const cssContent = match[2].trim()
-
-        // Find matching section
-        const sectionIndex = updatedSections.findIndex(s => {
-          const sid = s.section_id || `section-${s.id}`
-          return sid === sectionId
-        })
-
-        if (sectionIndex !== -1) {
-          updatedSections[sectionIndex] = {
-            ...updatedSections[sectionIndex],
-            content: {
-              ...updatedSections[sectionIndex].content,
-              section_css: cssContent
-            }
-          }
-        }
-      }
-
-      // Update page with modified sections
-      const updatedPage = {
-        ...currentPage,
-        sections: updatedSections
-      }
-
-      const updatedPages = template.pages.map(p =>
-        p.id === currentPage.id ? updatedPage : p
-      )
-
-      const updatedTemplate = {
-        ...template,
-        pages: updatedPages
-      }
-      setTemplate(updatedTemplate)
-      setCurrentPage(updatedPage)
-      addToHistory(updatedTemplate)
-      setIsEditingCSS(false)
-
-      alert('CSS changes applied successfully! Remember to save your template.')
-    } catch (error) {
-      console.error('Error parsing CSS:', error)
-      alert('Failed to parse CSS. Please check your syntax and try again.')
-    }
-  }
-
   // Clickable text component that opens the editor
 
   const renderSection = (section: TemplateSection, index: number) => {
@@ -3573,34 +1601,6 @@ ${sectionsHTML}
     )
   }
 
-  const handleLeftMouseDown = () => setIsResizingLeft(true)
-  const handleRightMouseDown = () => setIsResizingRight(true)
-
-  const handleMouseUp = () => {
-    setIsResizingLeft(false)
-    setIsResizingRight(false)
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isResizingLeft) {
-      const newWidth = e.clientX
-      if (newWidth >= 200 && newWidth <= 500) {
-        setLeftWidth(newWidth)
-      }
-    }
-    if (isResizingRight) {
-      const newWidth = window.innerWidth - e.clientX
-      if (newWidth >= 250 && newWidth <= 600) {
-        setRightWidth(newWidth)
-      }
-    }
-  }
-
-  const getCanvasWidth = () => {
-    if (viewport === 'mobile') return '375px'
-    if (viewport === 'tablet') return '768px'
-    return '100%'
-  }
 
   if (loading) {
     return (
@@ -3758,7 +1758,7 @@ ${sectionsHTML}
         <main className="flex-1 overflow-auto bg-gray-100 flex items-start justify-center p-8">
           <div
             style={{
-              width: getCanvasWidth(),
+              width: getCanvasWidth(viewport),
               maxWidth: '100%',
               transition: 'width 0.3s ease'
             }}
