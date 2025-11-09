@@ -12,19 +12,6 @@ import { ButtonStyleModal } from '@/components/modals/ButtonStyleModal'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import {
-  generateRandomString,
-  sanitizeName,
-  generateIdentifier,
-  generateContainerStyle,
-  generateLinkStyle,
-  generateActiveIndicatorStyle
-} from '../utils/helpers'
-import {
-  isActivePage,
-  generateContentCSS,
-  extractFontsFromCSS
-} from '../utils/cssUtils'
-import {
   DndContext,
   DragOverlay,
   useSensor,
@@ -93,6 +80,365 @@ interface Template {
 }
 
 // Helper function to generate random string
+const generateRandomString = (length: number = 6): string => {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789'
+  let result = ''
+  for (let i = 0; i < length; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length))
+  }
+  return result
+}
+
+// Helper function to sanitize name for identifier
+const sanitizeName = (name: string): string => {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+    .replace(/\s+/g, '_') // Replace spaces with underscores
+    .trim()
+}
+
+// Helper function to generate unique identifier
+const generateIdentifier = (name: string): string => {
+  const sanitized = sanitizeName(name)
+  const random = generateRandomString(6)
+  return `${sanitized}_${random}`
+}
+
+// Helper functions for navigation styling
+const generateContainerStyle = (containerStyle: any): React.CSSProperties => {
+  if (!containerStyle) return {}
+
+  return {
+    background: containerStyle.background,
+    backgroundImage: containerStyle.backgroundImage,
+    paddingTop: containerStyle.paddingTop,
+    paddingRight: containerStyle.paddingRight,
+    paddingBottom: containerStyle.paddingBottom,
+    paddingLeft: containerStyle.paddingLeft,
+    marginTop: containerStyle.marginTop,
+    marginRight: containerStyle.marginRight,
+    marginBottom: containerStyle.marginBottom,
+    marginLeft: containerStyle.marginLeft,
+    width: containerStyle.width,
+    height: containerStyle.height,
+    borderWidth: containerStyle.borderWidth,
+    borderStyle: containerStyle.borderStyle,
+    borderColor: containerStyle.borderColor,
+    borderRadius: containerStyle.borderRadius,
+    boxShadow: containerStyle.shadow,
+    opacity: containerStyle.opacity,
+    position: containerStyle.position,
+    top: containerStyle.top,
+    bottom: containerStyle.bottom,
+    left: containerStyle.left,
+    right: containerStyle.right,
+    zIndex: containerStyle.zIndex
+  }
+}
+
+const generateLinkStyle = (linkStyling: any, isHover: boolean = false): React.CSSProperties => {
+  if (!linkStyling) return { textDecoration: 'none' }
+
+  return {
+    color: isHover ? linkStyling.textColorHover : linkStyling.textColor,
+    backgroundColor: isHover ? linkStyling.bgColorHover : linkStyling.bgColor,
+    fontSize: linkStyling.fontSize,
+    fontWeight: linkStyling.fontWeight,
+    letterSpacing: linkStyling.letterSpacing,
+    padding: linkStyling.padding,
+    margin: linkStyling.margin,
+    border: linkStyling.border,
+    borderRadius: linkStyling.borderRadius,
+    transition: linkStyling.transition,
+    textDecoration: 'none'
+  }
+}
+
+const generateActiveIndicatorStyle = (activeIndicator: any): React.CSSProperties => {
+  if (!activeIndicator) return {}
+
+  const { type, color, thickness, customCSS } = activeIndicator
+
+  if (type === 'custom' && customCSS) {
+    // Parse custom CSS string into object (simplified)
+    return {}
+  }
+
+  switch (type) {
+    case 'underline':
+      return {
+        borderBottom: `${thickness || '2px'} solid ${color || '#f59e0b'}`,
+        paddingBottom: '4px'
+      }
+    case 'background':
+      return {
+        backgroundColor: color || 'rgba(251, 191, 36, 0.2)',
+        borderRadius: '4px'
+      }
+    case 'border':
+      return {
+        border: `2px solid ${color || '#f59e0b'}`,
+        borderRadius: '4px'
+      }
+    default:
+      return {}
+  }
+}
+
+const isActivePage = (link: any, currentPageId: number): boolean => {
+  if (typeof link !== 'object') return false
+  return link.linkType === 'page' && link.pageId === currentPageId
+}
+
+// Helper function to generate CSS from section content_css and section_css
+const generateContentCSS = (sections: TemplateSection[], pageCSS?: string, siteCSS?: string): string => {
+  let css = ''
+
+  // Helper to scope CSS to canvas and transform body selector
+  const scopeToCanvas = (inputCSS: string): string => {
+    if (!inputCSS || inputCSS.trim() === '') return ''
+
+    console.log('[generateContentCSS] Input CSS:', inputCSS)
+
+    // Extract body selector styles
+    const bodyMatch = inputCSS.match(/body\s*\{([^}]+)\}/i)
+    let processedCSS = inputCSS
+    let bodyStyles = ''
+
+    if (bodyMatch) {
+      bodyStyles = bodyMatch[1]
+      // Remove body block from original CSS
+      processedCSS = inputCSS.replace(/body\s*\{[^}]+\}/gi, '')
+    }
+
+    // Extract link selector styles (a, a:hover, a:visited, a:active)
+    let linkSelectors = ''
+    const linkPatterns = [
+      /a\s*\{([^}]+)\}/gi,
+      /a:hover\s*\{([^}]+)\}/gi,
+      /a:visited\s*\{([^}]+)\}/gi,
+      /a:active\s*\{([^}]+)\}/gi
+    ]
+
+    linkPatterns.forEach((pattern) => {
+      const matches = [...processedCSS.matchAll(pattern)]
+      matches.forEach(match => {
+        // Scope link selector to canvas
+        const selector = match[0].match(/^[^{]+/)[0].trim()
+        const styles = match[1]
+        linkSelectors += `#template-canvas ${selector} {\n  ${styles.trim()}\n}\n\n`
+        // Remove from processed CSS
+        processedCSS = processedCSS.replace(match[0], '')
+      })
+    })
+
+    // Extract header selector styles (h1-h4) and scope them to canvas
+    let headerSelectors = ''
+    const headerPatterns = [
+      { tag: 'h1', pattern: /(?:\.row\s+)?h1\s*\{([^}]+)\}/gi },
+      { tag: 'h2', pattern: /(?:\.row\s+)?h2\s*\{([^}]+)\}/gi },
+      { tag: 'h3', pattern: /(?:\.row\s+)?h3\s*\{([^}]+)\}/gi },
+      { tag: 'h4', pattern: /(?:\.row\s+)?h4\s*\{([^}]+)\}/gi }
+    ]
+
+    headerPatterns.forEach(({ tag, pattern }) => {
+      const matches = [...processedCSS.matchAll(pattern)]
+      matches.forEach(match => {
+        const selector = match[0].match(/^[^{]+/)[0].trim()
+        const styles = match[1]
+        // Add #template-canvas scoping
+        headerSelectors += `#template-canvas ${selector} {\n  ${styles.trim()}\n}\n\n`
+        // Remove from processed CSS
+        processedCSS = processedCSS.replace(match[0], '')
+      })
+    })
+
+    // Extract paragraph selector styles and scope them to canvas
+    const paragraphPattern = /(?:\.row\s+)?p\s*\{([^}]+)\}/gi
+    const pMatches = [...processedCSS.matchAll(paragraphPattern)]
+    pMatches.forEach(match => {
+      const selector = match[0].match(/^[^{]+/)[0].trim()
+      const styles = match[1]
+      // Add #template-canvas scoping
+      headerSelectors += `#template-canvas ${selector} {\n  ${styles.trim()}\n}\n\n`
+      // Remove from processed CSS
+      processedCSS = processedCSS.replace(match[0], '')
+    })
+
+    // Scope any remaining standalone CSS properties to canvas
+    const lines = processedCSS.split('\n')
+    let result = ''
+    let inBlock = false
+    let standaloneProps = ''
+
+    for (let line of lines) {
+      const trimmed = line.trim()
+      if (trimmed.includes('{')) {
+        inBlock = true
+        result += line + '\n'
+      } else if (trimmed.includes('}')) {
+        inBlock = false
+        result += line + '\n'
+      } else if (!inBlock && trimmed.includes(':') && trimmed.includes(';')) {
+        standaloneProps += '  ' + trimmed + '\n'
+      } else {
+        result += line + '\n'
+      }
+    }
+
+    // Separate typography styles from layout/box model styles
+    const allStyles = (bodyStyles + standaloneProps).trim()
+
+    if (allStyles) {
+      // Typography properties that should apply to all text elements
+      const typographyProps = ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform', 'color']
+
+      // Layout/box model properties that should only apply to the canvas container
+      const layoutProps = ['background-color', 'background', 'padding', 'margin', 'border', 'border-radius', 'background-image', 'position', 'display', 'width', 'height']
+
+      const styleLines = allStyles.split('\n').filter(l => l.trim())
+      let typographyCSS = ''
+      let layoutCSS = ''
+
+      styleLines.forEach(line => {
+        const trimmed = line.trim()
+        const prop = trimmed.split(':')[0].trim()
+
+        if (typographyProps.some(p => prop.startsWith(p))) {
+          typographyCSS += '  ' + trimmed + '\n'
+        } else if (layoutProps.some(p => prop.startsWith(p))) {
+          layoutCSS += '  ' + trimmed + '\n'
+        } else {
+          // Unknown properties go to layout by default
+          layoutCSS += '  ' + trimmed + '\n'
+        }
+      })
+
+      // Apply typography to canvas and text elements
+      // Use lower specificity to allow inline styles to override
+      // DO NOT use * selector as it will override inline styles
+      if (typographyCSS.trim()) {
+        result = `#template-canvas {\n${typographyCSS}}\n\n` + result
+      }
+
+      // Apply layout/box properties only to canvas container
+      if (layoutCSS.trim()) {
+        result = `#template-canvas {\n${layoutCSS}}\n\n` + result
+      }
+    }
+
+    // Add link selectors (already scoped to canvas)
+    if (linkSelectors.trim()) {
+      result = linkSelectors + result
+    }
+
+    // Add header selectors (already scoped to canvas)
+    if (headerSelectors.trim()) {
+      result = headerSelectors + result
+    }
+
+    console.log('[generateContentCSS] Scoped CSS:', result)
+    return result
+  }
+
+  // 1. Site CSS - Applied globally within canvas (lowest specificity)
+  if (siteCSS) {
+    css += `/* Site-wide styles */\n${scopeToCanvas(siteCSS)}\n\n`
+  }
+
+  // 2. Page CSS - Applied to all elements on the page (higher specificity than site)
+  if (pageCSS) {
+    css += `/* Page-specific styles */\n${scopeToCanvas(pageCSS)}\n\n`
+  }
+
+  // 3. Base text content styles for canvas (matching live preview)
+  // NOTE: H1-H4 styles are now controlled exclusively via Site CSS > Header Settings modal
+  // This ensures user's custom header styles are not overridden by hardcoded defaults
+  css += `/* Text Content Styles */\n\n`
+
+  css += `#template-canvas .row p {\n`
+  css += `  margin: 1em 0;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row ul, #template-canvas .row ol {\n`
+  css += `  margin: 1em 0;\n`
+  css += `  padding-left: 2.5em;\n`
+  css += `  list-style-position: outside;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row ul {\n`
+  css += `  list-style-type: disc;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row ol {\n`
+  css += `  list-style-type: decimal;\n`
+  css += `}\n\n`
+
+  css += `#template-canvas .row li {\n`
+  css += `  margin: 0.5em 0;\n`
+  css += `  display: list-item;\n`
+  css += `}\n\n`
+
+  // 4. Section, Row, and Column CSS - Applied with specific selectors (highest specificity)
+  sections.forEach(section => {
+    const sectionId = section.section_id || `section-${section.id}`
+
+    // Section CSS (applied to section wrapper) - scoped to canvas
+    if (section.content?.section_css) {
+      css += `/* Section ${sectionId} styles */\n#template-canvas #${sectionId} {\n${section.content.section_css}\n}\n\n`
+    }
+
+    // Content CSS (row and columns)
+    const contentCSS = section.content?.content_css
+    if (!contentCSS) return
+
+    // Row CSS - scoped to canvas and specific section
+    if (contentCSS.row) {
+      css += `/* Section ${sectionId} row styles */\n#template-canvas #${sectionId} .row {\n${contentCSS.row}\n}\n\n`
+    }
+
+    // Column CSS - scoped to canvas with specific selectors for maximum specificity
+    if (contentCSS.columns) {
+      const columns = section.content?.columns || []
+      Object.entries(contentCSS.columns).forEach(([colIdx, colCSS]) => {
+        if (colCSS) {
+          const colWidth = columns[parseInt(colIdx)]?.colWidth || 12
+
+          // Separate typography from layout properties for better targeting
+          const lines = colCSS.split('\n').filter(l => l.trim())
+          let typographyCSS = ''
+          let layoutCSS = ''
+
+          const typographyProps = ['font-family', 'font-size', 'font-weight', 'font-style', 'line-height', 'letter-spacing', 'text-transform', 'color', 'text-align', 'text-decoration']
+
+          lines.forEach(line => {
+            const trimmed = line.trim()
+            const prop = trimmed.split(':')[0].trim()
+            if (typographyProps.some(p => prop.startsWith(p))) {
+              typographyCSS += trimmed + '\n'
+            } else {
+              layoutCSS += trimmed + '\n'
+            }
+          })
+
+          // Apply layout properties to the column container
+          if (layoutCSS.trim()) {
+            css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} layout styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) {\n${layoutCSS}}\n\n`
+          }
+
+          // Apply typography properties to the column container only
+          // Inheritance will apply these to child elements, but inline styles will still override
+          if (typographyCSS.trim()) {
+            css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} typography styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) {\n${typographyCSS}}\n\n`
+          }
+        }
+      })
+    }
+  })
+
+  return css
+}
 
 export default function TemplateBuilder() {
   const { user } = useAuth()

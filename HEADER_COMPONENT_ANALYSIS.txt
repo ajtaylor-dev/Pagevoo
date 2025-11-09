@@ -1,0 +1,266 @@
+# Header Component Analysis - TemplateBuilder.tsx (Lines 4472-5059)
+
+## 1. STATE VARIABLES (useState)
+
+### Menu Visibility States
+- showFileMenu: boolean
+- showEditMenu: boolean
+- showInsertMenu: boolean
+- showViewMenu: boolean
+
+### Edit Menu Sub-Tab State
+- editSubTab: 'settings' | 'css' | 'page'
+
+### Image Upload State
+- uploadingImage: boolean
+
+### Modal/Panel States
+- showSourceCodeModal: boolean
+- showStylesheetModal: boolean
+- showSitemapModal: boolean
+- showAddPageModal: boolean
+- showImageGallery: boolean
+- showEditPageModal: boolean
+
+### Undo/Redo States
+- canUndo: boolean
+- canRedo: boolean
+
+### Change Tracking
+- hasUnsavedChanges: boolean
+
+### Page & Template States
+- currentPage: TemplatePage | null
+- template: Template
+- newPageName: string
+- editPageName: string
+- editPageSlug: string
+- editPageMetaDescription: string
+
+---
+
+## 2. HANDLER FUNCTIONS
+
+### File Menu Handlers
+- handleNew(): void
+- handleSave(): Promise<void>
+- handleSaveAs(): Promise<void>
+- handleLoad(): Promise<void>
+- handleExportAsHTMLTemplate(): Promise<void>
+- handleExit(): void
+
+### Edit Menu - Undo/Redo
+- handleUndo(): void
+- handleRedo(): void
+
+### Edit Menu - Page Management
+- handleOpenEditPageModal(): void
+- handleSaveEditPage(): void
+- handleCopyPage(): void
+- handleDeletePage(pageId: number): void
+
+### Settings & Images
+- handleImageUpload(e: React.ChangeEvent<HTMLInputElement>): Promise<void>
+- addToHistory(newTemplate: Template, markAsUnsaved?: boolean): void
+
+### Other
+- handleLivePreview(): void
+
+---
+
+## 3. REFS (useRef)
+
+Menu Container Refs:
+- fileMenuRef: React.RefObject<HTMLDivElement>
+- editMenuRef: React.RefObject<HTMLDivElement>
+- insertMenuRef: React.RefObject<HTMLDivElement>
+- viewMenuRef: React.RefObject<HTMLDivElement>
+
+Template & Gallery Refs:
+- templateRef: React.RefObject<Template | null>
+- imageGalleryRef: React.RefObject<boolean>
+
+---
+
+## 4. TEMPLATE OBJECT PROPERTIES ACCESSED
+
+### Basic Metadata
+- template.name: string (editable in center input, line 5031)
+- template.description: string
+- template.business_type: string
+- template.exclusive_to: 'pro' | 'niche' | null
+- template.preview_image: string | null
+
+### Configuration
+- template.technologies: string[] (contains 'react' or 'html5')
+- template.features: string[] (shopping-cart, booking, blog, marketplace, forum, contact-form)
+- template.custom_css: string
+
+### Pages
+- template.pages: TemplatePage[] (array of pages with sections)
+- template.pages.length (used in checks, line 4689)
+
+### Current Page (when selected)
+- currentPage.name: string
+- currentPage.id: number
+- currentPage.slug: string
+- currentPage.meta_description: string
+- currentPage.sections: TemplateSection[]
+
+---
+
+## 5. OTHER DEPENDENCIES
+
+### User Object
+- user: { name: string } (from useAuth(), used at line 5056)
+- Nullable with optional chaining: user?.name
+
+### Form Input States (Edit Page modal)
+- editPageName: string
+- editPageSlug: string
+- editPageMetaDescription: string
+
+### Settings Modals
+- showAddPageModal: boolean
+- showEditPageModal: boolean
+- showSourceCodeModal: boolean
+- showStylesheetModal: boolean
+- showSitemapModal: boolean
+
+---
+
+## 6. COMPONENTS USED
+
+- StyleEditor (for custom CSS editing in Edit menu)
+
+---
+
+## 7. CRITICAL INTERACTIONS
+
+### Menu Toggle Logic
+- Menus close each other on mouse enter (line 4482-4487 pattern)
+- All menus collapse when mouseEnter Help button (line 4950-4956)
+
+### Conditional Rendering
+- Edit menu conditional: {showEditMenu && template && (...)
+- Insert menu conditional: {showInsertMenu && template && (...)
+- These require template to be non-null
+
+### Edit Page Tab
+- Shows current page name (line 4675)
+- Delete Page button only shows if template.pages.length > 1 (line 4689)
+
+### Template Settings Tab
+- Preview image handling: displays existing image or upload button
+- All fields bound to template state with immediate updates via setTemplate
+- Features as checkboxes: shopping-cart, booking, blog, marketplace, forum, contact-form
+
+### CSS Tab
+- StyleEditor component with context="page" and showFontSelector=true
+
+### Image Upload
+- Disabled if template not saved (template.id === 0)
+- Requires uploadingImage state for loading UI
+
+---
+
+## 8. COMPLETE TYPESCRIPT INTERFACE
+
+interface HeaderProps {
+  // States - Menu Visibility
+  showFileMenu: boolean
+  setShowFileMenu: (value: boolean) => void
+  showEditMenu: boolean
+  setShowEditMenu: (value: boolean) => void
+  showInsertMenu: boolean
+  setShowInsertMenu: (value: boolean) => void
+  showViewMenu: boolean
+  setShowViewMenu: (value: boolean) => void
+  
+  // States - Tabs & Form Inputs
+  editSubTab: 'settings' | 'css' | 'page'
+  setEditSubTab: (tab: 'settings' | 'css' | 'page') => void
+  editPageName: string
+  setEditPageName: (value: string) => void
+  editPageSlug: string
+  setEditPageSlug: (value: string) => void
+  editPageMetaDescription: string
+  setEditPageMetaDescription: (value: string) => void
+  newPageName: string
+  setNewPageName: (value: string) => void
+  
+  // States - Data
+  template: Template
+  setTemplate: (template: Template) => void
+  currentPage: TemplatePage | null
+  setCurrentPage: (page: TemplatePage | null) => void
+  
+  // States - UI Flags
+  uploadingImage: boolean
+  setUploadingImage: (value: boolean) => void
+  canUndo: boolean
+  canRedo: boolean
+  hasUnsavedChanges: boolean
+  
+  // States - Modals
+  showAddPageModal: boolean
+  setShowAddPageModal: (value: boolean) => void
+  showEditPageModal: boolean
+  setShowEditPageModal: (value: boolean) => void
+  showSourceCodeModal: boolean
+  setShowSourceCodeModal: (value: boolean) => void
+  showStylesheetModal: boolean
+  setShowStylesheetModal: (value: boolean) => void
+  showSitemapModal: boolean
+  setShowSitemapModal: (value: boolean) => void
+  showImageGallery: boolean
+  setShowImageGallery: (value: boolean | ((prev: boolean) => boolean)) => void
+  
+  // Refs
+  fileMenuRef: React.RefObject<HTMLDivElement>
+  editMenuRef: React.RefObject<HTMLDivElement>
+  insertMenuRef: React.RefObject<HTMLDivElement>
+  viewMenuRef: React.RefObject<HTMLDivElement>
+  templateRef: React.RefObject<Template | null>
+  imageGalleryRef: React.RefObject<boolean>
+  
+  // Handlers - File Menu
+  handleNew: () => void
+  handleSave: () => Promise<void>
+  handleSaveAs: () => Promise<void>
+  handleLoad: () => Promise<void>
+  handleExportAsHTMLTemplate: () => Promise<void>
+  handleExit: () => void
+  
+  // Handlers - Edit Menu
+  handleUndo: () => void
+  handleRedo: () => void
+  handleOpenEditPageModal: () => void
+  handleSaveEditPage: () => void
+  handleCopyPage: () => void
+  handleDeletePage: (pageId: number) => void
+  
+  // Handlers - Other
+  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>
+  handleLivePreview: () => void
+  addToHistory: (newTemplate: Template, markAsUnsaved?: boolean) => void
+  
+  // Other
+  user: { name: string } | null | undefined
+}
+
+---
+
+## 9. KEY OBSERVATIONS
+
+1. The header spans 587 lines and is very feature-rich
+2. Template object modifications trigger addToHistory() calls (line 4840, 4836)
+3. templateRef.current is synced immediately to avoid race conditions (lines 4839, 5035)
+4. Menu navigation uses onMouseEnter events to switch between menus
+5. All modal state updates follow setState pattern
+6. Edit menu tabs have different content based on editSubTab value
+7. Features use checkboxes with manual state management
+8. Image gallery ref is a boolean flag, not a DOM element
+9. All async handlers should show loading state
+10. Template must exist (non-null) for certain menus to render
+
