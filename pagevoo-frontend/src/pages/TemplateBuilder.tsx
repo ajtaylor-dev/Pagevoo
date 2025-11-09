@@ -25,6 +25,7 @@ import { EditableText } from '../components/EditableText'
 import { GridSection } from '../components/sections/GridSection'
 import { NavbarSection } from '../components/sections/NavbarSection'
 import { FooterSection } from '../components/sections/FooterSection'
+import { SectionWrapper } from '../components/sections/SectionWrapper'
 import { Header } from '../components/layout/Header'
 import { LeftSidebar } from '../components/LeftSidebar'
 import { RightSidebar } from '../components/RightSidebar'
@@ -3482,511 +3483,12 @@ ${sectionsHTML}
   // Clickable text component that opens the editor
 
   const renderSection = (section: TemplateSection, index: number) => {
-    const content = section.content || {}
-
-    // Determine section behavior based on type
-    const isTopLocked = section.type === 'navbar' || section.type.startsWith('navbar-') || section.type.startsWith('header-')
-    const isBottomLocked = section.type.startsWith('footer-')
-    const isSidebar = section.type.startsWith('sidebar-nav-')
-    const isLeftSidebar = section.type === 'sidebar-nav-left'
-    const isRightSidebar = section.type === 'sidebar-nav-right'
-    const isPositionLocked = isTopLocked || isBottomLocked
-    const isHovered = hoveredSection === section.id
-
-    // Track sidebar visibility for menu-click mode
-    const [sidebarVisible, setSidebarVisible] = useState(content.positioned !== 'menu-click')
-
-    // Ref for tooltip positioning
-    const sectionContainerRef = useRef<HTMLDivElement>(null)
-    const [showTooltip, setShowTooltip] = useState(false)
-    const tooltipHideTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-
-    // Update tooltip visibility with delay on mouseout
-    useEffect(() => {
-      if (isHovered && cssInspectorMode) {
-        // Clear any pending hide timeout
-        if (tooltipHideTimeoutRef.current) {
-          clearTimeout(tooltipHideTimeoutRef.current)
-          tooltipHideTimeoutRef.current = null
-        }
-        // Show tooltip immediately
-        setShowTooltip(true)
-      } else {
-        // Hide tooltip with 500ms delay
-        tooltipHideTimeoutRef.current = setTimeout(() => {
-          setShowTooltip(false)
-        }, 500)
-      }
-
-      // Cleanup timeout on unmount
-      return () => {
-        if (tooltipHideTimeoutRef.current) {
-          clearTimeout(tooltipHideTimeoutRef.current)
-        }
-      }
-    }, [isHovered, cssInspectorMode])
-
-    const sectionWrapper = (children: React.ReactNode) => (
-      <div
-        ref={sectionContainerRef}
-        key={section.id}
-        className={`relative group ${isSidebar ? 'z-20' : ''} ${section.is_locked ? 'cursor-not-allowed' : ''}`}
-        onMouseEnter={() => setHoveredSection(section.id)}
-        onMouseLeave={() => setHoveredSection(null)}
-        onClick={(e) => {
-          e.stopPropagation()
-          if (!section.is_locked) {
-            setSelectedSection(section)
-            // Auto-close CSS panel to show section properties
-            if (showCSSPanel) {
-              setShowCSSPanel(false)
-            }
-          }
-        }}
-      >
-        {/* Position Indicator Badge */}
-        {((section.type === 'navbar' && content.position && content.position !== 'static' && content.position !== 'relative') || section.type === 'navbar-sticky' || isTopLocked || isBottomLocked) && (
-          <div className="builder-ui absolute top-1 left-1 z-30 flex gap-1">
-            {((section.type === 'navbar' && content.position === 'sticky') || section.type === 'navbar-sticky') && (
-              <span className="builder-ui px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full border border-purple-300">
-                STICKY
-              </span>
-            )}
-            {(section.type === 'navbar' && content.position === 'fixed') && (
-              <span className="builder-ui px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full border border-blue-300">
-                FIXED
-              </span>
-            )}
-            {(section.type === 'navbar' && content.position === 'absolute') && (
-              <span className="builder-ui px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-semibold rounded-full border border-yellow-300">
-                ABSOLUTE
-              </span>
-            )}
-            {(isTopLocked && section.type !== 'navbar-sticky' && section.type !== 'navbar') && (
-              <span className="builder-ui px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full border border-blue-300">
-                FIXED TOP
-              </span>
-            )}
-            {isBottomLocked && (
-              <span className="builder-ui px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-semibold rounded-full border border-green-300">
-                FIXED BOTTOM
-              </span>
-            )}
-          </div>
-        )}
-
-        {children}
-
-        {/* Locked Section Overlay */}
-        {section.is_locked && (
-          <div className="builder-ui absolute inset-0 bg-amber-500 bg-opacity-5 pointer-events-none border-2 border-amber-400 border-dashed rounded z-10">
-            <div className="builder-ui absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1.5">
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              LOCKED
-            </div>
-          </div>
-        )}
-
-        {/* Hover Overlay */}
-        {isHovered && (
-          <div className={`builder-ui absolute top-2 ${isLeftSidebar ? 'left-2' : 'right-2'} bg-white shadow-lg rounded-lg border border-gray-200 p-2 flex items-center gap-1 z-50`}>
-            <span className="builder-ui text-xs font-medium text-gray-700 mr-2 capitalize">{section.section_name || section.type}</span>
-
-            {/* Sidebar sections: show left/right controls */}
-            {isSidebar && (
-              <>
-                {/* Menu-click mode: show expand/collapse toggle */}
-                {content.positioned === 'menu-click' && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      setSidebarVisible(!sidebarVisible)
-                    }}
-                    className={`builder-ui p-1 hover:bg-[#e8f0e6] rounded transition ${sidebarVisible ? 'bg-[#d4e5d0]' : ''}`}
-                    title={sidebarVisible ? 'Hide Sidebar' : 'Show Sidebar'}
-                  >
-                    <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      {sidebarVisible ? (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      ) : (
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                      )}
-                    </svg>
-                  </button>
-                )}
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleMoveSidebar(section.id, 'left')
-                  }}
-                  disabled={isLeftSidebar}
-                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
-                  title="Move to Left"
-                >
-                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleMoveSidebar(section.id, 'right')
-                  }}
-                  disabled={isRightSidebar}
-                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
-                  title="Move to Right"
-                >
-                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
-              </>
-            )}
-
-            {/* Normal sections: show up/down controls */}
-            {!isSidebar && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleMoveSection(section.id, 'up')
-                  }}
-                  disabled={index === 0}
-                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
-                  title="Move Up"
-                >
-                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
-                  </svg>
-                </button>
-
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleMoveSection(section.id, 'down')
-                  }}
-                  disabled={index === (currentPage?.sections.length || 0) - 1}
-                  className="builder-ui p-1 hover:bg-[#e8f0e6] rounded disabled:opacity-30 transition"
-                  title="Move Down"
-                >
-                  <svg className="builder-ui w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </>
-            )}
-
-            {/* Edit lock toggle - available for all sections */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleToggleSectionLock(section.id)
-              }}
-              className={`builder-ui p-1 hover:bg-[#e8f0e6] rounded transition ${section.is_locked ? 'bg-amber-50' : ''}`}
-              title={section.is_locked ? 'Unlock Editing' : 'Lock Editing'}
-            >
-              <svg className={`builder-ui w-4 h-4 ${section.is_locked ? 'text-amber-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {section.is_locked ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-                )}
-              </svg>
-            </button>
-
-            <button
-              onClick={(e) => {
-                e.stopPropagation()
-                handleDeleteSection(section.id)
-              }}
-              className="builder-ui p-1 hover:bg-red-50 rounded transition ml-1"
-              title="Delete"
-            >
-              <svg className="builder-ui w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        )}
-
-        {/* CSS Inspector Tooltip - Rendered via Portal */}
-        {cssInspectorMode && showTooltip && (() => {
-          const contentCss = section.content?.content_css
-          const sectionCss = typeof contentCss === 'string' ? contentCss : (contentCss && !contentCss.rows && !contentCss.columns ? JSON.stringify(contentCss, null, 2) : null)
-          const hasRows = contentCss?.rows && Object.keys(contentCss.rows).length > 0
-          const hasColumns = contentCss?.columns && Object.keys(contentCss.columns).length > 0
-
-          // Check for navbar-specific styling
-          const containerStyle = section.content?.containerStyle
-          const linkStyling = section.content?.linkStyling
-          const activeIndicator = section.content?.activeIndicator
-          const dropdownConfig = section.content?.dropdownConfig
-
-          const hasNavbarStyling = containerStyle || linkStyling || activeIndicator || dropdownConfig
-          const hasAnyCss = sectionCss || hasRows || hasColumns || hasNavbarStyling
-
-          // Parse CSS string into property map
-          const parseCssString = (cssString: string): Record<string, string> => {
-            if (!cssString) return {}
-            const properties: Record<string, string> = {}
-            // Match CSS property: value pairs
-            const regex = /([a-z-]+)\s*:\s*([^;]+);?/gi
-            let match
-            while ((match = regex.exec(cssString)) !== null) {
-              properties[match[1].trim()] = match[2].trim()
-            }
-            return properties
-          }
-
-          // Convert camelCase object to CSS properties
-          const objectToCssProps = (obj: any): Record<string, string> => {
-            if (!obj || typeof obj !== 'object') return {}
-            const props: Record<string, string> = {}
-            Object.entries(obj).forEach(([key, value]) => {
-              if (value !== undefined && value !== '') {
-                const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase()
-                props[cssKey] = String(value)
-              }
-            })
-            return props
-          }
-
-          // Build inheritance chain for a specific property
-          const buildInheritanceChain = (property: string) => {
-            const chain: Array<{level: string, value: string | null, color: string}> = []
-
-            // 1. Site CSS (lowest priority)
-            const siteProps = parseCssString(template?.custom_css || '')
-            chain.push({
-              level: 'Site CSS',
-              value: siteProps[property] || null,
-              color: 'text-purple-300'
-            })
-
-            // 2. Page CSS
-            const pageProps = parseCssString(currentPage?.page_css || '')
-            chain.push({
-              level: 'Page CSS',
-              value: pageProps[property] || null,
-              color: 'text-blue-300'
-            })
-
-            // 3. Section CSS
-            const sectionProps = parseCssString(section.content?.section_css || '')
-            const containerProps = objectToCssProps(section.content?.containerStyle || {})
-            const mergedSectionProps = {...sectionProps, ...containerProps}
-            chain.push({
-              level: 'Section CSS',
-              value: mergedSectionProps[property] || null,
-              color: 'text-green-300'
-            })
-
-            return chain
-          }
-
-          // Get all unique properties across the cascade
-          const getAllProperties = (): Set<string> => {
-            const props = new Set<string>()
-            const siteProps = parseCssString(template?.custom_css || '')
-            const pageProps = parseCssString(currentPage?.page_css || '')
-            const sectionProps = parseCssString(section.content?.section_css || '')
-            const containerProps = objectToCssProps(section.content?.containerStyle || {})
-
-            Object.keys(siteProps).forEach(p => props.add(p))
-            Object.keys(pageProps).forEach(p => props.add(p))
-            Object.keys(sectionProps).forEach(p => props.add(p))
-            Object.keys(containerProps).forEach(p => props.add(p))
-
-            return props
-          }
-
-          // Generate CSS representation from styling objects
-          const generateCssFromStyle = (style: any, label: string) => {
-            if (!style || Object.keys(style).length === 0) return null
-            const cssLines = Object.entries(style)
-              .filter(([_, value]) => value !== undefined && value !== '')
-              .map(([key, value]) => {
-                const cssKey = key.replace(/([A-Z])/g, '-$1').toLowerCase()
-                return `  ${cssKey}: ${value};`
-              })
-            return cssLines.length > 0 ? `/* ${label} */\n${cssLines.join('\n')}` : null
-          }
-
-          return createPortal(
-            <div
-              className="builder-ui bg-gray-900 bg-opacity-95 text-white p-4 rounded-lg shadow-2xl overflow-y-auto"
-              style={{
-                position: 'fixed',
-                top: '16px',
-                right: '16px',
-                width: '500px',
-                maxHeight: 'calc(100vh - 32px)', // Full height minus top/bottom spacing
-                zIndex: 9999,
-                pointerEvents: 'auto' // Allow scrolling in tooltip
-              }}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-bold text-yellow-300">
-                  {section.section_name || section.type} - CSS Inspector
-                </span>
-                <svg className="w-4 h-4 text-yellow-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                </svg>
-              </div>
-
-              {!hasAnyCss && (
-                <div className="text-xs text-gray-400 italic">
-                  No styling applied to this section
-                </div>
-              )}
-
-              {/* Navigation Styling (from Navigation Styling Panel) */}
-              {(section.type === 'navbar' || section.type.startsWith('navbar-')) && hasNavbarStyling && (
-                <div className="mb-3">
-                  <span className="text-xs font-bold text-cyan-300">Navigation Styling:</span>
-                  <div className="mt-1 space-y-2">
-                    {containerStyle && Object.keys(containerStyle).length > 0 && (
-                      <div>
-                        <span className="text-xs text-gray-400">Container:</span>
-                        <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
-                          {generateCssFromStyle(containerStyle, 'Container')}
-                        </pre>
-                      </div>
-                    )}
-                    {linkStyling && Object.keys(linkStyling).length > 0 && (
-                      <div>
-                        <span className="text-xs text-gray-400">Links:</span>
-                        <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
-                          {generateCssFromStyle(linkStyling, 'Links')}
-                        </pre>
-                      </div>
-                    )}
-                    {activeIndicator && Object.keys(activeIndicator).length > 0 && (
-                      <div>
-                        <span className="text-xs text-gray-400">Active Link:</span>
-                        <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
-                          {generateCssFromStyle(activeIndicator, 'Active Indicator')}
-                        </pre>
-                      </div>
-                    )}
-                    {dropdownConfig && section.type === 'navbar-dropdown' && (
-                      <div>
-                        <span className="text-xs text-gray-400">Dropdown Config:</span>
-                        <pre className="text-xs font-mono whitespace-pre-wrap text-orange-300 ml-2">
-                          {`Trigger: click (always)\nTransition: ${dropdownConfig.transitionDuration || 200}ms`}
-                        </pre>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Custom Section CSS */}
-              {sectionCss && (
-                <div className={hasNavbarStyling ? 'pt-3 border-t border-gray-700' : ''}>
-                  <span className="text-xs font-bold text-yellow-300">Custom Section CSS:</span>
-                  <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 mt-1">
-                    {sectionCss}
-                  </pre>
-                </div>
-              )}
-
-              {hasRows && (
-                <div className="mt-3 pt-3 border-t border-gray-700">
-                  <span className="text-xs font-bold text-blue-300">Row CSS:</span>
-                  {Object.entries(contentCss.rows).map(([rowIdx, css]: [string, any]) => (
-                    <div key={rowIdx} className="mt-2">
-                      <span className="text-xs text-gray-400">Row {parseInt(rowIdx) + 1}:</span>
-                      <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
-                        {css || '/* No CSS */'}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {hasColumns && (
-                <div className="mt-3 pt-3 border-t border-gray-700">
-                  <span className="text-xs font-bold text-purple-300">Column CSS:</span>
-                  {Object.entries(contentCss.columns).map(([colIdx, css]: [string, any]) => (
-                    <div key={colIdx} className="mt-2">
-                      <span className="text-xs text-gray-400">Column {parseInt(colIdx) + 1}:</span>
-                      <pre className="text-xs font-mono whitespace-pre-wrap text-green-300 ml-2">
-                        {css || '/* No CSS */'}
-                      </pre>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* CSS Cascade / Inheritance Chain */}
-              <div className="mt-3 pt-3 border-t border-gray-700">
-                <span className="text-xs font-bold text-orange-300">CSS Cascade (Inheritance Chain):</span>
-                <div className="mt-2 text-[10px] text-gray-400 italic">
-                  Shows how properties cascade from Site → Page → Section
-                </div>
-                <div className="mt-3 space-y-3">
-                  {Array.from(getAllProperties()).sort().map(property => {
-                    const chain = buildInheritanceChain(property)
-                    // Find the effective value (last non-null in chain)
-                    const effectiveValue = [...chain].reverse().find(c => c.value !== null)
-                    const hasOverride = chain.filter(c => c.value !== null).length > 1
-
-                    return (
-                      <div key={property} className="bg-gray-800 bg-opacity-50 rounded p-2">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-semibold text-white">{property}:</span>
-                          {hasOverride && (
-                            <span className="text-[9px] bg-red-500 bg-opacity-20 text-red-300 px-1.5 py-0.5 rounded">
-                              OVERRIDE
-                            </span>
-                          )}
-                        </div>
-                        {chain.map((item, idx) => {
-                          const isEffective = item.value !== null && item.value === effectiveValue?.value
-                          return (
-                            <div key={idx} className={`flex items-center gap-2 text-[10px] ml-2 ${item.value === null ? 'opacity-40' : ''}`}>
-                              <span className="text-gray-500 w-16">{item.level}:</span>
-                              {item.value !== null ? (
-                                <>
-                                  <span className={`${item.color} ${isEffective ? 'font-bold' : ''}`}>
-                                    {item.value}
-                                  </span>
-                                  {isEffective && (
-                                    <span className="text-green-400 text-[8px]">← APPLIED</span>
-                                  )}
-                                </>
-                              ) : (
-                                <span className="text-gray-600 italic">—</span>
-                              )}
-                            </div>
-                          )
-                        })}
-                        <div className="mt-1 pt-1 border-t border-gray-700 flex items-center gap-2 text-[10px]">
-                          <span className="text-gray-500">Computed:</span>
-                          <span className="text-yellow-400 font-bold">
-                            {effectiveValue?.value || 'default'}
-                          </span>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>,
-            document.body
-          )
-        })()}
-      </div>
-    )
+    // Determine which section component to render
+    let sectionContent: React.ReactNode
 
     // Grid sections (1x1, 2x1, 3x1, etc.)
     if (section.type.startsWith('grid-')) {
-      return sectionWrapper(
+      sectionContent = (
         <GridSection
           section={section}
           selectedSection={selectedSection}
@@ -3995,55 +3497,80 @@ ${sectionsHTML}
           onUpdateColumn={handleGridColumnUpdate}
         />
       )
+    } else {
+      switch (section.type) {
+        // Navigation and Header sections
+        case 'navbar':
+          sectionContent = (
+            <NavbarSection
+              section={section}
+              selectedSection={selectedSection}
+              editingText={editingText}
+              currentPage={currentPage}
+              template={template}
+              mobileMenuOpen={!!mobileMenuOpen[section.id]}
+              onSetMobileMenuOpen={(open) => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: open })}
+              onOpenTextEditor={handleOpenTextEditor}
+            />
+          )
+          break
+
+        // Legacy navbar types (deprecated)
+        case 'navbar-basic':
+        case 'navbar-sticky':
+        case 'navbar-dropdown':
+          sectionContent = (
+            <div className="bg-yellow-50 border-2 border-yellow-400 p-4 text-center">
+              <p className="text-sm text-yellow-800 font-medium">
+                ⚠️ This navbar type is deprecated. Please delete this section and add the new unified "Navigation Bar" instead.
+              </p>
+            </div>
+          )
+          break
+
+        // Footer sections
+        case 'footer-simple':
+        case 'footer-columns':
+          sectionContent = (
+            <FooterSection
+              section={section}
+              selectedSection={selectedSection}
+              editingText={editingText}
+              onOpenTextEditor={handleOpenTextEditor}
+            />
+          )
+          break
+
+        default:
+          sectionContent = (
+            <div className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#98b290] transition ${selectedSection?.id === section.id ? 'border-[#98b290]' : ''}`}>
+              <p className="text-gray-500 text-center">Section: {section.type}</p>
+            </div>
+          )
+      }
     }
 
-    switch (section.type) {
-      // Navigation and Header sections
-      case 'navbar':
-        return sectionWrapper(
-          <NavbarSection
-            section={section}
-            selectedSection={selectedSection}
-            editingText={editingText}
-            currentPage={currentPage}
-            template={template}
-            mobileMenuOpen={!!mobileMenuOpen[section.id]}
-            onSetMobileMenuOpen={(open) => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: open })}
-            onOpenTextEditor={handleOpenTextEditor}
-          />
-        )
-
-      // Legacy navbar types (deprecated)
-      case 'navbar-basic':
-      case 'navbar-sticky':
-      case 'navbar-dropdown':
-        return sectionWrapper(
-          <div className="bg-yellow-50 border-2 border-yellow-400 p-4 text-center">
-            <p className="text-sm text-yellow-800 font-medium">
-              ⚠️ This navbar type is deprecated. Please delete this section and add the new unified "Navigation Bar" instead.
-            </p>
-          </div>
-        )
-
-      // Footer sections
-      case 'footer-simple':
-      case 'footer-columns':
-        return sectionWrapper(
-          <FooterSection
-            section={section}
-            selectedSection={selectedSection}
-            editingText={editingText}
-            onOpenTextEditor={handleOpenTextEditor}
-          />
-        )
-
-      default:
-        return sectionWrapper(
-          <div className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#98b290] transition ${selectedSection?.id === section.id ? 'border-[#98b290]' : ''}`}>
-            <p className="text-gray-500 text-center">Section: {section.type}</p>
-          </div>
-        )
-    }
+    // Wrap the section content with the SectionWrapper component
+    return (
+      <SectionWrapper
+        section={section}
+        index={index}
+        hoveredSection={hoveredSection}
+        setHoveredSection={setHoveredSection}
+        setSelectedSection={setSelectedSection}
+        showCSSPanel={showCSSPanel}
+        setShowCSSPanel={setShowCSSPanel}
+        cssInspectorMode={cssInspectorMode}
+        currentPage={currentPage}
+        template={template}
+        handleMoveSidebar={handleMoveSidebar}
+        handleMoveSection={handleMoveSection}
+        handleToggleSectionLock={handleToggleSectionLock}
+        handleDeleteSection={handleDeleteSection}
+      >
+        {sectionContent}
+      </SectionWrapper>
+    )
   }
 
   const handleLeftMouseDown = () => setIsResizingLeft(true)
