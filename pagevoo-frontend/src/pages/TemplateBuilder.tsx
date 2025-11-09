@@ -9,6 +9,15 @@ import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
 import NavigationTreeManager from '@/components/NavigationTreeManager'
 import { MobileMenu } from '@/components/MobileMenu'
 import { ButtonStyleModal } from '@/components/modals/ButtonStyleModal'
+import { AddPageModal } from '@/components/modals/AddPageModal'
+import { EditPageModal } from '@/components/modals/EditPageModal'
+import { LoadModal } from '@/components/modals/LoadModal'
+import { SourceCodeModal } from '@/components/modals/SourceCodeModal'
+import { StylesheetModal } from '@/components/modals/StylesheetModal'
+import { SitemapModal } from '@/components/modals/SitemapModal'
+import { ColorPickerModal } from '@/components/modals/ColorPickerModal'
+import { LinkModal } from '@/components/modals/LinkModal'
+import { InsertImageModal } from '@/components/modals/InsertImageModal'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
@@ -5637,124 +5646,26 @@ ${sectionsHTML}
       </div>
 
       {/* Add Page Modal */}
-      {showAddPageModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Add New Page</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Page Name
-                </label>
-                <input
-                  type="text"
-                  value={newPageName}
-                  onChange={(e) => setNewPageName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddPage()}
-                  placeholder="e.g., About Us, Services, Contact"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                  autoFocus
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Slug will be auto-generated: {newPageName ? newPageName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') : 'page-slug'}
-                </p>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    setShowAddPageModal(false)
-                    setNewPageName('')
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleAddPage}
-                  disabled={!newPageName.trim()}
-                  className="flex-1 px-4 py-2 bg-[#98b290] hover:bg-[#7a9274] text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Add Page
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <AddPageModal
+        isOpen={showAddPageModal}
+        onClose={() => setShowAddPageModal(false)}
+        newPageName={newPageName}
+        setNewPageName={setNewPageName}
+        onAdd={handleAddPage}
+      />
 
       {/* Edit Page Modal */}
-      {showEditPageModal && currentPage && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Page Details</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Page Name
-                </label>
-                <input
-                  type="text"
-                  value={editPageName}
-                  onChange={(e) => setEditPageName(e.target.value)}
-                  placeholder="e.g., About Us, Services, Contact"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Page Slug
-                </label>
-                <input
-                  type="text"
-                  value={editPageSlug}
-                  onChange={(e) => setEditPageSlug(e.target.value)}
-                  placeholder="e.g., about-us, services, contact"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  The URL path for this page (e.g., /about-us)
-                </p>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Meta Description
-                </label>
-                <textarea
-                  value={editPageMetaDescription}
-                  onChange={(e) => setEditPageMetaDescription(e.target.value)}
-                  placeholder="Brief description for search engines (150-160 characters recommended)"
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  {editPageMetaDescription.length} characters
-                </p>
-              </div>
-              <div className="flex gap-2 pt-2">
-                <button
-                  onClick={() => {
-                    setShowEditPageModal(false)
-                    setEditPageName('')
-                    setEditPageSlug('')
-                    setEditPageMetaDescription('')
-                  }}
-                  className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSaveEditPage}
-                  disabled={!editPageName.trim() || !editPageSlug.trim()}
-                  className="flex-1 px-4 py-2 bg-[#98b290] hover:bg-[#7a9274] text-white rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <EditPageModal
+        isOpen={showEditPageModal && !!currentPage}
+        onClose={() => setShowEditPageModal(false)}
+        editPageName={editPageName}
+        setEditPageName={setEditPageName}
+        editPageSlug={editPageSlug}
+        setEditPageSlug={setEditPageSlug}
+        editPageMetaDescription={editPageMetaDescription}
+        setEditPageMetaDescription={setEditPageMetaDescription}
+        onSave={handleSaveEditPage}
+      />
       {/* Button Style Customization Modal */}
       <ButtonStyleModal
         isOpen={showNavButtonStyleModal}
