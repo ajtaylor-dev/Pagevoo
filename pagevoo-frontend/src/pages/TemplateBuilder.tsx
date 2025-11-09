@@ -441,6 +441,35 @@ export default function TemplateBuilder() {
     }
   }, [currentPage, currentPage?.sections, JSON.stringify(currentPage?.sections?.map(s => ({ id: s.id, section_id: s.section_id, section_name: s.section_name }))), template?.custom_css, currentPage?.page_css, showStylesheetModal])
 
+  // History management helper function
+  const addToHistory = (newTemplate: Template, markAsUnsaved: boolean = true) => {
+    setHistory(prev => {
+      // Remove any history after current index (if user made changes after undo)
+      const newHistory = prev.slice(0, historyIndex + 1)
+
+      // Add new state
+      newHistory.push(JSON.parse(JSON.stringify(newTemplate))) // Deep clone
+
+      // Limit to 10 steps
+      if (newHistory.length > 10) {
+        newHistory.shift() // Remove oldest
+        setHistoryIndex(9)
+      } else {
+        setHistoryIndex(newHistory.length - 1)
+      }
+
+      // Update undo/redo availability
+      setCanUndo(true)
+      setCanRedo(false)
+
+      return newHistory
+    })
+
+    if (markAsUnsaved) {
+      setHasUnsavedChanges(true)
+    }
+  }
+
   // Page Management Functions (using custom hook)
   const {
     handleAddPage,
@@ -621,35 +650,6 @@ export default function TemplateBuilder() {
     handleTextEditorChange,
     applyImageAlignment
   })
-
-  // History management helper function
-  const addToHistory = (newTemplate: Template, markAsUnsaved: boolean = true) => {
-    setHistory(prev => {
-      // Remove any history after current index (if user made changes after undo)
-      const newHistory = prev.slice(0, historyIndex + 1)
-
-      // Add new state
-      newHistory.push(JSON.parse(JSON.stringify(newTemplate))) // Deep clone
-
-      // Limit to 10 steps
-      if (newHistory.length > 10) {
-        newHistory.shift() // Remove oldest
-        setHistoryIndex(9)
-      } else {
-        setHistoryIndex(newHistory.length - 1)
-      }
-
-      // Update undo/redo availability
-      setCanUndo(true)
-      setCanRedo(false)
-
-      return newHistory
-    })
-
-    if (markAsUnsaved) {
-      setHasUnsavedChanges(true)
-    }
-  }
 
   // Section handlers hook
   const {
