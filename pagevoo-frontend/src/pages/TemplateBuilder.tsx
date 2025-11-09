@@ -11,6 +11,8 @@ import { MobileMenu } from '@/components/MobileMenu'
 import { ButtonStyleModal } from '@/components/modals/ButtonStyleModal'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
+import { SectionThumbnail } from '../components/SectionThumbnail'
+import { EditableText } from '../components/EditableText'
 import {
   generateRandomString,
   sanitizeName,
@@ -882,33 +884,6 @@ padding: 1rem;`
     },
   ]
 
-  const renderSectionThumbnail = (section: any) => {
-    if (section.cols) {
-      // Core grid section - render visual thumbnail
-      const gridItems = Array(section.cols * section.rows).fill(null)
-      return (
-        <div className="w-full aspect-video bg-white rounded border border-gray-300 p-1 flex items-center justify-center">
-          <div
-            className="grid gap-0.5 w-full h-full"
-            style={{ gridTemplateColumns: `repeat(${section.cols}, 1fr)` }}
-          >
-            {gridItems.map((_, idx) => (
-              <div key={idx} className="bg-[#d4e5d0] rounded-sm border border-[#d4e5d0]"></div>
-            ))}
-          </div>
-        </div>
-      )
-    } else {
-      // Special section - show icon placeholder
-      return (
-        <div className="w-full aspect-video bg-gradient-to-br from-[#e8f0e6] to-[#d4e5d0] rounded border border-[#d4e5d0] flex items-center justify-center">
-          <div className="text-2xl font-bold text-[#5a7a54]">
-            {section.label.charAt(0)}
-          </div>
-        </div>
-      )
-    }
-  }
 
   const handleAddPredefinedPage = (pageConfig: any) => {
     if (!template) return
@@ -1296,22 +1271,6 @@ padding: 1rem;`
   }
 
   // Helper to extract font families from CSS and generate Google Fonts link
-  const extractFontsFromCSS = (css: string): string[] => {
-    const fonts: Set<string> = new Set()
-    const fontFamilyRegex = /font-family:\s*['"]?([^'";\n]+)['"]?/gi
-    let match
-
-    while ((match = fontFamilyRegex.exec(css)) !== null) {
-      const fontName = match[1].split(',')[0].trim().replace(/['"]/g, '')
-      // Only include Google Fonts (not system fonts)
-      const googleFonts = ['Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Oswald', 'Raleway', 'PT Sans', 'Merriweather', 'Nunito', 'Playfair Display', 'Ubuntu']
-      if (googleFonts.includes(fontName)) {
-        fonts.add(fontName)
-      }
-    }
-
-    return Array.from(fonts)
-  }
 
   // Canvas Drop Zone Component
   const CanvasDropZone = ({ currentPage, activeId, activeDragData, renderSection, viewport }: any) => {
@@ -3644,34 +3603,6 @@ ${sectionsHTML}
   }
 
   // Clickable text component that opens the editor
-  const EditableText = ({
-    value,
-    className,
-    tag = 'div',
-    sectionId,
-    field
-  }: {
-    value: string
-    onSave?: (e: React.FocusEvent<HTMLElement>) => void
-    className?: string
-    tag?: 'div' | 'h1' | 'h2' | 'p' | 'button'
-    sectionId: number
-    field: string
-  }) => {
-    const Component = tag as any
-    const isEditing = editingText?.sectionId === sectionId && editingText?.field === field
-
-    return (
-      <Component
-        className={`${className} ${isEditing ? 'ring-2 ring-blue-500' : ''} cursor-pointer hover:bg-blue-50 hover:bg-opacity-20 transition`}
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation()
-          handleOpenTextEditor(sectionId, field, value)
-        }}
-        dangerouslySetInnerHTML={{ __html: value }}
-      />
-    )
-  }
 
   const renderSection = (section: TemplateSection, index: number) => {
     const content = section.content || {}
@@ -4229,7 +4160,6 @@ ${sectionsHTML}
                   sectionId={section.id}
                   field={`column_${idx}`}
                   value={col.content || `Column ${idx + 1}`}
-                  onSave={(e) => handleGridColumnEdit(idx, e)}
                   className="outline-none hover:bg-white/50 rounded transition"
                 />
               </div>
@@ -4249,25 +4179,28 @@ ${sectionsHTML}
                 sectionId={section.id}
                 field="title"
                 value={content.title || 'Welcome'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'title', e)}
                 className="text-5xl font-bold mb-4 outline-none hover:bg-white/10 px-2 py-1 rounded transition"
-              />
+              
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "title"}
+                  onOpenEditor={handleOpenTextEditor}/>
               <EditableText
                 tag="p"
                 sectionId={section.id}
                 field="subtitle"
                 value={content.subtitle || 'Your subtitle here'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'subtitle', e)}
                 className="text-xl mb-6 outline-none hover:bg-white/10 px-2 py-1 rounded transition"
-              />
+              
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "subtitle"}
+                  onOpenEditor={handleOpenTextEditor}/>
               <EditableText
                 tag="button"
                 sectionId={section.id}
                 field="cta_text"
                 value={content.cta_text || 'Get Started'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'cta_text', e)}
                 className="px-8 py-3 bg-white text-gray-800 rounded-lg font-semibold hover:bg-gray-100 transition outline-none"
-              />
+              
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "cta_text"}
+                  onOpenEditor={handleOpenTextEditor}/>
             </div>
           </div>
         )
@@ -4280,9 +4213,10 @@ ${sectionsHTML}
               sectionId={section.id}
               field="heading"
               value={content.heading || 'Gallery'}
-              onSave={(e) => handleInlineTextEdit(section.id, 'heading', e)}
               className="text-3xl font-bold mb-6 text-center outline-none hover:bg-white/50 px-2 py-1 rounded transition"
-            />
+            
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
+                  onOpenEditor={handleOpenTextEditor}/>
             <div className="grid grid-cols-3 gap-4">
               {Array(6).fill(null).map((_, idx) => (
                 <div key={idx} className="aspect-square bg-gray-200 rounded-lg flex items-center justify-center">
@@ -4302,9 +4236,10 @@ ${sectionsHTML}
               sectionId={section.id}
               field="heading"
               value={content.heading || section.type.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
-              onSave={(e) => handleInlineTextEdit(section.id, 'heading', e)}
               className="text-3xl font-bold mb-6 text-center outline-none hover:bg-gray-100 px-2 py-1 rounded transition"
-            />
+            
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
+                  onOpenEditor={handleOpenTextEditor}/>
             <div className="max-w-md mx-auto space-y-4">
               {(content.fields || ['name', 'email', 'message']).map((field: string, idx: number) => (
                 <div key={idx} className="border-2 border-gray-300 rounded p-3 bg-gray-50">
@@ -4327,9 +4262,10 @@ ${sectionsHTML}
                 sectionId={section.id}
                 field="heading"
                 value={content.heading || 'Sign In'}
-                onSave={(e) => handleInlineTextEdit(section.id, 'heading', e)}
                 className="text-2xl font-bold mb-6 text-center outline-none hover:bg-gray-100 px-2 py-1 rounded transition"
-              />
+              
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
+                  onOpenEditor={handleOpenTextEditor}/>
               <div className="space-y-4">
                 <div className="border-2 border-gray-300 rounded p-3">
                   <span className="text-sm text-gray-600">Email</span>
@@ -4353,9 +4289,10 @@ ${sectionsHTML}
               sectionId={section.id}
               field="heading"
               value={content.heading || 'What Our Customers Say'}
-              onSave={(e) => handleInlineTextEdit(section.id, 'heading', e)}
               className="text-3xl font-bold mb-8 text-center outline-none hover:bg-white/50 px-2 py-1 rounded transition"
-            />
+            
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
+                  onOpenEditor={handleOpenTextEditor}/>
             <div className="grid md:grid-cols-2 gap-6">
               {Array(2).fill(null).map((_, idx) => (
                 <div key={idx} className="bg-white p-6 rounded-lg shadow">
@@ -4580,9 +4517,10 @@ ${sectionsHTML}
                     sectionId={section.id}
                     field="logo"
                     value={(content.logo && content.logo.trim()) || 'Logo'}
-                    onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
                     className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
-                  />
+                  
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "logo"}
+                  onOpenEditor={handleOpenTextEditor}/>
                 </div>
               )}
 
@@ -4674,9 +4612,10 @@ ${sectionsHTML}
                     sectionId={section.id}
                     field="logo"
                     value={(content.logo && content.logo.trim()) || 'Logo'}
-                    onSave={(e) => handleInlineTextEdit(section.id, 'logo', e)}
                     className="text-xl font-bold outline-none hover:bg-gray-50 px-2 py-1 rounded transition"
-                  />
+                  
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "logo"}
+                  onOpenEditor={handleOpenTextEditor}/>
                 </div>
               )}
 
@@ -4748,9 +4687,10 @@ ${sectionsHTML}
               sectionId={section.id}
               field="text"
               value={content.text || '© 2025 Company Name. All rights reserved.'}
-              onSave={(e) => handleInlineTextEdit(section.id, 'text', e)}
               className="outline-none hover:bg-white/10 px-2 py-1 rounded transition text-white text-sm"
-            />
+            
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "text"}
+                  onOpenEditor={handleOpenTextEditor}/>
           </div>
         )
 
@@ -4794,7 +4734,9 @@ ${sectionsHTML}
                   field="copyrightText"
                   value={content.copyrightText || '© 2025 Company Name. All rights reserved.'}
                   className="text-center outline-none hover:bg-white/10 px-2 py-1 rounded transition text-white text-sm"
-                />
+                
+                  isEditing={editingText?.sectionId === section.id && editingText?.field === "copyrightText"}
+                  onOpenEditor={handleOpenTextEditor}/>
               </div>
             </div>
           </div>
@@ -5597,7 +5539,7 @@ ${sectionsHTML}
                             className="group relative w-full cursor-grab active:cursor-grabbing"
                             title={section.description}
                           >
-                            {renderSectionThumbnail(section)}
+                            <SectionThumbnail section={section} />
                             <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
                               {section.label}
                             </div>
@@ -5633,7 +5575,7 @@ ${sectionsHTML}
                             className="group relative w-full cursor-grab active:cursor-grabbing"
                             title={section.description}
                           >
-                            {renderSectionThumbnail(section)}
+                            <SectionThumbnail section={section} />
                             <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
                               {section.label}
                             </div>
@@ -5669,7 +5611,7 @@ ${sectionsHTML}
                             className="group relative w-full cursor-grab active:cursor-grabbing"
                             title={section.description}
                           >
-                            {renderSectionThumbnail(section)}
+                            <SectionThumbnail section={section} />
                             <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
                               {section.label}
                             </div>
