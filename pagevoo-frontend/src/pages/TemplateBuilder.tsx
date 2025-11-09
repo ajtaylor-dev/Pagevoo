@@ -608,9 +608,7 @@ export default function TemplateBuilder() {
     imageLinkTarget,
     setImageLinkTarget,
     editorRef,
-    addToHistory,
-    updateFormattingState,
-    applyColor
+    addToHistory
   })
 
 

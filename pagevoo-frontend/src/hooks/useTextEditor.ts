@@ -113,8 +113,8 @@ interface UseTextEditorProps {
   setImageLinkTarget: (target: '_self' | '_blank') => void
   editorRef: React.RefObject<HTMLDivElement>
   addToHistory: (template: Template, markAsUnsaved?: boolean) => void
-  updateFormattingState: () => void
-  applyColor: (color: string) => void
+  updateFormattingState?: () => void
+  applyColor?: (color: string) => void
 }
 
 export const useTextEditor = ({
@@ -228,7 +228,7 @@ export const useTextEditor = ({
 
     // Wait for editor to render, then update formatting state
     setTimeout(() => {
-      updateFormattingState()
+      updateFormattingState?.()
     }, 50)
   }
 
