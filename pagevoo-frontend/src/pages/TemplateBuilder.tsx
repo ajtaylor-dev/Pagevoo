@@ -13,9 +13,6 @@ import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
 import { EditableText } from '../components/EditableText'
-import { HeroSection } from '../components/sections/HeroSection'
-import { GallerySection } from '../components/sections/GallerySection'
-import { FormSection } from '../components/sections/FormSection'
 import {
   generateRandomString,
   sanitizeName,
@@ -4173,88 +4170,6 @@ ${sectionsHTML}
     }
 
     switch (section.type) {
-      case 'hero':
-        return sectionWrapper(
-          <HeroSection
-            section={section}
-            selectedSection={selectedSection}
-            editingText={editingText}
-            onOpenTextEditor={handleOpenTextEditor}
-          />
-        )
-
-      case 'gallery':
-        return sectionWrapper(
-          <GallerySection
-            section={section}
-            selectedSection={selectedSection}
-            editingText={editingText}
-            onOpenTextEditor={handleOpenTextEditor}
-          />
-        )
-
-      case 'contact-form':
-      case 'booking-form':
-        return sectionWrapper(
-          <FormSection
-            section={section}
-            selectedSection={selectedSection}
-            editingText={editingText}
-            onOpenTextEditor={handleOpenTextEditor}
-          />
-        )
-
-      case 'login-box':
-        return sectionWrapper(
-          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-            <div className="max-w-sm mx-auto bg-white rounded-lg shadow-lg p-8">
-              <EditableText
-                tag="h2"
-                sectionId={section.id}
-                field="heading"
-                value={content.heading || 'Sign In'}
-                className="text-2xl font-bold mb-6 text-center outline-none hover:bg-gray-100 px-2 py-1 rounded transition"
-              
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
-                  onOpenEditor={handleOpenTextEditor}/>
-              <div className="space-y-4">
-                <div className="border-2 border-gray-300 rounded p-3">
-                  <span className="text-sm text-gray-600">Email</span>
-                </div>
-                <div className="border-2 border-gray-300 rounded p-3">
-                  <span className="text-sm text-gray-600">Password</span>
-                </div>
-                <button className="w-full px-6 py-3 bg-[#98b290] text-white rounded-lg font-semibold">
-                  Login
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-
-      case 'testimonials':
-        return sectionWrapper(
-          <div className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}>
-            <EditableText
-              tag="h2"
-              sectionId={section.id}
-              field="heading"
-              value={content.heading || 'What Our Customers Say'}
-              className="text-3xl font-bold mb-8 text-center outline-none hover:bg-white/50 px-2 py-1 rounded transition"
-            
-                  isEditing={editingText?.sectionId === section.id && editingText?.field === "heading"}
-                  onOpenEditor={handleOpenTextEditor}/>
-            <div className="grid md:grid-cols-2 gap-6">
-              {Array(2).fill(null).map((_, idx) => (
-                <div key={idx} className="bg-white p-6 rounded-lg shadow">
-                  <p className="text-gray-600 italic mb-4">"Great service and experience!"</p>
-                  <p className="font-semibold">Customer {idx + 1}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-
       // Navigation and Header sections
       case 'navbar':
         const navPosition = content.position || 'static'
