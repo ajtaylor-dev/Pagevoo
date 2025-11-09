@@ -26,6 +26,8 @@ import { GridSection } from '../components/sections/GridSection'
 import { NavbarSection } from '../components/sections/NavbarSection'
 import { FooterSection } from '../components/sections/FooterSection'
 import { Header } from '../components/layout/Header'
+import { LeftSidebar } from '../components/LeftSidebar'
+import { RightSidebar } from '../components/RightSidebar'
 import {
   generateRandomString,
   sanitizeName,
@@ -4423,125 +4425,18 @@ ${sectionsHTML}
         {/* Left Sidebar - Sections & Pages */}
         {showLeftSidebar && (
           <>
-            <aside
-              ref={leftSidebarRef}
-              style={{ width: leftWidth }}
-              className="bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
-            >
-              <div className="p-3">
-                {/* Section Library */}
-                <h2 className="text-xs font-semibold text-[#5a7a54] uppercase mb-3">Section Library</h2>
-
-                {/* Core Sections */}
-                <div className="mb-3">
-                  <button
-                    onClick={() => toggleCategory('core')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
-                  >
-                    <span>Core Sections</span>
-                    <svg
-                      className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-
-                  {expandedCategories.includes('core') && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {coreSections.map((section) => (
-                        <DraggableSectionItem key={section.type} section={section}>
-                          <div
-                            className="group relative w-full cursor-grab active:cursor-grabbing"
-                            title={section.description}
-                          >
-                            <SectionThumbnail section={section} />
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
-                              {section.label}
-                            </div>
-                          </div>
-                        </DraggableSectionItem>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Header & Navigation Sections */}
-                <div className="mb-3">
-                  <button
-                    onClick={() => toggleCategory('headerNav')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
-                  >
-                    <span>Header & Navigation</span>
-                    <svg
-                      className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-
-                  {expandedCategories.includes('headerNav') && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {headerNavigationSections.map((section) => (
-                        <DraggableSectionItem key={section.type} section={section}>
-                          <div
-                            className="group relative w-full cursor-grab active:cursor-grabbing"
-                            title={section.description}
-                          >
-                            <SectionThumbnail section={section} />
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
-                              {section.label}
-                            </div>
-                          </div>
-                        </DraggableSectionItem>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer Sections */}
-                <div className="mb-3">
-                  <button
-                    onClick={() => toggleCategory('footers')}
-                    className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
-                  >
-                    <span>Footers</span>
-                    <svg
-                      className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
-                      fill="none"
-                      stroke="currentColor"
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-
-                  {expandedCategories.includes('footers') && (
-                    <div className="grid grid-cols-2 gap-2 mt-2">
-                      {footerSections.map((section) => (
-                        <DraggableSectionItem key={section.type} section={section}>
-                          <div
-                            className="group relative w-full cursor-grab active:cursor-grabbing"
-                            title={section.description}
-                          >
-                            <SectionThumbnail section={section} />
-                            <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
-                              {section.label}
-                            </div>
-                          </div>
-                        </DraggableSectionItem>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            </aside>
+            <LeftSidebar
+              sidebarRef={leftSidebarRef}
+              width={leftWidth}
+              expandedCategories={expandedCategories}
+              onToggleCategory={toggleCategory}
+              coreSections={coreSections}
+              headerNavigationSections={headerNavigationSections}
+              footerSections={footerSections}
+              renderSectionThumbnail={(section) => <SectionThumbnail section={section} />}
+              DraggableSectionItem={DraggableSectionItem}
+              onMouseDown={handleLeftMouseDown}
+            />
 
             {/* Left Resize Handle */}
             <div
@@ -4649,427 +4544,36 @@ ${sectionsHTML}
         {/* Right Sidebar - Properties */}
         {showRightSidebar && (
           <>
-            {/* Right Resize Handle */}
-            <div
+            <RightSidebar
+              sidebarRef={rightSidebarRef}
+              width={rightWidth}
               onMouseDown={handleRightMouseDown}
-              className="w-1 bg-gray-200 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
+              showCSSPanel={showCSSPanel}
+              cssTab={cssTab}
+              setCssTab={setCssTab}
+              template={template}
+              setTemplate={setTemplate}
+              templateRef={templateRef}
+              addToHistory={addToHistory}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              setShowCSSPanel={setShowCSSPanel}
+              selectedSection={selectedSection}
+              setSelectedSection={setSelectedSection}
+              handleToggleSectionLock={handleToggleSectionLock}
+              generateIdentifier={generateIdentifier}
+              showSectionCSS={showSectionCSS}
+              setShowSectionCSS={setShowSectionCSS}
+              setShowContentStyle={setShowContentStyle}
+              handleUpdateSectionContent={handleUpdateSectionContent}
+              showRowStyle={showRowStyle}
+              setShowRowStyle={setShowRowStyle}
+              expandedColumnIndex={expandedColumnIndex}
+              setExpandedColumnIndex={setExpandedColumnIndex}
+              setShowNavButtonStyleModal={setShowNavButtonStyleModal}
             />
-
-            <aside
-              ref={rightSidebarRef}
-              style={{ width: rightWidth }}
-              className="bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0"
-            >
-              <div className="p-3">
-                <h2 className="text-xs font-semibold text-[#5a7a54] uppercase mb-3">
-                  {showCSSPanel ? 'CSS Editor' : 'Properties'}
-                </h2>
-                {showCSSPanel ? (
-                  <div className="space-y-3">
-                    {/* CSS Tabs */}
-                    <div className="flex border-b border-gray-200">
-                      <button
-                        onClick={() => setCssTab('site')}
-                        className={`flex-1 px-3 py-2 text-xs font-medium transition ${
-                          cssTab === 'site'
-                            ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
-                            : 'bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        Site CSS
-                      </button>
-                      <button
-                        onClick={() => setCssTab('page')}
-                        className={`flex-1 px-3 py-2 text-xs font-medium transition ${
-                          cssTab === 'page'
-                            ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
-                            : 'bg-white text-gray-600 hover:bg-gray-50'
-                        }`}
-                      >
-                        Page CSS
-                      </button>
-                    </div>
-
-                    {/* CSS Content */}
-                    {cssTab === 'site' ? (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Global Stylesheet
-                        </label>
-                        <p className="text-[10px] text-gray-500 mb-2">
-                          CSS applied to all pages in this template
-                        </p>
-                        <StyleEditor
-                          value={template?.custom_css || ''}
-                          onChange={(css) => {
-                            console.log('[Site CSS onChange #2] New CSS:', css)
-                            const updatedTemplate = { ...template!, custom_css: css }
-                            setTemplate(updatedTemplate)
-                            templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
-                            addToHistory(updatedTemplate)
-                          }}
-                          context="page"
-                          showFontSelector={true}
-                          showBodyLabel={true}
-                        />
-                      </div>
-                    ) : (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Page-Specific CSS
-                        </label>
-                        <p className="text-[10px] text-gray-500 mb-2">
-                          CSS applied only to {currentPage?.name || 'this page'}
-                        </p>
-                        <StyleEditor
-                          value={currentPage?.page_css || ''}
-                          onChange={(css) => {
-                            if (!template || !currentPage) return
-                            const updatedPages = template.pages.map(p =>
-                              p.id === currentPage.id ? { ...p, page_css: css } : p
-                            )
-                            const updatedTemplate = { ...template, pages: updatedPages }
-                            setTemplate(updatedTemplate)
-                            templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
-                            setCurrentPage({ ...currentPage, page_css: css })
-                            addToHistory(updatedTemplate)
-                          }}
-                          context="page"
-                          showBodyLabel={true}
-                          galleryImages={template?.images}
-                          siteCSS={template?.custom_css || ''}
-                        />
-                      </div>
-                    )}
-
-                    <button
-                      onClick={() => setShowCSSPanel(false)}
-                      className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition"
-                    >
-                      Close CSS Editor
-                    </button>
-                  </div>
-                ) : selectedSection ? (
-                  selectedSection.is_locked ? (
-                    <div className="space-y-3">
-                      <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 text-center">
-                        <svg className="w-12 h-12 text-amber-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                        </svg>
-                        <h3 className="text-sm font-semibold text-amber-800 mb-1">Section Locked</h3>
-                        <p className="text-xs text-amber-600 mb-3">
-                          This section is locked and cannot be edited.
-                        </p>
-                        <button
-                          onClick={() => handleToggleSectionLock(selectedSection.id)}
-                          className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition"
-                        >
-                          Unlock Section
-                        </button>
-                      </div>
-                      <div className="text-xs text-gray-500 space-y-1">
-                        <p><strong>Section:</strong> {selectedSection.section_name || selectedSection.type}</p>
-                        <p><strong>ID:</strong> {selectedSection.section_id || 'Not set'}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div>
-                        <label className="text-xs text-gray-500 block mb-1">Section Name</label>
-                        <div className="flex gap-1 mb-2">
-                          <input
-                            type="text"
-                            value={selectedSection.section_name || selectedSection.type}
-                            onChange={(e) => {
-                            const newName = e.target.value
-                            const updatedSection = {
-                              ...selectedSection,
-                              section_name: newName,
-                              section_id: selectedSection.section_id || generateIdentifier(newName)
-                            }
-                            setSelectedSection(updatedSection)
-                            // Update in template
-                            if (template && currentPage) {
-                              const updatedPages = template.pages.map(p => {
-                                if (p.id === currentPage.id) {
-                                  return {
-                                    ...p,
-                                    sections: p.sections.map(s =>
-                                      s.id === selectedSection.id ? updatedSection : s
-                                    )
-                                  }
-                                }
-                                return p
-                              })
-                              const updatedTemplate = { ...template, pages: updatedPages }
-                              setTemplate(updatedTemplate)
-                              templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
-                              setCurrentPage({
-                                ...currentPage,
-                                sections: currentPage.sections.map(s =>
-                                  s.id === selectedSection.id ? updatedSection : s
-                                )
-                              })
-                              addToHistory(updatedTemplate)
-                            }
-                          }}
-                          className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
-                          placeholder="Enter section name"
-                        />
-                        <button
-                          onClick={() => {
-                            const newId = generateIdentifier(selectedSection.section_name || selectedSection.type)
-                            const updatedSection = {
-                              ...selectedSection,
-                              section_id: newId
-                            }
-                            setSelectedSection(updatedSection)
-                            // Update in template
-                            if (template && currentPage) {
-                              const updatedPages = template.pages.map(p => {
-                                if (p.id === currentPage.id) {
-                                  return {
-                                    ...p,
-                                    sections: p.sections.map(s =>
-                                      s.id === selectedSection.id ? updatedSection : s
-                                    )
-                                  }
-                                }
-                                return p
-                              })
-                              const updatedTemplate = { ...template, pages: updatedPages }
-                              setTemplate(updatedTemplate)
-                              templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
-                              setCurrentPage({
-                                ...currentPage,
-                                sections: currentPage.sections.map(s =>
-                                  s.id === selectedSection.id ? updatedSection : s
-                                )
-                              })
-                              addToHistory(updatedTemplate)
-                            }
-                          }}
-                          className="px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs transition"
-                          title="Generate new ID from section name"
-                        >
-                          Apply
-                        </button>
-                      </div>
-                      <div className="px-2 py-1 bg-blue-50 rounded text-[10px] font-mono text-blue-700">
-                        <span className="font-semibold">ID:</span> {selectedSection.section_id || 'Not set'}
-                      </div>
-                      <p className="text-[9px] text-gray-500">Use this ID in CSS: #{selectedSection.section_id}</p>
-
-                      {/* Section Styling button - hidden for navbar and footer sections (use custom CSS instead) */}
-                      {selectedSection.type !== 'navbar' && !selectedSection.type.startsWith('footer-') && (
-                        <button
-                          onClick={() => {
-                            setShowSectionCSS(!showSectionCSS)
-                            setShowContentStyle(false)
-                            setShowCSSPanel(false)
-                          }}
-                          className="w-full px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition"
-                          title="Edit Section Styling"
-                        >
-                          Section Styling
-                        </button>
-                      )}
-                    </div>
-
-                    <div className="border-t border-gray-200 pt-2">
-                      <div className="text-[10px] text-gray-500 mb-1">Section Type:</div>
-                      <div className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700">
-                        {selectedSection.type}
-                      </div>
-                    </div>
-
-                    {showSectionCSS ? (
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1">
-                          Section-Specific CSS
-                        </label>
-                        <p className="text-[10px] text-gray-500 mb-2">
-                          CSS applied only to this {selectedSection.type} section
-                        </p>
-                        <StyleEditor
-                          value={selectedSection.content?.section_css || ''}
-                          onChange={(css) =>
-                            handleUpdateSectionContent(selectedSection.id, {
-                              ...selectedSection.content,
-                              section_css: css
-                            })
-                          }
-                          context="section"
-                          galleryImages={template?.images}
-                          siteCSS={template?.custom_css || ''}
-                          pageCSS={currentPage?.page_css || ''}
-                        />
-                        <button
-                          onClick={() => setShowSectionCSS(false)}
-                          className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition mt-3"
-                        >
-                          Back to Properties
-                        </button>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Grid Section Fields */}
-                        {selectedSection.type.startsWith('grid-') && (() => {
-                          const [_, gridConfig] = selectedSection.type.split('-')
-                          const [cols, rows] = gridConfig.split('x').map(Number)
-                          const totalColumns = cols * rows
-                          const columns = selectedSection.content?.columns || []
-
-                          return (
-                            <>
-                              {/* Row Style Button */}
-                              <div className="mb-3">
-                                <button
-                                  onClick={() => {
-                                    setShowRowStyle(!showRowStyle)
-                                    setExpandedColumnIndex(null)
-                                  }}
-                                  className="w-full px-3 py-2 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-sm font-medium text-[#5a7a54] transition flex items-center justify-between"
-                                >
-                                  <span>Row Container Style</span>
-                                  <svg
-                                    className={`w-3 h-3 transition-transform text-[#5a7a54] ${showRowStyle ? 'rotate-90' : ''}`}
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                  >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                  </svg>
-                                </button>
-
-                                {showRowStyle && (
-                                  <div className="mt-2 p-3 border border-[#d4e5d0] rounded bg-white">
-                                    <p className="text-[9px] text-gray-400 mb-2">
-                                      Target: <code className="bg-gray-100 px-1 rounded">.row</code>
-                                    </p>
-                                    <StyleEditor
-                                      value={selectedSection.content?.content_css?.row || ''}
-                                      onChange={(css) => {
-                                        const currentContentCSS = selectedSection.content?.content_css || {}
-                                        handleUpdateSectionContent(selectedSection.id, {
-                                          ...selectedSection.content,
-                                          content_css: {
-                                            ...currentContentCSS,
-                                            row: css
-                                          }
-                                        })
-                                      }}
-                                      context="row"
-                                      galleryImages={template?.images}
-                                      siteCSS={template?.custom_css || ''}
-                                      pageCSS={currentPage?.page_css || ''}
-                                      sectionCSS={selectedSection.content?.section_css || ''}
-                                    />
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Column Style Buttons */}
-                              <div>
-                                <div className="flex items-center justify-between mb-2">
-                                  <label className="block text-xs font-medium text-gray-700">Column Styles</label>
-                                  <button
-                                    onClick={() => {
-                                      // Remove borders from all columns
-                                      const currentContentCSS = selectedSection.content?.content_css || {}
-                                      const currentColumns = currentContentCSS.columns || {}
-                                      const updatedColumns: { [key: string]: string } = {}
-
-                                      // For each column, remove border properties
-                                      for (let i = 0; i < totalColumns; i++) {
-                                        const existingCSS = currentColumns[i] || getDefaultColumnCSS()
-                                        // Remove border-related properties
-                                        const cleanedCSS = existingCSS
-                                          .replace(/border[^;]*;?/gi, '')
-                                          .replace(/^\s*\n/gm, '') // Remove empty lines
-                                          .trim()
-                                        updatedColumns[i] = cleanedCSS
-                                      }
-
-                                      handleUpdateSectionContent(selectedSection.id, {
-                                        ...selectedSection.content,
-                                        content_css: {
-                                          ...currentContentCSS,
-                                          columns: updatedColumns
-                                        }
-                                      })
-                                    }}
-                                    className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded text-xs transition"
-                                    title="Remove borders from all columns"
-                                  >
-                                    Remove Borders
-                                  </button>
-                                </div>
-                                <div className="space-y-2">
-                                  {Array.from({ length: totalColumns }, (_, idx) => {
-                                    const colWidth = columns[idx]?.colWidth || 12
-                                    const isExpanded = expandedColumnIndex === idx
-
-                                    return (
-                                      <div key={idx}>
-                                        <button
-                                          onClick={() => {
-                                            setExpandedColumnIndex(isExpanded ? null : idx)
-                                            setShowRowStyle(false)
-                                          }}
-                                          className={`w-full px-3 py-2 border rounded text-sm font-medium transition flex items-center justify-between ${
-                                            isExpanded
-                                              ? 'bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
-                                              : 'bg-gradient-to-r from-[#f0f7ee] to-[#e1eedd] hover:from-[#e8f0e6] hover:to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
-                                          }`}
-                                        >
-                                          <span>Column {idx + 1} <span className="text-xs text-gray-500">(col-{colWidth})</span></span>
-                                          <svg
-                                            className={`w-3 h-3 transition-transform text-[#5a7a54] ${isExpanded ? 'rotate-90' : ''}`}
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                          >
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                          </svg>
-                                        </button>
-
-                                        {isExpanded && (
-                                          <div className="mt-2 p-3 border border-[#d4e5d0] rounded bg-white">
-                                            <p className="text-[9px] text-gray-400 mb-2">
-                                              Target: <code className="bg-gray-100 px-1 rounded">.col-{colWidth}</code> or position-based
-                                            </p>
-                                            <StyleEditor
-                                              value={selectedSection.content?.content_css?.columns?.[idx] || ''}
-                                              onChange={(css) => {
-                                                const currentContentCSS = selectedSection.content?.content_css || {}
-                                                const currentColumns = currentContentCSS.columns || {}
-                                                handleUpdateSectionContent(selectedSection.id, {
-                                                  ...selectedSection.content,
-                                                  content_css: {
-                                                    ...currentContentCSS,
-                                                    columns: {
-                                                      ...currentColumns,
-                                                      [idx]: css
-                                                    }
-                                                  }
-                                                })
-                                              }}
-                                              context="column"
-                                              galleryImages={template?.images}
-                                              siteCSS={template?.custom_css || ''}
-                                              pageCSS={currentPage?.page_css || ''}
-                                              sectionCSS={selectedSection.content?.section_css || ''}
-                                            />
-                                          </div>
-                                        )}
-                                      </div>
-                                    )
-                                  })}
-                                </div>
-                              </div>
-                            </>
-                          )
+          </>
+        )}
                         })()}
                     {/* Navigation Section Controls */}
                     {selectedSection.type === 'navbar' && (
