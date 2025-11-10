@@ -2,23 +2,31 @@
 
 ## Overview
 
-This guide documents the ongoing refactoring of the Template Builder from a 9,262-line monolithic component to a well-organized, maintainable architecture using Zustand for state management.
+This guide documents the completed refactoring of the Template Builder from a 9,262-line monolithic component to a well-organized, maintainable architecture using custom hooks and component extraction.
 
-## Current Status: Phase 1 Complete ✅
+## Current Status: REFACTORING COMPLETE ✅
 
 ### What's Been Done
 
-#### 1. Zustand State Management Setup ✅
-- **Location**: `src/stores/`
-- **Files Created**:
-  - `templateStore.ts` - Manages template, pages, and current page
-  - `sectionStore.ts` - Handles sections CRUD operations
-  - `historyStore.ts` - Undo/redo functionality
-  - `uiStore.ts` - UI state (modals, panels, etc.)
+#### 1. Custom Hooks for State Management ✅
+- **Location**: `src/hooks/`
+- **Files Created** (11 hooks):
+  - `useSectionHandlers.ts` - Section CRUD operations
+  - `usePageHandlers.ts` - Page management
+  - `useDragHandlers.ts` - Drag and drop logic
+  - `useTextEditor.ts` - Text editor state
+  - `useFileHandlers.ts` - Save, load, export
+  - `useCodeHandlers.ts` - Source code & stylesheet
+  - `useResizeHandlers.ts` - Sidebar resize
+  - `useImageHandlers.ts` - Image upload & management
+  - `useFormattingHandlers.ts` - Text formatting
+  - `useImageGalleryHandlers.ts` - Image gallery
+  - `useTemplateBuilderEffects.ts` - useEffect consolidation
 
-#### 2. Type Definitions ✅
-- **Location**: `src/types/template.ts`
-- **Contents**: All TypeScript interfaces for Template, Page, Section, etc.
+#### 2. ~~Zustand State Management~~ ❌ REMOVED
+- **Decision**: Zustand removed - not beneficial for single-page app
+- **Reason**: Custom hooks + useState pattern is simpler and adequate
+- **Date Removed**: 2025-11-10
 
 #### 3. Utility Functions ✅
 - **Location**: `src/utils/helpers.ts`
@@ -52,67 +60,60 @@ src/
     └── TemplateBuilder.tsx (9,262 lines - to be refactored)
 ```
 
-## How to Use the New Stores
+## How to Use the Custom Hooks
 
-### Template Store Example
+### Section Handlers Example
 
 ```typescript
-import { useTemplateStore } from '@/stores/templateStore'
+import { useSectionHandlers } from '@/hooks/useSectionHandlers'
 
 function MyComponent() {
-  // Get state
-  const template = useTemplateStore(state => state.template)
-  const currentPage = useTemplateStore(state => state.currentPage)
-
-  // Get actions
-  const setTemplate = useTemplateStore(state => state.setTemplate)
-  const updatePage = useTemplateStore(state => state.updatePage)
-
-  // Use them
-  const handleUpdate = () => {
-    updatePage(pageId, { name: 'New Name' })
-  }
-
-  return <div>{template?.name}</div>
-}
-```
-
-### Section Store Example
-
-```typescript
-import { useSectionStore } from '@/stores/sectionStore'
-
-function SectionList() {
-  const selectedSection = useSectionStore(state => state.selectedSection)
-  const selectSection = useSectionStore(state => state.selectSection)
-  const deleteSection = useSectionStore(state => state.deleteSection)
+  const {
+    handleAddSection,
+    handleDeleteSection,
+    handleUpdateSection,
+    handleDuplicateSection
+  } = useSectionHandlers({ template, setTemplate, currentPage, setCurrentPage })
 
   return (
-    <div onClick={() => selectSection(section)}>
-      {section.name}
-      <button onClick={() => deleteSection(section.id)}>Delete</button>
-    </div>
+    <button onClick={() => handleAddSection('hero-simple')}>
+      Add Hero Section
+    </button>
   )
 }
 ```
 
-### History Store Example
+### File Handlers Example
 
 ```typescript
-import { useHistoryStore } from '@/stores/historyStore'
+import { useFileHandlers } from '@/hooks/useFileHandlers'
 
-function UndoRedoButtons() {
-  const undo = useHistoryStore(state => state.undo)
-  const redo = useHistoryStore(state => state.redo)
-  const canUndo = useHistoryStore(state => state.canUndo())
-  const canRedo = useHistoryStore(state => state.canRedo())
+function SaveButton() {
+  const { handleSave, handleLoad, handleExport } = useFileHandlers({
+    template,
+    setTemplate,
+    templateRef,
+    setHasUnsavedChanges
+  })
 
-  return (
-    <>
-      <button onClick={undo} disabled={!canUndo}>Undo</button>
-      <button onClick={redo} disabled={!canRedo}>Redo</button>
-    </>
-  )
+  return <button onClick={handleSave}>Save Template</button>
+}
+```
+
+### Text Editor Example
+
+```typescript
+import { useTextEditor } from '@/hooks/useTextEditor'
+
+function EditorPanel() {
+  const {
+    editingText,
+    handleTextEdit,
+    handleCloseTextEditor,
+    applyFormatting
+  } = useTextEditor({ template, setTemplate, currentPage, setCurrentPage })
+
+  return <div contentEditable onInput={handleTextEdit}>...</div>
 }
 ```
 

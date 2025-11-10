@@ -42,7 +42,8 @@
       "Bash(del pagevoo-frontendsrcpagesTemplateBuilder.tsx.backup)",
       "Bash(temp_line_count.txt)",
       "Bash(del temp_line_count.txt)",
-      "Bash(temp_baseline.txt)"
+      "Bash(temp_baseline.txt)",
+      "Bash(npm uninstall:*)"
     ],
     "deny": [],
     "ask": []
