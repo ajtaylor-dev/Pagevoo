@@ -45,6 +45,7 @@ import { useCodeHandlers } from '../hooks/useCodeHandlers'
 import { useResizeHandlers } from '../hooks/useResizeHandlers'
 import { useImageHandlers } from '../hooks/useImageHandlers'
 import { useFormattingHandlers } from '../hooks/useFormattingHandlers'
+import { useImageGalleryHandlers } from '../hooks/useImageGalleryHandlers'
 import {
   generateRandomString,
   sanitizeName,
@@ -652,6 +653,19 @@ export default function TemplateBuilder() {
     applyImageAlignment
   })
 
+  // Image Gallery Handlers
+  const {
+    handleImageGalleryClose,
+    handleImageUpload,
+    handleImageDelete,
+    handleImageRename
+  } = useImageGalleryHandlers({
+    template,
+    setTemplate,
+    imageGalleryRef,
+    setShowImageGallery
+  })
+
   // Section handlers hook
   const {
     handleAddSection,
@@ -1175,89 +1189,13 @@ export default function TemplateBuilder() {
           {console.log('Rendering ImageGallery component NOW')}
           <ImageGallery
             isOpen={true}
-            onClose={() => {
-              console.log('ImageGallery onClose called')
-              imageGalleryRef.current = false
-              setShowImageGallery(false)
-            }}
+            onClose={handleImageGalleryClose}
             templateId={template?.id || 0}
             images={template?.images || []}
-            onUpload={async (file) => {
-            if (!template) {
-              console.error('No template available for upload')
-              return
-            }
-
-            // Auto-save template if it hasn't been saved yet
-            let templateId = template.id
-            if (templateId === 0) {
-              console.log('Template not saved yet, auto-saving before upload...')
-              try {
-                const saveResponse = await api.createTemplate({
-                  name: template.name || 'Untitled Template',
-                  description: template.description || '',
-                  business_type: template.business_type || 'other',
-                  is_active: template.is_active,
-                  exclusive_to: template.exclusive_to,
-                  technologies: template.technologies,
-                  features: template.features,
-                  custom_css: template.custom_css,
-                  pages: template.pages
-                })
-                if (saveResponse.success && saveResponse.data) {
-                  templateId = saveResponse.data.id
-                  setTemplate(saveResponse.data)
-                  console.log('Template auto-saved with ID:', templateId)
-                } else {
-                  alert('Please save the template before uploading images.')
-                  return
-                }
-              } catch (error) {
-                console.error('Auto-save error:', error)
-                alert('Failed to save template. Please save manually before uploading images.')
-                return
-              }
-            }
-
-            console.log('Starting image upload for template:', templateId, 'file:', file.name)
-            try {
-              const response = await api.uploadGalleryImage(templateId, file)
-              console.log('Upload response:', response)
-              if (response.success && response.data) {
-                console.log('Upload successful, adding image to template')
-                setTemplate({
-                  ...template,
-                  id: templateId,
-                  images: [...(template.images || []), response.data]
-                })
-              } else {
-                console.error('Upload failed:', response)
-                alert(`Failed to upload image: ${response.message || 'Unknown error'}`)
-              }
-            } catch (error) {
-              console.error('Upload error:', error)
-              alert(`Error uploading image: ${error}`)
-            }
-          }}
-          onDelete={async (imageId) => {
-            if (!template) return
-            await api.deleteGalleryImage(template.id, imageId)
-            setTemplate({
-              ...template,
-              images: (template.images || []).filter(img => img.id !== imageId)
-            })
-          }}
-          onRename={async (imageId, newFilename) => {
-            if (!template) return
-            await api.renameGalleryImage(template.id, imageId, newFilename)
-            setTemplate({
-              ...template,
-              images: (template.images || []).map(img =>
-                img.id === imageId ? { ...img, filename: newFilename } : img
-              )
-            })
-          }}
-        />
+            onUpload={handleImageUpload}
+            onDelete={handleImageDelete}
+            onRename={handleImageRename}
+          />
         </>
       ) : null}
 
