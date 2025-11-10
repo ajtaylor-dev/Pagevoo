@@ -261,6 +261,53 @@ export default function TemplateBuilder() {
     })
   )
 
+  // Reset history helper function (must be before useFileHandlers)
+  const resetHistory = (savedTemplate: Template) => {
+    setHistory([JSON.parse(JSON.stringify(savedTemplate))])
+    setHistoryIndex(0)
+    setCanUndo(false)
+    setCanRedo(false)
+  }
+
+  // File handlers hook (must be before useTemplateBuilderEffects)
+  const {
+    handleSaveTemplate,
+    handleUndo,
+    handleRedo,
+    handleSave,
+    handleSaveAs,
+    handleLoad,
+    handleLoadTemplate,
+    handleNew,
+    handleExit,
+    handleLivePreview,
+    handleExportAsHTMLTemplate,
+    handleExportReact,
+    handleExportHTML
+  } = useFileHandlers({
+    template,
+    setTemplate,
+    templateRef,
+    currentPage,
+    setCurrentPage,
+    setLoading,
+    setUploadingImage,
+    history,
+    setHistory,
+    historyIndex,
+    setHistoryIndex,
+    setCanUndo,
+    setCanRedo,
+    setHasUnsavedChanges,
+    isPublished,
+    setIsPublished,
+    hasUnsavedChanges,
+    setShowLoadModal,
+    setAvailableTemplates,
+    setLoadingTemplates,
+    setSelectedSection,
+    resetHistory
+  })
 
   // Template Builder Effects (useEffects)
   useTemplateBuilderEffects({
@@ -544,54 +591,6 @@ export default function TemplateBuilder() {
     selectedSection,
     setSelectedSection,
     addToHistory
-  })
-
-  // Reset history after save - start fresh with just the saved state
-  const resetHistory = (savedTemplate: Template) => {
-    setHistory([JSON.parse(JSON.stringify(savedTemplate))])
-    setHistoryIndex(0)
-    setCanUndo(false)
-    setCanRedo(false)
-  }
-
-  // File handlers hook
-  const {
-    handleSaveTemplate,
-    handleUndo,
-    handleRedo,
-    handleSave,
-    handleSaveAs,
-    handleLoad,
-    handleLoadTemplate,
-    handleNew,
-    handleExit,
-    handleLivePreview,
-    handleExportAsHTMLTemplate,
-    handleExportReact,
-    handleExportHTML
-  } = useFileHandlers({
-    template,
-    setTemplate,
-    templateRef,
-    currentPage,
-    setCurrentPage,
-    setLoading,
-    setUploadingImage,
-    history,
-    setHistory,
-    historyIndex,
-    setHistoryIndex,
-    setCanUndo,
-    setCanRedo,
-    setHasUnsavedChanges,
-    isPublished,
-    setIsPublished,
-    hasUnsavedChanges,
-    setShowLoadModal,
-    setAvailableTemplates,
-    setLoadingTemplates,
-    setSelectedSection,
-    resetHistory
   })
 
   // Code handlers hook
