@@ -557,7 +557,6 @@ export default function TemplateBuilder() {
   // File handlers hook
   const {
     handleSaveTemplate,
-    handleImageUpload,
     handleUndo,
     handleRedo,
     handleSave,
