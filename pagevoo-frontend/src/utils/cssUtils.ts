@@ -157,12 +157,12 @@ export const generateContentCSS = (sections: TemplateSection[], pageCSS?: string
     const content = section.content || {}
     const contentCSS = content.content_css
 
-    if (contentCSS && contentCSS.trim()) {
+    if (contentCSS && typeof contentCSS === 'string' && contentCSS.trim()) {
       css += `/* Section ${sectionId} content styles */\n#${sectionId} {\n${contentCSS}}\n\n`
     }
 
     // Add row-level CSS if present
-    if (content.rowCSS && content.rowCSS.trim()) {
+    if (content.rowCSS && typeof content.rowCSS === 'string' && content.rowCSS.trim()) {
       css += `/* Section ${sectionId} row styles */\n#${sectionId} .row {\n${content.rowCSS}}\n\n`
     }
 
@@ -170,7 +170,7 @@ export const generateContentCSS = (sections: TemplateSection[], pageCSS?: string
     if (content.columns && Array.isArray(content.columns)) {
       content.columns.forEach((col: any, colIdx: number) => {
         const columnCSS = col.columnCSS
-        if (columnCSS && columnCSS.trim()) {
+        if (columnCSS && typeof columnCSS === 'string' && columnCSS.trim()) {
           // Apply to specific column using nth-of-type
           css += `/* Section ${sectionId} column ${colIdx + 1} styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${colIdx + 1}) {\n${columnCSS}}\n\n`
         }
