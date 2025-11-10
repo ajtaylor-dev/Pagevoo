@@ -203,44 +203,15 @@ export const Header: React.FC<HeaderProps> = ({
                   <span className="text-gray-400 text-[10px]">Ctrl+O</span>
                 </button>
                 <div className="border-t border-gray-200 my-1"></div>
-                <div className="relative group">
-                  <button className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs flex items-center justify-between">
-                    <span>Export As</span>
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </button>
-                  <div className="absolute left-full top-0 ml-0 bg-white border border-gray-200 shadow-lg z-50 w-48 hidden group-hover:block">
-                    <button
-                      onClick={() => {
-                        handleExportAsHTMLTemplate()
-                        setShowFileMenu(false)
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-[#e8f0e6] text-xs font-medium text-[#5a7a54]"
-                    >
-                      HTML Template (Publish)
-                    </button>
-                    <div className="border-t border-gray-200 my-1"></div>
-                    <button
-                      onClick={() => {
-                        alert('ZIP Website export coming soon!')
-                        setShowFileMenu(false)
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs text-gray-500"
-                    >
-                      .ZIP Website
-                    </button>
-                    <button
-                      onClick={() => {
-                        alert('React Website export coming soon!')
-                        setShowFileMenu(false)
-                      }}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs text-gray-500"
-                    >
-                      React Website
-                    </button>
-                  </div>
-                </div>
+                <button
+                  onClick={() => {
+                    handleExportAsHTMLTemplate()
+                    setShowFileMenu(false)
+                  }}
+                  className="w-full text-left px-4 py-2 hover:bg-[#e8f0e6] text-xs font-medium text-[#5a7a54]"
+                >
+                  Publish
+                </button>
                 <div className="border-t border-gray-200 my-1"></div>
                 <button
                   onClick={() => {
