@@ -156,7 +156,14 @@ export const generateContentCSS = (sections: TemplateSection[], pageCSS?: string
     const sectionId = section.section_id || `section-${section.id}`
     const content = section.content || {}
     const contentCSS = content.content_css
+    const sectionCSS = content.section_css
 
+    // Apply section-level CSS (e.g., padding, background, etc.)
+    if (sectionCSS && typeof sectionCSS === 'string' && sectionCSS.trim()) {
+      css += `/* Section ${sectionId} wrapper styles */\n#${sectionId} {\n${sectionCSS}}\n\n`
+    }
+
+    // Apply content_css if it's a string (for backwards compatibility)
     if (contentCSS && typeof contentCSS === 'string' && contentCSS.trim()) {
       css += `/* Section ${sectionId} content styles */\n#${sectionId} {\n${contentCSS}}\n\n`
     }
