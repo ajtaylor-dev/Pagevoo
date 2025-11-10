@@ -36,6 +36,7 @@ import { CanvasDropZone } from '../components/dnd/CanvasDropZone'
 import { Toolbar } from '../components/Toolbar'
 import { FloatingTextEditor } from '../components/layout/FloatingTextEditor'
 import { PageSelectorBar } from '../components/layout/PageSelectorBar'
+import { PublishedTemplateBanner } from '../components/layout/PublishedTemplateBanner'
 import { useSectionHandlers } from '../hooks/useSectionHandlers'
 import { usePageHandlers } from '../hooks/usePageHandlers'
 import { useDragHandlers } from '../hooks/useDragHandlers'
@@ -46,6 +47,7 @@ import { useResizeHandlers } from '../hooks/useResizeHandlers'
 import { useImageHandlers } from '../hooks/useImageHandlers'
 import { useFormattingHandlers } from '../hooks/useFormattingHandlers'
 import { useImageGalleryHandlers } from '../hooks/useImageGalleryHandlers'
+import { useRenderSection } from '../hooks/useRenderSection'
 import {
   generateRandomString,
   sanitizeName,
@@ -751,96 +753,28 @@ export default function TemplateBuilder() {
   })
 
 
-  const renderSection = (section: TemplateSection, index: number) => {
-    // Determine which section component to render
-    let sectionContent: React.ReactNode
 
-    // Grid sections (1x1, 2x1, 3x1, etc.)
-    if (section.type.startsWith('grid-')) {
-      sectionContent = (
-        <GridSection
-          section={section}
-          selectedSection={selectedSection}
-          editingText={editingText}
-          onOpenTextEditor={handleOpenTextEditor}
-          onUpdateColumn={handleGridColumnUpdate}
-        />
-      )
-    } else {
-      switch (section.type) {
-        // Navigation and Header sections
-        case 'navbar':
-          sectionContent = (
-            <NavbarSection
-              section={section}
-              selectedSection={selectedSection}
-              editingText={editingText}
-              currentPage={currentPage}
-              template={template}
-              mobileMenuOpen={!!mobileMenuOpen[section.id]}
-              onSetMobileMenuOpen={(open) => setMobileMenuOpen({ ...mobileMenuOpen, [section.id]: open })}
-              onOpenTextEditor={handleOpenTextEditor}
-            />
-          )
-          break
-
-        // Legacy navbar types (deprecated)
-        case 'navbar-basic':
-        case 'navbar-sticky':
-        case 'navbar-dropdown':
-          sectionContent = (
-            <div className="bg-yellow-50 border-2 border-yellow-400 p-4 text-center">
-              <p className="text-sm text-yellow-800 font-medium">
-                ⚠️ This navbar type is deprecated. Please delete this section and add the new unified "Navigation Bar" instead.
-              </p>
-            </div>
-          )
-          break
-
-        // Footer sections
-        case 'footer-simple':
-        case 'footer-columns':
-          sectionContent = (
-            <FooterSection
-              section={section}
-              selectedSection={selectedSection}
-              editingText={editingText}
-              onOpenTextEditor={handleOpenTextEditor}
-            />
-          )
-          break
-
-        default:
-          sectionContent = (
-            <div className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#98b290] transition ${selectedSection?.id === section.id ? 'border-[#98b290]' : ''}`}>
-              <p className="text-gray-500 text-center">Section: {section.type}</p>
-            </div>
-          )
-      }
-    }
-
-    // Wrap the section content with the SectionWrapper component
-    return (
-      <SectionWrapper
-        section={section}
-        index={index}
-        hoveredSection={hoveredSection}
-        setHoveredSection={setHoveredSection}
-        setSelectedSection={setSelectedSection}
-        showCSSPanel={showCSSPanel}
-        setShowCSSPanel={setShowCSSPanel}
-        cssInspectorMode={cssInspectorMode}
-        currentPage={currentPage}
-        template={template}
-        handleMoveSidebar={handleMoveSidebar}
-        handleMoveSection={handleMoveSection}
-        handleToggleSectionLock={handleToggleSectionLock}
-        handleDeleteSection={handleDeleteSection}
-      >
-        {sectionContent}
-      </SectionWrapper>
-    )
-  }
+  // Render Section Hook
+  const { renderSection } = useRenderSection({
+    selectedSection,
+    editingText,
+    handleOpenTextEditor,
+    handleGridColumnUpdate,
+    currentPage,
+    template,
+    mobileMenuOpen,
+    setMobileMenuOpen,
+    hoveredSection,
+    setHoveredSection,
+    setSelectedSection,
+    showCSSPanel,
+    setShowCSSPanel,
+    cssInspectorMode,
+    handleMoveSidebar,
+    handleMoveSection,
+    handleToggleSectionLock,
+    handleDeleteSection
+  })
 
 
   if (loading) {
@@ -940,34 +874,13 @@ export default function TemplateBuilder() {
 
       {/* Published Template Indicator Banner */}
       {isPublished && (
-        <div className="bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] border-b border-[#d4e5d0] px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-5 h-5 text-[#5a7a54]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <span className="text-sm font-medium text-[#4a6344]">Published Template</span>
-              <p className="text-xs text-[#5a7a54]">This template is published and available to users. Changes will update the published version.</p>
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              if (confirm('Unpublish this template? It will no longer be available to users.')) {
-                const updatedTemplate = { ...template!, is_active: false }
-                api.updateTemplate(template!.id, updatedTemplate).then(response => {
-                  if (response.success) {
-                    setTemplate(updatedTemplate)
-                    setIsPublished(false)
-                  }
-                })
-              }
-            }}
-            className="px-3 py-1 bg-white border border-[#b8ceb4] text-[#5a7a54] rounded text-xs hover:bg-[#e8f0e6] transition"
-          >
-            Unpublish
-          </button>
-        </div>
+        <PublishedTemplateBanner
+          template={template!}
+          setTemplate={setTemplate}
+          setIsPublished={setIsPublished}
+        />
       )}
+
 
       {/* Builder Main Area */}
       <div className="flex-1 flex overflow-hidden relative">
