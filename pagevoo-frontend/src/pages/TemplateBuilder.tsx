@@ -48,6 +48,7 @@ import { useImageHandlers } from '../hooks/useImageHandlers'
 import { useFormattingHandlers } from '../hooks/useFormattingHandlers'
 import { useImageGalleryHandlers } from '../hooks/useImageGalleryHandlers'
 import { useRenderSection } from '../hooks/useRenderSection'
+import { useTemplateBuilderEffects } from '../hooks/useTemplateBuilderEffects'
 import {
   generateRandomString,
   sanitizeName,
@@ -260,192 +261,50 @@ export default function TemplateBuilder() {
     })
   )
 
-  // Keep templateRef in sync with template state to avoid race conditions during save
-  useEffect(() => {
-    templateRef.current = template
-  }, [template])
 
-  // Load template data if ID is present, or create blank template
-  useEffect(() => {
-    const loadTemplate = async () => {
-      if (!templateId) {
-        // Create a blank template for new template creation with a default homepage
-        const defaultHomepage: TemplatePage = {
-          id: Date.now(),
-          name: 'Home',
-          slug: 'home',
-          is_homepage: true,
-          order: 0,
-          sections: []
-        }
-        const newTemplate = {
-          id: 0,
-          name: 'Untitled Template',
-          description: '',
-          business_type: 'restaurant',
-          is_active: true,
-          pages: [defaultHomepage],
-          preview_image: null,
-          exclusive_to: null,
-          technologies: [],
-          features: []
-        }
-        setTemplate(newTemplate)
-        setCurrentPage(defaultHomepage)
-        setLoading(false)
-        return
-      }
+  // Template Builder Effects (useEffects)
+  useTemplateBuilderEffects({
+    templateRef,
+    template,
+    setTemplate,
+    templateId,
+    setCurrentPage,
+    setLoading,
+    setHistory,
+    setHistoryIndex,
+    setCanUndo,
+    setCanRedo,
+    setIsPublished,
+    setHasUnsavedChanges,
+    canUndo,
+    canRedo,
+    hasUnsavedChanges,
+    handleNew,
+    handleSave,
+    handleUndo,
+    handleRedo,
+    handleLoad,
+    showFileMenu,
+    setShowFileMenu,
+    showEditMenu,
+    setShowEditMenu,
+    showInsertMenu,
+    setShowInsertMenu,
+    showViewMenu,
+    setShowViewMenu,
+    fileMenuRef,
+    editMenuRef,
+    insertMenuRef,
+    viewMenuRef,
+    selectedSection,
+    setShowSectionCSS,
+    currentPage,
+    showSourceCodeModal,
+    setEditableHTML,
+    showStylesheetModal,
+    setEditableCSS
+  })
 
-      setLoading(true)
-      try {
-        const response = await api.getTemplate(parseInt(templateId))
-        if (response.success && response.data) {
-          const templateData = response.data
-
-          // Ensure there's always at least one page and a homepage is designated
-          if (!templateData.pages || templateData.pages.length === 0) {
-            // No pages exist, create a default homepage
-            templateData.pages = [{
-              id: Date.now(),
-              name: 'Home',
-              slug: 'home',
-              is_homepage: true,
-              order: 0,
-              sections: []
-            }]
-          } else {
-            // Pages exist, ensure one is designated as homepage
-            const hasHomepage = templateData.pages.some((p: TemplatePage) => p.is_homepage)
-            if (!hasHomepage) {
-              // No homepage designated, make the first page the homepage
-              templateData.pages[0].is_homepage = true
-            }
-          }
-
-          setTemplate(templateData)
-          // Set current page to homepage or first page
-          const homepage = templateData.pages.find((p: TemplatePage) => p.is_homepage) || templateData.pages[0]
-          setCurrentPage(homepage)
-
-          // Initialize history with loaded state
-          setHistory([JSON.parse(JSON.stringify(templateData))])
-          setHistoryIndex(0)
-          setCanUndo(false)
-          setCanRedo(false)
-
-          // Set published status
-          setIsPublished(templateData.is_active || false)
-
-          // Template just loaded, so no unsaved changes
-          setHasUnsavedChanges(false)
-        }
-      } catch (error) {
-        console.error('Failed to load template:', error)
-        alert('Failed to load template')
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    loadTemplate()
-  }, [templateId])
-
-  // Keyboard shortcuts for save, undo, redo
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+N or Cmd+N for New
-      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
-        e.preventDefault()
-        handleNew()
-      }
-      // Ctrl+S or Cmd+S for Save
-      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-        e.preventDefault()
-        handleSave()
-      }
-      // Ctrl+Z or Cmd+Z for Undo
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey && canUndo) {
-        e.preventDefault()
-        handleUndo()
-      }
-      // Ctrl+Y or Ctrl+Shift+Z or Cmd+Shift+Z for Redo
-      if (((e.ctrlKey || e.metaKey) && e.key === 'y') || ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'z')) {
-        if (canRedo) {
-          e.preventDefault()
-          handleRedo()
-        }
-      }
-      // Ctrl+O or Cmd+O for Load
-      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-        e.preventDefault()
-        handleLoad()
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [canUndo, canRedo, hasUnsavedChanges])
-
-  // VSCode-style menu behavior: click outside to close
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node
-
-      // Check if click is inside a dropdown portal, color picker, or input field
-      const targetElement = target as HTMLElement
-      const isDropdownClick = targetElement.closest('[role="listbox"]') ||
-                              targetElement.closest('[data-radix-popper-content-wrapper]') ||
-                              targetElement.closest('[data-radix-select-content]') ||
-                              targetElement.closest('.react-colorful') ||
-                              targetElement.closest('input[type="text"]') ||
-                              targetElement.tagName === 'INPUT'
-
-      if (fileMenuRef.current && !fileMenuRef.current.contains(target) && !isDropdownClick) {
-        setShowFileMenu(false)
-      }
-      if (editMenuRef.current && !editMenuRef.current.contains(target) && !isDropdownClick) {
-        setShowEditMenu(false)
-      }
-      if (insertMenuRef.current && !insertMenuRef.current.contains(target) && !isDropdownClick) {
-        setShowInsertMenu(false)
-      }
-      if (viewMenuRef.current && !viewMenuRef.current.contains(target) && !isDropdownClick) {
-        setShowViewMenu(false)
-      }
-    }
-
-    if (showFileMenu || showEditMenu || showInsertMenu || showViewMenu) {
-      document.addEventListener('mousedown', handleClickOutside)
-      return () => document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [showFileMenu, showEditMenu, showInsertMenu, showViewMenu])
-
-  // Reset CSS views when section changes
-  useEffect(() => {
-    setShowSectionCSS(false)
-  }, [selectedSection?.id])
-
-  // Debug: Track showImageGallery state changes
-  useEffect(() => {
-    console.log('showImageGallery state changed to:', showImageGallery)
-    console.trace('Stack trace for showImageGallery change:')
-  }, [showImageGallery])
-
-  // Dynamically update HTML when template/page changes
-  useEffect(() => {
-    if (currentPage && showSourceCodeModal) {
-      const generatedHTML = genPageHTML(currentPage)
-      setEditableHTML(generatedHTML)
-    }
-  }, [currentPage, currentPage?.sections, JSON.stringify(currentPage?.sections?.map(s => ({ id: s.id, section_id: s.section_id, section_name: s.section_name }))), showSourceCodeModal])
-
-  // Dynamically update CSS when template/page changes
-  useEffect(() => {
-    if (currentPage && template && showStylesheetModal) {
-      const generatedCSS = genStylesheet(currentPage, template)
-      setEditableCSS(generatedCSS)
-    }
-  }, [currentPage, currentPage?.sections, JSON.stringify(currentPage?.sections?.map(s => ({ id: s.id, section_id: s.section_id, section_name: s.section_name }))), template?.custom_css, currentPage?.page_css, showStylesheetModal])
 
   // History management helper function
   const addToHistory = (newTemplate: Template, markAsUnsaved: boolean = true) => {
@@ -799,8 +658,6 @@ export default function TemplateBuilder() {
     )
   }
 
-  console.log('🔴 TemplateBuilder RENDER - showImageGallery:', showImageGallery, 'template ID:', template?.id)
-
   return (
     <DndContext
       sensors={sensors}
@@ -1014,9 +871,9 @@ export default function TemplateBuilder() {
       />
     </div>
 
-    {/* Drag Overlay - Shows preview of dragged item */}
+    {/* Drag Overlay */}
     <DragOverlay>
-      {activeId && activeDragData ? (
+      {activeId && activeDragData && (
         <div className="bg-white shadow-2xl rounded-lg p-4 border-2 border-[#98b290] opacity-90">
           <div className="text-sm font-semibold text-gray-700 capitalize">
             {activeDragData.source === 'library'
@@ -1025,7 +882,7 @@ export default function TemplateBuilder() {
             }
           </div>
         </div>
-      ) : null}
+      )}
     </DragOverlay>
 
     {/* Floating Rich Text Editor */}
@@ -1096,21 +953,17 @@ export default function TemplateBuilder() {
     />
 
       {/* Image Gallery Modal */}
-      {console.log('About to render ImageGallery conditional, showImageGallery:', showImageGallery, 'ref:', imageGalleryRef.current, 'template ID:', template?.id)}
-      {(showImageGallery || imageGalleryRef.current) ? (
-        <>
-          {console.log('Rendering ImageGallery component NOW')}
-          <ImageGallery
-            isOpen={true}
-            onClose={handleImageGalleryClose}
-            templateId={template?.id || 0}
-            images={template?.images || []}
-            onUpload={handleImageUpload}
-            onDelete={handleImageDelete}
-            onRename={handleImageRename}
-          />
-        </>
-      ) : null}
+      {(showImageGallery || imageGalleryRef.current) && (
+        <ImageGallery
+          isOpen={true}
+          onClose={handleImageGalleryClose}
+          templateId={template?.id || 0}
+          images={template?.images || []}
+          onUpload={handleImageUpload}
+          onDelete={handleImageDelete}
+          onRename={handleImageRename}
+        />
+      )}
 
       {/* Load Template Modal */}
       <LoadModal
