@@ -43,7 +43,8 @@
       "Bash(temp_line_count.txt)",
       "Bash(del temp_line_count.txt)",
       "Bash(temp_baseline.txt)",
-      "Bash(npm uninstall:*)"
+      "Bash(npm uninstall:*)",
+      "Bash(TemplateBuilder.tsx)"
     ],
     "deny": [],
     "ask": []

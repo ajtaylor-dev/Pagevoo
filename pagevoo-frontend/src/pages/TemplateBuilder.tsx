@@ -985,7 +985,7 @@ export default function TemplateBuilder() {
         editableHTML={editableHTML}
         setEditableHTML={setEditableHTML}
         onApplyChanges={handleApplyHTMLChanges}
-        generatePageHTML={generatePageHTML}
+        generatePageHTML={genPageHTML}
       />
 
       {/* Stylesheet Modal */}
@@ -1002,7 +1002,7 @@ export default function TemplateBuilder() {
         editableCSS={editableCSS}
         setEditableCSS={setEditableCSS}
         onApplyChanges={handleApplyCSSChanges}
-        generateStylesheet={generateStylesheet}
+        generateStylesheet={genStylesheet}
       />
 
       {/* Sitemap Modal */}
@@ -1035,4 +1035,5 @@ export default function TemplateBuilder() {
   </DndContext>
   )
 }
+
 
