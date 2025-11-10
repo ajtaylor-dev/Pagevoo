@@ -166,7 +166,17 @@ export const generateContentCSS = (sections: TemplateSection[], pageCSS?: string
       css += `/* Section ${sectionId} row styles */\n#${sectionId} .row {\n${content.rowCSS}}\n\n`
     }
 
-    // Add column-level CSS if present
+    // Add column-level CSS if present (from content_css.columns object)
+    if (contentCSS && typeof contentCSS === 'object' && contentCSS.columns) {
+      Object.entries(contentCSS.columns).forEach(([colIdx, columnCSS]: [string, any]) => {
+        if (columnCSS && typeof columnCSS === 'string' && columnCSS.trim()) {
+          // Apply to specific column using nth-of-type - higher specificity than row
+          css += `/* Section ${sectionId} column ${parseInt(colIdx) + 1} styles */\n#template-canvas #${sectionId} .row > [class*="col-"]:nth-of-type(${parseInt(colIdx) + 1}) {\n${columnCSS}}\n\n`
+        }
+      })
+    }
+
+    // Also check for column-level CSS directly on column objects (col.columnCSS)
     if (content.columns && Array.isArray(content.columns)) {
       content.columns.forEach((col: any, colIdx: number) => {
         const columnCSS = col.columnCSS
