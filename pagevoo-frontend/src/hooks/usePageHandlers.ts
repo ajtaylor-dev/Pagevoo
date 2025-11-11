@@ -134,23 +134,13 @@ export const usePageHandlers = ({
     // Swap
     ;[newPages[index], newPages[swapIndex]] = [newPages[swapIndex], newPages[index]]
 
-    // Update order values
+    // Update order values and ensure first page is always homepage
     newPages.forEach((page, idx) => {
       page.order = idx
+      page.is_homepage = idx === 0
     })
 
     setTemplate({ ...template, pages: newPages })
-  }
-
-  const handleSetHomepage = (pageId: number) => {
-    if (!template) return
-
-    const updatedPages = template.pages.map(p => ({
-      ...p,
-      is_homepage: p.id === pageId
-    }))
-
-    setTemplate({ ...template, pages: updatedPages })
   }
 
   const handleOpenEditPageModal = () => {
@@ -262,7 +252,6 @@ export const usePageHandlers = ({
     handleAddPage,
     handleDeletePage,
     handleMovePage,
-    handleSetHomepage,
     handleOpenEditPageModal,
     handleSaveEditPage,
     handleCopyPage,

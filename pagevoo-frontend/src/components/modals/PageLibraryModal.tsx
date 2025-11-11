@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { pageLibraryApi, PageLibraryItem } from '@/services/libraryApi'
+import { pageLibraryApi } from '@/services/libraryApi'
+import type { PageLibraryItem } from '@/services/libraryApi'
 import { Input } from '@/components/ui/input'
 
 interface PageLibraryModalProps {

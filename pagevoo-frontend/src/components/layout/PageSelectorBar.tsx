@@ -27,7 +27,6 @@ interface PageSelectorBarProps {
   setShowRightSidebar: (show: boolean) => void
   cssInspectorMode: boolean
   setCssInspectorMode: (mode: boolean) => void
-  handleSetHomepage: (pageId: number) => void
   handleDeletePage: (pageId: number) => void
   setShowAddPageModal: (show: boolean) => void
 }
@@ -42,7 +41,6 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
   setShowRightSidebar,
   cssInspectorMode,
   setCssInspectorMode,
-  handleSetHomepage,
   handleDeletePage,
   setShowAddPageModal
 }) => {
@@ -92,15 +90,6 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
         </button>
       </div>
       <div className="flex items-center gap-1">
-        {currentPage && !currentPage.is_homepage && (
-          <button
-            onClick={() => handleSetHomepage(currentPage.id)}
-            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition"
-            title="Set as Homepage"
-          >
-            Set as Home
-          </button>
-        )}
         {currentPage && template.pages.length > 1 && (
           <button
             onClick={() => handleDeletePage(currentPage.id)}

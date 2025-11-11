@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { sectionLibraryApi, SectionLibraryItem } from '@/services/libraryApi'
+import { sectionLibraryApi } from '@/services/libraryApi'
+import type { SectionLibraryItem } from '@/services/libraryApi'
 import { Input } from '@/components/ui/input'
 
 interface SectionLibraryModalProps {

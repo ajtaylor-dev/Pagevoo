@@ -402,7 +402,6 @@ export default function TemplateBuilder() {
     handleAddPage,
     handleDeletePage,
     handleMovePage,
-    handleSetHomepage,
     handleOpenEditPageModal,
     handleSaveEditPage,
     handleCopyPage,
@@ -766,6 +765,7 @@ export default function TemplateBuilder() {
         ...pageData.page_data,
         id: newPageId,
         page_id: `imported-page-${newPageId}`,
+        is_homepage: false, // Imported pages are never the homepage
         order: template.pages.length,
         sections: pageData.page_data.sections.map((section: any, index: number) => ({
           ...section,
@@ -977,7 +977,6 @@ export default function TemplateBuilder() {
               setShowRightSidebar={setShowRightSidebar}
               cssInspectorMode={cssInspectorMode}
               setCssInspectorMode={setCssInspectorMode}
-              handleSetHomepage={handleSetHomepage}
               handleDeletePage={handleDeletePage}
               setShowAddPageModal={setShowAddPageModal}
             />
