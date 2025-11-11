@@ -10,6 +10,8 @@ use App\Http\Controllers\Api\V1\NoteController;
 use App\Http\Controllers\Api\V1\TemplateController;
 use App\Http\Controllers\Api\V1\UserWebsiteController;
 use App\Http\Controllers\Api\V1\SettingController;
+use App\Http\Controllers\SectionLibraryController;
+use App\Http\Controllers\PageLibraryController;
 
 /*
 |--------------------------------------------------------------------------
@@ -101,6 +103,12 @@ Route::prefix('v1')->group(function () {
             Route::post('/publish', [UserWebsiteController::class, 'publish']);
             Route::post('/unpublish', [UserWebsiteController::class, 'unpublish']);
         });
+
+        // Section Library management
+        Route::apiResource('section-library', SectionLibraryController::class);
+
+        // Page Library management
+        Route::apiResource('page-library', PageLibraryController::class);
 
         // Settings management (Admin only)
         Route::middleware('admin')->prefix('settings')->group(function () {
