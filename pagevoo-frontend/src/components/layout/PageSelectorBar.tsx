@@ -90,7 +90,7 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
         </button>
       </div>
       <div className="flex items-center gap-1">
-        {currentPage && template.pages.length > 1 && (
+        {currentPage && template.pages.length > 1 && !currentPage.is_homepage && (
           <button
             onClick={() => handleDeletePage(currentPage.id)}
             className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition"

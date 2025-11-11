@@ -103,15 +103,17 @@ export const usePageHandlers = ({
       alert('Cannot delete the only page. Templates must have at least one homepage.')
       return
     }
+
+    // Prevent deletion of the homepage (first page)
+    const pageToDelete = template.pages.find(p => p.id === pageId)
+    if (pageToDelete?.is_homepage) {
+      alert('Cannot delete the homepage. To delete this page, first move another page to the top.')
+      return
+    }
+
     if (!confirm('Are you sure you want to delete this page?')) return
 
-    const pageToDelete = template.pages.find(p => p.id === pageId)
     const updatedPages = template.pages.filter(p => p.id !== pageId)
-
-    // If deleting the homepage, set the first remaining page as the new homepage
-    if (pageToDelete?.is_homepage && updatedPages.length > 0) {
-      updatedPages[0].is_homepage = true
-    }
     setTemplate({ ...template, pages: updatedPages })
 
     // If current page was deleted, switch to first page
