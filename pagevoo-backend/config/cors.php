@@ -22,6 +22,8 @@ return [
     'allowed_origins' => [
         'http://localhost:5173', // Vite default port
         'http://127.0.0.1:5173',
+        'http://localhost:8000', // Laravel server (for static HTML pages)
+        'http://127.0.0.1:8000',
     ],
 
     'allowed_origins_patterns' => [],
