@@ -39,6 +39,11 @@ export const generateContentCSS = (sections: TemplateSection[], pageCSS?: string
       bodyStyles = bodyMatch[1]
       // Remove body block from original CSS
       processedCSS = inputCSS.replace(/body\s*\{[^}]+\}/gi, '')
+    } else {
+      // If no body selector found, treat the entire CSS as body styles
+      // (for Page CSS that comes as raw properties without selectors)
+      bodyStyles = inputCSS
+      processedCSS = ''
     }
 
     // Extract link selector styles (a, a:hover, a:visited, a:active)
