@@ -150,23 +150,29 @@
         loginSubmitBtn.textContent = 'Signing In...';
 
         try {
+            console.log('Attempting login to:', `${API_URL}/login`);
+            console.log('Credentials:', { email, password: '***' });
+
             const response = await fetch(`${API_URL}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email, password })
             });
 
+            console.log('Response status:', response.status);
             const data = await response.json();
+            console.log('Response data:', data);
 
-            if (data.success) {
-                localStorage.setItem('auth_token', data.token);
-                localStorage.setItem('user', JSON.stringify(data.user));
+            if (data.success && data.data) {
+                localStorage.setItem('auth_token', data.data.token);
+                localStorage.setItem('user', JSON.stringify(data.data.user));
                 // Redirect to dashboard
-                window.location.href = data.user.role === 'admin' ? '/dashboard' : '/my-dashboard';
+                window.location.href = data.data.user.role === 'admin' ? '/dashboard' : '/my-dashboard';
             } else {
                 throw new Error(data.message || 'Login failed');
             }
         } catch (error) {
+            console.error('Login error:', error);
             loginError.textContent = 'Invalid credentials';
             loginError.classList.remove('hidden');
         } finally {
