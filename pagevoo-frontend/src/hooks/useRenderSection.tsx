@@ -59,6 +59,7 @@ interface UseRenderSectionProps {
   handleMoveSection: (sectionId: number, direction: 'up' | 'down') => void
   handleToggleSectionLock: (sectionId: number) => void
   handleDeleteSection: (sectionId: number) => void
+  handleExportSection?: (section: TemplateSection) => void
 }
 
 export const useRenderSection = ({
@@ -79,7 +80,8 @@ export const useRenderSection = ({
   handleMoveSidebar,
   handleMoveSection,
   handleToggleSectionLock,
-  handleDeleteSection
+  handleDeleteSection,
+  handleExportSection
 }: UseRenderSectionProps) => {
 
   const renderSection = (section: TemplateSection, index: number) => {
@@ -167,6 +169,7 @@ export const useRenderSection = ({
         handleMoveSection={handleMoveSection}
         handleToggleSectionLock={handleToggleSectionLock}
         handleDeleteSection={handleDeleteSection}
+        handleExportSection={handleExportSection}
       >
         {sectionContent}
       </SectionWrapper>

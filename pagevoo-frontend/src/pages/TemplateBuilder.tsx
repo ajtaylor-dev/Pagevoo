@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
+import { sectionLibraryApi, pageLibraryApi, fileToBase64 } from '@/services/libraryApi'
 import { StyleEditor } from '@/components/StyleEditor'
 import { ImageGallery } from '@/components/ImageGallery'
 import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
@@ -18,6 +19,10 @@ import { SitemapModal } from '@/components/modals/SitemapModal'
 import { ColorPickerModal } from '@/components/modals/ColorPickerModal'
 import { LinkModal } from '@/components/modals/LinkModal'
 import { InsertImageModal } from '@/components/modals/InsertImageModal'
+import { ExportSectionModal } from '@/components/modals/ExportSectionModal'
+import { SectionLibraryModal } from '@/components/modals/SectionLibraryModal'
+import { ExportPageModal } from '@/components/modals/ExportPageModal'
+import { PageLibraryModal } from '@/components/modals/PageLibraryModal'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
@@ -244,6 +249,16 @@ export default function TemplateBuilder() {
   const [showRightSidebar, setShowRightSidebar] = useState(true)
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
   const [showNavButtonStyleModal, setShowNavButtonStyleModal] = useState(false)
+
+  // Section Library states
+  const [showSectionLibraryModal, setShowSectionLibraryModal] = useState(false)
+  const [showExportSectionModal, setShowExportSectionModal] = useState(false)
+  const [exportingSection, setExportingSection] = useState<TemplateSection | null>(null)
+
+  // Page Library states
+  const [showPageLibraryModal, setShowPageLibraryModal] = useState(false)
+  const [showExportPageModal, setShowExportPageModal] = useState(false)
+  const [exportingPage, setExportingPage] = useState<TemplatePage | null>(null)
 
   const leftSidebarRef = useRef<HTMLDivElement>(null)
   const rightSidebarRef = useRef<HTMLDivElement>(null)
@@ -609,7 +624,182 @@ export default function TemplateBuilder() {
     addToHistory
   })
 
+  // Section Library Handlers
+  // Handle exporting a section to the library
+  const handleExportSection = (section: TemplateSection) => {
+    setExportingSection(section)
+    setShowExportSectionModal(true)
+  }
 
+  // Handle the actual export after user fills the form
+  const handleSectionExport = async (data: {
+    name: string
+    description: string
+    tags: string[]
+    preview_image?: File
+  }) => {
+    try {
+      // Convert preview image to base64 if provided
+      let previewImageBase64: string | undefined
+      if (data.preview_image) {
+        previewImageBase64 = await fileToBase64(data.preview_image)
+      }
+
+      // Export to library
+      await sectionLibraryApi.export({
+        name: data.name,
+        description: data.description,
+        section_type: exportingSection?.type || 'custom',
+        section_data: exportingSection || {},
+        tags: data.tags,
+        preview_image: previewImageBase64
+      })
+
+      alert('Section exported to library successfully!')
+      setShowExportSectionModal(false)
+      setExportingSection(null)
+    } catch (error) {
+      console.error('Error exporting section:', error)
+      alert('Failed to export section. Please try again.')
+    }
+  }
+
+  // Handle importing a section from the library
+  const handleImportSection = async (sectionId: number) => {
+    if (!currentPage || !template) return
+
+    try {
+      // Fetch full section data from library
+      const sectionData = await sectionLibraryApi.getById(sectionId)
+
+      // Generate new IDs to avoid conflicts
+      const newSectionId = Date.now()
+      const newSection = {
+        ...sectionData.section_data,
+        id: newSectionId,
+        section_id: `imported-section-${newSectionId}`,
+        order: currentPage.sections.length
+      }
+
+      // Add to current page
+      const updatedSections = [...currentPage.sections, newSection]
+      const updatedPage = {
+        ...currentPage,
+        sections: updatedSections
+      }
+
+      // Update template
+      const updatedTemplate = {
+        ...template,
+        pages: template.pages.map(p =>
+          p.id === currentPage.id ? updatedPage : p
+        )
+      }
+
+      setTemplate(updatedTemplate)
+      setCurrentPage(updatedPage)
+      addToHistory(updatedTemplate)
+
+      alert('Section imported successfully!')
+      setShowSectionLibraryModal(false)
+    } catch (error) {
+      console.error('Error importing section:', error)
+      alert('Failed to import section. Please try again.')
+    }
+  }
+
+  // Page Library Handlers
+  // Handle exporting a page to the library
+  const handleExportPage = (page: TemplatePage) => {
+    setExportingPage(page)
+    setShowExportPageModal(true)
+  }
+
+  // Handle the actual export after user fills the form
+  const handlePageExport = async (data: {
+    name: string
+    description: string
+    meta_description: string
+    meta_keywords: string
+    tags: string[]
+    preview_image?: File
+  }) => {
+    try {
+      // Convert preview image to base64 if provided
+      let previewImageBase64: string | undefined
+      if (data.preview_image) {
+        previewImageBase64 = await fileToBase64(data.preview_image)
+      }
+
+      // Export to library
+      await pageLibraryApi.export({
+        name: data.name,
+        description: data.description,
+        meta_description: data.meta_description,
+        meta_keywords: data.meta_keywords,
+        page_data: exportingPage || {},
+        site_css: template?.custom_css || '',
+        tags: data.tags,
+        preview_image: previewImageBase64
+      })
+
+      alert('Page exported to library successfully!')
+      setShowExportPageModal(false)
+      setExportingPage(null)
+    } catch (error) {
+      console.error('Error exporting page:', error)
+      alert('Failed to export page. Please try again.')
+    }
+  }
+
+  // Handle importing a page from the library
+  const handleImportPage = async (pageId: number, applySiteCSS: boolean) => {
+    if (!template) return
+
+    try {
+      // Fetch full page data from library
+      const pageData = await pageLibraryApi.getById(pageId)
+
+      // Generate new IDs for page and all sections
+      const newPageId = Date.now()
+      const newPage = {
+        ...pageData.page_data,
+        id: newPageId,
+        page_id: `imported-page-${newPageId}`,
+        order: template.pages.length,
+        sections: pageData.page_data.sections.map((section: any, index: number) => ({
+          ...section,
+          id: newPageId + index + 1,
+          section_id: `imported-section-${newPageId}-${index}`,
+          order: index
+        }))
+      }
+
+      // Update template with new page
+      let updatedTemplate = {
+        ...template,
+        pages: [...template.pages, newPage]
+      }
+
+      // Optionally apply site CSS
+      if (applySiteCSS && pageData.site_css) {
+        updatedTemplate = {
+          ...updatedTemplate,
+          custom_css: pageData.site_css
+        }
+      }
+
+      setTemplate(updatedTemplate)
+      setCurrentPage(newPage)
+      addToHistory(updatedTemplate)
+
+      alert('Page imported successfully!')
+      setShowPageLibraryModal(false)
+    } catch (error) {
+      console.error('Error importing page:', error)
+      alert('Failed to import page. Please try again.')
+    }
+  }
 
   // Render Section Hook
   const { renderSection } = useRenderSection({
@@ -630,7 +820,8 @@ export default function TemplateBuilder() {
     handleMoveSidebar,
     handleMoveSection,
     handleToggleSectionLock,
-    handleDeleteSection
+    handleDeleteSection,
+    handleExportSection
   })
 
 
@@ -715,6 +906,8 @@ export default function TemplateBuilder() {
         setShowImageGallery={setShowImageGallery}
         uploadingImage={uploadingImage}
         handleImageUpload={handleImageUpload}
+        setShowSectionLibraryModal={setShowSectionLibraryModal}
+        setShowPageLibraryModal={setShowPageLibraryModal}
       />
 
       {/* Toolbar */}
@@ -867,6 +1060,41 @@ export default function TemplateBuilder() {
         selectedSection={selectedSection}
         onUpdateContent={handleUpdateSectionContent}
       />
+
+      {/* Section Library Modals */}
+      <ExportSectionModal
+        isOpen={showExportSectionModal}
+        onClose={() => {
+          setShowExportSectionModal(false)
+          setExportingSection(null)
+        }}
+        section={exportingSection}
+        onExport={handleSectionExport}
+      />
+
+      <SectionLibraryModal
+        isOpen={showSectionLibraryModal}
+        onClose={() => setShowSectionLibraryModal(false)}
+        onImport={handleImportSection}
+      />
+
+      {/* Page Library Modals */}
+      <ExportPageModal
+        isOpen={showExportPageModal}
+        onClose={() => {
+          setShowExportPageModal(false)
+          setExportingPage(null)
+        }}
+        page={exportingPage}
+        siteCss={template?.custom_css}
+        onExport={handlePageExport}
+      />
+
+      <PageLibraryModal
+        isOpen={showPageLibraryModal}
+        onClose={() => setShowPageLibraryModal(false)}
+        onImport={handleImportPage}
+      />
     </div>
 
     {/* Drag Overlay */}
@@ -1016,21 +1244,20 @@ export default function TemplateBuilder() {
           setShowAddPageModal(true)
           setShowSitemapModal(false)
         }}
-        onOpenEditPageModal={(page) => {
-          setEditPageId(page.id)
+        onOpenEditPageModal={(page: TemplatePage) => {
           setEditPageName(page.name)
           setEditPageSlug(page.slug)
-          setEditPageIsHomepage(page.is_homepage)
           setEditPageMetaDescription(page.meta_description || '')
           setShowEditPageModal(true)
           setShowSitemapModal(false)
         }}
-        onDeletePage={(pageId) => {
+        onDeletePage={(pageId: number) => {
           handleDeletePage(pageId)
           if (pageId === currentPage?.id && template?.pages.length > 0) {
             setCurrentPage(template.pages[0])
           }
         }}
+        onExportPage={handleExportPage}
       />
   </DndContext>
   )
