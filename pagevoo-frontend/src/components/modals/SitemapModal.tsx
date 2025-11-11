@@ -41,6 +41,7 @@ interface SitemapModalProps {
   setCurrentPage: (page: TemplatePage) => void
   onOpenAddPageModal: () => void
   onOpenEditPageModal: (page: TemplatePage) => void
+  onExportPage: (page: TemplatePage) => void
   onDeletePage: (pageId: number) => void
 }
 
@@ -52,6 +53,7 @@ export const SitemapModal: React.FC<SitemapModalProps> = ({
   setCurrentPage,
   onOpenAddPageModal,
   onOpenEditPageModal,
+  onExportPage,
   onDeletePage
 }) => {
   if (!isOpen) return null
@@ -158,6 +160,15 @@ export const SitemapModal: React.FC<SitemapModalProps> = ({
                   >
                     <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => onExportPage(page)}
+                    className="p-1.5 hover:bg-[#e8f0e6] rounded transition"
+                    title="Export to Library"
+                  >
+                    <svg className="w-4 h-4 text-[#98b290]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                     </svg>
                   </button>
                   <button

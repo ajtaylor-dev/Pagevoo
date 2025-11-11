@@ -53,6 +53,7 @@ interface SectionWrapperProps {
   handleMoveSidebar: (id: number, direction: 'left' | 'right') => void
   handleMoveSection: (id: number, direction: 'up' | 'down') => void
   handleToggleSectionLock: (id: number) => void
+  handleExportSection: (section: TemplateSection) => void
   handleDeleteSection: (id: number) => void
 }
 
@@ -71,6 +72,7 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
   handleMoveSidebar,
   handleMoveSection,
   handleToggleSectionLock,
+  handleExportSection,
   handleDeleteSection
 }) => {
   const content = section.content || {}
@@ -355,6 +357,20 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
               ) : (
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
               )}
+            </svg>
+          </button>
+
+          {/* Export to Library button */}
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              handleExportSection(section)
+            }}
+            className="builder-ui p-1 hover:bg-[#e8f0e6] rounded transition"
+            title="Export to Library"
+          >
+            <svg className="builder-ui w-4 h-4 text-[#98b290]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
             </svg>
           </button>
 

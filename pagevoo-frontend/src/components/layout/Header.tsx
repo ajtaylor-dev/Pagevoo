@@ -83,6 +83,8 @@ interface HeaderProps {
   setShowSourceCodeModal: (show: boolean) => void
   setShowStylesheetModal: (show: boolean) => void
   setShowSitemapModal: (show: boolean) => void
+  setShowSectionLibraryModal: (show: boolean) => void
+  setShowPageLibraryModal: (show: boolean) => void
 
   // Insert menu handlers
   setShowAddPageModal: (show: boolean) => void
@@ -133,6 +135,8 @@ export const Header: React.FC<HeaderProps> = ({
   setShowSourceCodeModal,
   setShowStylesheetModal,
   setShowSitemapModal,
+  setShowSectionLibraryModal,
+  setShowPageLibraryModal,
   setShowAddPageModal,
   setShowImageGallery,
   uploadingImage,
@@ -551,6 +555,24 @@ export const Header: React.FC<HeaderProps> = ({
                     className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
                   >
                     Sitemap
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowSectionLibraryModal(true)
+                      setShowViewMenu(false)
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                  >
+                    Section Library
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowPageLibraryModal(true)
+                      setShowViewMenu(false)
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                  >
+                    Page Library
                   </button>
                 </div>
               </div>
