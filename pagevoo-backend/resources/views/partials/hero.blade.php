@@ -220,14 +220,26 @@
                 headers: { 'Authorization': `Bearer ${token}` }
             });
 
+            // If unauthorized or error, clear token and show logged out
+            if (!response.ok) {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
+                showLoggedOutState();
+                return;
+            }
+
             const data = await response.json();
             if (data.success && data.data) {
                 localStorage.setItem('user', JSON.stringify(data.data));
                 showLoggedInState(data.data);
             } else {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user');
                 showLoggedOutState();
             }
         } catch (error) {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user');
             showLoggedOutState();
         }
     }
