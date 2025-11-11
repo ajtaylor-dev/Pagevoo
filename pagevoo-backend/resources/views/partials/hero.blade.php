@@ -161,7 +161,8 @@
             if (data.success) {
                 localStorage.setItem('auth_token', data.token);
                 localStorage.setItem('user', JSON.stringify(data.user));
-                showLoggedInState(data.user);
+                // Redirect to dashboard
+                window.location.href = data.user.role === 'admin' ? '/dashboard' : '/my-dashboard';
             } else {
                 throw new Error(data.message || 'Login failed');
             }
