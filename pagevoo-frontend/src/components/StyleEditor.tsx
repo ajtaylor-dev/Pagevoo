@@ -80,6 +80,7 @@ interface StyleEditorProps {
   siteCSS?: string      // Site-wide CSS (lowest priority)
   pageCSS?: string      // Page-specific CSS
   sectionCSS?: string   // Section CSS (only relevant for row/column contexts)
+  overridingCSS?: string  // CSS from levels ABOVE current (for showing overrides)
 }
 
 const GOOGLE_FONTS = [
@@ -230,7 +231,8 @@ export function StyleEditor({
   onOpenGallery,
   siteCSS = '',
   pageCSS = '',
-  sectionCSS = ''
+  sectionCSS = '',
+  overridingCSS = ''
 }: StyleEditorProps) {
   const [activeTab, setActiveTab] = useState<'simplified' | 'code'>('simplified')
   const [properties, setProperties] = useState<StyleProperty>({
@@ -350,6 +352,149 @@ export function StyleEditor({
     }
 
     return { value, source }
+  }
+
+  // ========== HEADER-SPECIFIC CSS INHERITANCE ==========
+  // Calculate inherited values for header tags (h1, h2, h3, h4) from site → page → section cascade
+  const getInheritedHeaderValue = (headerTag: 'h1' | 'h2' | 'h3' | 'h4', property: string): {value: any, source: string | null} => {
+    // Helper to extract property from header tag block in CSS
+    const extractHeaderProperty = (css: string, tag: string, prop: string): string | null => {
+      if (!css) return null
+      // Extract the full header block
+      const headerRegex = new RegExp(`${tag}\\s*\\{([^}]+)\\}`, 'i')
+      const headerMatch = css.match(headerRegex)
+      if (!headerMatch) return null
+
+      // Extract property from header block
+      const propRegex = new RegExp(`${prop}\\s*:\\s*([^;]+);?`, 'i')
+      const propMatch = headerMatch[1].match(propRegex)
+      return propMatch ? propMatch[1].trim() : null
+    }
+
+    let value = null
+    let source = null
+
+    // Check cascade in order: site → page → section
+    // 1. Site CSS (lowest priority)
+    if (siteCSS) {
+      const siteValue = extractHeaderProperty(siteCSS, headerTag, property)
+      if (siteValue) {
+        value = siteValue
+        source = 'Site CSS'
+      }
+    }
+
+    // 2. Page CSS (overrides site)
+    if (pageCSS && context !== 'page') {
+      const pageValue = extractHeaderProperty(pageCSS, headerTag, property)
+      if (pageValue) {
+        value = pageValue
+        source = 'Page CSS'
+      }
+    }
+
+    // 3. Section CSS (overrides page, only for row/column contexts)
+    if (sectionCSS && (context === 'row' || context === 'column')) {
+      const sectionValue = extractHeaderProperty(sectionCSS, headerTag, property)
+      if (sectionValue) {
+        value = sectionValue
+        source = 'Section CSS'
+      }
+    }
+
+    return { value, source }
+  }
+
+  // ========== LINK-SPECIFIC CSS INHERITANCE ==========
+  // Calculate inherited values for link pseudo-selectors from site → page → section cascade
+  const getInheritedLinkValue = (selector: 'a' | 'a:hover' | 'a:visited' | 'a:active', property: string): {value: any, source: string | null} => {
+    // Helper to extract property from link selector block in CSS
+    const extractLinkProperty = (css: string, sel: string, prop: string): string | null => {
+      if (!css) return null
+      // Escape selector for regex (handle :hover, :visited, etc.)
+      const escapedSel = sel.replace(/:/g, '\\:')
+      // Handle both direct 'a {' and scoped '.row a {' patterns
+      const linkRegex = new RegExp(`(?:\\.row\\s+)?${escapedSel}\\s*\\{([^}]+)\\}`, 'i')
+      const linkMatch = css.match(linkRegex)
+      if (!linkMatch) return null
+
+      // Extract property from link block
+      const propRegex = new RegExp(`${prop}\\s*:\\s*([^;]+);?`, 'i')
+      const propMatch = linkMatch[1].match(propRegex)
+      return propMatch ? propMatch[1].trim().replace(/\s*!important\s*$/, '') : null
+    }
+
+    let value = null
+    let source = null
+
+    // Check cascade in order: site → page → section
+    // 1. Site CSS (lowest priority)
+    if (siteCSS) {
+      const siteValue = extractLinkProperty(siteCSS, selector, property)
+      if (siteValue) {
+        value = siteValue
+        source = 'Site CSS'
+      }
+    }
+
+    // 2. Page CSS (overrides site)
+    if (pageCSS && context !== 'page') {
+      const pageValue = extractLinkProperty(pageCSS, selector, property)
+      if (pageValue) {
+        value = pageValue
+        source = 'Page CSS'
+      }
+    }
+
+    // 3. Section CSS (overrides page, only for row/column contexts)
+    if (sectionCSS && (context === 'row' || context === 'column')) {
+      const sectionValue = extractLinkProperty(sectionCSS, selector, property)
+      if (sectionValue) {
+        value = sectionValue
+        source = 'Section CSS'
+      }
+    }
+
+    return { value, source }
+  }
+
+  // ========== OVERRIDE DETECTION ==========
+  // Check if a property is overridden by higher-level CSS
+  const getOverriddenBy = (property: string): boolean => {
+    if (!overridingCSS) return false
+
+    // Check if the overriding CSS has this property
+    const regex = new RegExp(`${property}\\s*:\\s*([^;]+);?`, 'i')
+    return regex.test(overridingCSS)
+  }
+
+  // Check if header property is overridden
+  const getHeaderOverriddenBy = (headerTag: 'h1' | 'h2' | 'h3' | 'h4', property: string): boolean => {
+    if (!overridingCSS) return false
+
+    // Check if header block exists in overriding CSS
+    const headerRegex = new RegExp(`${headerTag}\\s*\\{([^}]+)\\}`, 'i')
+    const headerMatch = overridingCSS.match(headerRegex)
+    if (!headerMatch) return false
+
+    // Check if property exists in header block
+    const propRegex = new RegExp(`${property}\\s*:\\s*([^;]+);?`, 'i')
+    return propRegex.test(headerMatch[1])
+  }
+
+  // Check if link property is overridden
+  const getLinkOverriddenBy = (selector: 'a' | 'a:hover' | 'a:visited' | 'a:active', property: string): boolean => {
+    if (!overridingCSS) return false
+
+    // Check if link block exists in overriding CSS
+    const escapedSel = selector.replace(/:/g, '\\:')
+    const linkRegex = new RegExp(`${escapedSel}\\s*\\{([^}]+)\\}`, 'i')
+    const linkMatch = overridingCSS.match(linkRegex)
+    if (!linkMatch) return false
+
+    // Check if property exists in link block
+    const propRegex = new RegExp(`${property}\\s*:\\s*([^;]+);?`, 'i')
+    return propRegex.test(linkMatch[1])
   }
 
   // Parse CSS string to extract visual properties
@@ -985,8 +1130,30 @@ export function StyleEditor({
           {/* Font Family Selector (only for page/section context) */}
           {showFontSelector && (
             <div>
-              <Label className="text-xs font-medium">Font Family</Label>
-              <Select value={properties.fontFamily || 'Arial'} onValueChange={handleFontChange}>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">Font Family</Label>
+                {(() => {
+                  const inherited = getInheritedValue('font-family')
+                  if (properties.fontFamily === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.fontFamily !== undefined && getOverriddenBy('font-family') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
+              <Select value={(() => {
+                if (properties.fontFamily !== undefined) return properties.fontFamily
+                const inherited = getInheritedValue('font-family')
+                return inherited.value ? inherited.value.replace(/['"]/g, '').split(',')[0].trim() : 'Arial'
+              })()} onValueChange={handleFontChange}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue />
                 </SelectTrigger>
@@ -1019,24 +1186,54 @@ export function StyleEditor({
 
           {/* Background Color */}
           <div>
-            <Label className="text-xs font-medium">Background Color</Label>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs font-medium">Background Color</Label>
+              {(() => {
+                const inherited = getInheritedValue('background-color')
+                if (properties.backgroundColor === undefined && inherited.source) {
+                  return (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                      from {inherited.source}
+                    </span>
+                  )
+                }
+                return null
+              })()}
+              {properties.backgroundColor !== undefined && getOverriddenBy('background-color') && (
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                  overridden
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-1">
               <button
                 className="w-8 h-8 rounded border-2 border-gray-300 relative overflow-hidden"
-                style={
-                  properties.backgroundColor
-                    ? { backgroundColor: properties.backgroundColor }
+                style={(() => {
+                  const currentBg = properties.backgroundColor !== undefined ? properties.backgroundColor : (() => {
+                    const inherited = getInheritedValue('background-color')
+                    return inherited.value
+                  })()
+                  return currentBg
+                    ? { backgroundColor: currentBg }
                     : {
                         background:
                           'linear-gradient(to top right, transparent 0%, transparent calc(50% - 1px), #ef4444 calc(50% - 1px), #ef4444 calc(50% + 1px), transparent calc(50% + 1px), transparent 100%), ' +
                           'repeating-conic-gradient(#e5e7eb 0% 25%, #f3f4f6 0% 50%) 50% / 8px 8px'
                       }
-                }
+                })()}
                 onClick={() => setShowBackgroundPicker(!showBackgroundPicker)}
-                title={properties.backgroundColor || 'Transparent (no background color)'}
+                title={(() => {
+                  if (properties.backgroundColor !== undefined) return properties.backgroundColor
+                  const inherited = getInheritedValue('background-color')
+                  return inherited.value ? `${inherited.value} (inherited)` : 'Transparent (no background color)'
+                })()}
               />
               <Input
-                value={properties.backgroundColor || ''}
+                value={(() => {
+                  if (properties.backgroundColor !== undefined) return properties.backgroundColor
+                  const inherited = getInheritedValue('background-color')
+                  return inherited.value ? `${inherited.value} (inherited)` : ''
+                })()}
                 onChange={(e) => updateProperty('backgroundColor', e.target.value)}
                 className="h-8 text-xs flex-1"
                 placeholder="e.g., #FFFFFF or transparent"
@@ -1045,7 +1242,11 @@ export function StyleEditor({
             {showBackgroundPicker && (
               <div className="mt-2">
                 <HexColorPicker
-                  color={properties.backgroundColor || '#FFFFFF'}
+                  color={(() => {
+                    if (properties.backgroundColor !== undefined) return properties.backgroundColor
+                    const inherited = getInheritedValue('background-color')
+                    return inherited.value || '#FFFFFF'
+                  })()}
                   onChange={(color) => updateProperty('backgroundColor', color)}
                   className="!w-full"
                 />
@@ -1066,15 +1267,41 @@ export function StyleEditor({
           {/* Text Color - Only show for page/site level */}
           {showFontSelector && (
             <div>
-              <Label className="text-xs font-medium">Text Color</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">Text Color</Label>
+                {(() => {
+                  const inherited = getInheritedValue('color')
+                  if (properties.color === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.color !== undefined && getOverriddenBy('color') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 <button
                   className="w-8 h-8 rounded border-2 border-gray-300"
-                  style={{ backgroundColor: properties.color || '#000000' }}
+                  style={{ backgroundColor: (() => {
+                    if (properties.color !== undefined) return properties.color
+                    const inherited = getInheritedValue('color')
+                    return inherited.value || '#000000'
+                  })() }}
                   onClick={() => setShowColorPicker(!showColorPicker)}
                 />
                 <Input
-                  value={properties.color || ''}
+                  value={(() => {
+                    if (properties.color !== undefined) return properties.color
+                    const inherited = getInheritedValue('color')
+                    return inherited.value ? `${inherited.value} (inherited)` : ''
+                  })()}
                   onChange={(e) => updateProperty('color', e.target.value)}
                   className="h-8 text-xs flex-1"
                   placeholder="e.g., #000000"
@@ -1083,7 +1310,11 @@ export function StyleEditor({
               {showColorPicker && (
                 <div className="mt-2">
                   <HexColorPicker
-                    color={properties.color || '#000000'}
+                    color={(() => {
+                      if (properties.color !== undefined) return properties.color
+                      const inherited = getInheritedValue('color')
+                      return inherited.value || '#000000'
+                    })()}
                     onChange={(color) => updateProperty('color', color)}
                     className="!w-full"
                   />
@@ -1106,11 +1337,39 @@ export function StyleEditor({
           {showFontSelector && (
             <div>
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Font Size</Label>
-                <span className="text-xs text-gray-500">{properties.fontSize || 16}px</span>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-medium">Font Size</Label>
+                  {(() => {
+                    const inherited = getInheritedValue('font-size')
+                    if (properties.fontSize === undefined && inherited.source) {
+                      return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                          from {inherited.source}
+                        </span>
+                      )
+                    }
+                    return null
+                  })()}
+                  {properties.fontSize !== undefined && getOverriddenBy('font-size') && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                      overridden
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500">
+                  {(() => {
+                    if (properties.fontSize !== undefined) return `${properties.fontSize}px`
+                    const inherited = getInheritedValue('font-size')
+                    if (inherited.value) return `${inherited.value} (inherited)`
+                    return '16px'
+                  })()}
+                </span>
               </div>
               <Slider
-                value={[properties.fontSize || 16]}
+                value={[properties.fontSize !== undefined ? properties.fontSize : (() => {
+                  const inherited = getInheritedValue('font-size')
+                  return inherited.value ? parseInt(inherited.value) : 16
+                })()]}
                 onValueChange={(value) => updateProperty('fontSize', value[0])}
                 min={8}
                 max={72}
@@ -1136,6 +1395,11 @@ export function StyleEditor({
                   }
                   return null
                 })()}
+                {properties.padding !== undefined && getOverriddenBy('padding') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
               </div>
               <span className="text-xs text-gray-500">
                 {(() => {
@@ -1175,6 +1439,11 @@ export function StyleEditor({
                   }
                   return null
                 })()}
+                {properties.margin !== undefined && getOverriddenBy('margin') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
               </div>
               <span className="text-xs text-gray-500">
                 {(() => {
@@ -1202,11 +1471,39 @@ export function StyleEditor({
           {(context === 'section' || context === 'column') && (
             <div>
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Border Radius</Label>
-                <span className="text-xs text-gray-500">{properties.borderRadius || 0}px</span>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-medium">Border Radius</Label>
+                  {(() => {
+                    const inherited = getInheritedValue('border-radius')
+                    if (properties.borderRadius === undefined && inherited.source) {
+                      return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                          from {inherited.source}
+                        </span>
+                      )
+                    }
+                    return null
+                  })()}
+                  {properties.borderRadius !== undefined && getOverriddenBy('border-radius') && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                      overridden
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500">
+                  {(() => {
+                    if (properties.borderRadius !== undefined) return `${properties.borderRadius}px`
+                    const inherited = getInheritedValue('border-radius')
+                    if (inherited.value) return `${inherited.value} (inherited)`
+                    return '0px'
+                  })()}
+                </span>
               </div>
               <Slider
-                value={[properties.borderRadius || 0]}
+                value={[properties.borderRadius !== undefined ? properties.borderRadius : (() => {
+                  const inherited = getInheritedValue('border-radius')
+                  return inherited.value ? parseInt(inherited.value) : 0
+                })()]}
                 onValueChange={(value) => updateProperty('borderRadius', value[0])}
                 min={0}
                 max={50}
@@ -1222,11 +1519,39 @@ export function StyleEditor({
               {/* Border Width */}
               <div>
                 <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Border Width</Label>
-                  <span className="text-xs text-gray-500">{properties.borderWidth || 0}px</span>
+                  <div className="flex items-center gap-1.5">
+                    <Label className="text-xs font-medium">Border Width</Label>
+                    {(() => {
+                      const inherited = getInheritedValue('border-width')
+                      if (properties.borderWidth === undefined && inherited.source) {
+                        return (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                            from {inherited.source}
+                          </span>
+                        )
+                      }
+                      return null
+                    })()}
+                    {properties.borderWidth !== undefined && getOverriddenBy('border-width') && (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                        overridden
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs text-gray-500">
+                    {(() => {
+                      if (properties.borderWidth !== undefined) return `${properties.borderWidth}px`
+                      const inherited = getInheritedValue('border-width')
+                      if (inherited.value) return `${inherited.value} (inherited)`
+                      return '0px'
+                    })()}
+                  </span>
                 </div>
                 <Slider
-                  value={[properties.borderWidth || 0]}
+                  value={[properties.borderWidth !== undefined ? properties.borderWidth : (() => {
+                    const inherited = getInheritedValue('border-width')
+                    return inherited.value ? parseInt(inherited.value) : 0
+                  })()]}
                   onValueChange={(value) => updateProperty('borderWidth', value[0])}
                   min={0}
                   max={10}
@@ -1237,15 +1562,41 @@ export function StyleEditor({
 
               {/* Border Color */}
               <div>
-                <Label className="text-xs font-medium">Border Color</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-medium">Border Color</Label>
+                  {(() => {
+                    const inherited = getInheritedValue('border-color')
+                    if (properties.borderColor === undefined && inherited.source) {
+                      return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                          from {inherited.source}
+                        </span>
+                      )
+                    }
+                    return null
+                  })()}
+                  {properties.borderColor !== undefined && getOverriddenBy('border-color') && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                      overridden
+                    </span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2 mt-1">
                   <button
                     className="w-8 h-8 rounded border-2 border-gray-300"
-                    style={{ backgroundColor: properties.borderColor || '#000000' }}
+                    style={{ backgroundColor: (() => {
+                      if (properties.borderColor !== undefined) return properties.borderColor
+                      const inherited = getInheritedValue('border-color')
+                      return inherited.value || '#000000'
+                    })() }}
                     onClick={() => setShowBorderColorPicker(!showBorderColorPicker)}
                   />
                   <Input
-                    value={properties.borderColor || ''}
+                    value={(() => {
+                      if (properties.borderColor !== undefined) return properties.borderColor
+                      const inherited = getInheritedValue('border-color')
+                      return inherited.value ? `${inherited.value} (inherited)` : ''
+                    })()}
                     onChange={(e) => updateProperty('borderColor', e.target.value)}
                     className="h-8 text-xs flex-1"
                     placeholder="e.g., #000000"
@@ -1254,7 +1605,11 @@ export function StyleEditor({
                 {showBorderColorPicker && (
                   <div className="mt-2">
                     <HexColorPicker
-                      color={properties.borderColor || '#000000'}
+                      color={(() => {
+                        if (properties.borderColor !== undefined) return properties.borderColor
+                        const inherited = getInheritedValue('border-color')
+                        return inherited.value || '#000000'
+                      })()}
                       onChange={(color) => updateProperty('borderColor', color)}
                       className="!w-full"
                     />
@@ -1274,9 +1629,31 @@ export function StyleEditor({
 
               {/* Border Style */}
               <div>
-                <Label className="text-xs font-medium">Border Style</Label>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-medium">Border Style</Label>
+                  {(() => {
+                    const inherited = getInheritedValue('border-style')
+                    if (properties.borderStyle === undefined && inherited.source) {
+                      return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                          from {inherited.source}
+                        </span>
+                      )
+                    }
+                    return null
+                  })()}
+                  {properties.borderStyle !== undefined && getOverriddenBy('border-style') && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                      overridden
+                    </span>
+                  )}
+                </div>
                 <Select
-                  value={properties.borderStyle || 'solid'}
+                  value={(() => {
+                    if (properties.borderStyle !== undefined) return properties.borderStyle
+                    const inherited = getInheritedValue('border-style')
+                    return inherited.value || 'solid'
+                  })()}
                   onValueChange={(value) => updateProperty('borderStyle', value)}
                   disabled={!properties.borderWidth || properties.borderWidth === 0}
                 >
@@ -1303,9 +1680,31 @@ export function StyleEditor({
           {/* Position - Hidden for page/site CSS and navbar (navbar uses dedicated position control) */}
           {context !== 'page' && context !== 'navbar' && (
             <div>
-              <Label className="text-xs font-medium">Position</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">Position</Label>
+                {(() => {
+                  const inherited = getInheritedValue('position')
+                  if (properties.position === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.position !== undefined && getOverriddenBy('position') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <Select
-                value={properties.position || 'static'}
+                value={(() => {
+                  if (properties.position !== undefined) return properties.position
+                  const inherited = getInheritedValue('position')
+                  return inherited.value || 'static'
+                })()}
                 onValueChange={(value) => updateProperty('position', value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
@@ -1325,9 +1724,31 @@ export function StyleEditor({
           {/* Display - Only for section, row, column */}
           {(context === 'section' || context === 'row' || context === 'column') && (
             <div>
-              <Label className="text-xs font-medium">Display</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">Display</Label>
+                {(() => {
+                  const inherited = getInheritedValue('display')
+                  if (properties.display === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.display !== undefined && getOverriddenBy('display') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <Select
-                value={properties.display || 'default'}
+                value={(() => {
+                  if (properties.display !== undefined) return properties.display
+                  const inherited = getInheritedValue('display')
+                  return inherited.value || 'default'
+                })()}
                 onValueChange={(value) => updateProperty('display', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
@@ -1347,9 +1768,31 @@ export function StyleEditor({
           {/* Overflow - Only for section, row, column */}
           {(context === 'section' || context === 'row' || context === 'column') && (
             <div>
-              <Label className="text-xs font-medium">Overflow</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">Overflow</Label>
+                {(() => {
+                  const inherited = getInheritedValue('overflow')
+                  if (properties.overflow === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.overflow !== undefined && getOverriddenBy('overflow') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <Select
-                value={properties.overflow || 'default'}
+                value={(() => {
+                  if (properties.overflow !== undefined) return properties.overflow
+                  const inherited = getInheritedValue('overflow')
+                  return inherited.value || 'default'
+                })()}
                 onValueChange={(value) => updateProperty('overflow', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
@@ -1369,9 +1812,31 @@ export function StyleEditor({
           {/* Float - Only for section, row, column */}
           {(context === 'section' || context === 'row' || context === 'column') && (
             <div>
-              <Label className="text-xs font-medium">Float</Label>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs font-medium">Float</Label>
+                {(() => {
+                  const inherited = getInheritedValue('float')
+                  if (properties.float === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.float !== undefined && getOverriddenBy('float') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <Select
-                value={properties.float || 'none'}
+                value={(() => {
+                  if (properties.float !== undefined) return properties.float
+                  const inherited = getInheritedValue('float')
+                  return inherited.value || 'none'
+                })()}
                 onValueChange={(value) => updateProperty('float', value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
@@ -1391,16 +1856,43 @@ export function StyleEditor({
           {/* Width - Hidden for page/site CSS */}
           {context !== 'page' && (
             <div>
-              <Label className="text-xs font-medium">Width</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-xs font-medium">Width</Label>
+                {(() => {
+                  const inherited = getInheritedValue('width')
+                  if (properties.width === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.width !== undefined && getOverriddenBy('width') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
             <div className="space-y-1 mt-1">
               <Select
-                value={
-                  !properties.width ? 'auto' :
-                  properties.width === 'auto' ? 'auto' :
-                  properties.width === '100%' ? '100%' :
-                  properties.width === 'fit-content' ? 'fit-content' :
-                  'custom'
-                }
+                value={(() => {
+                  if (properties.width !== undefined) {
+                    if (properties.width === 'auto') return 'auto'
+                    if (properties.width === '100%') return '100%'
+                    if (properties.width === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  const inherited = getInheritedValue('width')
+                  if (inherited.value) {
+                    if (inherited.value === 'auto') return 'auto'
+                    if (inherited.value === '100%') return '100%'
+                    if (inherited.value === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  return 'auto'
+                })()}
                 onValueChange={(value) => {
                   if (value === 'custom') {
                     setShowCustomWidthInput(true)
@@ -1482,17 +1974,45 @@ export function StyleEditor({
           {/* Height - Hidden for page/site CSS */}
           {context !== 'page' && (
             <div>
-              <Label className="text-xs font-medium">Height</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-xs font-medium">Height</Label>
+                {(() => {
+                  const inherited = getInheritedValue('height')
+                  if (properties.height === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.height !== undefined && getOverriddenBy('height') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
             <div className="space-y-1 mt-1">
               <Select
-                value={
-                  !properties.height ? 'auto' :
-                  properties.height === 'auto' ? 'auto' :
-                  properties.height === '100%' ? '100%' :
-                  properties.height === '100vh' ? '100vh' :
-                  properties.height === 'fit-content' ? 'fit-content' :
-                  'custom'
-                }
+                value={(() => {
+                  if (properties.height !== undefined) {
+                    if (properties.height === 'auto') return 'auto'
+                    if (properties.height === '100%') return '100%'
+                    if (properties.height === '100vh') return '100vh'
+                    if (properties.height === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  const inherited = getInheritedValue('height')
+                  if (inherited.value) {
+                    if (inherited.value === 'auto') return 'auto'
+                    if (inherited.value === '100%') return '100%'
+                    if (inherited.value === '100vh') return '100vh'
+                    if (inherited.value === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  return 'auto'
+                })()}
                 onValueChange={(value) => {
                   if (value === 'custom') {
                     setShowCustomHeightInput(true)
@@ -1574,16 +2094,43 @@ export function StyleEditor({
           {/* Min-Width - Hidden for page/site CSS */}
           {context !== 'page' && (
             <div>
-              <Label className="text-xs font-medium">Min-Width</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-xs font-medium">Min-Width</Label>
+                {(() => {
+                  const inherited = getInheritedValue('min-width')
+                  if (properties.minWidth === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.minWidth !== undefined && getOverriddenBy('min-width') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
             <div className="space-y-1 mt-1">
               <Select
-                value={
-                  !properties.minWidth ? 'none' :
-                  properties.minWidth === 'none' ? 'none' :
-                  properties.minWidth === '100%' ? '100%' :
-                  properties.minWidth === 'fit-content' ? 'fit-content' :
-                  'custom'
-                }
+                value={(() => {
+                  if (properties.minWidth !== undefined) {
+                    if (properties.minWidth === 'none') return 'none'
+                    if (properties.minWidth === '100%') return '100%'
+                    if (properties.minWidth === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  const inherited = getInheritedValue('min-width')
+                  if (inherited.value) {
+                    if (inherited.value === 'none') return 'none'
+                    if (inherited.value === '100%') return '100%'
+                    if (inherited.value === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  return 'none'
+                })()}
                 onValueChange={(value) => {
                   if (value === 'custom') {
                     setShowCustomMinWidthInput(true)
@@ -1665,17 +2212,45 @@ export function StyleEditor({
           {/* Min-Height - Hidden for page/site CSS */}
           {context !== 'page' && (
             <div>
-              <Label className="text-xs font-medium">Min-Height</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-xs font-medium">Min-Height</Label>
+                {(() => {
+                  const inherited = getInheritedValue('min-height')
+                  if (properties.minHeight === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.minHeight !== undefined && getOverriddenBy('min-height') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
             <div className="space-y-1 mt-1">
               <Select
-                value={
-                  !properties.minHeight ? 'none' :
-                  properties.minHeight === 'none' ? 'none' :
-                  properties.minHeight === '100%' ? '100%' :
-                  properties.minHeight === '100vh' ? '100vh' :
-                  properties.minHeight === 'fit-content' ? 'fit-content' :
-                  'custom'
-                }
+                value={(() => {
+                  if (properties.minHeight !== undefined) {
+                    if (properties.minHeight === 'none') return 'none'
+                    if (properties.minHeight === '100%') return '100%'
+                    if (properties.minHeight === '100vh') return '100vh'
+                    if (properties.minHeight === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  const inherited = getInheritedValue('min-height')
+                  if (inherited.value) {
+                    if (inherited.value === 'none') return 'none'
+                    if (inherited.value === '100%') return '100%'
+                    if (inherited.value === '100vh') return '100vh'
+                    if (inherited.value === 'fit-content') return 'fit-content'
+                    return 'custom'
+                  }
+                  return 'none'
+                })()}
                 onValueChange={(value) => {
                   if (value === 'custom') {
                     setShowCustomMinHeightInput(true)
@@ -1788,9 +2363,31 @@ export function StyleEditor({
                     <div className="grid grid-cols-2 gap-2">
                       {/* Background Size */}
                       <div>
-                        <Label className="text-[9px] font-medium">Size</Label>
+                        <div className="flex items-center gap-0.5">
+                          <Label className="text-[9px] font-medium">Size</Label>
+                          {(() => {
+                            const inherited = getInheritedValue('background-size')
+                            if (properties.backgroundSize === undefined && inherited.source) {
+                              return (
+                                <span className="text-[8px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.backgroundSize !== undefined && getOverriddenBy('background-size') && (
+                            <span className="text-[8px] px-1 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Select
-                          value={properties.backgroundSize || 'cover'}
+                          value={(() => {
+                            if (properties.backgroundSize !== undefined) return properties.backgroundSize
+                            const inherited = getInheritedValue('background-size')
+                            return inherited.value || 'cover'
+                          })()}
                           onValueChange={(value) => updateProperty('backgroundSize', value)}
                         >
                           <SelectTrigger className="h-7 text-[10px] mt-0.5">
@@ -1808,9 +2405,31 @@ export function StyleEditor({
 
                       {/* Background Repeat */}
                       <div>
-                        <Label className="text-[9px] font-medium">Repeat</Label>
+                        <div className="flex items-center gap-0.5">
+                          <Label className="text-[9px] font-medium">Repeat</Label>
+                          {(() => {
+                            const inherited = getInheritedValue('background-repeat')
+                            if (properties.backgroundRepeat === undefined && inherited.source) {
+                              return (
+                                <span className="text-[8px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.backgroundRepeat !== undefined && getOverriddenBy('background-repeat') && (
+                            <span className="text-[8px] px-1 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Select
-                          value={properties.backgroundRepeat || 'no-repeat'}
+                          value={(() => {
+                            if (properties.backgroundRepeat !== undefined) return properties.backgroundRepeat
+                            const inherited = getInheritedValue('background-repeat')
+                            return inherited.value || 'no-repeat'
+                          })()}
                           onValueChange={(value) => updateProperty('backgroundRepeat', value)}
                         >
                           <SelectTrigger className="h-7 text-[10px] mt-0.5">
@@ -1828,9 +2447,31 @@ export function StyleEditor({
 
                       {/* Background Position */}
                       <div>
-                        <Label className="text-[9px] font-medium">Position</Label>
+                        <div className="flex items-center gap-0.5">
+                          <Label className="text-[9px] font-medium">Position</Label>
+                          {(() => {
+                            const inherited = getInheritedValue('background-position')
+                            if (properties.backgroundPosition === undefined && inherited.source) {
+                              return (
+                                <span className="text-[8px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.backgroundPosition !== undefined && getOverriddenBy('background-position') && (
+                            <span className="text-[8px] px-1 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Select
-                          value={properties.backgroundPosition || 'center'}
+                          value={(() => {
+                            if (properties.backgroundPosition !== undefined) return properties.backgroundPosition
+                            const inherited = getInheritedValue('background-position')
+                            return inherited.value || 'center'
+                          })()}
                           onValueChange={(value) => updateProperty('backgroundPosition', value)}
                         >
                           <SelectTrigger className="h-7 text-[10px] mt-0.5">
@@ -1848,9 +2489,31 @@ export function StyleEditor({
 
                       {/* Background Attachment */}
                       <div>
-                        <Label className="text-[9px] font-medium">Attachment</Label>
+                        <div className="flex items-center gap-0.5">
+                          <Label className="text-[9px] font-medium">Attachment</Label>
+                          {(() => {
+                            const inherited = getInheritedValue('background-attachment')
+                            if (properties.backgroundAttachment === undefined && inherited.source) {
+                              return (
+                                <span className="text-[8px] px-1 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.backgroundAttachment !== undefined && getOverriddenBy('background-attachment') && (
+                            <span className="text-[8px] px-1 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Select
-                          value={properties.backgroundAttachment || 'scroll'}
+                          value={(() => {
+                            if (properties.backgroundAttachment !== undefined) return properties.backgroundAttachment
+                            const inherited = getInheritedValue('background-attachment')
+                            return inherited.value || 'scroll'
+                          })()}
                           onValueChange={(value) => updateProperty('backgroundAttachment', value)}
                         >
                           <SelectTrigger className="h-7 text-[10px] mt-0.5">
@@ -1983,10 +2646,32 @@ export function StyleEditor({
                     <h4 className="text-sm font-semibold mb-3">H1 (Main Heading)</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Font Size (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h1', 'font-size')
+                            if (properties.h1FontSize === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h1FontSize !== undefined && getHeaderOverriddenBy('h1', 'font-size') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h1FontSize || 32}
+                          value={(() => {
+                            if (properties.h1FontSize !== undefined) return properties.h1FontSize
+                            const inherited = getInheritedHeaderValue('h1', 'font-size')
+                            return inherited.value ? parseInt(inherited.value) : 32
+                          })()}
                           onChange={(e) => updateProperty('h1FontSize', parseInt(e.target.value))}
                           className="h-8 text-xs mt-1"
                           min="8"
@@ -1994,10 +2679,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Padding (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Padding (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h1', 'padding')
+                            if (properties.h1Padding === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h1Padding !== undefined && getHeaderOverriddenBy('h1', 'padding') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h1Padding ?? 0}
+                          value={(() => {
+                            if (properties.h1Padding !== undefined) return properties.h1Padding
+                            const inherited = getInheritedHeaderValue('h1', 'padding')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h1Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2005,10 +2712,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Margin (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h1', 'margin')
+                            if (properties.h1Margin === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h1Margin !== undefined && getHeaderOverriddenBy('h1', 'margin') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h1Margin ?? 0}
+                          value={(() => {
+                            if (properties.h1Margin !== undefined) return properties.h1Margin
+                            const inherited = getInheritedHeaderValue('h1', 'margin')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h1Margin', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2016,11 +2745,41 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Color</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h1', 'color')
+                            if (properties.h1Color === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h1Color !== undefined && getHeaderOverriddenBy('h1', 'color') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                          {properties.h1Color !== undefined && (
+                            <span className="text-xs text-gray-500">({properties.h1Color})</span>
+                          )}
+                          {properties.h1Color === undefined && (() => {
+                            const inherited = getInheritedHeaderValue('h1', 'color')
+                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            return null
+                          })()}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           <button
                             className="w-8 h-8 rounded border-2 border-gray-300"
-                            style={{ backgroundColor: properties.h1Color || '#000000' }}
+                            style={{ backgroundColor: (() => {
+                              if (properties.h1Color) return properties.h1Color
+                              const inherited = getInheritedHeaderValue('h1', 'color')
+                              return inherited.value || '#000000'
+                            })() }}
                             onClick={() => setShowH1ColorPicker(!showH1ColorPicker)}
                           />
                           <Input
@@ -2037,7 +2796,11 @@ export function StyleEditor({
                               onClick={() => setShowH1ColorPicker(false)}
                             />
                             <HexColorPicker
-                              color={properties.h1Color || '#000000'}
+                              color={(() => {
+                                if (properties.h1Color) return properties.h1Color
+                                const inherited = getInheritedHeaderValue('h1', 'color')
+                                return inherited.value || '#000000'
+                              })()}
                               onChange={(color) => updateProperty('h1Color', color)}
                             />
                           </div>
@@ -2051,10 +2814,32 @@ export function StyleEditor({
                     <h4 className="text-sm font-semibold mb-3">H2 (Section Heading)</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Font Size (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h2', 'font-size')
+                            if (properties.h2FontSize === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h2FontSize !== undefined && getHeaderOverriddenBy('h2', 'font-size') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h2FontSize || 24}
+                          value={(() => {
+                            if (properties.h2FontSize !== undefined) return properties.h2FontSize
+                            const inherited = getInheritedHeaderValue('h2', 'font-size')
+                            return inherited.value ? parseInt(inherited.value) : 24
+                          })()}
                           onChange={(e) => updateProperty('h2FontSize', parseInt(e.target.value))}
                           className="h-8 text-xs mt-1"
                           min="8"
@@ -2062,10 +2847,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Padding (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Padding (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h2', 'padding')
+                            if (properties.h2Padding === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h2Padding !== undefined && getHeaderOverriddenBy('h2', 'padding') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h2Padding ?? 0}
+                          value={(() => {
+                            if (properties.h2Padding !== undefined) return properties.h2Padding
+                            const inherited = getInheritedHeaderValue('h2', 'padding')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h2Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2073,10 +2880,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Margin (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h2', 'margin')
+                            if (properties.h2Margin === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h2Margin !== undefined && getHeaderOverriddenBy('h2', 'margin') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h2Margin ?? 0}
+                          value={(() => {
+                            if (properties.h2Margin !== undefined) return properties.h2Margin
+                            const inherited = getInheritedHeaderValue('h2', 'margin')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h2Margin', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2084,11 +2913,41 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Color</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h2', 'color')
+                            if (properties.h2Color === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h2Color !== undefined && getHeaderOverriddenBy('h2', 'color') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                          {properties.h2Color !== undefined && (
+                            <span className="text-xs text-gray-500">({properties.h2Color})</span>
+                          )}
+                          {properties.h2Color === undefined && (() => {
+                            const inherited = getInheritedHeaderValue('h2', 'color')
+                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            return null
+                          })()}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           <button
                             className="w-8 h-8 rounded border-2 border-gray-300"
-                            style={{ backgroundColor: properties.h2Color || '#000000' }}
+                            style={{ backgroundColor: (() => {
+                              if (properties.h2Color) return properties.h2Color
+                              const inherited = getInheritedHeaderValue('h2', 'color')
+                              return inherited.value || '#000000'
+                            })() }}
                             onClick={() => setShowH2ColorPicker(!showH2ColorPicker)}
                           />
                           <Input
@@ -2105,7 +2964,11 @@ export function StyleEditor({
                               onClick={() => setShowH2ColorPicker(false)}
                             />
                             <HexColorPicker
-                              color={properties.h2Color || '#000000'}
+                              color={(() => {
+                                if (properties.h2Color) return properties.h2Color
+                                const inherited = getInheritedHeaderValue('h2', 'color')
+                                return inherited.value || '#000000'
+                              })()}
                               onChange={(color) => updateProperty('h2Color', color)}
                             />
                           </div>
@@ -2119,10 +2982,32 @@ export function StyleEditor({
                     <h4 className="text-sm font-semibold mb-3">H3 (Subsection Heading)</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Font Size (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h3', 'font-size')
+                            if (properties.h3FontSize === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h3FontSize !== undefined && getHeaderOverriddenBy('h3', 'font-size') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h3FontSize || 20}
+                          value={(() => {
+                            if (properties.h3FontSize !== undefined) return properties.h3FontSize
+                            const inherited = getInheritedHeaderValue('h3', 'font-size')
+                            return inherited.value ? parseInt(inherited.value) : 20
+                          })()}
                           onChange={(e) => updateProperty('h3FontSize', parseInt(e.target.value))}
                           className="h-8 text-xs mt-1"
                           min="8"
@@ -2130,10 +3015,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Padding (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Padding (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h3', 'padding')
+                            if (properties.h3Padding === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h3Padding !== undefined && getHeaderOverriddenBy('h3', 'padding') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h3Padding ?? 0}
+                          value={(() => {
+                            if (properties.h3Padding !== undefined) return properties.h3Padding
+                            const inherited = getInheritedHeaderValue('h3', 'padding')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h3Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2141,10 +3048,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Margin (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h3', 'margin')
+                            if (properties.h3Margin === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h3Margin !== undefined && getHeaderOverriddenBy('h3', 'margin') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h3Margin ?? 0}
+                          value={(() => {
+                            if (properties.h3Margin !== undefined) return properties.h3Margin
+                            const inherited = getInheritedHeaderValue('h3', 'margin')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h3Margin', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2152,11 +3081,41 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Color</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h3', 'color')
+                            if (properties.h3Color === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h3Color !== undefined && getHeaderOverriddenBy('h3', 'color') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                          {properties.h3Color !== undefined && (
+                            <span className="text-xs text-gray-500">({properties.h3Color})</span>
+                          )}
+                          {properties.h3Color === undefined && (() => {
+                            const inherited = getInheritedHeaderValue('h3', 'color')
+                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            return null
+                          })()}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           <button
                             className="w-8 h-8 rounded border-2 border-gray-300"
-                            style={{ backgroundColor: properties.h3Color || '#000000' }}
+                            style={{ backgroundColor: (() => {
+                              if (properties.h3Color) return properties.h3Color
+                              const inherited = getInheritedHeaderValue('h3', 'color')
+                              return inherited.value || '#000000'
+                            })() }}
                             onClick={() => setShowH3ColorPicker(!showH3ColorPicker)}
                           />
                           <Input
@@ -2173,7 +3132,11 @@ export function StyleEditor({
                               onClick={() => setShowH3ColorPicker(false)}
                             />
                             <HexColorPicker
-                              color={properties.h3Color || '#000000'}
+                              color={(() => {
+                                if (properties.h3Color) return properties.h3Color
+                                const inherited = getInheritedHeaderValue('h3', 'color')
+                                return inherited.value || '#000000'
+                              })()}
                               onChange={(color) => updateProperty('h3Color', color)}
                             />
                           </div>
@@ -2187,10 +3150,32 @@ export function StyleEditor({
                     <h4 className="text-sm font-semibold mb-3">H4 (Minor Heading)</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label className="text-xs font-medium">Font Size (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Font Size (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h4', 'font-size')
+                            if (properties.h4FontSize === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h4FontSize !== undefined && getHeaderOverriddenBy('h4', 'font-size') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h4FontSize || 16}
+                          value={(() => {
+                            if (properties.h4FontSize !== undefined) return properties.h4FontSize
+                            const inherited = getInheritedHeaderValue('h4', 'font-size')
+                            return inherited.value ? parseInt(inherited.value) : 16
+                          })()}
                           onChange={(e) => updateProperty('h4FontSize', parseInt(e.target.value))}
                           className="h-8 text-xs mt-1"
                           min="8"
@@ -2198,10 +3183,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Padding (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Padding (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h4', 'padding')
+                            if (properties.h4Padding === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h4Padding !== undefined && getHeaderOverriddenBy('h4', 'padding') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h4Padding ?? 0}
+                          value={(() => {
+                            if (properties.h4Padding !== undefined) return properties.h4Padding
+                            const inherited = getInheritedHeaderValue('h4', 'padding')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h4Padding', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2209,10 +3216,32 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Margin (px)</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Margin (px)</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h4', 'margin')
+                            if (properties.h4Margin === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h4Margin !== undefined && getHeaderOverriddenBy('h4', 'margin') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                        </div>
                         <Input
                           type="number"
-                          value={properties.h4Margin ?? 0}
+                          value={(() => {
+                            if (properties.h4Margin !== undefined) return properties.h4Margin
+                            const inherited = getInheritedHeaderValue('h4', 'margin')
+                            return inherited.value ? parseInt(inherited.value) : 0
+                          })()}
                           onChange={(e) => updateProperty('h4Margin', parseInt(e.target.value) || 0)}
                           className="h-8 text-xs mt-1"
                           min="0"
@@ -2220,11 +3249,41 @@ export function StyleEditor({
                         />
                       </div>
                       <div>
-                        <Label className="text-xs font-medium">Color</Label>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Label className="text-xs font-medium">Color</Label>
+                          {(() => {
+                            const inherited = getInheritedHeaderValue('h4', 'color')
+                            if (properties.h4Color === undefined && inherited.source) {
+                              return (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                                  from {inherited.source}
+                                </span>
+                              )
+                            }
+                            return null
+                          })()}
+                          {properties.h4Color !== undefined && getHeaderOverriddenBy('h4', 'color') && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                              overridden
+                            </span>
+                          )}
+                          {properties.h4Color !== undefined && (
+                            <span className="text-xs text-gray-500">({properties.h4Color})</span>
+                          )}
+                          {properties.h4Color === undefined && (() => {
+                            const inherited = getInheritedHeaderValue('h4', 'color')
+                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            return null
+                          })()}
+                        </div>
                         <div className="flex items-center gap-2 mt-1">
                           <button
                             className="w-8 h-8 rounded border-2 border-gray-300"
-                            style={{ backgroundColor: properties.h4Color || '#000000' }}
+                            style={{ backgroundColor: (() => {
+                              if (properties.h4Color) return properties.h4Color
+                              const inherited = getInheritedHeaderValue('h4', 'color')
+                              return inherited.value || '#000000'
+                            })() }}
                             onClick={() => setShowH4ColorPicker(!showH4ColorPicker)}
                           />
                           <Input
@@ -2241,7 +3300,11 @@ export function StyleEditor({
                               onClick={() => setShowH4ColorPicker(false)}
                             />
                             <HexColorPicker
-                              color={properties.h4Color || '#000000'}
+                              color={(() => {
+                                if (properties.h4Color) return properties.h4Color
+                                const inherited = getInheritedHeaderValue('h4', 'color')
+                                return inherited.value || '#000000'
+                              })()}
                               onChange={(color) => updateProperty('h4Color', color)}
                             />
                           </div>
@@ -2297,18 +3360,50 @@ export function StyleEditor({
 
             {/* Link Default Color */}
             <div className="mb-3">
-              <Label className="text-[10px] font-medium text-gray-600">Link Color</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-[10px] font-medium text-gray-600">Link Color</Label>
+                {(() => {
+                  const inherited = getInheritedLinkValue('a', 'color')
+                  if (properties.linkColor === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.linkColor !== undefined && getLinkOverriddenBy('a', 'color') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <div className="flex gap-2 mt-1">
                 <div className="relative flex-1">
                   <button
                     onClick={() => setShowLinkColorPicker(!showLinkColorPicker)}
                     className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
-                    style={{ backgroundColor: properties.linkColor || 'transparent' }}
+                    style={{ backgroundColor: (() => {
+                      if (properties.linkColor) return properties.linkColor
+                      const inherited = getInheritedLinkValue('a', 'color')
+                      return inherited.value || 'transparent'
+                    })() }}
                   >
                     <span className="font-mono text-[10px]" style={{
-                      color: properties.linkColor ? (getContrastColor(properties.linkColor)) : '#666'
+                      color: (() => {
+                        const displayColor = properties.linkColor || (() => {
+                          const inherited = getInheritedLinkValue('a', 'color')
+                          return inherited.value
+                        })()
+                        return displayColor ? getContrastColor(displayColor) : '#666'
+                      })()
                     }}>
-                      {properties.linkColor || 'Default'}
+                      {(() => {
+                        if (properties.linkColor) return properties.linkColor
+                        const inherited = getInheritedLinkValue('a', 'color')
+                        return inherited.value ? `${inherited.value} (inherited)` : 'Default'
+                      })()}
                     </span>
                   </button>
                   {showLinkColorPicker && (
@@ -2316,7 +3411,11 @@ export function StyleEditor({
                       <div className="fixed inset-0" onClick={() => setShowLinkColorPicker(false)} />
                       <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
                         <HexColorPicker
-                          color={properties.linkColor || '#0000EE'}
+                          color={(() => {
+                            if (properties.linkColor) return properties.linkColor
+                            const inherited = getInheritedLinkValue('a', 'color')
+                            return inherited.value || '#0000EE'
+                          })()}
                           onChange={(color) => updateProperty('linkColor', color)}
                         />
                         <div className="grid grid-cols-5 gap-1 mt-2">
@@ -2367,9 +3466,31 @@ export function StyleEditor({
 
             {/* Link Text Decoration */}
             <div className="mb-3">
-              <Label className="text-[10px] font-medium text-gray-600">Link Decoration</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-[10px] font-medium text-gray-600">Link Decoration</Label>
+                {(() => {
+                  const inherited = getInheritedLinkValue('a', 'text-decoration')
+                  if (properties.linkTextDecoration === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.linkTextDecoration !== undefined && getLinkOverriddenBy('a', 'text-decoration') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <Select
-                value={properties.linkTextDecoration || 'default'}
+                value={(() => {
+                  if (properties.linkTextDecoration) return properties.linkTextDecoration
+                  const inherited = getInheritedLinkValue('a', 'text-decoration')
+                  return inherited.value || 'default'
+                })()}
                 onValueChange={(value) => updateProperty('linkTextDecoration', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
@@ -2387,18 +3508,50 @@ export function StyleEditor({
 
             {/* Link Hover Color */}
             <div className="mb-3">
-              <Label className="text-[10px] font-medium text-gray-600">Link Hover Color</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-[10px] font-medium text-gray-600">Link Hover Color</Label>
+                {(() => {
+                  const inherited = getInheritedLinkValue('a:hover', 'color')
+                  if (properties.linkHoverColor === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.linkHoverColor !== undefined && getLinkOverriddenBy('a:hover', 'color') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <div className="flex gap-2 mt-1">
                 <div className="relative flex-1">
                   <button
                     onClick={() => setShowLinkHoverColorPicker(!showLinkHoverColorPicker)}
                     className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
-                    style={{ backgroundColor: properties.linkHoverColor || 'transparent' }}
+                    style={{ backgroundColor: (() => {
+                      if (properties.linkHoverColor) return properties.linkHoverColor
+                      const inherited = getInheritedLinkValue('a:hover', 'color')
+                      return inherited.value || 'transparent'
+                    })() }}
                   >
                     <span className="font-mono text-[10px]" style={{
-                      color: properties.linkHoverColor ? (getContrastColor(properties.linkHoverColor)) : '#666'
+                      color: (() => {
+                        const displayColor = properties.linkHoverColor || (() => {
+                          const inherited = getInheritedLinkValue('a:hover', 'color')
+                          return inherited.value
+                        })()
+                        return displayColor ? getContrastColor(displayColor) : '#666'
+                      })()
                     }}>
-                      {properties.linkHoverColor || 'Default'}
+                      {(() => {
+                        if (properties.linkHoverColor) return properties.linkHoverColor
+                        const inherited = getInheritedLinkValue('a:hover', 'color')
+                        return inherited.value ? `${inherited.value} (inherited)` : 'Default'
+                      })()}
                     </span>
                   </button>
                   {showLinkHoverColorPicker && (
@@ -2406,7 +3559,11 @@ export function StyleEditor({
                       <div className="fixed inset-0" onClick={() => setShowLinkHoverColorPicker(false)} />
                       <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
                         <HexColorPicker
-                          color={properties.linkHoverColor || '#551A8B'}
+                          color={(() => {
+                            if (properties.linkHoverColor) return properties.linkHoverColor
+                            const inherited = getInheritedLinkValue('a:hover', 'color')
+                            return inherited.value || '#551A8B'
+                          })()}
                           onChange={(color) => updateProperty('linkHoverColor', color)}
                         />
                         <div className="grid grid-cols-5 gap-1 mt-2">
@@ -2457,9 +3614,31 @@ export function StyleEditor({
 
             {/* Link Hover Decoration */}
             <div className="mb-3">
-              <Label className="text-[10px] font-medium text-gray-600">Hover Decoration</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-[10px] font-medium text-gray-600">Hover Decoration</Label>
+                {(() => {
+                  const inherited = getInheritedLinkValue('a:hover', 'text-decoration')
+                  if (properties.linkHoverTextDecoration === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+                {properties.linkHoverTextDecoration !== undefined && getLinkOverriddenBy('a:hover', 'text-decoration') && (
+                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                    overridden
+                  </span>
+                )}
+              </div>
               <Select
-                value={properties.linkHoverTextDecoration || 'default'}
+                value={(() => {
+                  if (properties.linkHoverTextDecoration) return properties.linkHoverTextDecoration
+                  const inherited = getInheritedLinkValue('a:hover', 'text-decoration')
+                  return inherited.value || 'default'
+                })()}
                 onValueChange={(value) => updateProperty('linkHoverTextDecoration', value === 'default' ? undefined : value)}
               >
                 <SelectTrigger className="h-8 text-xs mt-1">
@@ -2477,18 +3656,45 @@ export function StyleEditor({
 
             {/* Link Visited Color */}
             <div className="mb-3">
-              <Label className="text-[10px] font-medium text-gray-600">Visited Link Color</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-[10px] font-medium text-gray-600">Visited Link Color</Label>
+                {(() => {
+                  const inherited = getInheritedLinkValue('a:visited', 'color')
+                  if (properties.linkVisitedColor === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
               <div className="flex gap-2 mt-1">
                 <div className="relative flex-1">
                   <button
                     onClick={() => setShowLinkVisitedColorPicker(!showLinkVisitedColorPicker)}
                     className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
-                    style={{ backgroundColor: properties.linkVisitedColor || 'transparent' }}
+                    style={{ backgroundColor: (() => {
+                      if (properties.linkVisitedColor) return properties.linkVisitedColor
+                      const inherited = getInheritedLinkValue('a:visited', 'color')
+                      return inherited.value || 'transparent'
+                    })() }}
                   >
                     <span className="font-mono text-[10px]" style={{
-                      color: properties.linkVisitedColor ? (getContrastColor(properties.linkVisitedColor)) : '#666'
+                      color: (() => {
+                        const displayColor = properties.linkVisitedColor || (() => {
+                          const inherited = getInheritedLinkValue('a:visited', 'color')
+                          return inherited.value
+                        })()
+                        return displayColor ? getContrastColor(displayColor) : '#666'
+                      })()
                     }}>
-                      {properties.linkVisitedColor || 'Default'}
+                      {(() => {
+                        if (properties.linkVisitedColor) return properties.linkVisitedColor
+                        const inherited = getInheritedLinkValue('a:visited', 'color')
+                        return inherited.value ? `${inherited.value} (inherited)` : 'Default'
+                      })()}
                     </span>
                   </button>
                   {showLinkVisitedColorPicker && (
@@ -2496,7 +3702,11 @@ export function StyleEditor({
                       <div className="fixed inset-0" onClick={() => setShowLinkVisitedColorPicker(false)} />
                       <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
                         <HexColorPicker
-                          color={properties.linkVisitedColor || '#551A8B'}
+                          color={(() => {
+                            if (properties.linkVisitedColor) return properties.linkVisitedColor
+                            const inherited = getInheritedLinkValue('a:visited', 'color')
+                            return inherited.value || '#551A8B'
+                          })()}
                           onChange={(color) => updateProperty('linkVisitedColor', color)}
                         />
                         <div className="grid grid-cols-5 gap-1 mt-2">
@@ -2547,18 +3757,45 @@ export function StyleEditor({
 
             {/* Link Active Color */}
             <div className="mb-3">
-              <Label className="text-[10px] font-medium text-gray-600">Active Link Color</Label>
+              <div className="flex items-center gap-1.5 mb-1">
+                <Label className="text-[10px] font-medium text-gray-600">Active Link Color</Label>
+                {(() => {
+                  const inherited = getInheritedLinkValue('a:active', 'color')
+                  if (properties.linkActiveColor === undefined && inherited.source) {
+                    return (
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                        from {inherited.source}
+                      </span>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
               <div className="flex gap-2 mt-1">
                 <div className="relative flex-1">
                   <button
                     onClick={() => setShowLinkActiveColorPicker(!showLinkActiveColorPicker)}
                     className="w-full h-8 rounded border border-gray-300 flex items-center justify-between px-2 text-xs hover:border-gray-400 transition"
-                    style={{ backgroundColor: properties.linkActiveColor || 'transparent' }}
+                    style={{ backgroundColor: (() => {
+                      if (properties.linkActiveColor) return properties.linkActiveColor
+                      const inherited = getInheritedLinkValue('a:active', 'color')
+                      return inherited.value || 'transparent'
+                    })() }}
                   >
                     <span className="font-mono text-[10px]" style={{
-                      color: properties.linkActiveColor ? (getContrastColor(properties.linkActiveColor)) : '#666'
+                      color: (() => {
+                        const displayColor = properties.linkActiveColor || (() => {
+                          const inherited = getInheritedLinkValue('a:active', 'color')
+                          return inherited.value
+                        })()
+                        return displayColor ? getContrastColor(displayColor) : '#666'
+                      })()
                     }}>
-                      {properties.linkActiveColor || 'Default'}
+                      {(() => {
+                        if (properties.linkActiveColor) return properties.linkActiveColor
+                        const inherited = getInheritedLinkValue('a:active', 'color')
+                        return inherited.value ? `${inherited.value} (inherited)` : 'Default'
+                      })()}
                     </span>
                   </button>
                   {showLinkActiveColorPicker && (
@@ -2566,7 +3803,11 @@ export function StyleEditor({
                       <div className="fixed inset-0" onClick={() => setShowLinkActiveColorPicker(false)} />
                       <div className="relative bg-white rounded-lg shadow-xl p-3" onClick={(e) => e.stopPropagation()}>
                         <HexColorPicker
-                          color={properties.linkActiveColor || '#FF0000'}
+                          color={(() => {
+                            if (properties.linkActiveColor) return properties.linkActiveColor
+                            const inherited = getInheritedLinkValue('a:active', 'color')
+                            return inherited.value || '#FF0000'
+                          })()}
                           onChange={(color) => updateProperty('linkActiveColor', color)}
                         />
                         <div className="grid grid-cols-5 gap-1 mt-2">
@@ -2625,11 +3866,40 @@ export function StyleEditor({
         {(context === 'section' || context === 'column') && (
           <div>
               <div className="flex items-center justify-between">
-                <Label className="text-xs font-medium">Opacity</Label>
-                <span className="text-xs text-gray-500">{((properties.opacity ?? 1) * 100).toFixed(0)}%</span>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs font-medium">Opacity</Label>
+                  {(() => {
+                    const inherited = getInheritedValue('opacity')
+                    if (properties.opacity === undefined && inherited.source) {
+                      return (
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-100 text-purple-700 italic">
+                          from {inherited.source}
+                        </span>
+                      )
+                    }
+                    return null
+                  })()}
+                  {properties.opacity !== undefined && getOverriddenBy('opacity') && (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-red-100 text-red-700 line-through">
+                      overridden
+                    </span>
+                  )}
+                </div>
+                <span className="text-xs text-gray-500">
+                  {(() => {
+                    if (properties.opacity !== undefined) return `${(properties.opacity * 100).toFixed(0)}%`
+                    const inherited = getInheritedValue('opacity')
+                    if (inherited.value) return `${(parseFloat(inherited.value) * 100).toFixed(0)}% (inherited)`
+                    return '100%'
+                  })()}
+                </span>
               </div>
               <Slider
-                value={[(properties.opacity ?? 1) * 100]}
+                value={[(() => {
+                  if (properties.opacity !== undefined) return properties.opacity * 100
+                  const inherited = getInheritedValue('opacity')
+                  return inherited.value ? parseFloat(inherited.value) * 100 : 100
+                })()]}
                 onValueChange={(value) => updateProperty('opacity', value[0] / 100)}
                 min={0}
                 max={100}
