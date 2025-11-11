@@ -31,7 +31,7 @@ Route::get('/support', function () {
 // Auth pages (React)
 Route::get('/login', function () {
     return view('react-app');
-});
+})->name('login');
 
 Route::get('/register', function () {
     return view('react-app');
