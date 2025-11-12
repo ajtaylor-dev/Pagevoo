@@ -148,7 +148,7 @@ export default function Hero() {
         {/* Hero Content */}
         <div className="text-center">
           <img
-            src="/Pagevoo_logo_wide.png"
+            src="/Pagevoo_logo_500x500.png"
             alt="Pagevoo"
             className="mx-auto mb-6 max-w-md md:max-w-2xl w-full"
           />

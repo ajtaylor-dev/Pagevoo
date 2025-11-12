@@ -11,8 +11,8 @@
 
     <!-- React App - Development Mode -->
     @if(config('app.env') === 'local')
-        <script type="module" src="http://localhost:5175/@vite/client"></script>
-        <script type="module" src="http://localhost:5175/src/main.tsx"></script>
+        <script type="module" src="http://localhost:5173/@@vite/client"></script>
+        <script type="module" src="http://localhost:5173/src/main.tsx"></script>
     @else
         <!-- Production Build -->
         @vite(['resources/js/app.js'])

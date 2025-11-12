@@ -88,9 +88,9 @@
         <!-- Hero Content -->
         <div class="text-center">
             <img
-                src="/Pagevoo_logo_wide.png"
+                src="/Pagevoo_logo_500x500.png"
                 alt="Pagevoo"
-                class="mx-auto mb-6 max-w-md md:max-w-2xl w-full"
+                class="mx-auto mb-6 w-[60px] h-[60px]"
             />
             <p class="text-xl md:text-2xl text-gray-300 max-w-3xl mx-auto mb-4">
                 Your complete business solution, ready to launch

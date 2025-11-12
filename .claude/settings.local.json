@@ -44,7 +44,13 @@
       "Bash(del temp_line_count.txt)",
       "Bash(temp_baseline.txt)",
       "Bash(npm uninstall:*)",
-      "Bash(TemplateBuilder.tsx)"
+      "Bash(TemplateBuilder.tsx)",
+      "Bash(php -l:*)",
+      "Bash(while read file)",
+      "Bash(done)",
+      "Bash(git reset:*)",
+      "Bash(del pagevoo-frontendnul)",
+      "Bash(del pagevoo-frontendsrcnul)"
     ],
     "deny": [],
     "ask": []

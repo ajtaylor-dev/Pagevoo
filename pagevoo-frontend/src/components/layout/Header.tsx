@@ -147,7 +147,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Left Section - Logo & Menus */}
       <div className="flex items-center h-full">
         <div className="px-3 flex items-center space-x-2 border-r border-gray-200 h-full">
-          <img src="/Pagevoo_logo_500x200.png" alt="Pagevoo" className="h-4" />
+          <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" className="w-[60px] h-[60px]" />
         </div>
         <div className="flex items-center h-full text-xs relative">
           <div className="relative" ref={fileMenuRef}>

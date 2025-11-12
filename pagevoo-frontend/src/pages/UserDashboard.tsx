@@ -472,7 +472,7 @@ export default function UserDashboard() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <Link to="/">
-              <img src="/Pagevoo_logo_500x200.png" alt="Pagevoo" className="h-10 cursor-pointer hover:opacity-80 transition" />
+              <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" className="w-[60px] h-[60px] cursor-pointer hover:opacity-80 transition" />
             </Link>
             <span className="text-gray-400">|</span>
             <h1 className="text-xl font-semibold text-[#4b4b4b]">My Dashboard</h1>

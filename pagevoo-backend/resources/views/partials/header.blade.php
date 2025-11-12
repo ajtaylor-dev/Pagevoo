@@ -2,7 +2,7 @@
     <div class="max-w-7xl mx-auto flex items-center justify-between">
         <!-- Logo -->
         <a href="/" class="flex items-center">
-            <img src="/Pagevoo_logo_wide.png" alt="Pagevoo" class="h-10">
+            <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" class="w-[60px] h-[60px]">
         </a>
 
         <!-- Navigation Links and User Menu -->
