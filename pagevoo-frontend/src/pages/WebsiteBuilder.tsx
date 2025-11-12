@@ -27,11 +27,24 @@ interface UserWebsite {
   template: any
 }
 
+interface Template {
+  id: number
+  name: string
+  description: string
+  business_type: string
+  preview_image?: string
+  is_published: boolean
+}
+
 export default function WebsiteBuilder() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const [website, setWebsite] = useState<UserWebsite | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [templates, setTemplates] = useState<Template[]>([])
+  const [loadingTemplates, setLoadingTemplates] = useState(false)
+  const [initializingWebsite, setInitializingWebsite] = useState(false)
   const [currentPage, setCurrentPage] = useState<UserPage | null>(null)
   const [leftWidth, setLeftWidth] = useState(280)
   const [rightWidth, setRightWidth] = useState(320)
@@ -57,15 +70,53 @@ export default function WebsiteBuilder() {
         // Set current page to homepage or first page
         const homepage = response.data.pages.find((p: UserPage) => p.is_homepage) || response.data.pages[0]
         setCurrentPage(homepage)
+        setShowWelcome(false)
       }
     } catch (error) {
       console.error('Failed to load website:', error)
-      // User doesn't have a website yet, redirect to dashboard
-      alert('Please select a template first')
-      navigate('/my-dashboard')
+      // User doesn't have a website yet, show welcome screen
+      setShowWelcome(true)
+      loadTemplates()
     } finally {
       setLoading(false)
     }
+  }
+
+  const loadTemplates = async () => {
+    setLoadingTemplates(true)
+    try {
+      const response = await api.getAllTemplates()
+      if (response.success && response.data) {
+        setTemplates(response.data.filter((t: Template) => t.is_published))
+      }
+    } catch (error) {
+      console.error('Failed to load templates:', error)
+    } finally {
+      setLoadingTemplates(false)
+    }
+  }
+
+  const handleSelectTemplate = async (templateId: number) => {
+    setInitializingWebsite(true)
+    try {
+      const response = await api.initializeWebsiteFromTemplate(templateId)
+      if (response.success && response.data) {
+        setWebsite(response.data)
+        const homepage = response.data.pages.find((p: UserPage) => p.is_homepage) || response.data.pages[0]
+        setCurrentPage(homepage)
+        setShowWelcome(false)
+      }
+    } catch (error) {
+      console.error('Failed to initialize website:', error)
+      alert('Failed to initialize website from template')
+    } finally {
+      setInitializingWebsite(false)
+    }
+  }
+
+  const handleCreateBlank = async () => {
+    // TODO: Implement blank website creation
+    alert('Create blank website feature coming soon!')
   }
 
   const handlePublish = async () => {
@@ -211,6 +262,143 @@ export default function WebsiteBuilder() {
           <div className="text-2xl mb-2">Loading website...</div>
           <div className="text-gray-400">Please wait</div>
         </div>
+      </div>
+    )
+  }
+
+  // Welcome screen for users without a website
+  if (showWelcome) {
+    return (
+      <div className="h-screen flex flex-col bg-gray-900 text-white">
+        {/* Header */}
+        <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" className="w-[60px] h-[60px]" />
+              <div>
+                <h1 className="text-xl font-semibold">Website Builder</h1>
+                <p className="text-sm text-gray-400">{user?.business_name}</p>
+              </div>
+            </div>
+            <button
+              onClick={() => navigate('/my-dashboard')}
+              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm transition"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+        </header>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-auto p-8">
+          <div className="max-w-6xl mx-auto">
+            {/* Welcome Message */}
+            <div className="text-center mb-12">
+              <h2 className="text-4xl font-bold mb-4">Welcome to Your Website Builder!</h2>
+              <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+                Get started by selecting a professionally designed template or create your website from scratch.
+              </p>
+            </div>
+
+            {/* Options Grid */}
+            <div className="grid md:grid-cols-2 gap-8 mb-12">
+              {/* Create Blank Option */}
+              <button
+                onClick={handleCreateBlank}
+                disabled={initializingWebsite}
+                className="bg-gray-800 border-2 border-dashed border-gray-600 hover:border-[#98b290] rounded-lg p-8 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-center w-16 h-16 bg-gray-700 group-hover:bg-[#98b290] rounded-lg mb-4 transition">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-semibold mb-2">Create New</h3>
+                <p className="text-gray-400">Start with a blank canvas and build your website from the ground up</p>
+              </button>
+
+              {/* Select Template Option */}
+              <div className="bg-gray-800 border-2 border-gray-700 rounded-lg p-8">
+                <div className="flex items-center justify-center w-16 h-16 bg-[#98b290] rounded-lg mb-4">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
+                  </svg>
+                </div>
+                <h3 className="text-2xl font-semibold mb-2">Select a Template</h3>
+                <p className="text-gray-400 mb-4">Choose from our professionally designed templates below</p>
+              </div>
+            </div>
+
+            {/* Templates Section */}
+            <div>
+              <h3 className="text-2xl font-semibold mb-6">Available Templates</h3>
+
+              {loadingTemplates ? (
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#98b290]"></div>
+                  <p className="mt-4 text-gray-400">Loading templates...</p>
+                </div>
+              ) : templates.length === 0 ? (
+                <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
+                  <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                  <p className="text-xl text-gray-400 mb-2">No templates available yet</p>
+                  <p className="text-gray-500">Check back later or contact support</p>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {templates.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => handleSelectTemplate(template.id)}
+                      disabled={initializingWebsite}
+                      className="bg-gray-800 border border-gray-700 hover:border-[#98b290] rounded-lg overflow-hidden text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {/* Template Preview Image */}
+                      <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
+                        {template.preview_image ? (
+                          <img
+                            src={template.preview_image}
+                            alt={template.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <svg className="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        )}
+                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition flex items-center justify-center">
+                          <span className="text-white opacity-0 group-hover:opacity-100 transition font-semibold">
+                            Select Template
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Template Info */}
+                      <div className="p-4">
+                        <h4 className="font-semibold text-lg mb-1">{template.name}</h4>
+                        <p className="text-sm text-gray-400 mb-2">{template.description}</p>
+                        <span className="inline-block px-2 py-1 bg-gray-700 text-xs rounded capitalize">
+                          {template.business_type}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {initializingWebsite && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-gray-800 rounded-lg p-8 text-center">
+                    <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#98b290] mb-4"></div>
+                    <p className="text-lg">Initializing your website...</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
       </div>
     )
   }

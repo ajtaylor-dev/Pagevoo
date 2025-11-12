@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate, Link } from 'react-router-dom'
 import { api } from '@/services/api'
-import { TemplateSelector } from '@/components/TemplateSelector'
 
 interface Collaborator {
   id: number
@@ -85,8 +84,6 @@ export default function UserDashboard() {
 
   // Website state
   const [userWebsite, setUserWebsite] = useState<any | null>(null)
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false)
-  const [initializingWebsite, setInitializingWebsite] = useState(false)
 
   const isProUser = user?.package === 'pro' && (user?.account_status === 'active' || user?.account_status === 'trial')
   const hasJournalAccess = user?.package === 'niche' || user?.package === 'pro'
@@ -109,30 +106,8 @@ export default function UserDashboard() {
   }
 
   const handleBuildWebsite = () => {
-    if (userWebsite) {
-      // User has website, open builder
-      window.open('/website-builder', '_blank')
-    } else {
-      // User doesn't have website, show template selector
-      setShowTemplateSelector(true)
-    }
-  }
-
-  const handleTemplateSelect = async (templateId: number) => {
-    setInitializingWebsite(true)
-    try {
-      const response = await api.initializeWebsiteFromTemplate(templateId)
-      if (response.success) {
-        setUserWebsite(response.data)
-        setShowTemplateSelector(false)
-        // Open website builder
-        window.open('/website-builder', '_blank')
-      }
-    } catch (error: any) {
-      alert(error.response?.data?.message || 'Failed to initialize website')
-    } finally {
-      setInitializingWebsite(false)
-    }
+    // Always open the website builder - it will show welcome screen if no website exists
+    window.open('/website-builder', '_blank')
   }
 
   // Load collaborators
@@ -647,7 +622,7 @@ export default function UserDashboard() {
                     </div>
                     <h4 className="font-semibold text-[#4b4b4b] mb-1">Build Website</h4>
                     <p className="text-xs text-gray-600">
-                      {userWebsite ? 'Edit your website' : 'Choose a template to get started'}
+                      {userWebsite ? 'Edit your website' : 'Get started with your website'}
                     </p>
                   </button>
                   <button
@@ -1549,13 +1524,6 @@ export default function UserDashboard() {
         </div>
       )}
 
-      {/* Template Selector Modal */}
-      {showTemplateSelector && (
-        <TemplateSelector
-          onSelect={handleTemplateSelect}
-          onCancel={() => setShowTemplateSelector(false)}
-        />
-      )}
     </div>
   )
 }
