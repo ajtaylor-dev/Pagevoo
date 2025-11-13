@@ -192,7 +192,7 @@ export const Header: React.FC<HeaderProps> = ({
                     handleSaveAs()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                 >
                   Save As...
                 </button>
@@ -212,7 +212,7 @@ export const Header: React.FC<HeaderProps> = ({
                     handleExportAsHTMLTemplate()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-[#e8f0e6] text-xs font-medium text-[#5a7a54]"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-600 text-xs font-medium text-[#98b290]"
                 >
                   Publish
                 </button>
@@ -222,7 +222,7 @@ export const Header: React.FC<HeaderProps> = ({
                     handleExit()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                 >
                   Exit
                 </button>
@@ -253,7 +253,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowEditMenu(false)
                     }}
                     disabled={!canUndo}
-                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-200 text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
+                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-600 text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
                     title="Undo (Ctrl+Z)"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,7 +267,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowEditMenu(false)
                     }}
                     disabled={!canRedo}
-                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-200 text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
+                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-600 text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
                     title="Redo (Ctrl+Y)"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -277,12 +277,12 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
                 {/* Sub-navigation Tabs */}
-                <div className="flex border-b border-gray-200">
+                <div className="flex border-b border-gray-600">
                   <button
                     onClick={() => setEditSubTab('settings')}
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'settings'
-                        ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
+                        ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
@@ -292,7 +292,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => setEditSubTab('css')}
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'css'
-                        ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
+                        ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
@@ -302,7 +302,7 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => setEditSubTab('page')}
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'page'
-                        ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
+                        ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
@@ -316,18 +316,18 @@ export const Header: React.FC<HeaderProps> = ({
                       {/* Edit Page Tab */}
                       {currentPage ? (
                         <>
-                          <div className="text-xs text-gray-600 mb-3">
+                          <div className="text-xs text-gray-300 mb-3">
                             Current Page: <span className="font-medium">{currentPage.name}</span>
                           </div>
                           <button
                             onClick={handleOpenEditPageModal}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 text-xs rounded border border-gray-200"
+                            className="w-full text-left px-3 py-2 hover:bg-gray-700 text-xs rounded border border-gray-600 text-gray-200"
                           >
                             Rename Page & Edit Meta
                           </button>
                           <button
                             onClick={handleCopyPage}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-100 text-xs rounded border border-gray-200"
+                            className="w-full text-left px-3 py-2 hover:bg-gray-700 text-xs rounded border border-gray-600 text-gray-200"
                           >
                             Copy Page
                           </button>
@@ -337,20 +337,20 @@ export const Header: React.FC<HeaderProps> = ({
                                 handleDeletePage(currentPage.id)
                                 setShowEditMenu(false)
                               }}
-                              className="w-full text-left px-3 py-2 hover:bg-red-50 text-red-600 text-xs rounded border border-red-200"
+                              className="w-full text-left px-3 py-2 hover:bg-red-900 text-red-400 text-xs rounded border border-red-800"
                             >
                               Delete Page
                             </button>
                           )}
                         </>
                       ) : (
-                        <div className="text-xs text-gray-500">No page selected</div>
+                        <div className="text-xs text-gray-400">No page selected</div>
                       )}
                     </>
                   ) : editSubTab === 'settings' ? (
                   <>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-200 mb-1">
                       Preview Image
                     </label>
                     {template.preview_image && (
@@ -358,7 +358,7 @@ export const Header: React.FC<HeaderProps> = ({
                         <img
                           src={`http://localhost:8000/storage/${template.preview_image}`}
                           alt="Preview"
-                          className="w-full h-32 object-cover rounded border border-gray-300"
+                          className="w-full h-32 object-cover rounded border border-gray-600"
                         />
                       </div>
                     )}
@@ -370,9 +370,9 @@ export const Header: React.FC<HeaderProps> = ({
                         disabled={uploadingImage}
                         className="hidden"
                       />
-                      <div className={`w-full px-3 py-2 border border-gray-300 rounded text-xs text-center cursor-pointer transition ${
+                      <div className={`w-full px-3 py-2 border border-gray-600 rounded text-xs text-center cursor-pointer transition ${
                         uploadingImage
-                          ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
+                          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
                           : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
                       }`}>
                         {uploadingImage ? 'Uploading...' : template.preview_image ? 'Change Image' : 'Upload Image'}
@@ -380,25 +380,25 @@ export const Header: React.FC<HeaderProps> = ({
                     </label>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-200 mb-1">
                       Description
                     </label>
                     <textarea
                       value={template.description}
                       onChange={(e) => setTemplate({ ...template, description: e.target.value })}
                       rows={3}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
+                      className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                       placeholder="Template description..."
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-200 mb-1">
                       Business Type
                     </label>
                     <select
                       value={template.business_type}
                       onChange={(e) => setTemplate({ ...template, business_type: e.target.value })}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
+                      className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                     >
                       <option value="restaurant">Restaurant</option>
                       <option value="barber">Barber</option>
@@ -410,13 +410,13 @@ export const Header: React.FC<HeaderProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-200 mb-1">
                       Exclusive To
                     </label>
                     <select
                       value={template.exclusive_to || ''}
                       onChange={(e) => setTemplate({ ...template, exclusive_to: e.target.value as 'pro' | 'niche' | 'brochure' | null })}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
+                      className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                     >
                       <option value="">Trial</option>
                       <option value="brochure">B + N + P</option>
@@ -425,12 +425,12 @@ export const Header: React.FC<HeaderProps> = ({
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
+                    <label className="block text-xs font-medium text-gray-200 mb-1">
                       Features
                     </label>
                     <div className="grid grid-cols-2 gap-1">
                       {['shopping-cart', 'booking', 'blog', 'marketplace', 'forum', 'contact-form'].map((feature) => (
-                        <label key={feature} className="flex items-center gap-1 text-xs">
+                        <label key={feature} className="flex items-center gap-1 text-xs text-gray-200">
                           <input
                             type="checkbox"
                             checked={template.features?.includes(feature) || false}
@@ -442,7 +442,7 @@ export const Header: React.FC<HeaderProps> = ({
                                 setTemplate({ ...template, features: feats.filter(f => f !== feature) });
                               }
                             }}
-                            className="rounded border-gray-300 text-[#5a7a54] focus:ring-[#98b290]"
+                            className="rounded border-gray-600 text-[#98b290] focus:ring-[#98b290]"
                           />
                           <span className="capitalize">{feature.replace('-', ' ')}</span>
                         </label>
@@ -454,10 +454,10 @@ export const Header: React.FC<HeaderProps> = ({
                   <>
                     {/* Site CSS Tab */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                      <label className="block text-xs font-medium text-gray-200 mb-1">
                         Custom CSS
                       </label>
-                      <p className="text-[10px] text-gray-500 mb-2">
+                      <p className="text-[10px] text-gray-400 mb-2">
                         Add custom CSS styles for your template. This CSS will be applied to all pages.
                       </p>
                       <StyleEditor
@@ -479,7 +479,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                   <button
                     onClick={() => setShowEditMenu(false)}
-                    className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition mt-3"
+                    className="w-full px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-xs transition mt-3"
                   >
                     Close
                   </button>
@@ -510,7 +510,7 @@ export const Header: React.FC<HeaderProps> = ({
                       handleLivePreview()
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                   >
                     Live Preview
                   </button>
@@ -519,7 +519,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowSourceCodeModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                   >
                     Source Code
                   </button>
@@ -528,7 +528,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowStylesheetModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                   >
                     Stylesheet
                   </button>
@@ -537,7 +537,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowSitemapModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                   >
                     Sitemap
                   </button>
@@ -546,7 +546,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowSectionLibraryModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                   >
                     Section Library
                   </button>
@@ -555,7 +555,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowPageLibraryModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                   >
                     Page Library
                   </button>
@@ -585,7 +585,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowAddPageModal(true)
                       setShowInsertMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs"
+                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
                   >
                     New Page
                   </button>
@@ -594,7 +594,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
           <button
-            className="px-3 h-full hover:bg-[#e8f0e6] transition"
+            className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
             onMouseEnter={() => {
               if (showFileMenu || showEditMenu || showInsertMenu) {
                 setShowFileMenu(false)
@@ -608,11 +608,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Undo/Redo Toolbar Buttons */}
-        <div className="flex items-center h-full border-l border-gray-200 pl-2 ml-2">
+        <div className="flex items-center h-full border-l border-gray-600 pl-2 ml-2">
           <button
             onClick={handleUndo}
             disabled={!canUndo}
-            className="p-1.5 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
+            className="p-1.5 hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
             title="Undo (Ctrl+Z)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -622,7 +622,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={handleRedo}
             disabled={!canRedo}
-            className="p-1.5 hover:bg-gray-100 rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition"
+            className="p-1.5 hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
             title="Redo (Ctrl+Y)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -632,10 +632,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Save Icon */}
-        <div className="flex items-center h-full border-l border-gray-200 pl-2 ml-2">
+        <div className="flex items-center h-full border-l border-gray-600 pl-2 ml-2">
           <button
             onClick={handleSave}
-            className={`p-1.5 hover:bg-gray-100 rounded transition relative ${hasUnsavedChanges ? 'text-red-500' : 'text-green-500'}`}
+            className={`p-1.5 hover:bg-gray-700 rounded transition relative ${hasUnsavedChanges ? 'text-red-400' : 'text-green-400'}`}
             title={hasUnsavedChanges ? 'Save (Ctrl+S) - Unsaved changes' : 'Save (Ctrl+S) - All changes saved'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -660,8 +660,8 @@ export const Header: React.FC<HeaderProps> = ({
             disabled={!template}
             className={`p-1.5 rounded transition ml-1 ${
               !template
-                ? 'text-gray-300 cursor-not-allowed'
-                : 'text-gray-600 hover:bg-gray-100'
+                ? 'text-gray-500 cursor-not-allowed'
+                : 'text-gray-300 hover:bg-gray-700'
             }`}
             title={!template ? 'Create a template first' : 'Image Gallery'}
           >
@@ -700,7 +700,7 @@ export const Header: React.FC<HeaderProps> = ({
           </svg>
           Preview
         </button>
-        <div className="ml-2 px-2 text-gray-600 border-l border-gray-200">
+        <div className="ml-2 px-2 text-gray-300 border-l border-gray-600">
           {user?.name}
         </div>
       </div>

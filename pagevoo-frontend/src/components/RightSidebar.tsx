@@ -361,7 +361,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   />
                   <button
                     onClick={() => setShowSectionCSS(false)}
-                    className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition mt-3"
+                    className="w-full px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-xs transition mt-3"
                   >
                     Back to Properties
                   </button>

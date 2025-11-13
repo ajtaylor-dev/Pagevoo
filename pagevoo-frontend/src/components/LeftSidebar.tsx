@@ -86,7 +86,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             >
               <span>Header & Navigation</span>
               <svg
-                className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
+                className={`w-3 h-3 transition-transform text-[#98b290] ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -122,7 +122,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
             >
               <span>Footers</span>
               <svg
-                className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
+                className={`w-3 h-3 transition-transform text-[#98b290] ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
