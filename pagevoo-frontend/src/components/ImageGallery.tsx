@@ -127,11 +127,11 @@ export function ImageGallery({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999]">
-      <div className="bg-white rounded-lg shadow-xl w-[90vw] h-[80vh] max-w-6xl flex flex-col">
+      <div className="bg-gray-800 rounded-lg shadow-xl w-[90vw] h-[80vh] max-w-6xl flex flex-col">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 space-y-3">
+        <div className="px-6 py-4 border-b border-gray-700 space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-800">Image Gallery</h2>
+            <h2 className="text-xl font-semibold text-gray-200">Image Gallery</h2>
             <div className="flex items-center gap-3">
               <input
                 ref={fileInputRef}
@@ -150,7 +150,7 @@ export function ImageGallery({
               </button>
               <button
                 onClick={onClose}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm font-medium transition"
+                className="px-4 py-2 bg-gray-700 text-gray-200 rounded hover:bg-gray-600 text-sm font-medium transition"
               >
                 Close
               </button>
@@ -165,7 +165,7 @@ export function ImageGallery({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search images by filename..."
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm"
+                className="w-full px-4 py-2 pl-10 border border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500 text-sm bg-gray-700 text-gray-200 placeholder-gray-400"
               />
               <svg className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -173,7 +173,7 @@ export function ImageGallery({
               {searchQuery && (
                 <button
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-200"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -210,9 +210,9 @@ export function ImageGallery({
                 const dims = imageDimensions[image.id]
 
                 return (
-                <div key={image.id} className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition group">
+                <div key={image.id} className="border border-gray-700 rounded-lg overflow-hidden hover:shadow-lg transition group">
                   {/* Image Preview */}
-                  <div className="aspect-square bg-gray-100 relative">
+                  <div className="aspect-square bg-gray-700 relative">
                     <img
                       src={`http://localhost:8000/${image.path}`}
                       alt={image.filename}
@@ -232,14 +232,14 @@ export function ImageGallery({
                   </div>
 
                   {/* Image Info */}
-                  <div className="p-3 bg-white">
+                  <div className="p-3 bg-gray-700">
                     {editingId === image.id ? (
                       <div className="space-y-2">
                         <input
                           type="text"
                           value={editName}
                           onChange={(e) => setEditName(e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          className="w-full px-2 py-1 text-sm border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-amber-500 bg-gray-800 text-gray-200"
                           autoFocus
                         />
                         <div className="flex gap-2">
@@ -251,7 +251,7 @@ export function ImageGallery({
                           </button>
                           <button
                             onClick={cancelEdit}
-                            className="flex-1 px-2 py-1 bg-gray-300 text-gray-700 rounded text-xs hover:bg-gray-400 transition"
+                            className="flex-1 px-2 py-1 bg-gray-600 text-gray-200 rounded text-xs hover:bg-gray-500 transition"
                           >
                             Cancel
                           </button>
@@ -260,22 +260,22 @@ export function ImageGallery({
                     ) : (
                       <>
                         <div className="flex items-center justify-between mb-1">
-                          <p className="text-sm font-medium text-gray-800 truncate flex-1" title={image.filename}>
+                          <p className="text-sm font-medium text-gray-200 truncate flex-1" title={image.filename}>
                             {image.filename}
                           </p>
                           <button
                             onClick={() => startEdit(image)}
-                            className="ml-2 p-1 hover:bg-gray-100 rounded transition"
+                            className="ml-2 p-1 hover:bg-gray-600 rounded transition"
                             title="Rename"
                           >
-                            <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                             </svg>
                           </button>
                         </div>
-                        <p className="text-xs text-gray-500">{formatFileSize(image.size)}</p>
+                        <p className="text-xs text-gray-400">{formatFileSize(image.size)}</p>
                         {dims && (
-                          <p className="text-xs text-gray-500 mt-0.5">{dims.width} × {dims.height}px</p>
+                          <p className="text-xs text-gray-400 mt-0.5">{dims.width} × {dims.height}px</p>
                         )}
                       </>
                     )}
@@ -288,8 +288,8 @@ export function ImageGallery({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
-          <p className="text-sm text-gray-600">
+        <div className="px-6 py-3 border-t border-gray-700 bg-gray-800">
+          <p className="text-sm text-gray-300">
             {searchQuery ? `Showing ${filteredImages.length} of ${images.length}` : `${images.length} ${images.length === 1 ? 'image' : 'images'}`} • Supported formats: JPG, PNG, GIF, SVG, WebP • Bulk upload supported
           </p>
         </div>

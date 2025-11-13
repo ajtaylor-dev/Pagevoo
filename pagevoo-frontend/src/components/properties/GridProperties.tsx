@@ -86,11 +86,11 @@ padding: 1rem;`
             setShowRowStyle(!showRowStyle)
             setExpandedColumnIndex(null)
           }}
-          className="w-full px-3 py-2 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-sm font-medium text-[#5a7a54] transition flex items-center justify-between"
+          className="w-full px-3 py-2 bg-gray-700 hover:bg-gray-600 border border-gray-600 rounded text-sm font-medium text-gray-200 transition flex items-center justify-between"
         >
           <span>Row Container Style</span>
           <svg
-            className={`w-3 h-3 transition-transform text-[#5a7a54] ${showRowStyle ? 'rotate-90' : ''}`}
+            className={`w-3 h-3 transition-transform text-gray-200 ${showRowStyle ? 'rotate-90' : ''}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -100,9 +100,9 @@ padding: 1rem;`
         </button>
 
         {showRowStyle && (
-          <div className="mt-2 p-3 border border-[#d4e5d0] rounded bg-white">
+          <div className="mt-2 p-3 border border-gray-600 rounded bg-gray-700">
             <p className="text-[9px] text-gray-400 mb-2">
-              Target: <code className="bg-gray-100 px-1 rounded">.row</code>
+              Target: <code className="bg-gray-600 px-1 rounded text-gray-200">.row</code>
             </p>
             <StyleEditor
               value={selectedSection.content?.content_css?.row || ''}
@@ -176,13 +176,13 @@ padding: 1rem;`
                   }}
                   className={`w-full px-3 py-2 border rounded text-sm font-medium transition flex items-center justify-between ${
                     isExpanded
-                      ? 'bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
-                      : 'bg-gradient-to-r from-[#f0f7ee] to-[#e1eedd] hover:from-[#e8f0e6] hover:to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
+                      ? 'bg-gray-700 border-gray-600 text-gray-200'
+                      : 'bg-gray-800 hover:bg-gray-700 border-gray-600 text-gray-200'
                   }`}
                 >
                   <span>Column {idx + 1} <span className="text-xs text-gray-400">(col-{colWidth})</span></span>
                   <svg
-                    className={`w-3 h-3 transition-transform text-[#5a7a54] ${isExpanded ? 'rotate-90' : ''}`}
+                    className={`w-3 h-3 transition-transform text-gray-200 ${isExpanded ? 'rotate-90' : ''}`}
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -192,9 +192,9 @@ padding: 1rem;`
                 </button>
 
                 {isExpanded && (
-                  <div className="mt-2 p-3 border border-[#d4e5d0] rounded bg-white">
+                  <div className="mt-2 p-3 border border-gray-600 rounded bg-gray-700">
                     <p className="text-[9px] text-gray-400 mb-2">
-                      Target: <code className="bg-gray-100 px-1 rounded">.col-{colWidth}</code> or position-based
+                      Target: <code className="bg-gray-600 px-1 rounded text-gray-200">.col-{colWidth}</code> or position-based
                     </p>
                     <StyleEditor
                       value={selectedSection.content?.content_css?.columns?.[idx] || ''}

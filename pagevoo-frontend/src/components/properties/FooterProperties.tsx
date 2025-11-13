@@ -197,7 +197,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
 
       {/* Legacy navbar controls */}
       {selectedSection.type.startsWith('navbar-') && (
-        <div className="p-3 bg-yellow-50 border border-yellow-400 rounded text-xs text-yellow-800">
+        <div className="p-3 bg-yellow-900 border border-yellow-600 rounded text-xs text-yellow-200">
           ⚠️ This navbar type has been removed. Please delete this section.
         </div>
       )}
