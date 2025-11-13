@@ -26,7 +26,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
       {selectedSection.type === 'footer-simple' && (
         <>
           <div className="mb-3">
-            <label className="text-xs text-gray-600 block mb-1">Background Color</label>
+            <label className="text-xs text-gray-300 block mb-1">Background Color</label>
             <div className="flex gap-2">
               <input
                 type="color"
@@ -40,7 +40,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="w-10 h-8 rounded border border-gray-300"
+                className="w-10 h-8 rounded border border-gray-600"
               />
               <input
                 type="text"
@@ -54,14 +54,14 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                 placeholder="#1f2937"
               />
             </div>
           </div>
 
           <div className="mb-3">
-            <label className="text-xs text-gray-600 block mb-1">Padding</label>
+            <label className="text-xs text-gray-300 block mb-1">Padding</label>
             <input
               type="text"
               value={selectedSection.content?.sectionStyle?.padding || '32px'}
@@ -74,13 +74,13 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                   }
                 })
               }}
-              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
               placeholder="32px"
             />
           </div>
 
           <div className="mb-3">
-            <label className="text-xs text-gray-600 block mb-1">Text Align</label>
+            <label className="text-xs text-gray-300 block mb-1">Text Align</label>
             <select
               value={selectedSection.content?.sectionStyle?.textAlign || 'center'}
               onChange={(e) => {
@@ -92,7 +92,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                   }
                 })
               }}
-              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
             >
               <option value="left">Left</option>
               <option value="center">Center</option>
@@ -105,7 +105,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
       {selectedSection.type === 'footer-columns' && (
         <>
           <div className="mb-3">
-            <label className="text-xs text-gray-600 block mb-1">Footer Background Color</label>
+            <label className="text-xs text-gray-300 block mb-1">Footer Background Color</label>
             <div className="flex gap-2">
               <input
                 type="color"
@@ -119,7 +119,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="w-10 h-8 rounded border border-gray-300"
+                className="w-10 h-8 rounded border border-gray-600"
               />
               <input
                 type="text"
@@ -133,14 +133,14 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                 placeholder="#172554"
               />
             </div>
           </div>
 
-          <div className="mb-3 border-t border-gray-200 pt-3">
-            <label className="text-xs text-gray-600 block mb-1">Copyright Background Color</label>
+          <div className="mb-3 border-t border-gray-600 pt-3">
+            <label className="text-xs text-gray-300 block mb-1">Copyright Background Color</label>
             <div className="flex gap-2">
               <input
                 type="color"
@@ -154,7 +154,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="w-10 h-8 rounded border border-gray-300"
+                className="w-10 h-8 rounded border border-gray-600"
               />
               <input
                 type="text"
@@ -168,14 +168,14 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                 placeholder="#171717"
               />
             </div>
           </div>
 
           <div className="mb-3">
-            <label className="text-xs text-gray-600 block mb-1">Copyright Padding</label>
+            <label className="text-xs text-gray-300 block mb-1">Copyright Padding</label>
             <input
               type="text"
               value={selectedSection.content?.copyrightStyle?.padding || '24px'}
@@ -188,7 +188,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                   }
                 })
               }}
-              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
               placeholder="24px"
             />
           </div>

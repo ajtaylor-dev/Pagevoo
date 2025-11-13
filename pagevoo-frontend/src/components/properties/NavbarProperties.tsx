@@ -42,7 +42,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
     <>
                         {/* Background Color */}
                         <div className="mb-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Background Color</label>
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Background Color</label>
                           <div className="flex gap-2">
                             <input
                               type="color"
@@ -56,7 +56,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }
                                 })
                               }}
-                              className="w-10 h-8 rounded border border-gray-300"
+                              className="w-10 h-8 rounded border border-gray-600"
                             />
                             <input
                               type="text"
@@ -70,18 +70,18 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }
                                 })
                               }}
-                              className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               placeholder="#ffffff"
                             />
                           </div>
                         </div>
 
                         {/* Padding Controls */}
-                        <div className="mb-4 border-t border-gray-200 pt-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Padding</label>
+                        <div className="mb-4 border-t border-gray-600 pt-4">
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Padding</label>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Top (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Top (px)</label>
                               <input
                                 type="number"
                                 min="0"
@@ -95,11 +95,11 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Right (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Right (px)</label>
                               <input
                                 type="number"
                                 min="0"
@@ -113,11 +113,11 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Bottom (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Bottom (px)</label>
                               <input
                                 type="number"
                                 min="0"
@@ -131,11 +131,11 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Left (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Left (px)</label>
                               <input
                                 type="number"
                                 min="0"
@@ -149,18 +149,18 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                           </div>
                         </div>
 
                         {/* Margin Controls */}
-                        <div className="mb-4 border-t border-gray-200 pt-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Margin</label>
+                        <div className="mb-4 border-t border-gray-600 pt-4">
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Margin</label>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Top (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Top (px)</label>
                               <input
                                 type="number"
                                 value={selectedSection.content?.containerStyle?.marginTop?.replace('px', '') || '0'}
@@ -173,11 +173,11 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Right (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Right (px)</label>
                               <input
                                 type="number"
                                 value={selectedSection.content?.containerStyle?.marginRight?.replace('px', '') || '0'}
@@ -190,11 +190,11 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Bottom (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Bottom (px)</label>
                               <input
                                 type="number"
                                 value={selectedSection.content?.containerStyle?.marginBottom?.replace('px', '') || '0'}
@@ -207,11 +207,11 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Left (px)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Left (px)</label>
                               <input
                                 type="number"
                                 value={selectedSection.content?.containerStyle?.marginLeft?.replace('px', '') || '0'}
@@ -224,7 +224,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                           </div>
@@ -232,7 +232,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
 
                         {/* Width Control */}
                         <div className="mb-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Width</label>
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Width</label>
                           <input
                             type="text"
                             value={selectedSection.content?.containerStyle?.width || '100%'}
@@ -245,14 +245,14 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                 }
                               })
                             }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                             placeholder="100% or auto or 1280px"
                           />
                         </div>
 
                         {/* Height Control */}
                         <div className="mb-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Height</label>
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Height</label>
                           <input
                             type="text"
                             value={selectedSection.content?.containerStyle?.height || 'auto'}
@@ -265,14 +265,14 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                 }
                               })
                             }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                             placeholder="auto or 80px"
                           />
                         </div>
 
                         {/* Position Control */}
                         <div className="mb-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Position</label>
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Position</label>
                           <select
                             value={selectedSection.content?.position || 'static'}
                             onChange={(e) => {
@@ -281,7 +281,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                 position: e.target.value
                               })
                             }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                           >
                             <option value="static">Static</option>
                             <option value="relative">Relative</option>
@@ -292,12 +292,12 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                         </div>
 
                         {/* Layout Controls */}
-                        <div className="mb-4 border-t border-gray-200 pt-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Layout</label>
+                        <div className="mb-4 border-t border-gray-600 pt-4">
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Layout</label>
 
                           {/* Logo Position */}
                           <div className="mb-3">
-                            <label className="text-xs text-gray-600 block mb-1">Logo Position</label>
+                            <label className="text-xs text-gray-300 block mb-1">Logo Position</label>
                             <select
                               value={selectedSection.content?.layoutConfig?.logoPosition || 'left'}
                               onChange={(e) => {
@@ -309,7 +309,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }
                                 })
                               }}
-                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                             >
                               <option value="left">Left</option>
                               <option value="center">Center</option>
@@ -319,7 +319,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
 
                           {/* Links Position */}
                           <div className="mb-3">
-                            <label className="text-xs text-gray-600 block mb-1">Links Position</label>
+                            <label className="text-xs text-gray-300 block mb-1">Links Position</label>
                             <select
                               value={selectedSection.content?.layoutConfig?.linksPosition || 'right'}
                               onChange={(e) => {
@@ -331,7 +331,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }
                                 })
                               }}
-                              className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                             >
                               <option value="left">Left</option>
                               <option value="center">Center</option>
@@ -343,7 +343,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                           {!(selectedSection.content?.layoutConfig?.logoPosition === 'center' &&
                              selectedSection.content?.layoutConfig?.linksPosition === 'center') && (
                             <div>
-                              <label className="text-xs text-gray-600 block mb-1">Logo Width (%)</label>
+                              <label className="text-xs text-gray-300 block mb-1">Logo Width (%)</label>
                               <input
                                 type="number"
                                 min="10"
@@ -358,18 +358,18 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                               />
                             </div>
                           )}
                         </div>
 
                         {/* Link Styling */}
-                        <div className="mb-4 border-t border-gray-200 pt-4">
+                        <div className="mb-4 border-t border-gray-600 pt-4">
                           <div className="flex items-center justify-between mb-3">
-                            <label className="text-xs font-medium text-gray-700">Link Style</label>
+                            <label className="text-xs font-medium text-gray-200">Link Style</label>
                             <div className="flex items-center gap-2">
-                              <span className="text-xs text-gray-600">
+                              <span className="text-xs text-gray-300">
                                 {selectedSection.content?.buttonStyling?.enabled ? 'Buttons' : 'Text Links'}
                               </span>
                               <label className="relative inline-flex items-center cursor-pointer">
@@ -405,7 +405,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }}
                                   className="sr-only peer"
                                 />
-                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#98b290] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#98b290]"></div>
+                                <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-[#98b290] rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-600 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#98b290]"></div>
                               </label>
                             </div>
                           </div>
@@ -425,7 +425,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                           {!selectedSection.content?.buttonStyling?.enabled && (
                             <>
                               <div className="mb-3">
-                                <label className="text-xs text-gray-600 block mb-1">Text Color</label>
+                                <label className="text-xs text-gray-300 block mb-1">Text Color</label>
                                 <div className="flex gap-2">
                                   <input
                                     type="color"
@@ -439,7 +439,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                         }
                                       })
                                     }}
-                                    className="w-10 h-8 rounded border border-gray-300"
+                                    className="w-10 h-8 rounded border border-gray-600"
                                   />
                                   <input
                                     type="text"
@@ -453,14 +453,14 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                         }
                                       })
                                     }}
-                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                                     placeholder="#000000"
                                   />
                                 </div>
                               </div>
 
                               <div className="mb-3">
-                                <label className="text-xs text-gray-600 block mb-1">Hover Color</label>
+                                <label className="text-xs text-gray-300 block mb-1">Hover Color</label>
                                 <div className="flex gap-2">
                                   <input
                                     type="color"
@@ -474,7 +474,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                         }
                                       })
                                     }}
-                                    className="w-10 h-8 rounded border border-gray-300"
+                                    className="w-10 h-8 rounded border border-gray-600"
                                   />
                                   <input
                                     type="text"
@@ -488,7 +488,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                         }
                                       })
                                     }}
-                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                                     placeholder="#666666"
                                   />
                                 </div>
@@ -498,8 +498,8 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                         </div>
 
                         {/* Navigation Links Manager */}
-                        <div className="mb-4 border-t border-gray-200 pt-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Navigation Links</label>
+                        <div className="mb-4 border-t border-gray-600 pt-4">
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Navigation Links</label>
                           <NavigationTreeManager
                             links={selectedSection.content?.links || []}
                             pages={template?.pages || []}
@@ -514,10 +514,10 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                         </div>
 
                         {/* Generated CSS Preview */}
-                        <div className="mb-4 border-t border-gray-200 pt-4">
-                          <label className="text-xs font-medium text-gray-700 block mb-2">Generated CSS Preview</label>
-                          <p className="text-xs text-gray-500 mb-2">This shows the CSS generated from your settings above</p>
-                          <pre className="bg-gray-50 border border-gray-300 rounded p-3 text-xs overflow-auto max-h-64 font-mono">
+                        <div className="mb-4 border-t border-gray-600 pt-4">
+                          <label className="text-xs font-medium text-gray-200 block mb-2">Generated CSS Preview</label>
+                          <p className="text-xs text-gray-400 mb-2">This shows the CSS generated from your settings above</p>
+                          <pre className="bg-gray-700 border border-gray-600 rounded p-3 text-xs overflow-auto max-h-64 font-mono">
 {(() => {
   const sectionId = selectedSection.section_id || `section-${selectedSection.id}`
   const content = selectedSection.content || {}

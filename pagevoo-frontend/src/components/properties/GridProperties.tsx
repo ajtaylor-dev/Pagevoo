@@ -129,7 +129,7 @@ padding: 1rem;`
       {/* Column Style Buttons */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="block text-xs font-medium text-gray-700">Column Styles</label>
+          <label className="block text-xs font-medium text-gray-200">Column Styles</label>
           <button
             onClick={() => {
               // Remove borders from all columns
@@ -180,7 +180,7 @@ padding: 1rem;`
                       : 'bg-gradient-to-r from-[#f0f7ee] to-[#e1eedd] hover:from-[#e8f0e6] hover:to-[#d4e5d0] border-[#98b290] text-[#5a7a54]'
                   }`}
                 >
-                  <span>Column {idx + 1} <span className="text-xs text-gray-500">(col-{colWidth})</span></span>
+                  <span>Column {idx + 1} <span className="text-xs text-gray-400">(col-{colWidth})</span></span>
                   <svg
                     className={`w-3 h-3 transition-transform text-[#5a7a54] ${isExpanded ? 'rotate-90' : ''}`}
                     fill="none"
