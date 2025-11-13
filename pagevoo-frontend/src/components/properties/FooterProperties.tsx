@@ -54,7 +54,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                 placeholder="#1f2937"
               />
             </div>
@@ -74,7 +74,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                   }
                 })
               }}
-              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
               placeholder="32px"
             />
           </div>
@@ -92,7 +92,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                   }
                 })
               }}
-              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
             >
               <option value="left">Left</option>
               <option value="center">Center</option>
@@ -133,7 +133,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                 placeholder="#172554"
               />
             </div>
@@ -168,7 +168,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                     }
                   })
                 }}
-                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                 placeholder="#171717"
               />
             </div>
@@ -188,7 +188,7 @@ export const FooterProperties: React.FC<FooterPropertiesProps> = ({
                   }
                 })
               }}
-              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
               placeholder="24px"
             />
           </div>

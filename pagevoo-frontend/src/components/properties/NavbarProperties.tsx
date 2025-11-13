@@ -70,7 +70,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }
                                 })
                               }}
-                              className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               placeholder="#ffffff"
                             />
                           </div>
@@ -95,7 +95,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                             <div>
@@ -113,7 +113,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                             <div>
@@ -131,7 +131,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                             <div>
@@ -149,7 +149,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                           </div>
@@ -173,7 +173,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                             <div>
@@ -190,7 +190,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                             <div>
@@ -207,7 +207,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                             <div>
@@ -224,7 +224,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                           </div>
@@ -245,7 +245,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                 }
                               })
                             }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                             placeholder="100% or auto or 1280px"
                           />
                         </div>
@@ -265,7 +265,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                 }
                               })
                             }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                             placeholder="auto or 80px"
                           />
                         </div>
@@ -281,7 +281,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                 position: e.target.value
                               })
                             }}
-                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                            className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                           >
                             <option value="static">Static</option>
                             <option value="relative">Relative</option>
@@ -309,7 +309,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }
                                 })
                               }}
-                              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                             >
                               <option value="left">Left</option>
                               <option value="center">Center</option>
@@ -331,7 +331,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                   }
                                 })
                               }}
-                              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                              className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                             >
                               <option value="left">Left</option>
                               <option value="center">Center</option>
@@ -358,7 +358,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                     }
                                   })
                                 }}
-                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                className="w-full text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                               />
                             </div>
                           )}
@@ -453,7 +453,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                         }
                                       })
                                     }}
-                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                                     placeholder="#000000"
                                   />
                                 </div>
@@ -488,7 +488,7 @@ export const NavbarProperties: React.FC<NavbarPropertiesProps> = ({
                                         }
                                       })
                                     }}
-                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                                    className="flex-1 text-xs px-2 py-1.5 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                                     placeholder="#666666"
                                   />
                                 </div>
