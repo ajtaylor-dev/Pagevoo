@@ -15,7 +15,7 @@ interface Template {
     name: string;
   };
   pages: any[];
-  exclusive_to: 'pro' | 'niche' | null;
+  exclusive_to: 'pro' | 'niche' | 'brochure' | null;
   technologies: string[];
   features: string[];
 }

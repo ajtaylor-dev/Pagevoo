@@ -404,6 +404,11 @@ class ApiService {
     return response.data;
   }
 
+  async createBlankWebsite(): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/user-website/create-blank');
+    return response.data;
+  }
+
   async publishWebsite(): Promise<ApiResponse<any>> {
     const response = await this.client.post('/v1/user-website/publish');
     return response.data;
@@ -411,6 +416,11 @@ class ApiService {
 
   async unpublishWebsite(): Promise<ApiResponse<any>> {
     const response = await this.client.post('/v1/user-website/unpublish');
+    return response.data;
+  }
+
+  async deleteUserWebsite(): Promise<ApiResponse<any>> {
+    const response = await this.client.delete('/v1/user-website');
     return response.data;
   }
 

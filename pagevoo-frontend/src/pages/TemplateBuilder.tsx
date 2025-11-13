@@ -124,7 +124,7 @@ interface Template {
   is_active: boolean
   pages: TemplatePage[]
   preview_image: string | null
-  exclusive_to: 'pro' | 'niche' | null
+  exclusive_to: 'pro' | 'niche' | 'brochure' | null
   technologies: string[]
   features: string[]
   custom_css?: string

@@ -20,12 +20,37 @@ class TemplateController extends BaseController
         $this->fileGenerator = new TemplateFileGenerator();
     }
     /**
-     * Get all templates
+     * Get all templates (filtered by user's permissions)
      */
     public function index()
     {
+        $user = auth()->user();
+        $permissionService = app(\App\Services\PermissionService::class);
+
+        // Determine which tier categories the user can access based on permissions
+        $allowedTiers = [];
+
+        if ($permissionService->can($user, 'access_trial_templates')) {
+            $allowedTiers[] = 'trial';
+        }
+        if ($permissionService->can($user, 'access_brochure_templates')) {
+            $allowedTiers[] = 'brochure';
+        }
+        if ($permissionService->can($user, 'access_niche_templates')) {
+            $allowedTiers[] = 'niche';
+        }
+        if ($permissionService->can($user, 'access_pro_templates')) {
+            $allowedTiers[] = 'pro';
+        }
+
+        // If no tiers are allowed, return empty
+        if (empty($allowedTiers)) {
+            return $this->sendSuccess([], 'No templates available for your tier');
+        }
+
         $templates = Template::with(['pages.sections', 'creator'])
             ->where('is_active', true)
+            ->whereIn('tier_category', $allowedTiers)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -69,7 +94,7 @@ class TemplateController extends BaseController
             'business_type' => 'required|in:restaurant,barber,pizza,cafe,gym,salon,other',
             'preview_image' => 'nullable|string',
             'is_active' => 'boolean',
-            'exclusive_to' => 'nullable|in:pro,niche',
+            'exclusive_to' => 'nullable|in:pro,niche,brochure',
             'technologies' => 'nullable|array',
             'features' => 'nullable|array',
             'pages' => 'required|array',
@@ -92,6 +117,15 @@ class TemplateController extends BaseController
             return $this->sendError('Validation Error', 422, $validator->errors());
         }
 
+        // Map exclusive_to to tier_category
+        $tierCategory = match($request->exclusive_to) {
+            null => 'trial',           // Available to all (Trial)
+            'brochure' => 'brochure',  // B + N + P
+            'niche' => 'niche',        // N + P
+            'pro' => 'pro',            // P only
+            default => 'brochure'
+        };
+
         $template = Template::create([
             'name' => $request->name,
             'description' => $request->description,
@@ -100,6 +134,7 @@ class TemplateController extends BaseController
             'is_active' => $request->is_active ?? false, // Default to unpublished (draft)
             'created_by' => auth()->id(),
             'exclusive_to' => $request->exclusive_to,
+            'tier_category' => $tierCategory,
             'technologies' => $request->technologies,
             'features' => $request->features,
             'custom_css' => $request->custom_css,
@@ -166,7 +201,7 @@ class TemplateController extends BaseController
             'business_type' => 'in:restaurant,barber,pizza,cafe,gym,salon,other',
             'preview_image' => 'nullable|string',
             'is_active' => 'boolean',
-            'exclusive_to' => 'nullable|in:pro,niche',
+            'exclusive_to' => 'nullable|in:pro,niche,brochure',
             'technologies' => 'nullable|array',
             'features' => 'nullable|array',
             'pages' => 'nullable|array',
@@ -193,7 +228,8 @@ class TemplateController extends BaseController
         $wasActive = $template->is_active;
         $willBeActive = $request->has('is_active') ? $request->is_active : $wasActive;
 
-        $template->update($request->only([
+        // Map exclusive_to to tier_category if exclusive_to is being updated
+        $updateData = $request->only([
             'name',
             'description',
             'business_type',
@@ -203,7 +239,20 @@ class TemplateController extends BaseController
             'technologies',
             'features',
             'custom_css'
-        ]));
+        ]);
+
+        // Update tier_category based on exclusive_to
+        if ($request->has('exclusive_to')) {
+            $updateData['tier_category'] = match($request->exclusive_to) {
+                null => 'trial',           // Available to all (Trial)
+                'brochure' => 'brochure',  // B + N + P
+                'niche' => 'niche',        // N + P
+                'pro' => 'pro',            // P only
+                default => 'brochure'
+            };
+        }
+
+        $template->update($updateData);
 
         // If pages data is provided, update pages and sections
         if ($request->has('pages')) {

@@ -111,6 +111,8 @@ Route::prefix('v1')->group(function () {
             // Basic website operations
             Route::get('/', [UserWebsiteController::class, 'show']);
             Route::post('/initialize', [UserWebsiteController::class, 'initializeFromTemplate']);
+            Route::post('/create-blank', [UserWebsiteController::class, 'createBlank']);
+            Route::delete('/', [UserWebsiteController::class, 'destroy']);
 
             // Save & Publish workflow
             Route::post('/save', [UserWebsiteController::class, 'save']);

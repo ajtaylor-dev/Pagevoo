@@ -115,22 +115,22 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
       <aside
         ref={sidebarRef}
         style={{ width }}
-        className="bg-white border-l border-gray-200 overflow-y-auto flex-shrink-0"
+        className="bg-gray-800 border-l border-gray-700 overflow-y-auto flex-shrink-0"
       >
         <div className="p-3">
-          <h2 className="text-xs font-semibold text-[#5a7a54] uppercase mb-3">
+          <h2 className="text-xs font-semibold text-[#98b290] uppercase mb-3">
             {showCSSPanel ? 'CSS Editor' : 'Properties'}
           </h2>
           {showCSSPanel ? (
             <div className="space-y-3">
               {/* CSS Tabs */}
-              <div className="flex border-b border-gray-200">
+              <div className="flex border-b border-gray-700">
                 <button
                   onClick={() => setCssTab('site')}
                   className={`flex-1 px-3 py-2 text-xs font-medium transition ${
                     cssTab === 'site'
-                      ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                      ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                   }`}
                 >
                   Site CSS
@@ -139,8 +139,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   onClick={() => setCssTab('page')}
                   className={`flex-1 px-3 py-2 text-xs font-medium transition ${
                     cssTab === 'page'
-                      ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
-                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                      ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
+                      : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
                   }`}
                 >
                   Page CSS
@@ -150,10 +150,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               {/* CSS Content */}
               {cssTab === 'site' ? (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-200 mb-1">
                     Global Stylesheet
                   </label>
-                  <p className="text-[10px] text-gray-500 mb-2">
+                  <p className="text-[10px] text-gray-400 mb-2">
                     CSS applied to all pages in this template
                   </p>
                   <StyleEditor
@@ -172,10 +172,10 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-200 mb-1">
                     Page-Specific CSS
                   </label>
-                  <p className="text-[10px] text-gray-500 mb-2">
+                  <p className="text-[10px] text-gray-400 mb-2">
                     CSS applied only to {currentPage?.name || 'this page'}
                   </p>
                   <StyleEditor
@@ -201,7 +201,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
 
               <button
                 onClick={() => setShowCSSPanel(false)}
-                className="w-full px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded text-xs transition"
+                className="w-full px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-xs transition"
               >
                 Close CSS Editor
               </button>
@@ -224,7 +224,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     Unlock Section
                   </button>
                 </div>
-                <div className="text-xs text-gray-500 space-y-1">
+                <div className="text-xs text-gray-400 space-y-1">
                   <p><strong>Section:</strong> {selectedSection.section_name || selectedSection.type}</p>
                   <p><strong>ID:</strong> {selectedSection.section_id || 'Not set'}</p>
                 </div>
@@ -232,7 +232,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
             ) : (
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-gray-500 block mb-1">Section Name</label>
+                  <label className="text-xs text-gray-400 block mb-1">Section Name</label>
                   <div className="flex gap-1 mb-2">
                     <input
                       type="text"
@@ -313,7 +313,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 <div className="px-2 py-1 bg-blue-50 rounded text-[10px] font-mono text-blue-700">
                   <span className="font-semibold">ID:</span> {selectedSection.section_id || 'Not set'}
                 </div>
-                <p className="text-[9px] text-gray-500">Use this ID in CSS: #{selectedSection.section_id}</p>
+                <p className="text-[9px] text-gray-400">Use this ID in CSS: #{selectedSection.section_id}</p>
 
                 {/* Section Styling button - hidden for navbar and footer sections */}
                 {selectedSection.type !== 'navbar' && !selectedSection.type.startsWith('footer-') && (
@@ -332,18 +332,18 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               </div>
 
               <div className="border-t border-gray-200 pt-2">
-                <div className="text-[10px] text-gray-500 mb-1">Section Type:</div>
-                <div className="px-2 py-1 bg-gray-100 rounded text-xs font-mono text-gray-700">
+                <div className="text-[10px] text-gray-400 mb-1">Section Type:</div>
+                <div className="px-2 py-1 bg-gray-700 rounded text-xs font-mono text-gray-200">
                   {selectedSection.type}
                 </div>
               </div>
 
               {showSectionCSS ? (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                  <label className="block text-xs font-medium text-gray-200 mb-1">
                     Section-Specific CSS
                   </label>
-                  <p className="text-[10px] text-gray-500 mb-2">
+                  <p className="text-[10px] text-gray-400 mb-2">
                     CSS applied only to this {selectedSection.type} section
                   </p>
                   <StyleEditor

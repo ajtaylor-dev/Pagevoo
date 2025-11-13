@@ -143,10 +143,10 @@ export const Header: React.FC<HeaderProps> = ({
   handleImageUpload
 }) => {
   return (
-    <header className="bg-white border-b border-gray-200 flex items-center h-9 shadow-sm">
+    <header className="bg-gray-800 border-b border-gray-700 flex items-center h-9 shadow-sm">
       {/* Left Section - Logo & Menus */}
       <div className="flex items-center h-full">
-        <div className="px-3 flex items-center space-x-2 border-r border-gray-200 h-full">
+        <div className="px-3 flex items-center space-x-2 border-r border-gray-700 h-full">
           <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" className="w-[60px] h-[60px]" />
         </div>
         <div className="flex items-center h-full text-xs relative">
@@ -160,29 +160,29 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowFileMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-[#e8f0e6] transition"
+              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
             >
               File
             </button>
             {showFileMenu && (
-              <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
+              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-48">
                 <button
                   onClick={() => {
                     handleNew()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs flex items-center justify-between"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center justify-between text-gray-200"
                 >
                   <span>New</span>
                   <span className="text-gray-400 text-[10px]">Ctrl+N</span>
                 </button>
-                <div className="border-t border-gray-200 my-1"></div>
+                <div className="border-t border-gray-700 my-1"></div>
                 <button
                   onClick={() => {
                     handleSave()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs flex items-center justify-between"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center justify-between text-gray-200"
                 >
                   <span>Save</span>
                   <span className="text-gray-400 text-[10px]">Ctrl+S</span>
@@ -201,12 +201,12 @@ export const Header: React.FC<HeaderProps> = ({
                     handleLoad()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-100 text-xs flex items-center justify-between"
+                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center justify-between text-gray-200"
                 >
                   <span>Load</span>
                   <span className="text-gray-400 text-[10px]">Ctrl+O</span>
                 </button>
-                <div className="border-t border-gray-200 my-1"></div>
+                <div className="border-t border-gray-700 my-1"></div>
                 <button
                   onClick={() => {
                     handleExportAsHTMLTemplate()
@@ -216,7 +216,7 @@ export const Header: React.FC<HeaderProps> = ({
                 >
                   Publish
                 </button>
-                <div className="border-t border-gray-200 my-1"></div>
+                <div className="border-t border-gray-700 my-1"></div>
                 <button
                   onClick={() => {
                     handleExit()
@@ -239,14 +239,14 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowEditMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-[#e8f0e6] transition"
+              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
             >
               Edit
             </button>
             {showEditMenu && template && (
-              <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-80">
+              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-80">
                 {/* Undo/Redo buttons */}
-                <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-200 bg-gray-50">
+                <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-700 bg-gray-700">
                   <button
                     onClick={() => {
                       handleUndo()
@@ -283,7 +283,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'settings'
                         ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
                     Template Settings
@@ -293,7 +293,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'css'
                         ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
                     Site CSS
@@ -303,7 +303,7 @@ export const Header: React.FC<HeaderProps> = ({
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'page'
                         ? 'bg-[#e8f0e6] text-[#5a7a54] border-b-2 border-[#98b290]'
-                        : 'bg-white text-gray-600 hover:bg-gray-50'
+                        : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
                     Edit Page
@@ -373,7 +373,7 @@ export const Header: React.FC<HeaderProps> = ({
                       <div className={`w-full px-3 py-2 border border-gray-300 rounded text-xs text-center cursor-pointer transition ${
                         uploadingImage
                           ? 'bg-gray-100 text-gray-500 cursor-not-allowed'
-                          : 'bg-white hover:bg-gray-50 text-gray-700'
+                          : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
                       }`}>
                         {uploadingImage ? 'Uploading...' : template.preview_image ? 'Change Image' : 'Upload Image'}
                       </div>
@@ -415,28 +415,13 @@ export const Header: React.FC<HeaderProps> = ({
                     </label>
                     <select
                       value={template.exclusive_to || ''}
-                      onChange={(e) => setTemplate({ ...template, exclusive_to: e.target.value as 'pro' | 'niche' | null })}
+                      onChange={(e) => setTemplate({ ...template, exclusive_to: e.target.value as 'pro' | 'niche' | 'brochure' | null })}
                       className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
                     >
-                      <option value="">None (All Users)</option>
-                      <option value="niche">Niche Package</option>
-                      <option value="pro">Pro Package</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-700 mb-1">
-                      Template Type
-                    </label>
-                    <select
-                      value={template.technologies?.includes('react') ? 'react' : 'html5'}
-                      onChange={(e) => {
-                        const type = e.target.value;
-                        setTemplate({ ...template, technologies: [type] });
-                      }}
-                      className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
-                    >
-                      <option value="html5">HTML5</option>
-                      <option value="react">React</option>
+                      <option value="">Trial</option>
+                      <option value="brochure">B + N + P</option>
+                      <option value="niche">N + P</option>
+                      <option value="pro">P</option>
                     </select>
                   </div>
                   <div>
@@ -513,12 +498,12 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowViewMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-[#e8f0e6] transition"
+              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
             >
               View
             </button>
             {showViewMenu && (
-              <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
+              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-48">
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -588,12 +573,12 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowInsertMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-[#e8f0e6] transition"
+              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
             >
               Insert
             </button>
             {showInsertMenu && template && (
-              <div className="absolute top-full left-0 mt-0 bg-white border border-gray-200 shadow-lg z-50 w-48">
+              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-48">
                 <div className="py-1">
                   <button
                     onClick={() => {
@@ -698,7 +683,7 @@ export const Header: React.FC<HeaderProps> = ({
             templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
             addToHistory(updatedTemplate)
           }}
-          className="px-2 py-0.5 bg-white border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64"
+          className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64 text-gray-200"
         />
       </div>
 

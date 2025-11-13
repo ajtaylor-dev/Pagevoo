@@ -36,21 +36,21 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       <aside
         ref={sidebarRef}
         style={{ width }}
-        className="bg-white border-r border-gray-200 overflow-y-auto flex-shrink-0"
+        className="bg-gray-800 border-r border-gray-700 overflow-y-auto flex-shrink-0"
       >
         <div className="p-3">
           {/* Section Library */}
-          <h2 className="text-xs font-semibold text-[#5a7a54] uppercase mb-3">Section Library</h2>
+          <h2 className="text-xs font-semibold text-[#98b290] uppercase mb-3">Section Library</h2>
 
           {/* Core Sections */}
           <div className="mb-3">
             <button
               onClick={() => onToggleCategory('core')}
-              className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
+              className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-700 hover:bg-gray-600 border border-[#98b290] rounded text-xs font-medium text-[#98b290] transition"
             >
               <span>Core Sections</span>
               <svg
-                className={`w-3 h-3 transition-transform text-[#5a7a54] ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
+                className={`w-3 h-3 transition-transform text-[#98b290] ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -68,7 +68,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       title={section.description}
                     >
                       {renderSectionThumbnail(section)}
-                      <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
+                      <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-[#98b290] transition">
                         {section.label}
                       </div>
                     </div>
@@ -82,7 +82,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="mb-3">
             <button
               onClick={() => onToggleCategory('headerNav')}
-              className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
+              className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-700 hover:bg-gray-600 border border-[#98b290] rounded text-xs font-medium text-[#98b290] transition"
             >
               <span>Header & Navigation</span>
               <svg
@@ -104,7 +104,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       title={section.description}
                     >
                       {renderSectionThumbnail(section)}
-                      <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
+                      <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-[#98b290] transition">
                         {section.label}
                       </div>
                     </div>
@@ -118,7 +118,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="mb-3">
             <button
               onClick={() => onToggleCategory('footers')}
-              className="w-full flex items-center justify-between px-2 py-1.5 bg-gradient-to-r from-[#e8f0e6] to-[#d4e5d0] hover:from-[#d4e5d0] hover:to-[#c1d9bc] border border-[#98b290] rounded text-xs font-medium text-[#5a7a54] transition"
+              className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-700 hover:bg-gray-600 border border-[#98b290] rounded text-xs font-medium text-[#98b290] transition"
             >
               <span>Footers</span>
               <svg
@@ -140,7 +140,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       title={section.description}
                     >
                       {renderSectionThumbnail(section)}
-                      <div className="mt-1 text-[10px] text-gray-700 text-center group-hover:text-[#5a7a54] transition">
+                      <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-[#98b290] transition">
                         {section.label}
                       </div>
                     </div>

@@ -1,14 +1,107 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef, useEffect, memo, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { api } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
+import { api } from '@/services/api'
+import { sectionLibraryApi, pageLibraryApi, fileToBase64 } from '@/services/libraryApi'
+import { StyleEditor } from '@/components/StyleEditor'
+import { ImageGallery } from '@/components/ImageGallery'
+import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
+import NavigationTreeManager from '@/components/NavigationTreeManager'
+import { MobileMenu } from '@/components/MobileMenu'
+import { ButtonStyleModal } from '@/components/modals/ButtonStyleModal'
+import { AddPageModal } from '@/components/modals/AddPageModal'
+import { EditPageModal } from '@/components/modals/EditPageModal'
+import { LoadModal } from '@/components/modals/LoadModal'
+import { SourceCodeModal } from '@/components/modals/SourceCodeModal'
+import { StylesheetModal } from '@/components/modals/StylesheetModal'
+import { SitemapModal } from '@/components/modals/SitemapModal'
+import { ColorPickerModal } from '@/components/modals/ColorPickerModal'
+import { LinkModal } from '@/components/modals/LinkModal'
+import { InsertImageModal } from '@/components/modals/InsertImageModal'
+import { ExportSectionModal } from '@/components/modals/ExportSectionModal'
+import { SectionLibraryModal } from '@/components/modals/SectionLibraryModal'
+import { ExportPageModal } from '@/components/modals/ExportPageModal'
+import { PageLibraryModal } from '@/components/modals/PageLibraryModal'
+import { NavbarProperties } from '../components/properties/NavbarProperties'
+import { FooterProperties } from '../components/properties/FooterProperties'
+import { SectionThumbnail } from '../components/SectionThumbnail'
+import { EditableText } from '../components/EditableText'
+import { GridSection } from '../components/sections/GridSection'
+import { NavbarSection } from '../components/sections/NavbarSection'
+import { FooterSection } from '../components/sections/FooterSection'
+import { SectionWrapper } from '../components/sections/SectionWrapper'
+import { Header } from '../components/layout/Header'
+import { LeftSidebar } from '../components/LeftSidebar'
+import { RightSidebar } from '../components/RightSidebar'
+import { DraggableSectionItem } from '../components/dnd/DraggableSectionItem'
+import { SortableSectionItem } from '../components/dnd/SortableSectionItem'
+import { BottomDropZone } from '../components/dnd/BottomDropZone'
+import { CanvasDropZone } from '../components/dnd/CanvasDropZone'
+import { Toolbar } from '../components/Toolbar'
+import { FloatingTextEditor } from '../components/layout/FloatingTextEditor'
+import { PageSelectorBar } from '../components/layout/PageSelectorBar'
+import { PublishedTemplateBanner } from '../components/layout/PublishedTemplateBanner'
+import { useSectionHandlers } from '../hooks/useSectionHandlers'
+import { usePageHandlers } from '../hooks/usePageHandlers'
+import { useDragHandlers } from '../hooks/useDragHandlers'
+import { useTextEditor } from '../hooks/useTextEditor'
+import { useFileHandlers } from '../hooks/useFileHandlers'
+import { useCodeHandlers } from '../hooks/useCodeHandlers'
+import { useResizeHandlers } from '../hooks/useResizeHandlers'
+import { useImageHandlers } from '../hooks/useImageHandlers'
+import { useFormattingHandlers } from '../hooks/useFormattingHandlers'
+import { useImageGalleryHandlers } from '../hooks/useImageGalleryHandlers'
+import { useRenderSection } from '../hooks/useRenderSection'
+import { useTemplateBuilderEffects } from '../hooks/useTemplateBuilderEffects'
 import { usePermissions } from '@/hooks/usePermissions'
+import {
+  generateRandomString,
+  sanitizeName,
+  generateIdentifier,
+  generateContainerStyle,
+  generateLinkStyle,
+  generateActiveIndicatorStyle
+} from '../utils/helpers'
+import { getLinkHref, getLinkLabel, getCanvasWidth, handleAddPredefinedPage as addPredefinedPage } from '../utils/templateHelpers'
+import { coreSections, headerNavigationSections, footerSections } from '../constants/sectionTemplates'
+import {
+  isActivePage,
+  generateContentCSS,
+  extractFontsFromCSS
+} from '../utils/cssUtils'
+import { generatePageHTML as genPageHTML, generateStylesheet as genStylesheet } from '../utils/htmlCssGenerator'
+import {
+  DndContext,
+  DragOverlay,
+  useSensor,
+  useSensors,
+  PointerSensor,
+  closestCenter,
+  useDroppable,
+  useDraggable,
+} from '@dnd-kit/core'
+import type { DragEndEvent, DragStartEvent, DragOverEvent } from '@dnd-kit/core'
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 
 interface UserSection {
   id: number
   type: string
   content: any
   order: number
+  section_name?: string
+  section_id?: string
+  is_locked?: boolean
+}
+
+interface ContentCSS {
+  row?: string
+  columns?: { [key: string]: string } // e.g., { '0': 'col-1 css', '1': 'col-2 css' }
 }
 
 interface UserPage {
@@ -18,14 +111,31 @@ interface UserPage {
   is_homepage: boolean
   order: number
   sections: UserSection[]
+  meta_description?: string
+  page_css?: string
+  page_id?: string
 }
 
 interface UserWebsite {
   id: number
   template_id: number
-  published_at: string | null
+  name: string
+  description: string
+  business_type: string
+  is_active: boolean
   pages: UserPage[]
-  template: any
+  preview_image: string | null
+  published_at: string | null
+  technologies: string[]
+  features: string[]
+  custom_css?: string
+  images?: Array<{
+    id: string
+    filename: string
+    path: string
+    size: number
+    uploaded_at: string
+  }>
 }
 
 interface Template {
@@ -34,32 +144,152 @@ interface Template {
   description: string
   business_type: string
   preview_image?: string
-  is_published: boolean
+  is_active: boolean
 }
 
 export default function WebsiteBuilder() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { can, tier } = usePermissions()
+
   const [website, setWebsite] = useState<UserWebsite | null>(null)
+  const websiteRef = useRef<UserWebsite | null>(null) // Track latest website to avoid race conditions
+  const [currentPage, setCurrentPage] = useState<UserPage | null>(null)
+  const [selectedSection, setSelectedSection] = useState<UserSection | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showEditMenu, setShowEditMenu] = useState(false)
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [editSubTab, setEditSubTab] = useState<'settings' | 'css' | 'page'>('settings')
+  const [showAddPageModal, setShowAddPageModal] = useState(false)
+  const [newPageName, setNewPageName] = useState('')
+  const [editingText, setEditingText] = useState<{ sectionId: number; field: string; value: string } | null>(null)
+  const [showCodeView, setShowCodeView] = useState(false)
+  const [showColorPicker, setShowColorPicker] = useState(false)
+  const [tempColor, setTempColor] = useState('#000000')
+  const [savedSelection, setSavedSelection] = useState<Range | null>(null)
+  const [showLinkModal, setShowLinkModal] = useState(false)
+  const [linkUrl, setLinkUrl] = useState('')
+  const [linkText, setLinkText] = useState('')
+  const [showInsertImageModal, setShowInsertImageModal] = useState(false)
+  const [imageInsertMode, setImageInsertMode] = useState<'url' | 'gallery'>('url')
+  const [imageUrl, setImageUrl] = useState('')
+  const [selectedGalleryImage, setSelectedGalleryImage] = useState<string | null>(null)
+  const [selectedImage, setSelectedImage] = useState<HTMLImageElement | null>(null)
+  const [imageWidth, setImageWidth] = useState<number>(0)
+  const [imageHeight, setImageHeight] = useState<number>(0)
+  const [constrainProportions, setConstrainProportions] = useState(true)
+  const [imageAspectRatio, setImageAspectRatio] = useState<number>(1)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState<{ [key: number]: boolean }>({})
+  const [imageAltText, setImageAltText] = useState<string>('')
+  const [imageLink, setImageLink] = useState<string>('')
+  const [imageLinkTarget, setImageLinkTarget] = useState<'_self' | '_blank'>('_self')
+  const [editorHeight, setEditorHeight] = useState(300)
+  const [isEditorFullscreen, setIsEditorFullscreen] = useState(false)
+  const [isDraggingEditor, setIsDraggingEditor] = useState(false)
+  const [currentFormatting, setCurrentFormatting] = useState({
+    bold: false,
+    italic: false,
+    underline: false,
+    fontSize: '16px',
+    color: '#000000',
+    alignment: 'left'
+  })
+  const editorRef = useRef<HTMLDivElement>(null)
+  const [showFileMenu, setShowFileMenu] = useState(false)
+  const [showInsertMenu, setShowInsertMenu] = useState(false)
+  const [showViewMenu, setShowViewMenu] = useState(false)
+  const [showEditPageModal, setShowEditPageModal] = useState(false)
+  const [editPageName, setEditPageName] = useState('')
+  const [editPageSlug, setEditPageSlug] = useState('')
+  const [editPageMetaDescription, setEditPageMetaDescription] = useState('')
+  const [showCSSPanel, setShowCSSPanel] = useState(false)
+  const [showImageGallery, setShowImageGallery] = useState(false)
+  const imageGalleryRef = useRef(false)
+  const [cssInspectorMode, setCssInspectorMode] = useState(false)
+  const [hoveredSectionId, setHoveredSectionId] = useState<number | null>(null)
+  const [showSourceCodeModal, setShowSourceCodeModal] = useState(false)
+  const [showStylesheetModal, setShowStylesheetModal] = useState(false)
+  const [showSitemapModal, setShowSitemapModal] = useState(false)
+  const [editableHTML, setEditableHTML] = useState('')
+  const [editableCSS, setEditableCSS] = useState('')
+  const [isEditingHTML, setIsEditingHTML] = useState(false)
+  const [isEditingCSS, setIsEditingCSS] = useState(false)
+  const [cssTab, setCssTab] = useState<'site' | 'page'>('site')
+  const [showSectionCSS, setShowSectionCSS] = useState(false)
+  const [showContentStyle, setShowContentStyle] = useState(false)
+  const [expandedColumnIndex, setExpandedColumnIndex] = useState<number | null>(null)
+  const [showRowStyle, setShowRowStyle] = useState(false)
+  const [hoveredSection, setHoveredSection] = useState<number | null>(null)
+
+  // Undo/Redo and Save state
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [canUndo, setCanUndo] = useState(false)
+  const [canRedo, setCanRedo] = useState(false)
+  const [history, setHistory] = useState<UserWebsite[]>([])
+  const [historyIndex, setHistoryIndex] = useState(-1)
+  const [isPublished, setIsPublished] = useState(false)
+
+  // Welcome screen states
   const [showWelcome, setShowWelcome] = useState(false)
   const [templates, setTemplates] = useState<Template[]>([])
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [initializingWebsite, setInitializingWebsite] = useState(false)
-  const [currentPage, setCurrentPage] = useState<UserPage | null>(null)
-  const [leftWidth, setLeftWidth] = useState(280)
-  const [rightWidth, setRightWidth] = useState(320)
+
+  // Template selector modal
+  const [showLoadModal, setShowLoadModal] = useState(false)
+  const [availableTemplates, setAvailableTemplates] = useState<any[]>([])
+
+  // Drag and Drop state
+  const [activeId, setActiveId] = useState<string | null>(null)
+  const [activeDragData, setActiveDragData] = useState<any>(null)
+  const [overId, setOverId] = useState<string | null>(null)
+
+  // Resize handlers hook
+  const {
+    leftWidth,
+    rightWidth,
+    isResizingLeft,
+    isResizingRight,
+    setLeftWidth,
+    setRightWidth,
+    handleLeftMouseDown,
+    handleRightMouseDown,
+    handleMouseUp,
+    handleMouseMove
+  } = useResizeHandlers({ initialLeftWidth: 280, initialRightWidth: 320 })
+
   const [showLeftSidebar, setShowLeftSidebar] = useState(true)
   const [showRightSidebar, setShowRightSidebar] = useState(true)
   const [viewport, setViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop')
-  const [isResizingLeft, setIsResizingLeft] = useState(false)
-  const [isResizingRight, setIsResizingRight] = useState(false)
-  const [selectedSection, setSelectedSection] = useState<UserSection | null>(null)
+  const [showNavButtonStyleModal, setShowNavButtonStyleModal] = useState(false)
+
+  // Section Library states
+  const [showSectionLibraryModal, setShowSectionLibraryModal] = useState(false)
+  const [showExportSectionModal, setShowExportSectionModal] = useState(false)
+  const [exportingSection, setExportingSection] = useState<UserSection | null>(null)
+
+  // Page Library states
+  const [showPageLibraryModal, setShowPageLibraryModal] = useState(false)
+  const [showExportPageModal, setShowExportPageModal] = useState(false)
+  const [exportingPage, setExportingPage] = useState<UserPage | null>(null)
 
   const leftSidebarRef = useRef<HTMLDivElement>(null)
   const rightSidebarRef = useRef<HTMLDivElement>(null)
+  const fileMenuRef = useRef<HTMLDivElement>(null)
+  const editMenuRef = useRef<HTMLDivElement>(null)
+  const insertMenuRef = useRef<HTMLDivElement>(null)
+  const viewMenuRef = useRef<HTMLDivElement>(null)
 
+  // Configure drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    })
+  )
+
+  // Load website on mount
   useEffect(() => {
     loadWebsite()
   }, [])
@@ -69,10 +299,16 @@ export default function WebsiteBuilder() {
       const response = await api.getUserWebsite()
       if (response.success && response.data) {
         setWebsite(response.data)
+        websiteRef.current = response.data
         // Set current page to homepage or first page
         const homepage = response.data.pages.find((p: UserPage) => p.is_homepage) || response.data.pages[0]
         setCurrentPage(homepage)
         setShowWelcome(false)
+        setIsPublished(!!response.data.published_at)
+
+        // Initialize history
+        setHistory([JSON.parse(JSON.stringify(response.data))])
+        setHistoryIndex(0)
       }
     } catch (error) {
       console.error('Failed to load website:', error)
@@ -89,7 +325,8 @@ export default function WebsiteBuilder() {
     try {
       const response = await api.getAllTemplates()
       if (response.success && response.data) {
-        setTemplates(response.data.filter((t: Template) => t.is_published))
+        // API already filters by is_active, so just set the data
+        setTemplates(response.data)
       }
     } catch (error) {
       console.error('Failed to load templates:', error)
@@ -104,9 +341,16 @@ export default function WebsiteBuilder() {
       const response = await api.initializeWebsiteFromTemplate(templateId)
       if (response.success && response.data) {
         setWebsite(response.data)
+        websiteRef.current = response.data
         const homepage = response.data.pages.find((p: UserPage) => p.is_homepage) || response.data.pages[0]
         setCurrentPage(homepage)
         setShowWelcome(false)
+
+        // Initialize history
+        setHistory([JSON.parse(JSON.stringify(response.data))])
+        setHistoryIndex(0)
+        setCanUndo(false)
+        setCanRedo(false)
       }
     } catch (error) {
       console.error('Failed to initialize website:', error)
@@ -117,15 +361,592 @@ export default function WebsiteBuilder() {
   }
 
   const handleCreateBlank = async () => {
-    // TODO: Implement blank website creation
-    alert('Create blank website feature coming soon!')
+    setInitializingWebsite(true)
+    try {
+      const response = await api.createBlankWebsite()
+      if (response.success && response.data) {
+        setWebsite(response.data)
+        websiteRef.current = response.data
+        const homepage = response.data.pages.find((p: UserPage) => p.is_homepage) || response.data.pages[0]
+        setCurrentPage(homepage)
+        setShowWelcome(false)
+
+        // Initialize history
+        setHistory([JSON.parse(JSON.stringify(response.data))])
+        setHistoryIndex(0)
+        setCanUndo(false)
+        setCanRedo(false)
+      }
+    } catch (error) {
+      console.error('Failed to create blank website:', error)
+      alert('Failed to create blank website')
+    } finally {
+      setInitializingWebsite(false)
+    }
   }
 
+  // Reset history helper function (must be before useFileHandlers)
+  const resetHistory = (savedWebsite: UserWebsite) => {
+    setHistory([JSON.parse(JSON.stringify(savedWebsite))])
+    setHistoryIndex(0)
+    setCanUndo(false)
+    setCanRedo(false)
+  }
+
+  // File handlers hook (adapted for UserWebsite)
+  const {
+    handleSaveTemplate: handleSaveWebsite,
+    handleUndo,
+    handleRedo,
+    handleSave,
+    handleSaveAs,
+    handleLoad,
+    handleLoadTemplate: handleLoadWebsite,
+    handleNew,
+    handleExit,
+    handleLivePreview,
+    handleExportAsHTMLTemplate,
+    handleExportReact,
+    handleExportHTML
+  } = useFileHandlers({
+    template: website as any, // Cast to work with existing hook
+    setTemplate: setWebsite as any,
+    templateRef: websiteRef as any,
+    currentPage,
+    setCurrentPage,
+    setLoading,
+    setUploadingImage,
+    history: history as any,
+    setHistory: setHistory as any,
+    historyIndex,
+    setHistoryIndex,
+    setCanUndo,
+    setCanRedo,
+    setHasUnsavedChanges,
+    isPublished,
+    setIsPublished,
+    hasUnsavedChanges,
+    setShowLoadModal,
+    setAvailableTemplates,
+    setLoadingTemplates,
+    setSelectedSection,
+    resetHistory: resetHistory as any
+  })
+
+  // Override handleNew to show welcome screen
+  const handleNewWebsite = async () => {
+    if (confirm('Start a new website? Your current website will be deleted.')) {
+      // Delete existing website if it exists
+      if (website) {
+        try {
+          await api.deleteUserWebsite()
+        } catch (error) {
+          console.error('Failed to delete website:', error)
+        }
+      }
+
+      setWebsite(null)
+      websiteRef.current = null
+      setCurrentPage(null)
+      setSelectedSection(null)
+      setShowWelcome(true)
+      setShowFileMenu(false)
+      setHistory([])
+      setHistoryIndex(-1)
+      setCanUndo(false)
+      setCanRedo(false)
+      setHasUnsavedChanges(false)
+      loadTemplates()
+    }
+  }
+
+  // Template Builder Effects (useEffects)
+  useTemplateBuilderEffects({
+    templateRef: websiteRef as any,
+    template: website as any,
+    setTemplate: setWebsite as any,
+    templateId: null, // User websites don't use URL params
+    setCurrentPage,
+    setLoading,
+    setHistory: setHistory as any,
+    setHistoryIndex,
+    setCanUndo,
+    setCanRedo,
+    setIsPublished,
+    setHasUnsavedChanges,
+    canUndo,
+    canRedo,
+    hasUnsavedChanges,
+    handleNew: handleNewWebsite,
+    handleSave,
+    handleUndo,
+    handleRedo,
+    handleLoad,
+    showFileMenu,
+    setShowFileMenu,
+    showEditMenu,
+    setShowEditMenu,
+    showInsertMenu,
+    setShowInsertMenu,
+    showViewMenu,
+    setShowViewMenu,
+    fileMenuRef,
+    editMenuRef,
+    insertMenuRef,
+    viewMenuRef,
+    selectedSection,
+    setShowSectionCSS,
+    currentPage,
+    showSourceCodeModal,
+    setEditableHTML,
+    showStylesheetModal,
+    setEditableCSS
+  })
+
+  // History management helper function
+  const addToHistory = (newWebsite: UserWebsite, markAsUnsaved: boolean = true) => {
+    setHistory(prev => {
+      // Remove any history after current index (if user made changes after undo)
+      const newHistory = prev.slice(0, historyIndex + 1)
+
+      // Add new state
+      newHistory.push(JSON.parse(JSON.stringify(newWebsite))) // Deep clone
+
+      // Limit to 10 steps
+      if (newHistory.length > 10) {
+        newHistory.shift() // Remove oldest
+        setHistoryIndex(9)
+      } else {
+        setHistoryIndex(newHistory.length - 1)
+      }
+
+      // Update undo/redo availability
+      setCanUndo(true)
+      setCanRedo(false)
+
+      return newHistory
+    })
+
+    if (markAsUnsaved) {
+      setHasUnsavedChanges(true)
+    }
+  }
+
+  // Page Management Functions (using custom hook)
+  const {
+    handleAddPage,
+    handleDeletePage,
+    handleMovePage,
+    handleOpenEditPageModal,
+    handleSaveEditPage,
+    handleCopyPage,
+    handleAddPageFromTemplate
+  } = usePageHandlers({
+    template: website as any,
+    setTemplate: setWebsite as any,
+    currentPage,
+    setCurrentPage,
+    newPageName,
+    setNewPageName,
+    setShowAddPageModal,
+    editPageName,
+    setEditPageName,
+    editPageSlug,
+    setEditPageSlug,
+    editPageMetaDescription,
+    setEditPageMetaDescription,
+    setShowEditPageModal,
+    setShowEditMenu,
+    setShowInsertMenu,
+    addToHistory: addToHistory as any
+  })
+
+  // Section Management Functions
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['core'])
+
+  const toggleCategory = (category: string) => {
+    if (expandedCategories.includes(category)) {
+      setExpandedCategories(expandedCategories.filter(c => c !== category))
+    } else {
+      setExpandedCategories([...expandedCategories, category])
+    }
+  }
+
+  const handleAddPredefinedPage = (pageConfig: any) => {
+    addPredefinedPage(pageConfig, website as any, setWebsite as any, setCurrentPage)
+  }
+
+  // Drag and Drop Event Handlers
+  const {
+    handleDragStart,
+    handleDragOver,
+    handleDragEnd,
+    handleDragCancel
+  } = useDragHandlers({
+    currentPage,
+    setCurrentPage,
+    template: website as any,
+    setTemplate: setWebsite as any,
+    setActiveId,
+    setActiveDragData,
+    setOverId,
+    addToHistory: addToHistory as any,
+    setSelectedSection
+  })
+
+  // Text Editor Handlers
+  const {
+    handleTextEdit,
+    handleOpenTextEditor,
+    handleTextEditorChange,
+    handleCloseTextEditor,
+    handleEditorDragStart,
+    handleEditorDrag,
+    handleEditorDragEnd,
+    toggleEditorFullscreen,
+    handleOpenColorPicker,
+    handleApplyColorFromPicker,
+    handleOpenLinkModal,
+    handleApplyLink,
+    handleRemoveLink,
+    handleOpenInsertImageModal,
+    handleInsertImage,
+    handleEditorPaste,
+    handleEditorClick,
+    handleWidthChange,
+    handleHeightChange
+  } = useTextEditor({
+    template: website as any,
+    setTemplate: setWebsite as any,
+    currentPage,
+    setCurrentPage,
+    editingText,
+    setEditingText,
+    showCodeView,
+    setShowCodeView,
+    showColorPicker,
+    setShowColorPicker,
+    savedSelection,
+    setSavedSelection,
+    editorHeight,
+    setEditorHeight,
+    isEditorFullscreen,
+    setIsEditorFullscreen,
+    isDraggingEditor,
+    setIsDraggingEditor,
+    tempColor,
+    setTempColor,
+    currentFormatting,
+    setCurrentFormatting,
+    showLinkModal,
+    setShowLinkModal,
+    linkUrl,
+    setLinkUrl,
+    linkText,
+    setLinkText,
+    showInsertImageModal,
+    setShowInsertImageModal,
+    imageInsertMode,
+    setImageInsertMode,
+    imageUrl,
+    setImageUrl,
+    selectedGalleryImage,
+    setSelectedGalleryImage,
+    selectedImage,
+    setSelectedImage,
+    imageWidth,
+    setImageWidth,
+    imageHeight,
+    setImageHeight,
+    constrainProportions,
+    imageAspectRatio,
+    setImageAspectRatio,
+    imageAltText,
+    setImageAltText,
+    imageLink,
+    setImageLink,
+    imageLinkTarget,
+    setImageLinkTarget,
+    editorRef,
+    addToHistory: addToHistory as any
+  })
+
+  // Image handlers hook
+  const {
+    applyImageLink,
+    applyImageAltText,
+    applyImageDimensions,
+    setImageWidthTo100,
+    applyImageAlignment
+  } = useImageHandlers({
+    editorRef,
+    selectedImage,
+    setSelectedImage,
+    imageLink,
+    imageLinkTarget,
+    imageAltText,
+    imageWidth,
+    imageHeight,
+    setImageWidth,
+    setImageHeight,
+    imageAspectRatio,
+    handleTextEditorChange
+  })
+
+  // Formatting handlers hook
+  const {
+    applyFormatting,
+    applyFontSize,
+    applyColor,
+    updateFormattingState,
+    rgbToHex
+  } = useFormattingHandlers({
+    editorRef,
+    selectedImage,
+    setCurrentFormatting,
+    handleTextEditorChange,
+    applyImageAlignment
+  })
+
+  // Image Gallery Handlers
+  const {
+    handleImageGalleryClose,
+    handleImageUpload,
+    handleImageDelete,
+    handleImageRename
+  } = useImageGalleryHandlers({
+    template: website as any,
+    setTemplate: setWebsite as any,
+    imageGalleryRef,
+    setShowImageGallery
+  })
+
+  // Section handlers hook
+  const {
+    handleAddSection,
+    handleDeleteSection,
+    handleMoveSection,
+    handleToggleSectionLock,
+    handleMoveSidebar,
+    handleUpdateSectionContent,
+    handleGridColumnUpdate
+  } = useSectionHandlers({
+    template: website as any,
+    setTemplate: setWebsite as any,
+    currentPage,
+    setCurrentPage,
+    selectedSection,
+    setSelectedSection,
+    addToHistory: addToHistory as any
+  })
+
+  // Code handlers hook
+  const {
+    handleApplyHTMLChanges,
+    handleApplyCSSChanges
+  } = useCodeHandlers({
+    template: website as any,
+    setTemplate: setWebsite as any,
+    currentPage,
+    setCurrentPage,
+    editableHTML,
+    editableCSS,
+    setIsEditingHTML,
+    setIsEditingCSS,
+    addToHistory: addToHistory as any
+  })
+
+  // Section Library Handlers
+  const handleExportSection = (section: UserSection) => {
+    setExportingSection(section)
+    setShowExportSectionModal(true)
+  }
+
+  const handleSectionExport = async (data: {
+    name: string
+    description: string
+    tags: string[]
+    preview_image?: File
+  }) => {
+    try {
+      let previewImageBase64: string | undefined
+      if (data.preview_image) {
+        previewImageBase64 = await fileToBase64(data.preview_image)
+      }
+
+      await sectionLibraryApi.export({
+        name: data.name,
+        description: data.description,
+        section_type: exportingSection?.type || 'custom',
+        section_data: exportingSection || {},
+        tags: data.tags,
+        preview_image: previewImageBase64
+      })
+
+      alert('Section exported to library successfully!')
+      setShowExportSectionModal(false)
+      setExportingSection(null)
+    } catch (error) {
+      console.error('Error exporting section:', error)
+      alert('Failed to export section. Please try again.')
+    }
+  }
+
+  const handleImportSection = async (sectionId: number) => {
+    if (!currentPage || !website) return
+
+    try {
+      const sectionData = await sectionLibraryApi.getById(sectionId)
+
+      const newSectionId = Date.now()
+      const newSection = {
+        ...sectionData.section_data,
+        id: newSectionId,
+        section_id: `imported-section-${newSectionId}`,
+        order: currentPage.sections.length
+      }
+
+      const updatedSections = [...currentPage.sections, newSection]
+      const updatedPage = {
+        ...currentPage,
+        sections: updatedSections
+      }
+
+      const updatedWebsite = {
+        ...website,
+        pages: website.pages.map(p =>
+          p.id === currentPage.id ? updatedPage : p
+        )
+      }
+
+      setWebsite(updatedWebsite)
+      setCurrentPage(updatedPage)
+      addToHistory(updatedWebsite)
+
+      alert('Section imported successfully!')
+      setShowSectionLibraryModal(false)
+    } catch (error) {
+      console.error('Error importing section:', error)
+      alert('Failed to import section. Please try again.')
+    }
+  }
+
+  // Page Library Handlers
+  const handleExportPage = (page: UserPage) => {
+    setExportingPage(page)
+    setShowExportPageModal(true)
+  }
+
+  const handlePageExport = async (data: {
+    name: string
+    description: string
+    meta_description: string
+    meta_keywords: string
+    tags: string[]
+    preview_image?: File
+  }) => {
+    try {
+      let previewImageBase64: string | undefined
+      if (data.preview_image) {
+        previewImageBase64 = await fileToBase64(data.preview_image)
+      }
+
+      await pageLibraryApi.export({
+        name: data.name,
+        description: data.description,
+        meta_description: data.meta_description,
+        meta_keywords: data.meta_keywords,
+        page_data: exportingPage || {},
+        site_css: website?.custom_css || '',
+        tags: data.tags,
+        preview_image: previewImageBase64
+      })
+
+      alert('Page exported to library successfully!')
+      setShowExportPageModal(false)
+      setExportingPage(null)
+    } catch (error) {
+      console.error('Error exporting page:', error)
+      alert('Failed to export page. Please try again.')
+    }
+  }
+
+  const handleImportPage = async (pageId: number, applySiteCSS: boolean) => {
+    if (!website) return
+
+    try {
+      const pageData = await pageLibraryApi.getById(pageId)
+
+      const newPageId = Date.now()
+      const newPage = {
+        ...pageData.page_data,
+        id: newPageId,
+        page_id: `imported-page-${newPageId}`,
+        is_homepage: false,
+        order: website.pages.length,
+        sections: pageData.page_data.sections.map((section: any, index: number) => ({
+          ...section,
+          id: newPageId + index + 1,
+          section_id: `imported-section-${newPageId}-${index}`,
+          order: index
+        }))
+      }
+
+      let updatedWebsite = {
+        ...website,
+        pages: [...website.pages, newPage]
+      }
+
+      if (applySiteCSS && pageData.site_css) {
+        updatedWebsite = {
+          ...updatedWebsite,
+          custom_css: pageData.site_css
+        }
+      }
+
+      setWebsite(updatedWebsite)
+      setCurrentPage(newPage)
+      addToHistory(updatedWebsite)
+
+      alert('Page imported successfully!')
+      setShowPageLibraryModal(false)
+    } catch (error) {
+      console.error('Error importing page:', error)
+      alert('Failed to import page. Please try again.')
+    }
+  }
+
+  // Render Section Hook
+  const { renderSection } = useRenderSection({
+    selectedSection,
+    editingText,
+    handleOpenTextEditor,
+    handleGridColumnUpdate,
+    currentPage,
+    template: website as any,
+    mobileMenuOpen,
+    setMobileMenuOpen,
+    hoveredSection,
+    setHoveredSection,
+    setSelectedSection,
+    showCSSPanel,
+    setShowCSSPanel,
+    cssInspectorMode,
+    handleMoveSidebar,
+    handleMoveSection,
+    handleToggleSectionLock,
+    handleDeleteSection,
+    handleExportSection
+  })
+
+  // Publish/Unpublish handlers
   const handlePublish = async () => {
     try {
       const response = await api.publishWebsite()
       if (response.success) {
         setWebsite(response.data)
+        websiteRef.current = response.data
+        setIsPublished(true)
         alert('Website published successfully!')
       }
     } catch (error) {
@@ -139,6 +960,8 @@ export default function WebsiteBuilder() {
       const response = await api.unpublishWebsite()
       if (response.success) {
         setWebsite(response.data)
+        websiteRef.current = response.data
+        setIsPublished(false)
         alert('Website unpublished')
       }
     } catch (error) {
@@ -147,119 +970,9 @@ export default function WebsiteBuilder() {
     }
   }
 
-  const handleLeftMouseDown = () => setIsResizingLeft(true)
-  const handleRightMouseDown = () => setIsResizingRight(true)
-
-  const handleMouseUp = () => {
-    setIsResizingLeft(false)
-    setIsResizingRight(false)
-  }
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (isResizingLeft) {
-      const newWidth = e.clientX
-      if (newWidth >= 200 && newWidth <= 500) {
-        setLeftWidth(newWidth)
-      }
-    }
-    if (isResizingRight) {
-      const newWidth = window.innerWidth - e.clientX
-      if (newWidth >= 250 && newWidth <= 600) {
-        setRightWidth(newWidth)
-      }
-    }
-  }
-
-  const getCanvasWidth = () => {
-    if (viewport === 'mobile') return '375px'
-    if (viewport === 'tablet') return '768px'
-    return '100%'
-  }
-
-  const renderSection = (section: UserSection) => {
-    const content = section.content || {}
-
-    switch (section.type) {
-      case 'hero':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`relative min-h-[400px] bg-gradient-to-br from-[#98b290] to-[#4b4b4b] flex items-center justify-center text-white p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-          >
-            <div className="text-center max-w-3xl">
-              <h1 className="text-5xl font-bold mb-4">{content.title || 'Welcome'}</h1>
-              <p className="text-xl mb-6">{content.subtitle || 'Your subtitle here'}</p>
-              {content.cta_text && (
-                <button className="px-8 py-3 bg-white text-[#4b4b4b] rounded-lg font-semibold hover:bg-gray-100 transition">
-                  {content.cta_text}
-                </button>
-              )}
-            </div>
-          </div>
-        )
-
-      case 'about':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-          >
-            <h2 className="text-3xl font-bold mb-4">{content.heading || 'About Us'}</h2>
-            <p className="text-gray-600">{content.text || 'Your about text here...'}</p>
-          </div>
-        )
-
-      case 'features':
-      case 'services':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 bg-gray-50 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-          >
-            <h2 className="text-3xl font-bold mb-8 text-center">{content.heading || 'Features'}</h2>
-            <div className="grid md:grid-cols-3 gap-6">
-              {(content.features || content.services || []).map((item: any, idx: number) => (
-                <div key={idx} className="text-center p-6 bg-white rounded-lg">
-                  <h3 className="font-semibold mb-2">{item.title || item.name}</h3>
-                  <p className="text-sm text-gray-600">{item.text || item.price}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )
-
-      case 'contact':
-      case 'menu':
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 cursor-pointer hover:ring-2 hover:ring-[#98b290] transition ${selectedSection?.id === section.id ? 'ring-2 ring-[#98b290]' : ''}`}
-          >
-            <h2 className="text-3xl font-bold mb-6">{content.heading || section.type.charAt(0).toUpperCase() + section.type.slice(1)}</h2>
-            <p className="text-gray-500">Section content will render here...</p>
-          </div>
-        )
-
-      default:
-        return (
-          <div
-            key={section.id}
-            onClick={() => setSelectedSection(section)}
-            className={`p-12 border-2 border-dashed border-gray-300 cursor-pointer hover:border-[#98b290] transition ${selectedSection?.id === section.id ? 'border-[#98b290]' : ''}`}
-          >
-            <p className="text-gray-500 text-center">Section: {section.type}</p>
-          </div>
-        )
-    }
-  }
-
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
+      <div className="h-screen flex items-center justify-center bg-white text-gray-900">
         <div className="text-center">
           <div className="text-2xl mb-2">Loading website...</div>
           <div className="text-gray-400">Please wait</div>
@@ -405,306 +1118,441 @@ export default function WebsiteBuilder() {
     )
   }
 
-  if (!website || !currentPage) {
+  if (!website) {
     return (
       <div className="h-screen flex items-center justify-center bg-gray-900 text-white">
         <div className="text-center">
-          <div className="text-2xl mb-2">No website found</div>
-          <button
-            onClick={() => navigate('/my-dashboard')}
-            className="px-6 py-2 bg-[#98b290] hover:bg-[#88a280] rounded-md transition"
-          >
-            Go to Dashboard
-          </button>
+          <div className="text-2xl mb-2">Error loading website</div>
+          <p className="text-gray-400">Please try again</p>
         </div>
       </div>
     )
   }
 
   return (
-    <div
-      className="h-screen flex flex-col bg-gray-900 text-white select-none"
-      onMouseMove={handleMouseMove}
-      onMouseUp={handleMouseUp}
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
+      <div
+        className="h-screen flex flex-col bg-gray-900 text-white select-none"
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+      >
       {/* Compact VSCode-style Header */}
-      <header className="bg-gray-800 border-b border-gray-700 flex items-center h-9">
-        {/* Left Section - Logo & Menus */}
-        <div className="flex items-center h-full">
-          <div className="px-3 flex items-center space-x-2 border-r border-gray-700 h-full">
-            <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" className="w-[60px] h-[60px]" />
-          </div>
-          <div className="flex items-center h-full text-xs">
-            <button className="px-3 h-full hover:bg-gray-700 transition">File</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">Edit</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">View</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">Insert</button>
-            <button className="px-3 h-full hover:bg-gray-700 transition">Help</button>
-          </div>
-        </div>
-
-        {/* Center Section - Business Name & Page */}
-        <div className="flex-1 flex justify-center items-center space-x-2">
-          <span className="text-xs text-gray-400">{user?.business_name}</span>
-          <span className="text-gray-600">•</span>
-          <select
-            value={currentPage?.id || ''}
-            onChange={(e) => {
-              const page = website.pages.find(p => p.id === parseInt(e.target.value))
-              if (page) setCurrentPage(page)
-            }}
-            className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
-          >
-            {website.pages.map((page) => (
-              <option key={page.id} value={page.id}>{page.name}</option>
-            ))}
-          </select>
-        </div>
-
-        {/* Right Section - Actions & User */}
-        <div className="flex items-center h-full text-xs space-x-1 pr-2">
-          {website.published_at && (
-            <span className="px-2 py-1 bg-green-900/30 text-green-400 rounded text-[10px]">
-              Published
-            </span>
-          )}
-          {website.published_at ? (
-            <button
-              onClick={handleUnpublish}
-              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded transition"
-            >
-              Unpublish
-            </button>
-          ) : can('publish_website') ? (
-            <button
-              onClick={handlePublish}
-              className="px-3 py-1 bg-[#98b290] hover:bg-[#88a280] rounded transition"
-            >
-              Publish
-            </button>
-          ) : (
-            <div className="relative group">
-              <button
-                className="px-3 py-1 bg-gray-700 text-gray-500 rounded cursor-not-allowed"
-                disabled
-              >
-                Publish
-              </button>
-              <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg">
-                Upgrade to {tier === 'trial' ? 'Brochure' : 'higher'} plan to publish your website
-              </div>
-            </div>
-          )}
-          <div className="ml-2 px-2 text-gray-400 border-l border-gray-700 flex items-center space-x-1">
-            <span>{user?.name}</span>
-            {user?.package && (
-              <span className="px-1.5 py-0.5 rounded text-[10px] bg-indigo-900/50 text-indigo-400 capitalize">
-                {user.package}
-              </span>
-            )}
-          </div>
-        </div>
-      </header>
+      <Header
+        showFileMenu={showFileMenu}
+        setShowFileMenu={setShowFileMenu}
+        showEditMenu={showEditMenu}
+        setShowEditMenu={setShowEditMenu}
+        showViewMenu={showViewMenu}
+        setShowViewMenu={setShowViewMenu}
+        showInsertMenu={showInsertMenu}
+        setShowInsertMenu={setShowInsertMenu}
+        editSubTab={editSubTab}
+        setEditSubTab={setEditSubTab}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        hasUnsavedChanges={hasUnsavedChanges}
+        template={website as any}
+        setTemplate={setWebsite as any}
+        currentPage={currentPage}
+        user={user}
+        fileMenuRef={fileMenuRef}
+        editMenuRef={editMenuRef}
+        viewMenuRef={viewMenuRef}
+        insertMenuRef={insertMenuRef}
+        templateRef={websiteRef as any}
+        imageGalleryRef={imageGalleryRef}
+        handleNew={handleNewWebsite}
+        handleSave={handleSave}
+        handleSaveAs={handleSaveAs}
+        handleLoad={handleLoad}
+        handleExportAsHTMLTemplate={handleExportAsHTMLTemplate}
+        handleExit={handleExit}
+        handleUndo={handleUndo}
+        handleRedo={handleRedo}
+        handleOpenEditPageModal={handleOpenEditPageModal}
+        handleCopyPage={handleCopyPage}
+        handleDeletePage={handleDeletePage}
+        addToHistory={addToHistory as any}
+        handleLivePreview={handleLivePreview}
+        setShowSourceCodeModal={setShowSourceCodeModal}
+        setShowStylesheetModal={setShowStylesheetModal}
+        setShowSitemapModal={setShowSitemapModal}
+        setShowAddPageModal={setShowAddPageModal}
+        setShowImageGallery={setShowImageGallery}
+        uploadingImage={uploadingImage}
+        handleImageUpload={handleImageUpload}
+        setShowSectionLibraryModal={setShowSectionLibraryModal}
+        setShowPageLibraryModal={setShowPageLibraryModal}
+      />
 
       {/* Toolbar */}
-      <div className="bg-gray-800 border-b border-gray-700 px-2 py-1 flex items-center justify-between h-10">
-        {/* Left Controls */}
-        <div className="flex items-center space-x-1">
-          <button
-            onClick={() => setShowLeftSidebar(!showLeftSidebar)}
-            className={`p-1.5 rounded transition ${showLeftSidebar ? 'bg-gray-700' : 'bg-gray-800 hover:bg-gray-700'}`}
-            title="Toggle Components Panel"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setShowRightSidebar(!showRightSidebar)}
-            className={`p-1.5 rounded transition ${showRightSidebar ? 'bg-gray-700' : 'bg-gray-800 hover:bg-gray-700'}`}
-            title="Toggle Properties Panel"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
-            </svg>
-          </button>
-        </div>
+      <Toolbar
+        showLeftSidebar={showLeftSidebar}
+        setShowLeftSidebar={setShowLeftSidebar}
+        showRightSidebar={showRightSidebar}
+        setShowRightSidebar={setShowRightSidebar}
+        viewport={viewport}
+        setViewport={setViewport}
+      />
 
-        {/* Center - Viewport Switcher */}
-        <div className="flex items-center space-x-1 bg-gray-700 rounded p-0.5">
-          <button
-            onClick={() => setViewport('desktop')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'desktop' ? 'bg-gray-600' : 'hover:bg-gray-600'}`}
-            title="Desktop View"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+      {/* Published Website Indicator Banner */}
+      {isPublished && website.published_at && (
+        <div className="bg-green-50 border-b border-green-200 px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-          </button>
+            <span className="text-sm text-green-800 font-medium">
+              Website is published
+            </span>
+            <span className="text-xs text-green-600">
+              (Last published: {new Date(website.published_at).toLocaleDateString()})
+            </span>
+          </div>
           <button
-            onClick={() => setViewport('tablet')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'tablet' ? 'bg-gray-600' : 'hover:bg-gray-600'}`}
-            title="Tablet View"
+            onClick={handleUnpublish}
+            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs transition"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
-          </button>
-          <button
-            onClick={() => setViewport('mobile')}
-            className={`px-3 py-1 rounded text-xs transition ${viewport === 'mobile' ? 'bg-gray-600' : 'hover:bg-gray-600'}`}
-            title="Mobile View"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
-            </svg>
+            Unpublish
           </button>
         </div>
-
-        {/* Right Controls */}
-        <div className="flex items-center space-x-1">
-          <span className="text-xs text-gray-400">Zoom: 100%</span>
-        </div>
-      </div>
+      )}
 
       {/* Builder Main Area */}
       <div className="flex-1 flex overflow-hidden relative">
-        {/* Left Sidebar - Components & Pages */}
+        {/* Left Sidebar - Sections & Pages */}
         {showLeftSidebar && (
           <>
-            <aside
-              ref={leftSidebarRef}
-              style={{ width: leftWidth }}
-              className="bg-gray-800 border-r border-gray-700 overflow-y-auto flex-shrink-0"
-            >
-              <div className="p-3">
-                <h2 className="text-xs font-semibold text-gray-400 uppercase mb-3">Sections</h2>
-                <div className="space-y-1">
-                  {currentPage?.sections.map((section) => (
-                    <button
-                      key={section.id}
-                      onClick={() => setSelectedSection(section)}
-                      className={`w-full text-left px-3 py-2 rounded text-xs transition ${
-                        selectedSection?.id === section.id
-                          ? 'bg-[#98b290] text-white'
-                          : 'bg-gray-700 hover:bg-gray-600'
-                      }`}
-                    >
-                      {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="mt-6 pt-6 border-t border-gray-700">
-                  <h2 className="text-xs font-semibold text-gray-400 uppercase mb-3">Pages</h2>
-                  <div className="space-y-1">
-                    {website.pages.map((page) => (
-                      <div
-                        key={page.id}
-                        onClick={() => setCurrentPage(page)}
-                        className={`px-3 py-2 rounded text-xs flex items-center justify-between cursor-pointer transition ${
-                          currentPage?.id === page.id
-                            ? 'bg-gray-700 text-white'
-                            : 'bg-gray-700/50 text-gray-400 hover:bg-gray-700'
-                        }`}
-                      >
-                        <span>{page.name}</span>
-                        {page.is_homepage && <span className="text-[#98b290] text-xs">●</span>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </aside>
+            <LeftSidebar
+              sidebarRef={leftSidebarRef}
+              width={leftWidth}
+              expandedCategories={expandedCategories}
+              onToggleCategory={toggleCategory}
+              coreSections={coreSections}
+              headerNavigationSections={headerNavigationSections}
+              footerSections={footerSections}
+              renderSectionThumbnail={(section) => <SectionThumbnail section={section} />}
+              DraggableSectionItem={DraggableSectionItem}
+              onMouseDown={handleLeftMouseDown}
+            />
 
             {/* Left Resize Handle */}
             <div
               onMouseDown={handleLeftMouseDown}
-              className="w-1 bg-gray-700 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
+              className="w-1 bg-gray-200 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
             />
           </>
         )}
 
         {/* Center - Canvas */}
-        <main className="flex-1 overflow-auto bg-gray-900 flex items-start justify-center p-8">
+        <main className="flex-1 overflow-auto bg-gray-100 flex items-start justify-center p-8">
           <div
             style={{
-              width: getCanvasWidth(),
+              width: getCanvasWidth(viewport),
               maxWidth: '100%',
               transition: 'width 0.3s ease'
             }}
-            className="bg-white min-h-full shadow-2xl mx-auto"
+            className="bg-white min-h-full shadow-xl mx-auto ring-1 ring-gray-200 flex flex-col"
           >
+            {/* Page Selector */}
+            <PageSelectorBar
+              currentPage={currentPage}
+              template={website as any}
+              setCurrentPage={setCurrentPage}
+              setShowCSSPanel={setShowCSSPanel}
+              setShowSectionCSS={setShowSectionCSS}
+              setSelectedSection={setSelectedSection}
+              setShowRightSidebar={setShowRightSidebar}
+              cssInspectorMode={cssInspectorMode}
+              setCssInspectorMode={setCssInspectorMode}
+              handleDeletePage={handleDeletePage}
+              setShowAddPageModal={setShowAddPageModal}
+            />
+
             {/* Canvas Preview Area */}
-            <div className="text-gray-900">
-              {currentPage?.sections.length > 0 ? (
-                currentPage.sections
-                  .sort((a, b) => a.order - b.order)
-                  .map((section) => renderSection(section))
-              ) : (
-                <div className="text-center py-20 p-8">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Empty Page</h2>
-                  <p className="text-gray-600">This page has no sections yet</p>
-                </div>
-              )}
-            </div>
+            <CanvasDropZone
+              currentPage={currentPage}
+              activeId={activeId}
+              activeDragData={activeDragData}
+              overId={overId}
+              renderSection={renderSection}
+              viewport={viewport}
+              template={website as any}
+              setSelectedSection={setSelectedSection}
+            />
           </div>
         </main>
 
         {/* Right Sidebar - Properties */}
         {showRightSidebar && (
           <>
-            {/* Right Resize Handle */}
-            <div
+            <RightSidebar
+              sidebarRef={rightSidebarRef}
+              width={rightWidth}
               onMouseDown={handleRightMouseDown}
-              className="w-1 bg-gray-700 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
+              showCSSPanel={showCSSPanel}
+              cssTab={cssTab}
+              setCssTab={setCssTab}
+              template={website as any}
+              setTemplate={setWebsite as any}
+              templateRef={websiteRef as any}
+              addToHistory={addToHistory as any}
+              currentPage={currentPage}
+              setCurrentPage={setCurrentPage}
+              setShowCSSPanel={setShowCSSPanel}
+              selectedSection={selectedSection}
+              setSelectedSection={setSelectedSection}
+              handleToggleSectionLock={handleToggleSectionLock}
+              generateIdentifier={generateIdentifier}
+              showSectionCSS={showSectionCSS}
+              setShowSectionCSS={setShowSectionCSS}
+              setShowContentStyle={setShowContentStyle}
+              handleUpdateSectionContent={handleUpdateSectionContent}
+              showRowStyle={showRowStyle}
+              setShowRowStyle={setShowRowStyle}
+              expandedColumnIndex={expandedColumnIndex}
+              setExpandedColumnIndex={setExpandedColumnIndex}
+              setShowNavButtonStyleModal={setShowNavButtonStyleModal}
             />
-
-            <aside
-              ref={rightSidebarRef}
-              style={{ width: rightWidth }}
-              className="bg-gray-800 border-l border-gray-700 overflow-y-auto flex-shrink-0"
-            >
-              <div className="p-3">
-                <h2 className="text-xs font-semibold text-gray-400 uppercase mb-3">Properties</h2>
-                {selectedSection ? (
-                  <div className="space-y-4">
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Section Type</label>
-                      <div className="px-3 py-2 bg-gray-700 rounded text-xs capitalize">
-                        {selectedSection.type}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Order</label>
-                      <div className="px-3 py-2 bg-gray-700 rounded text-xs">
-                        {selectedSection.order}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs text-gray-400 block mb-1">Content</label>
-                      <div className="px-3 py-2 bg-gray-700 rounded text-xs max-h-64 overflow-auto">
-                        <pre className="text-[10px] text-gray-300 whitespace-pre-wrap">
-                          {JSON.stringify(selectedSection.content, null, 2)}
-                        </pre>
-                      </div>
-                    </div>
-                    <div className="pt-4 border-t border-gray-700">
-                      <button className="w-full px-3 py-2 bg-[#98b290] hover:bg-[#88a280] rounded text-xs transition">
-                        Edit Content
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-xs text-gray-500 text-center py-8">
-                    Click a section in the canvas to edit its properties
-                  </div>
-                )}
-              </div>
-            </aside>
           </>
         )}
       </div>
+
+      {/* Add Page Modal */}
+      <AddPageModal
+        isOpen={showAddPageModal}
+        onClose={() => setShowAddPageModal(false)}
+        newPageName={newPageName}
+        setNewPageName={setNewPageName}
+        onAdd={handleAddPage}
+      />
+
+      {/* Edit Page Modal */}
+      <EditPageModal
+        isOpen={showEditPageModal && !!currentPage}
+        onClose={() => setShowEditPageModal(false)}
+        editPageName={editPageName}
+        setEditPageName={setEditPageName}
+        editPageSlug={editPageSlug}
+        setEditPageSlug={setEditPageSlug}
+        editPageMetaDescription={editPageMetaDescription}
+        setEditPageMetaDescription={setEditPageMetaDescription}
+        onSave={handleSaveEditPage}
+      />
+
+      {/* Button Style Customization Modal */}
+      <ButtonStyleModal
+        isOpen={showNavButtonStyleModal}
+        onClose={() => setShowNavButtonStyleModal(false)}
+        selectedSection={selectedSection}
+        onUpdateContent={handleUpdateSectionContent}
+      />
+
+      {/* Section Library Modals */}
+      <ExportSectionModal
+        isOpen={showExportSectionModal}
+        onClose={() => {
+          setShowExportSectionModal(false)
+          setExportingSection(null)
+        }}
+        section={exportingSection}
+        onExport={handleSectionExport}
+      />
+
+      <SectionLibraryModal
+        isOpen={showSectionLibraryModal}
+        onClose={() => setShowSectionLibraryModal(false)}
+        onImport={handleImportSection}
+      />
+
+      {/* Page Library Modals */}
+      <ExportPageModal
+        isOpen={showExportPageModal}
+        onClose={() => {
+          setShowExportPageModal(false)
+          setExportingPage(null)
+        }}
+        page={exportingPage}
+        siteCss={website?.custom_css}
+        onExport={handlePageExport}
+      />
+
+      <PageLibraryModal
+        isOpen={showPageLibraryModal}
+        onClose={() => setShowPageLibraryModal(false)}
+        onImport={handleImportPage}
+      />
     </div>
+
+    {/* Drag Overlay */}
+    <DragOverlay>
+      {activeId && activeDragData && (
+        <div className="bg-white shadow-2xl rounded-lg p-4 border-2 border-[#98b290] opacity-90">
+          <div className="text-sm font-semibold text-gray-700 capitalize">
+            {activeDragData.source === 'library'
+              ? `Adding: ${activeDragData.section.label || activeDragData.section.type}`
+              : `Moving: ${activeDragData.section.type}`
+            }
+          </div>
+        </div>
+      )}
+    </DragOverlay>
+
+    {/* Floating Rich Text Editor */}
+    <FloatingTextEditor
+      editingText={editingText}
+      editorHeight={editorHeight}
+      handleEditorDragStart={handleEditorDragStart}
+      handleCloseTextEditor={handleCloseTextEditor}
+      toggleEditorFullscreen={toggleEditorFullscreen}
+      isEditorFullscreen={isEditorFullscreen}
+      showCodeView={showCodeView}
+      setEditingText={setEditingText}
+      handleTextEdit={handleTextEdit}
+      editorRef={editorRef}
+      handleTextEditorChange={handleTextEditorChange}
+      updateFormattingState={updateFormattingState}
+      handleEditorClick={handleEditorClick}
+      handleEditorPaste={handleEditorPaste}
+      applyFormatting={applyFormatting}
+      currentFormatting={currentFormatting}
+      applyFontSize={applyFontSize}
+      handleOpenColorPicker={handleOpenColorPicker}
+      handleOpenLinkModal={handleOpenLinkModal}
+      handleOpenInsertImageModal={handleOpenInsertImageModal}
+      setShowCodeView={setShowCodeView}
+      showColorPicker={showColorPicker}
+      setShowColorPicker={setShowColorPicker}
+      tempColor={tempColor}
+      setTempColor={setTempColor}
+      handleApplyColorFromPicker={handleApplyColorFromPicker}
+      showLinkModal={showLinkModal}
+      setShowLinkModal={setShowLinkModal}
+      linkText={linkText}
+      setLinkText={setLinkText}
+      linkUrl={linkUrl}
+      setLinkUrl={linkUrl}
+      handleApplyLink={handleApplyLink}
+      handleRemoveLink={handleRemoveLink}
+      showInsertImageModal={showInsertImageModal}
+      setShowInsertImageModal={setShowInsertImageModal}
+      imageInsertMode={imageInsertMode}
+      setImageInsertMode={setImageInsertMode}
+      imageUrl={imageUrl}
+      setImageUrl={setImageUrl}
+      selectedGalleryImage={selectedGalleryImage}
+      setSelectedGalleryImage={setSelectedGalleryImage}
+      template={website as any}
+      handleInsertImage={handleInsertImage}
+      selectedImage={selectedImage}
+      setSelectedImage={setSelectedImage}
+      imageAltText={imageAltText}
+      setImageAltText={setImageAltText}
+      applyImageAltText={applyImageAltText}
+      imageLink={imageLink}
+      setImageLink={setImageLink}
+      imageLinkTarget={imageLinkTarget}
+      setImageLinkTarget={setImageLinkTarget}
+      applyImageLink={applyImageLink}
+      imageAspectRatio={imageAspectRatio}
+      constrainProportions={constrainProportions}
+      setConstrainProportions={setConstrainProportions}
+      imageWidth={imageWidth}
+      handleWidthChange={handleWidthChange}
+      imageHeight={imageHeight}
+      handleHeightChange={handleHeightChange}
+      setImageWidthTo100={setImageWidthTo100}
+      applyImageDimensions={applyImageDimensions}
+    />
+
+      {/* Image Gallery Modal */}
+      {(showImageGallery || imageGalleryRef.current) && (
+        <ImageGallery
+          isOpen={true}
+          onClose={handleImageGalleryClose}
+          templateId={website?.id || 0}
+          images={website?.images || []}
+          onUpload={handleImageUpload}
+          onDelete={handleImageDelete}
+          onRename={handleImageRename}
+        />
+      )}
+
+      {/* Load Template Modal */}
+      <LoadModal
+        isOpen={showLoadModal}
+        onClose={() => setShowLoadModal(false)}
+        loadingTemplates={loadingTemplates}
+        availableTemplates={availableTemplates}
+        onLoadTemplate={handleLoadWebsite}
+      />
+
+      {/* Source Code Modal */}
+      <SourceCodeModal
+        isOpen={showSourceCodeModal}
+        onClose={() => {
+          setShowSourceCodeModal(false)
+          setIsEditingHTML(false)
+        }}
+        currentPage={currentPage}
+        isEditingHTML={isEditingHTML}
+        setIsEditingHTML={setIsEditingHTML}
+        editableHTML={editableHTML}
+        setEditableHTML={setEditableHTML}
+        onApplyChanges={handleApplyHTMLChanges}
+        generatePageHTML={genPageHTML}
+      />
+
+      {/* Stylesheet Modal */}
+      <StylesheetModal
+        isOpen={showStylesheetModal}
+        onClose={() => {
+          setShowStylesheetModal(false)
+          setIsEditingCSS(false)
+        }}
+        currentPage={currentPage}
+        template={website as any}
+        isEditingCSS={isEditingCSS}
+        setIsEditingCSS={setIsEditingCSS}
+        editableCSS={editableCSS}
+        setEditableCSS={setEditableCSS}
+        onApplyChanges={handleApplyCSSChanges}
+        generateStylesheet={genStylesheet}
+      />
+
+      {/* Sitemap Modal */}
+      <SitemapModal
+        isOpen={showSitemapModal}
+        onClose={() => setShowSitemapModal(false)}
+        template={website as any}
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        onOpenAddPageModal={() => {
+          setShowAddPageModal(true)
+          setShowSitemapModal(false)
+        }}
+        onOpenEditPageModal={(page: UserPage) => {
+          setEditPageName(page.name)
+          setEditPageSlug(page.slug)
+          setEditPageMetaDescription(page.meta_description || '')
+          setShowEditPageModal(true)
+          setShowSitemapModal(false)
+        }}
+        onDeletePage={(pageId: number) => {
+          handleDeletePage(pageId)
+          if (pageId === currentPage?.id && website?.pages.length > 0) {
+            setCurrentPage(website.pages[0])
+          }
+        }}
+        onExportPage={handleExportPage}
+      />
+  </DndContext>
   )
 }

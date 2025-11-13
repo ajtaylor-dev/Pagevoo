@@ -107,6 +107,62 @@ class UserWebsiteController extends BaseController
     }
 
     /**
+     * Create a blank user website
+     */
+    public function createBlank()
+    {
+        // Check if user already has a website
+        $existingWebsite = UserWebsite::where('user_id', auth()->id())->first();
+        if ($existingWebsite) {
+            return $this->sendError('User already has a website', 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            // Create user website with no template
+            $userWebsite = UserWebsite::create([
+                'user_id' => auth()->id(),
+                'template_id' => null,
+            ]);
+
+            // Create default homepage
+            $userPage = UserPage::create([
+                'user_website_id' => $userWebsite->id,
+                'template_page_id' => null,
+                'name' => 'Home',
+                'slug' => 'home',
+                'is_homepage' => true,
+                'order' => 0,
+            ]);
+
+            // Create default hero section with basic content
+            UserSection::create([
+                'user_page_id' => $userPage->id,
+                'template_section_id' => null,
+                'type' => 'hero',
+                'content' => json_encode([
+                    'title' => 'Welcome to Your Website',
+                    'subtitle' => 'Start building your site by adding and customizing sections',
+                    'buttonText' => 'Get Started',
+                    'buttonUrl' => '#',
+                    'backgroundImage' => '',
+                ]),
+                'order' => 0,
+            ]);
+
+            DB::commit();
+
+            $userWebsite->load(['template', 'pages.sections']);
+
+            return $this->sendSuccess($userWebsite, 'Blank website created successfully');
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return $this->sendError('Failed to create blank website: ' . $e->getMessage(), 500);
+        }
+    }
+
+    /**
      * Save website (generates/updates preview files)
      */
     public function save(Request $request)
@@ -338,6 +394,30 @@ class UserWebsiteController extends BaseController
             'website' => $website,
             'full_domain' => $request->subdomain . '.pagevoo.com',
         ], 'Subdomain configured successfully');
+    }
+
+    /**
+     * Delete user's website
+     */
+    public function destroy()
+    {
+        $website = UserWebsite::where('user_id', auth()->id())->first();
+
+        if (!$website) {
+            return $this->sendError('Website not found', 404);
+        }
+
+        try {
+            // Delete pages (cascade will delete sections)
+            $website->pages()->delete();
+
+            // Delete website
+            $website->delete();
+
+            return $this->sendSuccess(null, 'Website deleted successfully');
+        } catch (\Exception $e) {
+            return $this->sendError('Failed to delete website: ' . $e->getMessage(), 500);
+        }
     }
 
     /**
