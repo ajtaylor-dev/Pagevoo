@@ -269,7 +269,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                         addToHistory(updatedTemplate)
                       }
                     }}
-                    className="flex-1 px-2 py-1.5 border border-gray-300 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290]"
+                    className="flex-1 px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
                     placeholder="Enter section name"
                   />
                   <button
@@ -310,7 +310,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                     Apply
                   </button>
                 </div>
-                <div className="px-2 py-1 bg-blue-50 rounded text-[10px] font-mono text-blue-700">
+                <div className="px-2 py-1 bg-gray-700 rounded text-[10px] font-mono text-blue-400">
                   <span className="font-semibold">ID:</span> {selectedSection.section_id || 'Not set'}
                 </div>
                 <p className="text-[9px] text-gray-400">Use this ID in CSS: #{selectedSection.section_id}</p>

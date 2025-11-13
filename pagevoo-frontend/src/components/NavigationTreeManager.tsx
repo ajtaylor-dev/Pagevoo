@@ -221,7 +221,7 @@ function TreeNode({
           {/* Delete button */}
           <button
             onClick={() => onDelete(link.id!)}
-            className="p-1 hover:bg-red-100 rounded text-red-600"
+            className="p-1 hover:bg-red-900 rounded text-red-400"
             title="Delete"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -513,7 +513,7 @@ export default function NavigationTreeManager({
           <button
             onClick={handleCut}
             disabled={selectedIds.size === 0}
-            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-800 text-gray-200"
             title="Cut (Ctrl+X)"
           >
             Cut
@@ -521,7 +521,7 @@ export default function NavigationTreeManager({
           <button
             onClick={handleCopy}
             disabled={selectedIds.size === 0}
-            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-800 text-gray-200"
             title="Copy (Ctrl+C)"
           >
             Copy
@@ -529,7 +529,7 @@ export default function NavigationTreeManager({
           <button
             onClick={handlePaste}
             disabled={!clipboard}
-            className="px-2 py-1 text-xs border rounded hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-2 py-1 text-xs border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-800 text-gray-200"
             title="Paste (Ctrl+V)"
           >
             Paste

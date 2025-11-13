@@ -1356,7 +1356,7 @@ export function StyleEditor({
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   {(() => {
                     if (properties.fontSize !== undefined) return `${properties.fontSize}px`
                     const inherited = getInheritedValue('font-size')
@@ -1401,7 +1401,7 @@ export function StyleEditor({
                   </span>
                 )}
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {(() => {
                   if (properties.padding !== undefined) return `${properties.padding}px`
                   const inherited = getInheritedValue('padding')
@@ -1445,7 +1445,7 @@ export function StyleEditor({
                   </span>
                 )}
               </div>
-              <span className="text-xs text-gray-500">
+              <span className="text-xs text-gray-400">
                 {(() => {
                   if (properties.margin !== undefined) return `${properties.margin}px`
                   const inherited = getInheritedValue('margin')
@@ -1490,7 +1490,7 @@ export function StyleEditor({
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   {(() => {
                     if (properties.borderRadius !== undefined) return `${properties.borderRadius}px`
                     const inherited = getInheritedValue('border-radius')
@@ -1538,7 +1538,7 @@ export function StyleEditor({
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-gray-400">
                     {(() => {
                       if (properties.borderWidth !== undefined) return `${properties.borderWidth}px`
                       const inherited = getInheritedValue('border-width')
@@ -2352,7 +2352,7 @@ export function StyleEditor({
               {properties.backgroundImage && (
                   <>
                     <div className="p-2 border border-gray-200 rounded">
-                      <p className="text-[9px] text-gray-600 mb-1">Preview:</p>
+                      <p className="text-[9px] text-gray-300 mb-1">Preview:</p>
                       <div
                         className="w-full h-20 rounded bg-cover bg-center"
                         style={{ backgroundImage: `url('${properties.backgroundImage}')` }}
@@ -2549,7 +2549,7 @@ export function StyleEditor({
                       <h3 className="text-sm font-semibold">Choose Background Image</h3>
                       <button
                         onClick={() => setShowGalleryModal(false)}
-                        className="text-gray-400 hover:text-gray-600 transition"
+                        className="text-gray-400 hover:text-gray-300 transition"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2559,7 +2559,7 @@ export function StyleEditor({
 
                     {galleryImages && galleryImages.length > 0 ? (
                       <>
-                        <p className="text-xs text-gray-600 mb-2">Select an image from your gallery:</p>
+                        <p className="text-xs text-gray-300 mb-2">Select an image from your gallery:</p>
                         <div className="grid grid-cols-3 gap-2 mb-4">
                           {galleryImages.map((image) => (
                             <div
@@ -2576,13 +2576,13 @@ export function StyleEditor({
                                 alt={image.filename}
                                 className="w-full h-24 object-cover rounded"
                               />
-                              <p className="text-xs text-gray-600 mt-1 truncate">{image.filename}</p>
+                              <p className="text-xs text-gray-300 mt-1 truncate">{image.filename}</p>
                             </div>
                           ))}
                         </div>
                       </>
                     ) : (
-                      <div className="text-center py-8 text-gray-500 text-sm mb-4">
+                      <div className="text-center py-8 text-gray-400 text-sm mb-4">
                         No images in gallery. Upload images first.
                       </div>
                     )}
@@ -2632,7 +2632,7 @@ export function StyleEditor({
                   <h3 className="text-lg font-semibold">Header Tag Settings (H1-H4)</h3>
                   <button
                     onClick={() => setShowHeaderSettingsModal(false)}
-                    className="text-gray-400 hover:text-gray-600 transition"
+                    className="text-gray-400 hover:text-gray-300 transition"
                   >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2764,11 +2764,11 @@ export function StyleEditor({
                             </span>
                           )}
                           {properties.h1Color !== undefined && (
-                            <span className="text-xs text-gray-500">({properties.h1Color})</span>
+                            <span className="text-xs text-gray-400">({properties.h1Color})</span>
                           )}
                           {properties.h1Color === undefined && (() => {
                             const inherited = getInheritedHeaderValue('h1', 'color')
-                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            if (inherited.value) return <span className="text-xs text-gray-400">({inherited.value} inherited)</span>
                             return null
                           })()}
                         </div>
@@ -2932,11 +2932,11 @@ export function StyleEditor({
                             </span>
                           )}
                           {properties.h2Color !== undefined && (
-                            <span className="text-xs text-gray-500">({properties.h2Color})</span>
+                            <span className="text-xs text-gray-400">({properties.h2Color})</span>
                           )}
                           {properties.h2Color === undefined && (() => {
                             const inherited = getInheritedHeaderValue('h2', 'color')
-                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            if (inherited.value) return <span className="text-xs text-gray-400">({inherited.value} inherited)</span>
                             return null
                           })()}
                         </div>
@@ -3100,11 +3100,11 @@ export function StyleEditor({
                             </span>
                           )}
                           {properties.h3Color !== undefined && (
-                            <span className="text-xs text-gray-500">({properties.h3Color})</span>
+                            <span className="text-xs text-gray-400">({properties.h3Color})</span>
                           )}
                           {properties.h3Color === undefined && (() => {
                             const inherited = getInheritedHeaderValue('h3', 'color')
-                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            if (inherited.value) return <span className="text-xs text-gray-400">({inherited.value} inherited)</span>
                             return null
                           })()}
                         </div>
@@ -3268,11 +3268,11 @@ export function StyleEditor({
                             </span>
                           )}
                           {properties.h4Color !== undefined && (
-                            <span className="text-xs text-gray-500">({properties.h4Color})</span>
+                            <span className="text-xs text-gray-400">({properties.h4Color})</span>
                           )}
                           {properties.h4Color === undefined && (() => {
                             const inherited = getInheritedHeaderValue('h4', 'color')
-                            if (inherited.value) return <span className="text-xs text-gray-500">({inherited.value} inherited)</span>
+                            if (inherited.value) return <span className="text-xs text-gray-400">({inherited.value} inherited)</span>
                             return null
                           })()}
                         </div>
@@ -3361,7 +3361,7 @@ export function StyleEditor({
             {/* Link Default Color */}
             <div className="mb-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Label className="text-[10px] font-medium text-gray-600">Link Color</Label>
+                <Label className="text-[10px] font-medium text-gray-300">Link Color</Label>
                 {(() => {
                   const inherited = getInheritedLinkValue('a', 'color')
                   if (properties.linkColor === undefined && inherited.source) {
@@ -3467,7 +3467,7 @@ export function StyleEditor({
             {/* Link Text Decoration */}
             <div className="mb-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Label className="text-[10px] font-medium text-gray-600">Link Decoration</Label>
+                <Label className="text-[10px] font-medium text-gray-300">Link Decoration</Label>
                 {(() => {
                   const inherited = getInheritedLinkValue('a', 'text-decoration')
                   if (properties.linkTextDecoration === undefined && inherited.source) {
@@ -3509,7 +3509,7 @@ export function StyleEditor({
             {/* Link Hover Color */}
             <div className="mb-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Label className="text-[10px] font-medium text-gray-600">Link Hover Color</Label>
+                <Label className="text-[10px] font-medium text-gray-300">Link Hover Color</Label>
                 {(() => {
                   const inherited = getInheritedLinkValue('a:hover', 'color')
                   if (properties.linkHoverColor === undefined && inherited.source) {
@@ -3615,7 +3615,7 @@ export function StyleEditor({
             {/* Link Hover Decoration */}
             <div className="mb-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Label className="text-[10px] font-medium text-gray-600">Hover Decoration</Label>
+                <Label className="text-[10px] font-medium text-gray-300">Hover Decoration</Label>
                 {(() => {
                   const inherited = getInheritedLinkValue('a:hover', 'text-decoration')
                   if (properties.linkHoverTextDecoration === undefined && inherited.source) {
@@ -3657,7 +3657,7 @@ export function StyleEditor({
             {/* Link Visited Color */}
             <div className="mb-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Label className="text-[10px] font-medium text-gray-600">Visited Link Color</Label>
+                <Label className="text-[10px] font-medium text-gray-300">Visited Link Color</Label>
                 {(() => {
                   const inherited = getInheritedLinkValue('a:visited', 'color')
                   if (properties.linkVisitedColor === undefined && inherited.source) {
@@ -3758,7 +3758,7 @@ export function StyleEditor({
             {/* Link Active Color */}
             <div className="mb-3">
               <div className="flex items-center gap-1.5 mb-1">
-                <Label className="text-[10px] font-medium text-gray-600">Active Link Color</Label>
+                <Label className="text-[10px] font-medium text-gray-300">Active Link Color</Label>
                 {(() => {
                   const inherited = getInheritedLinkValue('a:active', 'color')
                   if (properties.linkActiveColor === undefined && inherited.source) {
@@ -3885,7 +3885,7 @@ export function StyleEditor({
                     </span>
                   )}
                 </div>
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-gray-400">
                   {(() => {
                     if (properties.opacity !== undefined) return `${(properties.opacity * 100).toFixed(0)}%`
                     const inherited = getInheritedValue('opacity')
