@@ -39,6 +39,17 @@ Route::prefix('v1')->group(function () {
         Route::post('/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
 
+        // User permissions and usage info
+        Route::get('/me/permissions', function () {
+            $user = auth()->user();
+            return response()->json([
+                'permissions' => $user->getAllPermissions(),
+                'usage' => $user->getUsageInfo(),
+                'tier' => $user->getAccountTier(),
+                'available_template_tiers' => $user->getAvailableTemplateTiers(),
+            ]);
+        });
+
         // Admin-only routes
         Route::middleware('admin')->group(function () {
             // User management
@@ -97,11 +108,25 @@ Route::prefix('v1')->group(function () {
 
         // User Website management
         Route::prefix('user-website')->group(function () {
+            // Basic website operations
             Route::get('/', [UserWebsiteController::class, 'show']);
             Route::post('/initialize', [UserWebsiteController::class, 'initializeFromTemplate']);
-            Route::put('/content', [UserWebsiteController::class, 'updateContent']);
-            Route::post('/publish', [UserWebsiteController::class, 'publish']);
+
+            // Save & Publish workflow
+            Route::post('/save', [UserWebsiteController::class, 'save']);
+            Route::post('/publish', [UserWebsiteController::class, 'publish'])->middleware('permission:publish_website');
             Route::post('/unpublish', [UserWebsiteController::class, 'unpublish']);
+
+            // URLs
+            Route::get('/preview-url', [UserWebsiteController::class, 'getPreviewUrl']);
+            Route::get('/published-url', [UserWebsiteController::class, 'getPublishedUrl']);
+
+            // Domain configuration
+            Route::post('/configure-subdomain', [UserWebsiteController::class, 'configureSubdomain']);
+            Route::post('/configure-custom-domain', [UserWebsiteController::class, 'configureCustomDomain'])->middleware('permission:custom_domain');
+
+            // Storage usage
+            Route::get('/storage-usage', [UserWebsiteController::class, 'getStorageUsage']);
         });
 
         // Section Library management
@@ -117,6 +142,42 @@ Route::prefix('v1')->group(function () {
             Route::put('/upload', [SettingController::class, 'updateUploadSettings']);
             Route::get('/{key}', [SettingController::class, 'show']);
             Route::put('/{key}', [SettingController::class, 'update']);
+        });
+
+        // Permissions management (Admin only)
+        Route::middleware('admin')->prefix('permissions')->group(function () {
+            Route::get('/', function () {
+                // Get permissions from database
+                $permissions = DB::table('tier_permissions')->get();
+                $data = [];
+                foreach ($permissions as $perm) {
+                    $data[$perm->tier] = json_decode($perm->permissions, true);
+                }
+                return response()->json([
+                    'success' => true,
+                    'data' => $data,
+                ]);
+            });
+
+            Route::put('/', function (Illuminate\Http\Request $request) {
+                // Update permissions in database
+                $validated = $request->validate([
+                    'tier' => 'required|in:trial,brochure,niche,pro',
+                    'permissions' => 'required|array',
+                ]);
+
+                DB::table('tier_permissions')
+                    ->where('tier', $validated['tier'])
+                    ->update([
+                        'permissions' => json_encode($validated['permissions']),
+                        'updated_at' => now(),
+                    ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Permissions updated successfully',
+                ]);
+            });
         });
     });
 

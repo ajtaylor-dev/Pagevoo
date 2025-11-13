@@ -11,6 +11,8 @@ class Template extends Model
         'template_slug',
         'description',
         'business_type',
+        'tier_category',
+        'uses_trial_features_only',
         'preview_image',
         'is_active',
         'created_by',

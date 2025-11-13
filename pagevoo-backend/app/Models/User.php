@@ -28,6 +28,7 @@ class User extends Authenticatable
         'role',
         'account_status',
         'package',
+        'account_tier',
         'owner_id',
         'internal_url',
         'external_url',
@@ -138,5 +139,69 @@ class User extends Authenticatable
         return $this->role === 'user'
             && in_array($this->package, ['niche', 'pro'])
             && in_array($this->account_status, ['active', 'trial']);
+    }
+
+    // ============ Permission System Methods ============
+
+    /**
+     * Check if user has access to a specific feature.
+     *
+     * @param string $feature Feature key from pagevoo_permissions config
+     * @return bool
+     */
+    public function hasFeature(string $feature): bool
+    {
+        return app(\App\Services\PermissionService::class)->can($this, $feature);
+    }
+
+    /**
+     * Get a numeric limit value for this user (e.g., max_pages, max_images).
+     *
+     * @param string $limit Limit key from pagevoo_permissions config
+     * @return mixed (int|null for unlimited)
+     */
+    public function getLimit(string $limit)
+    {
+        return app(\App\Services\PermissionService::class)->getLimit($this, $limit);
+    }
+
+    /**
+     * Get all permissions for this user's tier.
+     *
+     * @return array
+     */
+    public function getAllPermissions(): array
+    {
+        return app(\App\Services\PermissionService::class)->getAllPermissions($this);
+    }
+
+    /**
+     * Get the account tier for this user.
+     *
+     * @return string (trial|brochure|niche|pro)
+     */
+    public function getAccountTier(): string
+    {
+        return $this->account_tier ?? 'trial';
+    }
+
+    /**
+     * Get tier-specific usage information.
+     *
+     * @return array
+     */
+    public function getUsageInfo(): array
+    {
+        return app(\App\Services\PermissionService::class)->getUsageInfo($this);
+    }
+
+    /**
+     * Get available template tiers for this user.
+     *
+     * @return array
+     */
+    public function getAvailableTemplateTiers(): array
+    {
+        return app(\App\Services\PermissionService::class)->getAvailableTemplateTiers($this);
     }
 }

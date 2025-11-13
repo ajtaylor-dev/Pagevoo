@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom'
 import { api } from '@/services/api'
 import { TemplateManager } from '@/components/TemplateManager'
 import { UploadSettings } from '@/components/UploadSettings'
+import { PermissionManager } from '@/components/PermissionManager'
 
 interface User {
   id: number
@@ -13,7 +14,7 @@ interface User {
   business_type: string
   role: string
   account_status: string
-  package?: string
+  account_tier?: string
   owner_id?: number
   internal_url?: string
   external_url?: string
@@ -38,8 +39,8 @@ export default function Dashboard() {
     business_type: '',
     phone_number: '',
     role: 'user',
-    account_status: 'trial',
-    package: '',
+    account_status: 'active',
+    account_tier: 'trial',
     owner_id: ''
   })
   const [potentialOwners, setPotentialOwners] = useState<User[]>([])
@@ -92,8 +93,8 @@ export default function Dashboard() {
       business_type: '',
       phone_number: '',
       role: 'user',
-      account_status: 'trial',
-      package: '',
+      account_status: 'active',
+      account_tier: 'trial',
       owner_id: ''
     })
   }
@@ -149,7 +150,7 @@ export default function Dashboard() {
         phone_number: '',
         role: userToEdit.role,
         account_status: userToEdit.account_status,
-        package: userToEdit.package || '',
+        account_tier: userToEdit.account_tier || 'trial',
         owner_id: userToEdit.owner_id?.toString() || ''
       })
       setIsEditModalOpen(true)
@@ -175,7 +176,7 @@ export default function Dashboard() {
         phone_number: formData.phone_number,
         role: formData.role,
         account_status: formData.account_status,
-        package: formData.package || undefined,
+        account_tier: formData.role === 'admin' ? undefined : formData.account_tier,
         owner_id: formData.owner_id ? parseInt(formData.owner_id) : undefined
       })
 
@@ -206,7 +207,7 @@ export default function Dashboard() {
         phone_number: formData.phone_number,
         role: formData.role,
         account_status: formData.account_status,
-        package: formData.package || null,
+        account_tier: formData.role === 'admin' ? null : formData.account_tier,
         owner_id: formData.owner_id ? parseInt(formData.owner_id) : null
       }
 
@@ -334,14 +335,6 @@ export default function Dashboard() {
             >
               Template Manager
             </button>
-            <a
-              href="/template-builder"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="ml-auto px-6 py-2 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md text-sm font-medium transition inline-block"
-            >
-              Create New
-            </a>
           </div>
         </nav>
 
@@ -372,9 +365,17 @@ export default function Dashboard() {
                             </p>
                           )}
                         </div>
-                        {u.package && (
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
-                            {u.package}
+                        {u.account_tier && (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                            u.account_tier === 'trial'
+                              ? 'bg-gray-100 text-gray-700'
+                              : u.account_tier === 'brochure'
+                              ? 'bg-green-100 text-green-700'
+                              : u.account_tier === 'niche'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-purple-100 text-purple-700'
+                          }`}>
+                            {u.account_tier}
                           </span>
                         )}
                       </div>
@@ -464,7 +465,7 @@ export default function Dashboard() {
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Type</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Role</th>
                       <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Status</th>
-                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Package</th>
+                      <th className="px-4 py-3 text-left text-sm font-semibold text-gray-700">Account Tier</th>
                       <th className="px-4 py-3 text-right text-sm font-semibold text-gray-700">Actions</th>
                     </tr>
                   </thead>
@@ -511,9 +512,19 @@ export default function Dashboard() {
                             </span>
                           </td>
                           <td className="px-4 py-3 text-sm">
-                            {u.package ? (
-                              <span className="px-2 py-1 rounded-full text-xs font-medium bg-indigo-100 text-indigo-700 capitalize">
-                                {u.package}
+                            {u.role === 'admin' ? (
+                              <span className="text-gray-500 italic">Not Applicable</span>
+                            ) : u.account_tier ? (
+                              <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${
+                                u.account_tier === 'trial'
+                                  ? 'bg-gray-100 text-gray-700'
+                                  : u.account_tier === 'brochure'
+                                  ? 'bg-green-100 text-green-700'
+                                  : u.account_tier === 'niche'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-purple-100 text-purple-700'
+                              }`}>
+                                {u.account_tier}
                               </span>
                             ) : (
                               <span className="text-gray-400">-</span>
@@ -562,12 +573,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeSection === 'package-settings' && (
-            <div>
-              <h2 className="text-2xl font-bold text-[#4b4b4b] mb-4">Package Settings</h2>
-              <p className="text-gray-600">Configure package settings here...</p>
-            </div>
-          )}
+          {activeSection === 'package-settings' && <PermissionManager />}
 
           {activeSection === 'template-manager' && <TemplateManager />}
         </div>
@@ -672,26 +678,37 @@ export default function Dashboard() {
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                   >
-                    <option value="trial">Trial</option>
                     <option value="active">Active</option>
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Package</label>
-                <select
-                  name="package"
-                  value={formData.package}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                >
-                  <option value="">None</option>
-                  <option value="brochure">Brochure - £19/mo</option>
-                  <option value="niche">Niche - £39/mo</option>
-                  <option value="pro">Pro - £59/mo</option>
-                </select>
-              </div>
+              {formData.role !== 'admin' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Tier *</label>
+                  <select
+                    name="account_tier"
+                    value={formData.account_tier}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="trial">Trial</option>
+                    <option value="brochure">Brochure</option>
+                    <option value="niche">Niche</option>
+                    <option value="pro">Pro</option>
+                  </select>
+                </div>
+              )}
+              {formData.role === 'admin' && (
+                <div className="mb-4">
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      <strong>Account Tier:</strong> <span className="italic">Not Applicable (Admin)</span>
+                    </p>
+                  </div>
+                </div>
+              )}
               {formData.role === 'collaborator' && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Owner *</label>
@@ -838,26 +855,37 @@ export default function Dashboard() {
                     required
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
                   >
-                    <option value="trial">Trial</option>
                     <option value="active">Active</option>
                     <option value="suspended">Suspended</option>
                   </select>
                 </div>
               </div>
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Package (Upgrade/Downgrade)</label>
-                <select
-                  name="package"
-                  value={formData.package}
-                  onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
-                >
-                  <option value="">None</option>
-                  <option value="brochure">Brochure - £19/mo</option>
-                  <option value="niche">Niche - £39/mo</option>
-                  <option value="pro">Pro - £59/mo</option>
-                </select>
-              </div>
+              {formData.role !== 'admin' && (
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Account Tier *</label>
+                  <select
+                    name="account_tier"
+                    value={formData.account_tier}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+                  >
+                    <option value="trial">Trial</option>
+                    <option value="brochure">Brochure</option>
+                    <option value="niche">Niche</option>
+                    <option value="pro">Pro</option>
+                  </select>
+                </div>
+              )}
+              {formData.role === 'admin' && (
+                <div className="mb-4">
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                    <p className="text-sm text-gray-600">
+                      <strong>Account Tier:</strong> <span className="italic">Not Applicable (Admin)</span>
+                    </p>
+                  </div>
+                </div>
+              )}
               {formData.role === 'collaborator' && (
                 <div className="mb-6">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Owner *</label>

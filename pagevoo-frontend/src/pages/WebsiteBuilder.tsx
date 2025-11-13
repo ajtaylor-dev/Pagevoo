@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useAuth } from '@/contexts/AuthContext'
 import { api } from '@/services/api'
 import { useNavigate } from 'react-router-dom'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface UserSection {
   id: number
@@ -39,6 +40,7 @@ interface Template {
 export default function WebsiteBuilder() {
   const { user } = useAuth()
   const navigate = useNavigate()
+  const { can, tier } = usePermissions()
   const [website, setWebsite] = useState<UserWebsite | null>(null)
   const [loading, setLoading] = useState(true)
   const [showWelcome, setShowWelcome] = useState(false)
@@ -473,13 +475,25 @@ export default function WebsiteBuilder() {
             >
               Unpublish
             </button>
-          ) : (
+          ) : can('publish_website') ? (
             <button
               onClick={handlePublish}
               className="px-3 py-1 bg-[#98b290] hover:bg-[#88a280] rounded transition"
             >
               Publish
             </button>
+          ) : (
+            <div className="relative group">
+              <button
+                className="px-3 py-1 bg-gray-700 text-gray-500 rounded cursor-not-allowed"
+                disabled
+              >
+                Publish
+              </button>
+              <div className="absolute bottom-full right-0 mb-2 hidden group-hover:block w-48 p-2 bg-gray-900 text-white text-xs rounded shadow-lg">
+                Upgrade to {tier === 'trial' ? 'Brochure' : 'higher'} plan to publish your website
+              </div>
+            </div>
           )}
           <div className="ml-2 px-2 text-gray-400 border-l border-gray-700 flex items-center space-x-1">
             <span>{user?.name}</span>

@@ -481,11 +481,261 @@ Only consider Zustand if:
 - Actual performance issues from re-renders
 - Need state persistence features
 
+## SESSION 45: Website Builder Welcome Screen Implementation
+**Date**: 2025-11-12
+**Status**: ✅ COMPLETE
+
+### Context
+Implemented welcome screen for Website Builder when users have no website yet.
+
+### Features Implemented
+1. **Welcome Screen UI**
+   - Clean, centered layout with get started flow
+   - Template selection with categories and search
+   - Visual template cards with preview images
+   - Business type filtering (restaurant, portfolio, etc.)
+
+2. **Template Gallery**
+   - Loads templates via API
+   - Shows template previews, descriptions, page counts
+   - "Get Started" button initializes website from template
+   - Smooth transition to builder after initialization
+
+3. **API Integration**
+   - GET `/api/v1/user-website` - Check if user has website
+   - POST `/api/v1/user-website/initialize` - Create website from template
+   - Proper loading states and error handling
+
+### Files Modified
+- `pagevoo-frontend/src/pages/WebsiteBuilder.tsx` - Added welcome screen flow
+
+### Documentation
+- Created `SESSION_45_SUMMARY.md` with full implementation details
+
+## SESSION 46: Permission System Implementation
+**Date**: 2025-11-13
+**Status**: ✅ COMPLETE
+
+### Overview
+Implemented comprehensive tier-based permission system with database-driven permissions, admin panel management, and frontend gating.
+
+### Backend Implementation
+
+#### 1. Database Schema
+**Migration**: `2025_11_13_110847_create_tier_permissions_table.php`
+- Table: `tier_permissions`
+- Fields: id, tier (enum), permissions (JSON), timestamps
+- Seeded from config file on creation
+- Database is now source of truth for permissions
+
+#### 2. API Endpoints (routes/api.php)
+**Admin-only routes**:
+- `GET /api/v1/permissions` - Fetch all tier permissions from database
+- `PUT /api/v1/permissions` - Update tier permissions in database
+
+**User route**:
+- `GET /api/v1/me/permissions` - Get current user's permissions, usage info, tier, available template tiers
+
+#### 3. Service Layer Updates
+**PermissionService.php** (line 37-48):
+- Updated `getTierPermissions()` to read from database first
+- Falls back to config file if database unavailable
+- All existing methods (can(), canAll(), canAny(), getLimit(), etc.) now use database
+
+### Frontend Implementation
+
+#### 1. Custom Hooks
+**`src/hooks/usePermissions.ts`** (New file - 127 lines):
+```typescript
+export function usePermissions(): UsePermissionsReturn {
+  can: (feature: string) => boolean
+  canAll: (features: string[]) => boolean
+  canAny: (features: string[]) => boolean
+  getLimit: (limit: string) => number | null
+  hasExceededLimit: (limit: string, currentCount: number) => boolean
+  tier: string
+  availableTemplateTiers: string[]
+  reload: () => Promise<void>
+}
+```
+- Fetches permissions from `/api/v1/me/permissions`
+- Provides simple boolean checks for feature access
+- Returns tier info and limits
+- Auto-loads on mount with reload capability
+
+#### 2. Components
+**`src/components/LockedFeature.tsx`** (New file - 232 lines):
+- Wrapper component for gating features based on permissions
+- Three variants: `overlay`, `inline`, `hideWhenLocked`
+- Shows upgrade prompts with tier badges
+- Blurs/disables locked content
+- Displays current tier vs required tier
+
+**`src/components/PermissionManager.tsx`** (Updated - 348 lines):
+- **16 categories** with ~150 features total
+- Loads all permissions from database
+- Inline editing:
+  - Checkboxes for boolean features
+  - Number inputs for limits (max_pages, max_images, etc.)
+  - Placeholder "∞" for unlimited values
+- "Save All Changes" button updates all 4 tiers in database
+- Collapsible accordion UI (first category expanded by default)
+
+Categories:
+1. Content Editing (14 features)
+2. Section Management (6 features)
+3. Grid Sections (10 features)
+4. Navigation (15 features)
+5. Footer (7 features)
+6. Page Management (7 features)
+7. Styling - Site Level (10 features)
+8. Styling - Page Level (4 features)
+9. Styling - Section/Row/Column (22 features)
+10. Advanced Features (20 features)
+11. Collaboration (5 features)
+12. Journal (2 features)
+13. Limits (6 features)
+14. Support (4 features)
+15. Template Access (5 features)
+16. Script Features (11 features)
+
+#### 3. Template Manager Updates
+**Migration**: `2025_11_13_102616_add_tier_fields_to_templates_table.php`
+- Added `tier_category` enum field (trial, brochure, niche, pro)
+- Added `uses_trial_features_only` boolean field
+
+**Template Model Updates** (app/Models/Template.php:14-15):
+- Added fields to fillable array
+
+**TemplateManager UI Updates** (src/components/TemplateManager.tsx):
+- Replaced `exclusive_to` filter with `tier_category` filter
+- Updated badges to show tier categories with color-coded gradients:
+  - Trial: Gray gradient
+  - Brochure: Green gradient
+  - Niche: Blue gradient
+  - Pro: Purple gradient
+- Added tier filter dropdown to sidebar
+
+#### 4. Website Builder Permission Gating
+**WebsiteBuilder.tsx** (line 478-497):
+- Integrated `usePermissions` hook
+- Publish button checks `publish_website` permission
+- Shows disabled state with tooltip for locked features
+- Tooltip suggests required tier upgrade
+
+### Admin Panel Integration
+
+#### User Management Updates
+**Dashboard.tsx** (Previous sessions):
+- Changed `package` field to `account_tier`
+- Added migration to copy existing package values
+- Admin users show "Not Applicable" for tier
+- Color-coded tier badges (trial, brochure, niche, pro)
+
+#### Package Settings Tab
+**Fully functional permission editor**:
+- All 16 categories with ~150 features
+- Real-time editing of all 4 tiers simultaneously
+- Database updates on save
+- Loading states and error handling
+
+### Key Features
+1. **Database-Driven**: Permissions stored in `tier_permissions` table
+2. **Admin Editable**: Full CRUD via admin panel
+3. **Frontend Hooks**: Easy permission checks via `usePermissions()`
+4. **Locked Feature UI**: Reusable `LockedFeature` component
+5. **Template Tiers**: Templates categorized by tier
+6. **Scalable**: Easy to add new features to permission system
+
+### Files Created/Modified
+
+**New Files**:
+- `pagevoo-frontend/src/hooks/usePermissions.ts`
+- `pagevoo-frontend/src/components/LockedFeature.tsx`
+- `pagevoo-backend/database/migrations/2025_11_13_110847_create_tier_permissions_table.php`
+- `pagevoo-backend/database/migrations/2025_11_13_102616_add_tier_fields_to_templates_table.php`
+
+**Modified Files**:
+- `pagevoo-frontend/src/components/PermissionManager.tsx` - Complete rewrite with inline editing
+- `pagevoo-frontend/src/components/TemplateManager.tsx` - Added tier categories and filters
+- `pagevoo-frontend/src/pages/WebsiteBuilder.tsx` - Added publish permission gating
+- `pagevoo-backend/app/Models/Template.php` - Added tier fields to fillable
+- `pagevoo-backend/app/Services/PermissionService.php` - Database-first approach
+- `pagevoo-backend/routes/api.php` - Added permission CRUD endpoints
+
+### Code Cleanup
+**Emoji Removal**:
+- Removed all emojis from tier badges and buttons
+- Clean, professional UI throughout
+- Follows company policy against AI-generated appearance
+
+**Directory Organization**:
+Created `AI_Helper/` folder and moved:
+- 18 markdown files (.md)
+- 12 text files (.txt) - including all claude_memory files
+- 9 Python scripts (.py)
+- 1 PowerShell script (.ps1)
+- Reference files (CSV, DOCX, JSON, TS, WEBP, CSS)
+- `debug_assist/` directory with screenshots
+- Deleted stray "nul" files
+
+**Final Clean Structure**:
+```
+D:\Pagevoo\
+├── AI_Helper/          (All reference materials)
+├── pagevoo-backend/    (Laravel backend)
+├── pagevoo-frontend/   (React frontend)
+└── README.md           (Main project README)
+```
+
+### Permission System Usage Example
+```typescript
+// In any component
+const { can, tier, getLimit } = usePermissions()
+
+// Check single permission
+if (can('publish_website')) {
+  // Show publish button
+}
+
+// Check multiple permissions (requires all)
+if (canAll(['custom_domain', 'remove_branding'])) {
+  // Show pro features
+}
+
+// Check limits
+const maxPages = getLimit('max_pages') // Returns null for unlimited
+if (hasExceededLimit('max_pages', currentPageCount)) {
+  // Show upgrade prompt
+}
+
+// Wrap features
+<LockedFeature feature="publish_website" variant="overlay">
+  <PublishButton />
+</LockedFeature>
+```
+
+### Architecture Notes
+- **Source of Truth**: Database (`tier_permissions` table)
+- **Fallback**: Config file (`config/pagevoo_permissions.php`)
+- **Admin Control**: Full CRUD via admin panel
+- **Frontend Access**: Simple hooks and components
+- **Type Safety**: Full TypeScript interfaces
+- **Extensible**: Easy to add new features/tiers
+
+### Next Steps
+Ready to implement:
+- Additional permission gates in Website Builder UI
+- Template access restrictions based on tier
+- Limit enforcement (max_pages, max_images, etc.)
+- Upgrade flow UI
+
 ## END OF MEMORY FILE 7
-**Last updated**: 2025-11-10
-**Sessions covered**: 40-44 (Refactoring Arc Complete + Architecture Decision)
-**File**: TemplateBuilder.tsx
-**Final size**: 976 lines (from 9,262 lines)
-**Target**: <1,000 lines ✅ **EXCEEDED**
-**Architecture**: useState + Custom Hooks (Zustand removed)
-**Status**: 🎉 **REFACTORING COMPLETE - PRODUCTION READY**
+**Last updated**: 2025-11-13
+**Sessions covered**: 40-46 (Refactoring Complete + Permission System)
+**Major Milestones**:
+- ✅ TemplateBuilder.tsx: 976 lines (from 9,262 lines)
+- ✅ Permission System: Database-driven with admin panel
+- ✅ Clean Architecture: useState + Custom Hooks
+- ✅ Directory Cleanup: AI_Helper folder organization
+**Status**: 🎉 **PRODUCTION READY - PERMISSION SYSTEM COMPLETE**

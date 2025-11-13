@@ -6,6 +6,8 @@ interface Template {
   name: string;
   description: string;
   business_type: string;
+  tier_category: 'trial' | 'brochure' | 'niche' | 'pro';
+  uses_trial_features_only: boolean;
   preview_image: string | null;
   is_active: boolean;
   created_at: string;
@@ -118,7 +120,7 @@ export function TemplateManager() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'published' | 'unpublished'>('all');
   const [businessTypeFilter, setBusinessTypeFilter] = useState<string>('all');
-  const [exclusiveFilter, setExclusiveFilter] = useState<'all' | 'pro' | 'niche' | 'none'>('all');
+  const [tierFilter, setTierFilter] = useState<'all' | 'trial' | 'brochure' | 'niche' | 'pro'>('all');
 
   useEffect(() => {
     loadTemplates();
@@ -187,10 +189,8 @@ export function TemplateManager() {
     // Business type filter
     if (businessTypeFilter !== 'all' && template.business_type !== businessTypeFilter) return false;
 
-    // Exclusive filter
-    if (exclusiveFilter === 'pro' && template.exclusive_to !== 'pro') return false;
-    if (exclusiveFilter === 'niche' && template.exclusive_to !== 'niche') return false;
-    if (exclusiveFilter === 'none' && template.exclusive_to !== null) return false;
+    // Tier filter
+    if (tierFilter !== 'all' && template.tier_category !== tierFilter) return false;
 
     return true;
   });
@@ -246,7 +246,7 @@ export function TemplateManager() {
             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md text-sm font-medium transition"
             title="Development only: Delete all templates"
           >
-            🗑️ Purge All
+            Purge All
           </button>
           <a
             href="/template-builder"
@@ -305,18 +305,19 @@ export function TemplateManager() {
             </select>
           </div>
 
-          {/* Exclusive Filter */}
+          {/* Tier Filter */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Package Access</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Tier Category</label>
             <select
-              value={exclusiveFilter}
-              onChange={(e) => setExclusiveFilter(e.target.value as any)}
+              value={tierFilter}
+              onChange={(e) => setTierFilter(e.target.value as any)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[#98b290]"
             >
-              <option value="all">All Packages</option>
-              <option value="none">No Restrictions</option>
-              <option value="pro">Pro Only</option>
-              <option value="niche">Niche Only</option>
+              <option value="all">All Tiers</option>
+              <option value="trial">Trial</option>
+              <option value="brochure">Brochure</option>
+              <option value="niche">Niche</option>
+              <option value="pro">Pro</option>
             </select>
           </div>
         </div>
@@ -326,13 +327,13 @@ export function TemplateManager() {
           <p className="text-sm text-gray-600">
             Showing <span className="font-semibold">{filteredTemplates.length}</span> of <span className="font-semibold">{templates.length}</span> templates
           </p>
-          {(searchQuery || statusFilter !== 'all' || businessTypeFilter !== 'all' || exclusiveFilter !== 'all') && (
+          {(searchQuery || statusFilter !== 'all' || businessTypeFilter !== 'all' || tierFilter !== 'all') && (
             <button
               onClick={() => {
                 setSearchQuery('');
                 setStatusFilter('all');
                 setBusinessTypeFilter('all');
-                setExclusiveFilter('all');
+                setTierFilter('all');
               }}
               className="text-sm text-[#98b290] hover:text-[#88a280] font-medium transition"
             >
@@ -362,7 +363,7 @@ export function TemplateManager() {
               setSearchQuery('');
               setStatusFilter('all');
               setBusinessTypeFilter('all');
-              setExclusiveFilter('all');
+              setTierFilter('all');
             }}
             className="inline-block px-6 py-3 bg-[#98b290] hover:bg-[#88a280] text-white rounded-md font-medium transition"
           >
@@ -398,18 +399,23 @@ export function TemplateManager() {
                   </div>
                 )}
 
-                {/* Exclusive Badge */}
-                {template.exclusive_to && (
-                  <div className="absolute top-2 right-2">
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase shadow-lg ${
-                      template.exclusive_to === 'pro'
-                        ? 'bg-gradient-to-r from-purple-600 to-purple-800 text-white'
-                        : 'bg-gradient-to-r from-amber-500 to-amber-700 text-white'
-                    }`}>
-                      {template.exclusive_to === 'pro' ? '⭐ Pro' : '💎 Niche'}
-                    </span>
-                  </div>
-                )}
+                {/* Tier Badge */}
+                <div className="absolute top-2 right-2">
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase shadow-lg ${
+                    template.tier_category === 'trial'
+                      ? 'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
+                      : template.tier_category === 'brochure'
+                      ? 'bg-gradient-to-r from-green-500 to-green-700 text-white'
+                      : template.tier_category === 'niche'
+                      ? 'bg-gradient-to-r from-blue-500 to-blue-700 text-white'
+                      : 'bg-gradient-to-r from-purple-600 to-purple-800 text-white'
+                  }`}>
+                    {template.tier_category === 'trial' && 'Trial'}
+                    {template.tier_category === 'brochure' && 'Brochure'}
+                    {template.tier_category === 'niche' && 'Niche'}
+                    {template.tier_category === 'pro' && 'Pro'}
+                  </span>
+                </div>
               </div>
 
               <div className="p-4">

@@ -30,8 +30,8 @@ class UserController extends BaseController
             'business_name' => 'required|string|min:2|max:255',
             'business_type' => 'required|string',
             'role' => 'required|string|in:user,admin,collaborator',
-            'account_status' => 'required|string|in:active,trial,suspended',
-            'package' => 'nullable|string|in:brochure,niche,pro',
+            'account_status' => 'required|string|in:active,suspended',
+            'account_tier' => 'nullable|string|in:trial,brochure,niche,pro',
             'owner_id' => 'nullable|exists:users,id',
         ]);
 
@@ -48,7 +48,7 @@ class UserController extends BaseController
             'phone_number' => $request->phone_number,
             'role' => $request->role,
             'account_status' => $request->account_status,
-            'package' => $request->package,
+            'account_tier' => $request->role === 'admin' ? null : ($request->account_tier ?? 'trial'),
             'owner_id' => $request->owner_id,
         ]);
 
@@ -73,8 +73,8 @@ class UserController extends BaseController
             'business_name' => 'required|string|min:2|max:255',
             'business_type' => 'required|string',
             'role' => 'required|string|in:user,admin,collaborator',
-            'account_status' => 'required|string|in:active,trial,suspended',
-            'package' => 'nullable|string|in:brochure,niche,pro',
+            'account_status' => 'required|string|in:active,suspended',
+            'account_tier' => 'nullable|string|in:trial,brochure,niche,pro',
             'owner_id' => 'nullable|exists:users,id',
         ]);
 
@@ -89,7 +89,7 @@ class UserController extends BaseController
         $user->phone_number = $request->phone_number;
         $user->role = $request->role;
         $user->account_status = $request->account_status;
-        $user->package = $request->package;
+        $user->account_tier = $request->role === 'admin' ? null : $request->account_tier;
         $user->owner_id = $request->owner_id;
 
         // Only update password if provided
