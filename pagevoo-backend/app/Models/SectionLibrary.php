@@ -17,12 +17,14 @@ class SectionLibrary extends Model
         'section_data',
         'tags',
         'is_public',
+        'is_pagevoo_official',
     ];
 
     protected $casts = [
         'section_data' => 'array',
         'tags' => 'array',
         'is_public' => 'boolean',
+        'is_pagevoo_official' => 'boolean',
     ];
 
     /**

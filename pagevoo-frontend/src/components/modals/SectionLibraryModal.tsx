@@ -18,19 +18,23 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [typeFilter, setTypeFilter] = useState('all')
+  const [sourceFilter, setSourceFilter] = useState<'both' | 'my' | 'pagevoo'>('both')
   const [importing, setImporting] = useState<number | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [importedSectionIds, setImportedSectionIds] = useState<number[]>([])
 
   useEffect(() => {
     if (isOpen) {
       fetchSections()
     }
-  }, [isOpen])
+  }, [isOpen, sourceFilter])
 
   const fetchSections = async () => {
     setLoading(true)
     try {
-      const filters: any = {}
+      const filters: any = {
+        source: sourceFilter
+      }
       if (typeFilter !== 'all') {
         filters.type = typeFilter
       }
@@ -51,11 +55,14 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
   const handleImport = async (sectionId: number) => {
     setImporting(sectionId)
     try {
-      const sectionData = await sectionLibraryApi.getById(sectionId)
-      await onImport(sectionData.section_data)
-      console.log('Section imported successfully')
-      // Optionally close modal after import
-      // onClose()
+      await onImport(sectionId)
+      console.log('Section imported successfully to sidebar')
+      // Mark as successfully imported
+      setImportedSectionIds(prev => [...prev, sectionId])
+      // Reset after 2 seconds
+      setTimeout(() => {
+        setImportedSectionIds(prev => prev.filter(id => id !== sectionId))
+      }, 2000)
     } catch (error) {
       console.error('Failed to import section:', error)
       alert('Failed to import section. Please try again.')
@@ -110,7 +117,7 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <h2 className="text-xl font-semibold text-gray-800">Section Library</h2>
-              <p className="text-sm text-gray-600 mt-1">Import sections from your personal library</p>
+              <p className="text-sm text-gray-600 mt-1">Import sections to the left sidebar</p>
             </div>
             <button
               onClick={onClose}
@@ -133,18 +140,30 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
               />
             </div>
             <select
+              value={sourceFilter}
+              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSourceFilter(e.target.value as 'both' | 'my' | 'pagevoo')}
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-white"
+            >
+              <option value="both">All Sections</option>
+              <option value="my">My Sections</option>
+              <option value="pagevoo">Pagevoo Sections</option>
+            </select>
+            <select
               value={typeFilter}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTypeFilter(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#98b290] bg-white"
             >
               <option value="all">All Types</option>
+              <option value="header">Header/Banners</option>
+              <option value="navigation">Navigation</option>
               <option value="hero">Hero</option>
-              <option value="pricing">Pricing</option>
-              <option value="testimonial">Testimonial</option>
-              <option value="cta">CTA</option>
+              <option value="gallery">Gallery</option>
+              <option value="informative">Informative</option>
+              <option value="table">Table/Grid</option>
               <option value="features">Features</option>
-              <option value="footer">Footer</option>
-              <option value="header">Header</option>
+              <option value="testimonials">Testimonials</option>
+              <option value="standard">Standard</option>
+              <option value="misc">Misc</option>
             </select>
             <button
               onClick={handleSearch}
@@ -186,8 +205,19 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
               {filteredSections.map((section) => (
                 <div
                   key={section.id}
-                  className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition"
+                  className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition relative"
                 >
+                  {/* Success Overlay */}
+                  {importedSectionIds.includes(section.id) && (
+                    <div className="absolute inset-0 bg-green-500 bg-opacity-10 z-10 flex items-center justify-center pointer-events-none">
+                      <div className="bg-green-500 rounded-full p-3 shadow-lg">
+                        <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Preview Image */}
                   <div className="h-40 bg-gray-100 flex items-center justify-center overflow-hidden">
                     {section.preview_image ? (
@@ -229,19 +259,31 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
                       </div>
                     )}
 
-                    {/* Type Badge */}
-                    <div className="mt-2">
+                    {/* Type Badge & Pagevoo Official Badge */}
+                    <div className="mt-2 flex gap-1 flex-wrap">
                       <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-semibold rounded-full uppercase">
                         {section.section_type}
                       </span>
+                      {section.is_pagevoo_official && (
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full uppercase flex items-center gap-1">
+                          <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                          </svg>
+                          Pagevoo
+                        </span>
+                      )}
                     </div>
 
                     {/* Actions */}
                     <div className="flex gap-2 mt-3">
                       <button
                         onClick={() => handleImport(section.id)}
-                        disabled={importing === section.id}
-                        className="flex-1 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded transition disabled:opacity-50 flex items-center justify-center gap-1"
+                        disabled={importing === section.id || importedSectionIds.includes(section.id)}
+                        className={`flex-1 px-3 py-1.5 text-white text-sm rounded transition disabled:opacity-50 flex items-center justify-center gap-1 ${
+                          importedSectionIds.includes(section.id)
+                            ? 'bg-blue-600'
+                            : 'bg-green-600 hover:bg-green-700'
+                        }`}
                       >
                         {importing === section.id ? (
                           <>
@@ -251,8 +293,15 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
                             </svg>
                             Importing...
                           </>
+                        ) : importedSectionIds.includes(section.id) ? (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            Imported!
+                          </>
                         ) : (
-                          'Import'
+                          'Import to Sidebar'
                         )}
                       </button>
                       <button

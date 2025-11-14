@@ -6,6 +6,14 @@ interface Section {
   description: string
 }
 
+interface ImportedSection {
+  id: number
+  name: string
+  section_type: string
+  preview_image?: string
+  section_data: any
+}
+
 interface LeftSidebarProps {
   sidebarRef: React.RefObject<HTMLElement>
   width: number
@@ -14,8 +22,12 @@ interface LeftSidebarProps {
   coreSections: Section[]
   headerNavigationSections: Section[]
   footerSections: Section[]
+  importedSections?: ImportedSection[]
   renderSectionThumbnail: (section: Section) => React.ReactNode
+  renderImportedSectionThumbnail?: (section: ImportedSection) => React.ReactNode
   DraggableSectionItem: React.ComponentType<{ section: Section; children: React.ReactNode }>
+  DraggableImportedSectionItem?: React.ComponentType<{ section: ImportedSection; children: React.ReactNode }>
+  onRemoveImportedSection?: (sectionId: number) => void
   onMouseDown: (e: React.MouseEvent) => void
 }
 
@@ -27,8 +39,12 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   coreSections,
   headerNavigationSections,
   footerSections,
+  importedSections = [],
   renderSectionThumbnail,
+  renderImportedSectionThumbnail,
   DraggableSectionItem,
+  DraggableImportedSectionItem,
+  onRemoveImportedSection,
   onMouseDown
 }) => {
   return (
@@ -41,6 +57,55 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
         <div className="p-3">
           {/* Section Library */}
           <h2 className="text-xs font-semibold text-[#98b290] uppercase mb-3">Section Library</h2>
+
+          {/* Imported Sections */}
+          {importedSections.length > 0 && DraggableImportedSectionItem && renderImportedSectionThumbnail && onRemoveImportedSection && (
+            <div className="mb-3">
+              <button
+                onClick={() => onToggleCategory('imported')}
+                className="w-full flex items-center justify-between px-2 py-1.5 bg-blue-700 hover:bg-blue-600 border border-blue-400 rounded text-xs font-medium text-blue-100 transition"
+              >
+                <span>Imported Sections ({importedSections.length})</span>
+                <svg
+                  className={`w-3 h-3 transition-transform text-blue-100 ${expandedCategories.includes('imported') ? 'rotate-90' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              {expandedCategories.includes('imported') && (
+                <div className="grid grid-cols-2 gap-2 mt-2">
+                  {importedSections.map((section) => (
+                    <DraggableImportedSectionItem key={section.id} section={section}>
+                      <div className="group relative w-full">
+                        <div className="cursor-grab active:cursor-grabbing" title={section.name}>
+                          {renderImportedSectionThumbnail(section)}
+                          <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-blue-400 transition truncate">
+                            {section.name}
+                          </div>
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            onRemoveImportedSection(section.id)
+                          }}
+                          className="absolute -top-1 -right-1 bg-red-600 hover:bg-red-700 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                          title="Remove from sidebar"
+                        >
+                          <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </DraggableImportedSectionItem>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Core Sections */}
           <div className="mb-3">

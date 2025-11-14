@@ -511,30 +511,6 @@ export default function NavigationTreeManager({
 
         <div className="flex items-center gap-1">
           <button
-            onClick={handleCut}
-            disabled={selectedIds.size === 0}
-            className="px-2 py-1 text-xs border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-800 text-gray-200"
-            title="Cut (Ctrl+X)"
-          >
-            Cut
-          </button>
-          <button
-            onClick={handleCopy}
-            disabled={selectedIds.size === 0}
-            className="px-2 py-1 text-xs border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-800 text-gray-200"
-            title="Copy (Ctrl+C)"
-          >
-            Copy
-          </button>
-          <button
-            onClick={handlePaste}
-            disabled={!clipboard}
-            className="px-2 py-1 text-xs border border-gray-600 rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed bg-gray-800 text-gray-200"
-            title="Paste (Ctrl+V)"
-          >
-            Paste
-          </button>
-          <button
             onClick={handleDeleteSelected}
             disabled={selectedIds.size === 0}
             className="px-2 py-1 text-xs border border-red-300 text-red-600 rounded hover:bg-red-50 disabled:opacity-50 disabled:cursor-not-allowed"

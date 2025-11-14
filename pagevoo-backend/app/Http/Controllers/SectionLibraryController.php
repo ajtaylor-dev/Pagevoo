@@ -11,11 +11,27 @@ use Illuminate\Support\Str;
 class SectionLibraryController extends Controller
 {
     /**
-     * Display a listing of the user's section library entries.
+     * Display a listing of the user's section library entries and Pagevoo official sections.
      */
     public function index(Request $request)
     {
-        $query = SectionLibrary::where('user_id', Auth::id());
+        // Filter by source: 'my' (user's sections), 'pagevoo' (official), or 'both' (default)
+        $source = $request->input('source', 'both');
+
+        $query = SectionLibrary::query();
+
+        // Apply source filter
+        if ($source === 'my') {
+            $query->where('user_id', Auth::id());
+        } elseif ($source === 'pagevoo') {
+            $query->where('is_pagevoo_official', true);
+        } else {
+            // Both: user's sections OR pagevoo official sections
+            $query->where(function($q) {
+                $q->where('user_id', Auth::id())
+                  ->orWhere('is_pagevoo_official', true);
+            });
+        }
 
         // Filter by section type if provided
         if ($request->has('type')) {
@@ -43,7 +59,7 @@ class SectionLibraryController extends Controller
 
         $sections = $query->orderBy('created_at', 'desc')->get();
 
-        // Transform the response to include preview_image_url
+        // Transform the response to include preview_image_url and is_pagevoo_official
         $sections = $sections->map(function ($section) {
             return [
                 'id' => $section->id,
@@ -52,6 +68,7 @@ class SectionLibraryController extends Controller
                 'preview_image' => $section->preview_image_url,
                 'section_type' => $section->section_type,
                 'tags' => $section->tags,
+                'is_pagevoo_official' => $section->is_pagevoo_official,
                 'created_at' => $section->created_at,
                 'updated_at' => $section->updated_at,
             ];
@@ -74,6 +91,7 @@ class SectionLibraryController extends Controller
             'section_data' => 'required|array',
             'tags' => 'nullable|array',
             'preview_image' => 'nullable|string', // Base64 encoded image
+            'is_pagevoo_official' => 'nullable|boolean',
         ]);
 
         $data = [
@@ -84,6 +102,7 @@ class SectionLibraryController extends Controller
             'section_data' => $request->section_data,
             'tags' => $request->tags ?? [],
             'is_public' => false,
+            'is_pagevoo_official' => $request->input('is_pagevoo_official', false),
         ];
 
         // Handle preview image upload
@@ -121,8 +140,11 @@ class SectionLibraryController extends Controller
      */
     public function show($id)
     {
-        $section = SectionLibrary::where('user_id', Auth::id())
-            ->findOrFail($id);
+        // Allow fetching sections that are either owned by the user OR are Pagevoo official
+        $section = SectionLibrary::where(function($query) {
+            $query->where('user_id', Auth::id())
+                  ->orWhere('is_pagevoo_official', true);
+        })->findOrFail($id);
 
         return response()->json([
             'id' => $section->id,
@@ -132,6 +154,7 @@ class SectionLibraryController extends Controller
             'section_data' => $section->section_data,
             'tags' => $section->tags,
             'preview_image' => $section->preview_image_url,
+            'is_pagevoo_official' => $section->is_pagevoo_official,
             'created_at' => $section->created_at,
         ]);
     }

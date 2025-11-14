@@ -19,12 +19,14 @@ class PageLibrary extends Model
         'site_css',
         'tags',
         'is_public',
+        'is_pagevoo_official',
     ];
 
     protected $casts = [
         'page_data' => 'array',
         'tags' => 'array',
         'is_public' => 'boolean',
+        'is_pagevoo_official' => 'boolean',
     ];
 
     /**

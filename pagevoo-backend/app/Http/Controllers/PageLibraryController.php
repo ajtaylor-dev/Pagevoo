@@ -11,11 +11,27 @@ use Illuminate\Support\Str;
 class PageLibraryController extends Controller
 {
     /**
-     * Display a listing of the user's page library entries.
+     * Display a listing of the user's page library entries and Pagevoo official pages.
      */
     public function index(Request $request)
     {
-        $query = PageLibrary::where('user_id', Auth::id());
+        // Filter by source: 'my' (user's pages), 'pagevoo' (official), or 'both' (default)
+        $source = $request->input('source', 'both');
+
+        $query = PageLibrary::query();
+
+        // Apply source filter
+        if ($source === 'my') {
+            $query->where('user_id', Auth::id());
+        } elseif ($source === 'pagevoo') {
+            $query->where('is_pagevoo_official', true);
+        } else {
+            // Both: user's pages OR pagevoo official pages
+            $query->where(function($q) {
+                $q->where('user_id', Auth::id())
+                  ->orWhere('is_pagevoo_official', true);
+            });
+        }
 
         // Filter by tags if provided
         if ($request->has('tags')) {
@@ -48,6 +64,7 @@ class PageLibraryController extends Controller
                 'meta_description' => $page->meta_description,
                 'tags' => $page->tags,
                 'section_count' => $page->section_count,
+                'is_pagevoo_official' => $page->is_pagevoo_official,
                 'created_at' => $page->created_at,
                 'updated_at' => $page->updated_at,
             ];
@@ -72,6 +89,7 @@ class PageLibraryController extends Controller
             'site_css' => 'nullable|string',
             'tags' => 'nullable|array',
             'preview_image' => 'nullable|string', // Base64 encoded image
+            'is_pagevoo_official' => 'nullable|boolean',
         ]);
 
         $data = [
@@ -84,6 +102,7 @@ class PageLibraryController extends Controller
             'site_css' => $request->site_css,
             'tags' => $request->tags ?? [],
             'is_public' => false,
+            'is_pagevoo_official' => $request->input('is_pagevoo_official', false),
         ];
 
         // Handle preview image upload
@@ -121,8 +140,11 @@ class PageLibraryController extends Controller
      */
     public function show($id)
     {
-        $page = PageLibrary::where('user_id', Auth::id())
-            ->findOrFail($id);
+        // Allow fetching pages that are either owned by the user OR are Pagevoo official
+        $page = PageLibrary::where(function($query) {
+            $query->where('user_id', Auth::id())
+                  ->orWhere('is_pagevoo_official', true);
+        })->findOrFail($id);
 
         return response()->json([
             'id' => $page->id,
@@ -135,6 +157,7 @@ class PageLibraryController extends Controller
             'tags' => $page->tags,
             'preview_image' => $page->preview_image_url,
             'section_count' => $page->section_count,
+            'is_pagevoo_official' => $page->is_pagevoo_official,
             'created_at' => $page->created_at,
         ]);
     }

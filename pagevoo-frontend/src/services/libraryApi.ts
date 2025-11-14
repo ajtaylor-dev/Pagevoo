@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1'
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
 
 // Get auth token from localStorage
 const getAuthHeaders = () => {
@@ -21,6 +21,7 @@ export interface SectionLibraryItem {
   preview_image?: string
   section_type: string
   tags?: string[]
+  is_pagevoo_official: boolean
   created_at: string
   updated_at: string
 }
@@ -37,6 +38,7 @@ export interface PageLibraryItem {
   meta_description?: string
   tags?: string[]
   section_count: number
+  is_pagevoo_official: boolean
   created_at: string
   updated_at: string
 }
@@ -80,7 +82,7 @@ export const sectionLibraryApi = {
       if (filters?.tags) params.append('tags', filters.tags.join(','))
       if (filters?.search) params.append('search', filters.search)
 
-      const response = await axios.get(`${API_BASE_URL}/section-library?${params}`, {
+      const response = await axios.get(`${API_BASE_URL}/v1/section-library?${params}`, {
         headers: getAuthHeaders()
       })
 
@@ -96,7 +98,7 @@ export const sectionLibraryApi = {
    */
   async getById(id: number): Promise<SectionLibraryItemDetail> {
     try {
-      const response = await axios.get(`${API_BASE_URL}/section-library/${id}`, {
+      const response = await axios.get(`${API_BASE_URL}/v1/section-library/${id}`, {
         headers: getAuthHeaders()
       })
 
@@ -112,13 +114,35 @@ export const sectionLibraryApi = {
    */
   async export(data: ExportSectionData): Promise<{ id: number; name: string; preview_url?: string }> {
     try {
-      const response = await axios.post(`${API_BASE_URL}/section-library`, data, {
+      console.log('libraryApi.export: Starting export request...', {
+        url: `${API_BASE_URL}/section-library`,
+        dataKeys: Object.keys(data),
+        hasPreviewImage: !!data.preview_image,
+        previewImageLength: data.preview_image?.length || 0
+      })
+
+      const response = await axios.post(`${API_BASE_URL}/v1/section-library`, data, {
         headers: getAuthHeaders()
       })
 
+      console.log('libraryApi.export: Success!', response.data)
       return response.data
     } catch (error) {
-      console.error('Error exporting section:', error)
+      console.error('libraryApi.export: Error occurred')
+
+      if (axios.isAxiosError(error)) {
+        console.error('libraryApi.export: Axios error details:', {
+          message: error.message,
+          status: error.response?.status,
+          statusText: error.response?.statusText,
+          responseData: error.response?.data,
+          requestUrl: error.config?.url,
+          requestMethod: error.config?.method
+        })
+      } else {
+        console.error('libraryApi.export: Non-axios error:', error)
+      }
+
       throw error
     }
   },
@@ -128,7 +152,7 @@ export const sectionLibraryApi = {
    */
   async update(id: number, data: Partial<ExportSectionData>): Promise<{ id: number; name: string }> {
     try {
-      const response = await axios.put(`${API_BASE_URL}/section-library/${id}`, data, {
+      const response = await axios.put(`${API_BASE_URL}/v1/section-library/${id}`, data, {
         headers: getAuthHeaders()
       })
 
@@ -144,7 +168,7 @@ export const sectionLibraryApi = {
    */
   async delete(id: number): Promise<{ message: string }> {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/section-library/${id}`, {
+      const response = await axios.delete(`${API_BASE_URL}/v1/section-library/${id}`, {
         headers: getAuthHeaders()
       })
 
@@ -168,7 +192,7 @@ export const pageLibraryApi = {
       if (filters?.tags) params.append('tags', filters.tags.join(','))
       if (filters?.search) params.append('search', filters.search)
 
-      const response = await axios.get(`${API_BASE_URL}/page-library?${params}`, {
+      const response = await axios.get(`${API_BASE_URL}/v1/page-library?${params}`, {
         headers: getAuthHeaders()
       })
 
@@ -184,7 +208,7 @@ export const pageLibraryApi = {
    */
   async getById(id: number): Promise<PageLibraryItemDetail> {
     try {
-      const response = await axios.get(`${API_BASE_URL}/page-library/${id}`, {
+      const response = await axios.get(`${API_BASE_URL}/v1/page-library/${id}`, {
         headers: getAuthHeaders()
       })
 
@@ -200,7 +224,7 @@ export const pageLibraryApi = {
    */
   async export(data: ExportPageData): Promise<{ id: number; name: string; preview_url?: string }> {
     try {
-      const response = await axios.post(`${API_BASE_URL}/page-library`, data, {
+      const response = await axios.post(`${API_BASE_URL}/v1/page-library`, data, {
         headers: getAuthHeaders()
       })
 
@@ -216,7 +240,7 @@ export const pageLibraryApi = {
    */
   async update(id: number, data: Partial<ExportPageData>): Promise<{ id: number; name: string }> {
     try {
-      const response = await axios.put(`${API_BASE_URL}/page-library/${id}`, data, {
+      const response = await axios.put(`${API_BASE_URL}/v1/page-library/${id}`, data, {
         headers: getAuthHeaders()
       })
 
@@ -232,7 +256,7 @@ export const pageLibraryApi = {
    */
   async delete(id: number): Promise<{ message: string }> {
     try {
-      const response = await axios.delete(`${API_BASE_URL}/page-library/${id}`, {
+      const response = await axios.delete(`${API_BASE_URL}/v1/page-library/${id}`, {
         headers: getAuthHeaders()
       })
 

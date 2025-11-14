@@ -69,6 +69,11 @@ export const SitemapModal: React.FC<SitemapModalProps> = ({
     onClose()
   }
 
+  const handleExportPage = (page: TemplatePage) => {
+    onExportPage(page)
+    onClose()
+  }
+
   const handleDeletePage = (page: TemplatePage) => {
     if (confirm(`Are you sure you want to delete "${page.name}"?`)) {
       onDeletePage(page.id)
@@ -163,7 +168,7 @@ export const SitemapModal: React.FC<SitemapModalProps> = ({
                     </svg>
                   </button>
                   <button
-                    onClick={() => onExportPage(page)}
+                    onClick={() => handleExportPage(page)}
                     className="p-1.5 hover:bg-[#e8f0e6] rounded transition"
                     title="Export to Library"
                   >

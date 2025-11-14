@@ -91,17 +91,31 @@ export const useDragHandlers = ({
     const activeData = active.data.current
 
     // Case 1: Dragging from library to canvas
-    if (activeData?.source === 'library') {
-      const sectionConfig = activeData.section
+    if (activeData?.source === 'library' || activeData?.source === 'imported-library') {
+      let newSection: TemplateSection
 
-      const sectionName = sectionConfig.name || sectionConfig.type
-      const newSection: TemplateSection = {
-        id: Date.now(),
-        type: sectionConfig.type,
-        section_name: sectionName,
-        section_id: generateIdentifier(sectionName),
-        content: sectionConfig.defaultContent,
-        order: 0
+      if (activeData.source === 'imported-library') {
+        // Imported section already has full section data
+        const importedSectionData = activeData.section
+        const newSectionId = Date.now()
+        newSection = {
+          ...importedSectionData,
+          id: newSectionId,
+          section_id: `imported-section-${newSectionId}`,
+          order: 0
+        }
+      } else {
+        // Regular library section
+        const sectionConfig = activeData.section
+        const sectionName = sectionConfig.name || sectionConfig.type
+        newSection = {
+          id: Date.now(),
+          type: sectionConfig.type,
+          section_name: sectionName,
+          section_id: generateIdentifier(sectionName),
+          content: sectionConfig.defaultContent,
+          order: 0
+        }
       }
 
       let insertPosition = currentPage.sections.length // Default: end of list

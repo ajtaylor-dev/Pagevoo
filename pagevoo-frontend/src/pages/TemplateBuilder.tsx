@@ -254,6 +254,7 @@ export default function TemplateBuilder() {
   const [showSectionLibraryModal, setShowSectionLibraryModal] = useState(false)
   const [showExportSectionModal, setShowExportSectionModal] = useState(false)
   const [exportingSection, setExportingSection] = useState<TemplateSection | null>(null)
+  const [importedSections, setImportedSections] = useState<any[]>([])
 
   // Page Library states
   const [showPageLibraryModal, setShowPageLibraryModal] = useState(false)
@@ -634,77 +635,80 @@ export default function TemplateBuilder() {
   const handleSectionExport = async (data: {
     name: string
     description: string
+    section_type: string
     tags: string[]
     preview_image?: File
+    is_pagevoo_official?: boolean
   }) => {
+    console.log('TemplateBuilder: Starting section export...', { data, exportingSection })
+
     try {
       // Convert preview image to base64 if provided
       let previewImageBase64: string | undefined
       if (data.preview_image) {
+        console.log('TemplateBuilder: Converting preview image to base64...')
         previewImageBase64 = await fileToBase64(data.preview_image)
       }
 
-      // Export to library
-      await sectionLibraryApi.export({
+      const exportPayload = {
         name: data.name,
         description: data.description,
-        section_type: exportingSection?.type || 'custom',
+        section_type: data.section_type || 'standard',
         section_data: exportingSection || {},
         tags: data.tags,
-        preview_image: previewImageBase64
-      })
+        preview_image: previewImageBase64,
+        is_pagevoo_official: data.is_pagevoo_official || false
+      }
 
-      alert('Section exported to library successfully!')
-      setShowExportSectionModal(false)
-      setExportingSection(null)
+      console.log('TemplateBuilder: Sending export request...', exportPayload)
+
+      // Export to library
+      const result = await sectionLibraryApi.export(exportPayload)
+
+      console.log('TemplateBuilder: Export successful!', result)
+      // Success - the modal will show success message and close itself
     } catch (error) {
-      console.error('Error exporting section:', error)
-      alert('Failed to export section. Please try again.')
+      console.error('TemplateBuilder: Error exporting section:', error)
+      console.error('TemplateBuilder: Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+        fullError: error
+      })
+      // Re-throw so the modal can catch and display the error
+      throw error
     }
   }
 
-  // Handle importing a section from the library
+  // Handle importing a section from the library to sidebar
   const handleImportSection = async (sectionId: number) => {
-    if (!currentPage || !template) return
-
     try {
       // Fetch full section data from library
       const sectionData = await sectionLibraryApi.getById(sectionId)
 
-      // Generate new IDs to avoid conflicts
-      const newSectionId = Date.now()
-      const newSection = {
-        ...sectionData.section_data,
-        id: newSectionId,
-        section_id: `imported-section-${newSectionId}`,
-        order: currentPage.sections.length
+      // Check if already imported
+      if (importedSections.find(s => s.id === sectionId)) {
+        alert('Section already imported to sidebar!')
+        return
       }
 
-      // Add to current page
-      const updatedSections = [...currentPage.sections, newSection]
-      const updatedPage = {
-        ...currentPage,
-        sections: updatedSections
+      // Add to imported sections
+      setImportedSections(prev => [...prev, sectionData])
+
+      // Expand imported sections category
+      if (!expandedCategories.includes('imported')) {
+        setExpandedCategories(prev => [...prev, 'imported'])
       }
 
-      // Update template
-      const updatedTemplate = {
-        ...template,
-        pages: template.pages.map(p =>
-          p.id === currentPage.id ? updatedPage : p
-        )
-      }
-
-      setTemplate(updatedTemplate)
-      setCurrentPage(updatedPage)
-      addToHistory(updatedTemplate)
-
-      alert('Section imported successfully!')
-      setShowSectionLibraryModal(false)
+      console.log('Section imported to sidebar successfully!')
     } catch (error) {
       console.error('Error importing section:', error)
       alert('Failed to import section. Please try again.')
     }
+  }
+
+  // Remove imported section from sidebar
+  const handleRemoveImportedSection = (sectionId: number) => {
+    setImportedSections(prev => prev.filter(s => s.id !== sectionId))
   }
 
   // Page Library Handlers
@@ -943,8 +947,37 @@ export default function TemplateBuilder() {
               coreSections={coreSections}
               headerNavigationSections={headerNavigationSections}
               footerSections={footerSections}
+              importedSections={importedSections}
               renderSectionThumbnail={(section) => <SectionThumbnail section={section} />}
+              renderImportedSectionThumbnail={(section) => (
+                <div className="h-16 bg-gray-700 rounded border border-blue-400 flex items-center justify-center">
+                  {section.preview_image ? (
+                    <img src={section.preview_image} alt={section.name} className="w-full h-full object-cover rounded" />
+                  ) : (
+                    <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </div>
+              )}
               DraggableSectionItem={DraggableSectionItem}
+              DraggableImportedSectionItem={({ section, children }) => {
+                const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+                  id: `imported-${section.id}`,
+                  data: { section: section.section_data, source: 'imported-library' },
+                })
+                return (
+                  <div
+                    ref={setNodeRef}
+                    {...listeners}
+                    {...attributes}
+                    className={`${isDragging ? 'opacity-50' : ''}`}
+                  >
+                    {children}
+                  </div>
+                )
+              }}
+              onRemoveImportedSection={handleRemoveImportedSection}
               onMouseDown={handleLeftMouseDown}
             />
 
@@ -1069,6 +1102,7 @@ export default function TemplateBuilder() {
         }}
         section={exportingSection}
         onExport={handleSectionExport}
+        showPagevooOption={true}
       />
 
       <SectionLibraryModal

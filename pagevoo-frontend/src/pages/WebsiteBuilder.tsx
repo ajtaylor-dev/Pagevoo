@@ -273,6 +273,9 @@ export default function WebsiteBuilder() {
   const [showExportPageModal, setShowExportPageModal] = useState(false)
   const [exportingPage, setExportingPage] = useState<UserPage | null>(null)
 
+  // Imported sections state (sections imported from library to sidebar)
+  const [importedSections, setImportedSections] = useState<any[]>([])
+
   const leftSidebarRef = useRef<HTMLDivElement>(null)
   const rightSidebarRef = useRef<HTMLDivElement>(null)
   const fileMenuRef = useRef<HTMLDivElement>(null)
@@ -777,7 +780,7 @@ export default function WebsiteBuilder() {
       await sectionLibraryApi.export({
         name: data.name,
         description: data.description,
-        section_type: exportingSection?.type || 'custom',
+        section_type: data.section_type || 'standard',
         section_data: exportingSection || {},
         tags: data.tags,
         preview_image: previewImageBase64
@@ -792,43 +795,36 @@ export default function WebsiteBuilder() {
     }
   }
 
+  // Handle importing a section from the library to sidebar
   const handleImportSection = async (sectionId: number) => {
-    if (!currentPage || !website) return
-
     try {
+      // Fetch full section data from library
       const sectionData = await sectionLibraryApi.getById(sectionId)
 
-      const newSectionId = Date.now()
-      const newSection = {
-        ...sectionData.section_data,
-        id: newSectionId,
-        section_id: `imported-section-${newSectionId}`,
-        order: currentPage.sections.length
+      // Check if already imported
+      if (importedSections.find(s => s.id === sectionId)) {
+        alert('Section already imported to sidebar!')
+        return
       }
 
-      const updatedSections = [...currentPage.sections, newSection]
-      const updatedPage = {
-        ...currentPage,
-        sections: updatedSections
+      // Add to imported sections sidebar
+      setImportedSections(prev => [...prev, sectionData])
+
+      // Auto-expand imported category
+      if (!expandedCategories.includes('imported')) {
+        setExpandedCategories(prev => [...prev, 'imported'])
       }
 
-      const updatedWebsite = {
-        ...website,
-        pages: website.pages.map(p =>
-          p.id === currentPage.id ? updatedPage : p
-        )
-      }
-
-      setWebsite(updatedWebsite)
-      setCurrentPage(updatedPage)
-      addToHistory(updatedWebsite)
-
-      alert('Section imported successfully!')
-      setShowSectionLibraryModal(false)
+      console.log('Section imported to sidebar successfully!')
     } catch (error) {
       console.error('Error importing section:', error)
       alert('Failed to import section. Please try again.')
     }
+  }
+
+  // Remove imported section from sidebar
+  const handleRemoveImportedSection = (sectionId: number) => {
+    setImportedSections(prev => prev.filter(s => s.id !== sectionId))
   }
 
   // Page Library Handlers
@@ -1238,8 +1234,37 @@ export default function WebsiteBuilder() {
               coreSections={coreSections}
               headerNavigationSections={headerNavigationSections}
               footerSections={footerSections}
+              importedSections={importedSections}
               renderSectionThumbnail={(section) => <SectionThumbnail section={section} />}
+              renderImportedSectionThumbnail={(section) => (
+                <div className="h-16 bg-gray-700 rounded border border-blue-400 flex items-center justify-center">
+                  {section.preview_image ? (
+                    <img src={section.preview_image} alt={section.name} className="w-full h-full object-cover rounded" />
+                  ) : (
+                    <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  )}
+                </div>
+              )}
               DraggableSectionItem={DraggableSectionItem}
+              DraggableImportedSectionItem={({ section, children }) => {
+                const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+                  id: `imported-${section.id}`,
+                  data: { section: section.section_data, source: 'imported-library' },
+                })
+                return (
+                  <div
+                    ref={setNodeRef}
+                    {...listeners}
+                    {...attributes}
+                    className={`${isDragging ? 'opacity-50' : ''}`}
+                  >
+                    {children}
+                  </div>
+                )
+              }}
+              onRemoveImportedSection={handleRemoveImportedSection}
               onMouseDown={handleLeftMouseDown}
             />
 
