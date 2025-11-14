@@ -56,6 +56,7 @@ export interface ExportSectionData {
   section_data: any
   tags?: string[]
   preview_image?: string // Base64 encoded
+  is_pagevoo_official?: boolean
 }
 
 export interface ExportPageData {
@@ -67,6 +68,7 @@ export interface ExportPageData {
   site_css?: string
   tags?: string[]
   preview_image?: string // Base64 encoded
+  is_pagevoo_official?: boolean
 }
 
 // ========== SECTION LIBRARY API ==========
@@ -186,11 +188,12 @@ export const pageLibraryApi = {
   /**
    * Get all page library entries for the authenticated user
    */
-  async getAll(filters?: { tags?: string[]; search?: string }): Promise<PageLibraryItem[]> {
+  async getAll(filters?: { tags?: string[]; search?: string; source?: 'both' | 'my' | 'pagevoo' }): Promise<PageLibraryItem[]> {
     try {
       const params = new URLSearchParams()
       if (filters?.tags) params.append('tags', filters.tags.join(','))
       if (filters?.search) params.append('search', filters.search)
+      if (filters?.source) params.append('source', filters.source)
 
       const response = await axios.get(`${API_BASE_URL}/v1/page-library?${params}`, {
         headers: getAuthHeaders()

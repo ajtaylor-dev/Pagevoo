@@ -109,15 +109,16 @@ Route::prefix('v1')->group(function () {
         // User Website management
         Route::prefix('user-website')->group(function () {
             // Basic website operations
-            Route::get('/', [UserWebsiteController::class, 'show']);
+            Route::get('/', [UserWebsiteController::class, 'index']); // List all user's websites
+            Route::get('/{id}', [UserWebsiteController::class, 'show']); // Get specific website
             Route::post('/initialize', [UserWebsiteController::class, 'initializeFromTemplate']);
             Route::post('/create-blank', [UserWebsiteController::class, 'createBlank']);
-            Route::delete('/', [UserWebsiteController::class, 'destroy']);
+            Route::delete('/{id}', [UserWebsiteController::class, 'destroy']);
 
             // Save & Publish workflow
-            Route::post('/save', [UserWebsiteController::class, 'save']);
-            Route::post('/publish', [UserWebsiteController::class, 'publish'])->middleware('permission:publish_website');
-            Route::post('/unpublish', [UserWebsiteController::class, 'unpublish']);
+            Route::post('/{id}/save', [UserWebsiteController::class, 'save']);
+            Route::post('/{id}/publish', [UserWebsiteController::class, 'publish'])->middleware('permission:publish_website');
+            Route::post('/{id}/unpublish', [UserWebsiteController::class, 'unpublish']);
 
             // URLs
             Route::get('/preview-url', [UserWebsiteController::class, 'getPreviewUrl']);

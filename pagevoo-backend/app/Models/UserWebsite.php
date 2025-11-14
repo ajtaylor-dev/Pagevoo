@@ -9,6 +9,7 @@ class UserWebsite extends Model
 {
     protected $fillable = [
         'user_id',
+        'name',
         'template_id',
         'preview_hash',
         'subdomain',

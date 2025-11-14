@@ -23,6 +23,8 @@ import { ExportSectionModal } from '@/components/modals/ExportSectionModal'
 import { SectionLibraryModal } from '@/components/modals/SectionLibraryModal'
 import { ExportPageModal } from '@/components/modals/ExportPageModal'
 import { PageLibraryModal } from '@/components/modals/PageLibraryModal'
+import { SaveWebsiteModal } from '@/components/modals/SaveWebsiteModal'
+import { LoadWebsiteModal } from '@/components/modals/LoadWebsiteModal'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
@@ -42,6 +44,7 @@ import { Toolbar } from '../components/Toolbar'
 import { FloatingTextEditor } from '../components/layout/FloatingTextEditor'
 import { PageSelectorBar } from '../components/layout/PageSelectorBar'
 import { PublishedTemplateBanner } from '../components/layout/PublishedTemplateBanner'
+import { PublishedWebsiteBanner } from '../components/layout/PublishedWebsiteBanner'
 import { useSectionHandlers } from '../hooks/useSectionHandlers'
 import { usePageHandlers } from '../hooks/usePageHandlers'
 import { useDragHandlers } from '../hooks/useDragHandlers'
@@ -235,6 +238,11 @@ export default function WebsiteBuilder() {
   const [loadingTemplates, setLoadingTemplates] = useState(false)
   const [initializingWebsite, setInitializingWebsite] = useState(false)
 
+  // Template filtering states
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [selectedBusinessType, setSelectedBusinessType] = useState<string>('all')
+  const [showRecommended, setShowRecommended] = useState(true)
+
   // Template selector modal
   const [showLoadModal, setShowLoadModal] = useState(false)
   const [availableTemplates, setAvailableTemplates] = useState<any[]>([])
@@ -273,6 +281,15 @@ export default function WebsiteBuilder() {
   const [showExportPageModal, setShowExportPageModal] = useState(false)
   const [exportingPage, setExportingPage] = useState<UserPage | null>(null)
 
+  // Save Website Modal states
+  const [showSaveWebsiteModal, setShowSaveWebsiteModal] = useState(false)
+  const [websiteName, setWebsiteName] = useState('')
+
+  // Load Website Modal states
+  const [showLoadWebsiteModal, setShowLoadWebsiteModal] = useState(false)
+  const [availableWebsites, setAvailableWebsites] = useState<any[]>([])
+  const [loadingWebsites, setLoadingWebsites] = useState(false)
+
   // Imported sections state (sections imported from library to sidebar)
   const [importedSections, setImportedSections] = useState<any[]>([])
 
@@ -292,14 +309,17 @@ export default function WebsiteBuilder() {
     })
   )
 
-  // Load website on mount
+  // Always show welcome screen on mount
   useEffect(() => {
-    loadWebsite()
+    setShowWelcome(true)
+    loadTemplates()
+    setLoading(false)
   }, [])
 
-  const loadWebsite = async () => {
+  const loadWebsite = async (websiteId: number) => {
     try {
-      const response = await api.getUserWebsite()
+      setLoading(true)
+      const response = await api.getUserWebsite(websiteId)
       if (response.success && response.data) {
         setWebsite(response.data)
         websiteRef.current = response.data
@@ -315,11 +335,34 @@ export default function WebsiteBuilder() {
       }
     } catch (error) {
       console.error('Failed to load website:', error)
-      // User doesn't have a website yet, show welcome screen
-      setShowWelcome(true)
-      loadTemplates()
+      alert('Failed to load website: ' + (error as any).message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const loadAvailableWebsites = async () => {
+    setLoadingWebsites(true)
+    try {
+      const response = await api.getUserWebsites()
+      console.log('getUserWebsites response:', response)
+
+      if (response.success) {
+        // Even if data is an empty array, that's still success
+        setAvailableWebsites(response.data || [])
+        return true
+      } else {
+        console.error('Failed to load websites:', response.message)
+        setAvailableWebsites([])
+        return true // Still return true to show the modal (it will show "no websites" message)
+      }
+    } catch (error) {
+      console.error('Failed to load websites error:', error)
+      alert('Failed to load websites: ' + (error as any).message)
+      setAvailableWebsites([])
+      return false
+    } finally {
+      setLoadingWebsites(false)
     }
   }
 
@@ -401,7 +444,7 @@ export default function WebsiteBuilder() {
     handleSaveTemplate: handleSaveWebsite,
     handleUndo,
     handleRedo,
-    handleSave,
+    handleSave: _handleSave, // Don't use this one - we override it below for user-website endpoint
     handleSaveAs,
     handleLoad,
     handleLoadTemplate: handleLoadWebsite,
@@ -436,30 +479,139 @@ export default function WebsiteBuilder() {
     resetHistory: resetHistory as any
   })
 
-  // Override handleNew to show welcome screen
+  // Override handleNew to show welcome screen without deleting current website
   const handleNewWebsite = async () => {
-    if (confirm('Start a new website? Your current website will be deleted.')) {
-      // Delete existing website if it exists
-      if (website) {
-        try {
-          await api.deleteUserWebsite()
-        } catch (error) {
-          console.error('Failed to delete website:', error)
+    // Check for unsaved changes
+    if (hasUnsavedChanges) {
+      const result = confirm('You have unsaved changes. Do you want to save before starting a new website?')
+      if (result) {
+        // User wants to save first
+        await handleSave()
+        // After save completes, continue with new
+      } else {
+        // User chose not to save
+        const continueAnyway = confirm('Are you sure? Your unsaved changes will be lost.')
+        if (!continueAnyway) {
+          return // User cancelled
         }
       }
+    }
 
-      setWebsite(null)
-      websiteRef.current = null
-      setCurrentPage(null)
-      setSelectedSection(null)
-      setShowWelcome(true)
-      setShowFileMenu(false)
-      setHistory([])
-      setHistoryIndex(-1)
-      setCanUndo(false)
-      setCanRedo(false)
-      setHasUnsavedChanges(false)
-      loadTemplates()
+    // Clear current state and show welcome screen (don't delete the website from DB)
+    setWebsite(null)
+    websiteRef.current = null
+    setCurrentPage(null)
+    setSelectedSection(null)
+    setShowWelcome(true)
+    setShowFileMenu(false)
+    setHistory([])
+    setHistoryIndex(-1)
+    setCanUndo(false)
+    setCanRedo(false)
+    setHasUnsavedChanges(false)
+    loadTemplates()
+  }
+
+  // Override handleLoad to show load website modal
+  const handleLoadFromServer = async () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('Discard unsaved changes and load a different website?')) {
+        return
+      }
+    }
+
+    setShowFileMenu(false)
+    await loadAvailableWebsites()
+    setShowLoadWebsiteModal(true)
+  }
+
+  // Handler for when user selects a website to load from the modal
+  const handleLoadWebsiteFromModal = async (selectedWebsite: any) => {
+    setShowLoadWebsiteModal(false)
+    await loadWebsite(selectedWebsite.id)
+  }
+
+  // Handler for deleting a website from the modal
+  const handleDeleteWebsite = async (websiteId: number) => {
+    try {
+      const response = await api.deleteUserWebsite(websiteId)
+      if (response.success) {
+        // Remove from available websites list
+        setAvailableWebsites(prev => prev.filter(w => w.id !== websiteId))
+        alert('Website deleted successfully')
+      } else {
+        alert('Failed to delete website: ' + response.message)
+      }
+    } catch (error: any) {
+      console.error('Delete error:', error)
+      alert('Failed to delete website: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    }
+  }
+
+  // Override handleSave to use user-website endpoint instead of template endpoint
+  const handleSave = async () => {
+    if (!website) return
+
+    // Check if website has a name, if not show the SaveWebsiteModal
+    if (!website.name) {
+      setWebsiteName('')
+      setShowSaveWebsiteModal(true)
+      return
+    }
+
+    // If website has a name, save directly
+    await handleSaveWithName()
+  }
+
+  // Actual save function that saves the website with name
+  const handleSaveWithName = async () => {
+    if (!website) return
+
+    try {
+      setLoading(true)
+
+      // Prepare website data for saving
+      const websiteData = {
+        name: websiteName || website.name, // Use the new name if provided, otherwise use existing name
+        site_css: website.custom_css || '',
+        pages: website.pages.map(page => ({
+          id: page.id,
+          name: page.name,
+          slug: page.slug,
+          is_homepage: page.is_homepage,
+          order: page.order,
+          meta_description: page.meta_description || '',
+          page_css: page.page_css || '',
+          sections: page.sections.map(section => ({
+            id: section.id,
+            type: section.type,
+            content: section.content,
+            order: section.order
+          }))
+        })),
+        images: [] // Images are handled separately via upload endpoint
+      }
+
+      const response = await api.saveWebsite(website.id, websiteData)
+
+      if (response.success) {
+        // Update website with the saved data
+        const updatedWebsite = response.data.website
+        setWebsite(updatedWebsite)
+        websiteRef.current = updatedWebsite
+
+        setHasUnsavedChanges(false)
+        setShowSaveWebsiteModal(false)
+        setWebsiteName('')
+        alert('Website saved successfully!')
+      } else {
+        alert('Failed to save website: ' + (response.message || 'Unknown error'))
+      }
+    } catch (error: any) {
+      console.error('Save error:', error)
+      alert('Failed to save website: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -937,11 +1089,13 @@ export default function WebsiteBuilder() {
 
   // Publish/Unpublish handlers
   const handlePublish = async () => {
+    if (!website) return
+
     try {
-      const response = await api.publishWebsite()
+      const response = await api.publishWebsite(website.id)
       if (response.success) {
-        setWebsite(response.data)
-        websiteRef.current = response.data
+        setWebsite(response.data.website)
+        websiteRef.current = response.data.website
         setIsPublished(true)
         alert('Website published successfully!')
       }
@@ -952,17 +1106,76 @@ export default function WebsiteBuilder() {
   }
 
   const handleUnpublish = async () => {
+    if (!website) return
+
     try {
-      const response = await api.unpublishWebsite()
+      const response = await api.unpublishWebsite(website.id)
       if (response.success) {
-        setWebsite(response.data)
-        websiteRef.current = response.data
+        setWebsite(response.data.website)
+        websiteRef.current = response.data.website
         setIsPublished(false)
         alert('Website unpublished')
       }
     } catch (error) {
       console.error('Failed to unpublish:', error)
       alert('Failed to unpublish website')
+    }
+  }
+
+  // Custom live preview for user websites
+  const handleWebsiteLivePreview = async () => {
+    if (!website) {
+      alert('Please create a website first.')
+      return
+    }
+
+    if (!currentPage) {
+      alert('No page selected. Please select a page to preview.')
+      return
+    }
+
+    // Save the website first to generate preview files
+    try {
+      setLoading(true)
+
+      // Prepare website data for saving
+      const websiteData = {
+        name: website.name || 'Untitled Website',
+        site_css: website.custom_css || '',
+        pages: website.pages.map(page => ({
+          id: page.id,
+          name: page.name,
+          slug: page.slug,
+          is_homepage: page.is_homepage,
+          order: page.order,
+          meta_description: page.meta_description || '',
+          page_css: page.page_css || '',
+          sections: page.sections.map(section => ({
+            id: section.id,
+            type: section.type,
+            content: section.content,
+            order: section.order
+          }))
+        })),
+        images: []
+      }
+
+      const response = await api.saveWebsite(website.id, websiteData)
+
+      if (response.success && response.data.preview_url) {
+        // Open the preview URL
+        const pageFile = currentPage.slug === 'home' ? 'index.html' : `${currentPage.slug}.html`
+        const previewUrl = `${response.data.preview_url}/${pageFile}`
+        window.open(previewUrl, '_blank')
+        setHasUnsavedChanges(false)
+      } else {
+        alert('Preview not available. The website was saved but preview generation failed.')
+      }
+    } catch (error: any) {
+      console.error('Preview error:', error)
+      alert('Failed to generate preview: ' + (error.response?.data?.message || error.message || 'Unknown error'))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -1012,37 +1225,142 @@ export default function WebsiteBuilder() {
             </div>
 
             {/* Options Grid */}
-            <div className="grid md:grid-cols-2 gap-8 mb-12">
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              {/* Load Save Option */}
+              <button
+                onClick={async (e) => {
+                  e.preventDefault()
+                  console.log('Load Save button clicked')
+                  const success = await loadAvailableWebsites()
+                  console.log('Load websites result:', success)
+                  if (success) {
+                    setShowLoadWebsiteModal(true)
+                    console.log('Modal should be open now')
+                  }
+                }}
+                disabled={loadingWebsites}
+                className="bg-gray-800 border-2 border-gray-700 hover:border-[#98b290] rounded-lg p-6 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <div className="flex items-center justify-center w-16 h-16 bg-gray-700 group-hover:bg-[#98b290] rounded-lg mb-4 transition">
+                  {loadingWebsites ? (
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                  ) : (
+                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+                    </svg>
+                  )}
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Load Save</h3>
+                <p className="text-gray-400 text-sm">
+                  {loadingWebsites ? 'Loading...' : 'Continue working on a previously saved website'}
+                </p>
+              </button>
+
               {/* Create Blank Option */}
               <button
                 onClick={handleCreateBlank}
                 disabled={initializingWebsite}
-                className="bg-gray-800 border-2 border-dashed border-gray-600 hover:border-[#98b290] rounded-lg p-8 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-gray-800 border-2 border-dashed border-gray-600 hover:border-[#98b290] rounded-lg p-6 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center justify-center w-16 h-16 bg-gray-700 group-hover:bg-[#98b290] rounded-lg mb-4 transition">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-semibold mb-2">Create New</h3>
-                <p className="text-gray-400">Start with a blank canvas and build your website from the ground up</p>
+                <h3 className="text-xl font-semibold mb-2">Create New</h3>
+                <p className="text-gray-400 text-sm">Start with a blank canvas and build from scratch</p>
               </button>
 
               {/* Select Template Option */}
-              <div className="bg-gray-800 border-2 border-gray-700 rounded-lg p-8">
+              <div className="bg-gray-800 border-2 border-gray-700 rounded-lg p-6">
                 <div className="flex items-center justify-center w-16 h-16 bg-[#98b290] rounded-lg mb-4">
                   <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                   </svg>
                 </div>
-                <h3 className="text-2xl font-semibold mb-2">Select a Template</h3>
-                <p className="text-gray-400 mb-4">Choose from our professionally designed templates below</p>
+                <h3 className="text-xl font-semibold mb-2">Select Template</h3>
+                <p className="text-gray-400 text-sm mb-4">Choose from professionally designed templates below</p>
               </div>
             </div>
 
             {/* Templates Section */}
             <div>
-              <h3 className="text-2xl font-semibold mb-6">Available Templates</h3>
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-semibold">Browse Templates</h3>
+                <div className="text-sm text-gray-400">
+                  {templates.length} template{templates.length !== 1 ? 's' : ''} available
+                </div>
+              </div>
+
+              {/* Search and Filter Bar */}
+              <div className="mb-6 space-y-4">
+                {/* Search Input */}
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={templateSearch}
+                    onChange={(e) => setTemplateSearch(e.target.value)}
+                    placeholder="Search templates by name or description..."
+                    className="w-full px-4 py-3 pl-12 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290] text-gray-200 placeholder:text-gray-500"
+                  />
+                  <svg className="w-5 h-5 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                </div>
+
+                {/* Filter Chips */}
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={() => {
+                      setShowRecommended(!showRecommended)
+                      setSelectedBusinessType('all')
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                      showRecommended
+                        ? 'bg-[#98b290] text-white'
+                        : 'bg-gray-800 text-gray-300 border border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                      </svg>
+                      Recommended for {user?.business_type || 'You'}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedBusinessType('all')
+                      setShowRecommended(false)
+                    }}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                      selectedBusinessType === 'all' && !showRecommended
+                        ? 'bg-gray-700 text-white border border-gray-600'
+                        : 'bg-gray-800 text-gray-300 border border-gray-700 hover:border-gray-600'
+                    }`}
+                  >
+                    All Types
+                  </button>
+
+                  {['restaurant', 'barber', 'cafe', 'gym', 'salon', 'pizza'].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        setSelectedBusinessType(type)
+                        setShowRecommended(false)
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition ${
+                        selectedBusinessType === type && !showRecommended
+                          ? 'bg-gray-700 text-white border border-gray-600'
+                          : 'bg-gray-800 text-gray-300 border border-gray-700 hover:border-gray-600'
+                      }`}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {loadingTemplates ? (
                 <div className="text-center py-12">
@@ -1057,9 +1375,36 @@ export default function WebsiteBuilder() {
                   <p className="text-xl text-gray-400 mb-2">No templates available yet</p>
                   <p className="text-gray-500">Check back later or contact support</p>
                 </div>
-              ) : (
-                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {templates.map((template) => (
+              ) : (() => {
+                // Filter templates based on search, business type, and recommended
+                const filteredTemplates = templates.filter(template => {
+                  // Search filter
+                  const matchesSearch = !templateSearch ||
+                    template.name.toLowerCase().includes(templateSearch.toLowerCase()) ||
+                    template.description.toLowerCase().includes(templateSearch.toLowerCase())
+
+                  // Business type filter
+                  const matchesBusinessType = selectedBusinessType === 'all' ||
+                    template.business_type === selectedBusinessType
+
+                  // Recommended filter
+                  const isRecommended = !showRecommended ||
+                    template.business_type === user?.business_type
+
+                  return matchesSearch && matchesBusinessType && isRecommended
+                })
+
+                return filteredTemplates.length === 0 ? (
+                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
+                    <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <p className="text-xl text-gray-400 mb-2">No templates found</p>
+                    <p className="text-gray-500">Try adjusting your search or filters</p>
+                  </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {filteredTemplates.map((template) => (
                     <button
                       key={template.id}
                       onClick={() => handleSelectTemplate(template.id)}
@@ -1095,9 +1440,10 @@ export default function WebsiteBuilder() {
                         </span>
                       </div>
                     </button>
-                  ))}
-                </div>
-              )}
+                    ))}
+                  </div>
+                )
+              })()}
 
               {initializingWebsite && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -1110,6 +1456,16 @@ export default function WebsiteBuilder() {
             </div>
           </div>
         </main>
+
+        {/* Load Website Modal - rendered even on welcome screen */}
+        <LoadWebsiteModal
+          isOpen={showLoadWebsiteModal}
+          onClose={() => setShowLoadWebsiteModal(false)}
+          loadingWebsites={loadingWebsites}
+          availableWebsites={availableWebsites}
+          onLoadWebsite={handleLoadWebsiteFromModal}
+          onDeleteWebsite={handleDeleteWebsite}
+        />
       </div>
     )
   }
@@ -1167,7 +1523,7 @@ export default function WebsiteBuilder() {
         handleNew={handleNewWebsite}
         handleSave={handleSave}
         handleSaveAs={handleSaveAs}
-        handleLoad={handleLoad}
+        handleLoad={handleLoadFromServer}
         handleExportAsHTMLTemplate={handleExportAsHTMLTemplate}
         handleExit={handleExit}
         handleUndo={handleUndo}
@@ -1176,7 +1532,7 @@ export default function WebsiteBuilder() {
         handleCopyPage={handleCopyPage}
         handleDeletePage={handleDeletePage}
         addToHistory={addToHistory as any}
-        handleLivePreview={handleLivePreview}
+        handleLivePreview={handleWebsiteLivePreview}
         setShowSourceCodeModal={setShowSourceCodeModal}
         setShowStylesheetModal={setShowStylesheetModal}
         setShowSitemapModal={setShowSitemapModal}
@@ -1198,27 +1554,13 @@ export default function WebsiteBuilder() {
         setViewport={setViewport}
       />
 
-      {/* Published Website Indicator Banner */}
+      {/* Published Website Banner */}
       {isPublished && website.published_at && (
-        <div className="bg-green-50 border-b border-green-200 px-4 py-2 flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <span className="text-sm text-green-800 font-medium">
-              Website is published
-            </span>
-            <span className="text-xs text-green-600">
-              (Last published: {new Date(website.published_at).toLocaleDateString()})
-            </span>
-          </div>
-          <button
-            onClick={handleUnpublish}
-            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs transition"
-          >
-            Unpublish
-          </button>
-        </div>
+        <PublishedWebsiteBanner
+          website={website}
+          setWebsite={setWebsite}
+          setIsPublished={setIsPublished}
+        />
       )}
 
       {/* Builder Main Area */}
@@ -1299,6 +1641,7 @@ export default function WebsiteBuilder() {
               setCssInspectorMode={setCssInspectorMode}
               handleDeletePage={handleDeletePage}
               setShowAddPageModal={setShowAddPageModal}
+              theme="dark"
             />
 
             {/* Canvas Preview Area */}
@@ -1413,6 +1756,29 @@ export default function WebsiteBuilder() {
         isOpen={showPageLibraryModal}
         onClose={() => setShowPageLibraryModal(false)}
         onImport={handleImportPage}
+      />
+
+      {/* Save Website Modal */}
+      <SaveWebsiteModal
+        isOpen={showSaveWebsiteModal}
+        onClose={() => {
+          setShowSaveWebsiteModal(false)
+          setWebsiteName('')
+        }}
+        websiteName={websiteName}
+        setWebsiteName={setWebsiteName}
+        onSave={handleSaveWithName}
+        loading={loading}
+      />
+
+      {/* Load Website Modal - Now rendered on welcome screen */}
+      <LoadWebsiteModal
+        isOpen={showLoadWebsiteModal}
+        onClose={() => setShowLoadWebsiteModal(false)}
+        loadingWebsites={loadingWebsites}
+        availableWebsites={availableWebsites}
+        onLoadWebsite={handleLoadWebsiteFromModal}
+        onDeleteWebsite={handleDeleteWebsite}
       />
     </div>
 

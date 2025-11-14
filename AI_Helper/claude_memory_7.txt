@@ -1408,9 +1408,583 @@ Bug Fixes:
 5. Search within imported sections
 6. Drag reordering of imported sections
 
+## SESSION 49: Multiple Saves System & Website Settings Improvements
+**Date**: 2025-11-14
+**Status**: ✅ COMPLETE
+
+### Overview
+Implemented comprehensive multiple saves system for Website Builder, allowing users to create unlimited saved websites with only one published at a time. Updated website settings to be more user-friendly with default meta tags and status information.
+
+### Major Features Implemented
+
+#### 1. Multiple Saves System
+
+**Problem Identified**:
+- User reported: "on the website builder, it still tries to load templates and not saves"
+- Load functionality was using template-based system, not user websites
+- Only one website per user was supported
+
+**Architecture Change**:
+Changed from single-website-per-user to multiple-saves system:
+- Users can create unlimited saved websites
+- Only ONE website can be published at a time
+- Auto-unpublish other websites when publishing a new one
+- Each save has its own name, timestamps, and status
+
+**Backend Updates**:
+
+**UserWebsiteController.php**:
+- `index()` - Returns ALL user's websites ordered by `updated_at DESC`
+- `show($id)` - Gets specific website by ID
+- `save($id)` - Saves website by ID (not single website)
+- `publish($id)` - Publishes website and auto-unpublishes others:
+  ```php
+  // Unpublish any other published websites for this user
+  UserWebsite::where('user_id', $user->id)
+      ->where('id', '!=', $website->id)
+      ->where('is_published', true)
+      ->update(['is_published' => false]);
+  ```
+- `unpublish($id)` - Unpublishes specific website
+- `destroy($id)` - Deletes specific website
+
+**Routes (api.php)**:
+```php
+Route::prefix('user-website')->group(function () {
+    Route::get('/', [UserWebsiteController::class, 'index']); // List all
+    Route::get('/{id}', [UserWebsiteController::class, 'show']); // Get specific
+    Route::post('/initialize', [UserWebsiteController::class, 'initializeFromTemplate']);
+    Route::post('/create-blank', [UserWebsiteController::class, 'createBlank']);
+    Route::delete('/{id}', [UserWebsiteController::class, 'destroy']);
+    Route::post('/{id}/save', [UserWebsiteController::class, 'save']);
+    Route::post('/{id}/publish', [UserWebsiteController::class, 'publish']);
+    Route::post('/{id}/unpublish', [UserWebsiteController::class, 'unpublish']);
+});
+```
+
+**Frontend API (api.ts)**:
+- `getUserWebsites()` - GET /v1/user-website (lists all)
+- `getUserWebsite(id)` - GET /v1/user-website/{id}
+- `saveWebsite(websiteId, data)` - POST /v1/user-website/{id}/save
+- `publishWebsite(websiteId)` - POST /v1/user-website/{id}/publish
+- `unpublishWebsite(websiteId)` - POST /v1/user-website/{id}/unpublish
+- `deleteUserWebsite(websiteId)` - DELETE /v1/user-website/{id}
+
+#### 2. LoadWebsiteModal Component
+
+**Created**: `pagevoo-frontend/src/components/modals/LoadWebsiteModal.tsx` (140 lines)
+
+**Features**:
+- Simple list view (no thumbnails, just names and dates)
+- Shows website name (or "Untitled Website")
+- Displays "Published" badge in green for published websites
+- Shows "Last modified" timestamp
+- Shows "Published" timestamp if applicable
+- Delete button with confirmation dialog
+- Dark theme matching Website Builder
+
+**Interface**:
+```typescript
+interface UserWebsite {
+  id: number
+  name: string | null
+  is_published: boolean
+  published_at: string | null
+  updated_at: string
+  created_at: string
+  template_id: number | null
+}
+
+interface LoadWebsiteModalProps {
+  isOpen: boolean
+  onClose: () => void
+  loadingWebsites: boolean
+  availableWebsites: UserWebsite[]
+  onLoadWebsite: (website: UserWebsite) => void
+  onDeleteWebsite: (websiteId: number) => void
+}
+```
+
+**Layout**:
+- Flex layout with main clickable area and separate delete column
+- Delete button on right side with border separator
+- Hover effects on main area
+- Red hover effect on delete button
+- Confirmation dialog before deletion
+
+#### 3. Welcome Screen Updates
+
+**WebsiteBuilder.tsx Changes**:
+
+**Always Show Welcome Screen**:
+```typescript
+useEffect(() => {
+  setShowWelcome(true)
+  loadTemplates()
+  setLoading(false)
+}, [])
+```
+
+**Three Options Grid**:
+1. **Load Save** - Opens LoadWebsiteModal with user's saved websites
+2. **Create New** - Creates blank website with default hero section
+3. **Select Template** - Browse templates with filters and search
+
+**Template Filtering**:
+- Search by name or description
+- Filter by business type (restaurant, barber, cafe, gym, salon, pizza)
+- "Recommended for [Business Type]" filter
+- "All Types" option
+- Template counter shows total available
+- Empty state for no templates found
+
+**State Added**:
+```typescript
+const [showLoadWebsiteModal, setShowLoadWebsiteModal] = useState(false)
+const [availableWebsites, setAvailableWebsites] = useState<any[]>([])
+const [loadingWebsites, setLoadingWebsites] = useState(false)
+const [templateSearch, setTemplateSearch] = useState('')
+const [selectedBusinessType, setSelectedBusinessType] = useState<string>('all')
+const [showRecommended, setShowRecommended] = useState(true)
+```
+
+#### 4. Load Save Button Fix
+
+**Bug**: Load Save button showed loading spinner but modal didn't open.
+**Root Cause**: LoadWebsiteModal was only rendered inside main builder view (line 1691), not on welcome screen.
+**Impact**: Modal component didn't exist in DOM when welcome screen was showing.
+
+**Solution**:
+- Added LoadWebsiteModal to welcome screen return (line 1387-1393)
+- Kept modal in main builder view (line 1700-1706)
+- Modal now rendered in both contexts
+
+**Before** (Broken):
+```typescript
+// Welcome screen
+if (showWelcome) {
+  return (
+    <div>...</div>  // No modal here!
+  )
+}
+
+// Main builder (only place modal existed)
+return (
+  <div>
+    ...
+    <LoadWebsiteModal ... />
+  </div>
+)
+```
+
+**After** (Fixed):
+```typescript
+// Welcome screen
+if (showWelcome) {
+  return (
+    <div>
+      ...
+      <LoadWebsiteModal ... />  // Added here!
+    </div>
+  )
+}
+
+// Main builder (kept here too)
+return (
+  <div>
+    ...
+    <LoadWebsiteModal ... />
+  </div>
+)
+```
+
+#### 5. Delete Website Functionality
+
+**Added Delete Icon to LoadWebsiteModal**:
+- Trash icon on each website item
+- Separate column with border separator
+- Red hover effect (`hover:text-red-400 hover:bg-red-900/20`)
+- Confirmation dialog: "Are you sure you want to delete '{name}'? This action cannot be undone."
+
+**Implementation** (WebsiteBuilder.tsx:535-549):
+```typescript
+const handleDeleteWebsite = async (websiteId: number) => {
+  try {
+    const response = await api.deleteUserWebsite(websiteId)
+    if (response.success) {
+      // Remove from available websites list
+      setAvailableWebsites(prev => prev.filter(w => w.id !== websiteId))
+      alert('Website deleted successfully')
+    } else {
+      alert('Failed to delete website: ' + response.message)
+    }
+  } catch (error: any) {
+    console.error('Delete error:', error)
+    alert('Failed to delete website: ' + (error.response?.data?.message || error.message))
+  }
+}
+```
+
+**Layout Structure**:
+```typescript
+<div className="flex items-stretch">
+  {/* Main clickable area */}
+  <div onClick={() => onLoadWebsite(website)} className="flex-1 ...">
+    <div className="flex items-center justify-between">
+      <div className="flex-1">
+        <h3>{website.name || 'Untitled Website'}</h3>
+        <div>Last modified: {formatDate(website.updated_at)}</div>
+      </div>
+      <svg><!-- Arrow icon --></svg>
+    </div>
+  </div>
+
+  {/* Delete Button */}
+  <button onClick={handleDelete} className="px-3 border-l ...">
+    <svg><!-- Trash icon --></svg>
+  </button>
+</div>
+```
+
+#### 6. File > New Behavior Update
+
+**Old Behavior**: Deleted website from database when clicking File > New
+**New Behavior**: Just clears editor state and shows welcome screen
+
+**Updated Implementation** (WebsiteBuilder.tsx:483-513):
+```typescript
+const handleNewWebsite = async () => {
+  // Check for unsaved changes
+  if (hasUnsavedChanges) {
+    const result = confirm('You have unsaved changes. Do you want to save before starting a new website?')
+    if (result) {
+      await handleSave()
+    } else {
+      const continueAnyway = confirm('Are you sure? Your unsaved changes will be lost.')
+      if (!continueAnyway) return
+    }
+  }
+
+  // Clear current state and show welcome screen (don't delete from DB!)
+  setWebsite(null)
+  websiteRef.current = null
+  setCurrentPage(null)
+  setSelectedSection(null)
+  setShowWelcome(true)
+  setShowFileMenu(false)
+  setHistory([])
+  setHistoryIndex(-1)
+  setCanUndo(false)
+  setCanRedo(false)
+  setHasUnsavedChanges(false)
+  loadTemplates()
+}
+```
+
+#### 7. Website Settings (Edit Menu)
+
+**Changed**: "Template Settings" → "Website Settings"
+
+**Header.tsx Updates** (lines 289, 350-447):
+
+**Old Fields** (Template-specific):
+- Preview Image
+- Description
+- Business Type
+- Exclusive To
+- Features checkboxes
+
+**New Fields** (Website-specific):
+1. **Default Site Title**:
+   - Text input
+   - Used for all pages unless overridden individually
+   - Placeholder: "My Awesome Website"
+
+2. **Default Meta Description**:
+   - Textarea (3 rows)
+   - Used for all pages unless overridden individually
+   - Placeholder: "A brief description of your website..."
+
+3. **Website Status Section** (Read-only):
+   - **Status**: Published/Unpublished badge (green for published)
+   - **Last Modified**: Formatted timestamp
+   - **Published**: Timestamp when published (if applicable)
+   - **Created**: Timestamp when created
+
+**Implementation**:
+```typescript
+{editSubTab === 'settings' ? (
+  <>
+  <div className="space-y-3">
+    {/* Default Site Title */}
+    <div>
+      <label>Default Site Title</label>
+      <input
+        value={(template as any).default_title || ''}
+        onChange={(e) => setTemplate({ ...template, default_title: e.target.value } as any)}
+        className="..."
+      />
+      <p className="text-[10px] text-gray-400">
+        This title will be used for all pages unless overridden individually
+      </p>
+    </div>
+
+    {/* Default Meta Description */}
+    <div>
+      <label>Default Meta Description</label>
+      <textarea
+        value={(template as any).default_description || ''}
+        onChange={(e) => setTemplate({ ...template, default_description: e.target.value } as any)}
+        rows={3}
+        className="..."
+      />
+      <p className="text-[10px] text-gray-400">
+        This description will be used for all pages unless overridden individually
+      </p>
+    </div>
+
+    {/* Status Information */}
+    <div className="border-t border-gray-600 pt-3">
+      <label>Website Status</label>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-gray-400">Status:</span>
+          <span className={`px-2 py-0.5 rounded ${
+            (template as any).is_published || (template as any).published_at
+              ? 'bg-green-900/30 border border-green-700 text-green-400'
+              : 'bg-gray-700 border border-gray-600 text-gray-300'
+          }`}>
+            {(template as any).is_published || (template as any).published_at ? 'Published' : 'Unpublished'}
+          </span>
+        </div>
+        {/* Last Modified, Published, Created timestamps */}
+      </div>
+    </div>
+  </div>
+  </>
+) : ...}
+```
+
+#### 8. Live Preview Fix for User Websites
+
+**Problem**: Live preview was using template.template_slug which doesn't exist for user websites.
+
+**Solution**: Created custom `handleWebsiteLivePreview` function.
+
+**Implementation** (WebsiteBuilder.tsx:1126-1180):
+```typescript
+const handleWebsiteLivePreview = async () => {
+  if (!website) {
+    alert('Please create a website first.')
+    return
+  }
+
+  if (!currentPage) {
+    alert('No page selected.')
+    return
+  }
+
+  // Save the website first to generate preview files
+  try {
+    setLoading(true)
+
+    const websiteData = {
+      name: website.name || 'Untitled Website',
+      site_css: website.custom_css || '',
+      pages: website.pages.map(page => ({ /* ... */ })),
+      images: []
+    }
+
+    const response = await api.saveWebsite(website.id, websiteData)
+
+    if (response.success && response.data.preview_url) {
+      // Open the preview URL
+      const pageFile = currentPage.slug === 'home' ? 'index.html' : `${currentPage.slug}.html`
+      const previewUrl = `${response.data.preview_url}/${pageFile}`
+      window.open(previewUrl, '_blank')
+      setHasUnsavedChanges(false)
+    } else {
+      alert('Preview not available.')
+    }
+  } catch (error: any) {
+    alert('Failed to generate preview: ' + error.message)
+  } finally {
+    setLoading(false)
+  }
+}
+```
+
+**Workflow**:
+1. Check website and page exist
+2. Save website to generate preview files
+3. Construct preview URL using preview_hash
+4. Open in new tab
+5. Mark changes as saved
+
+**Updated Header Component**:
+```typescript
+<Header
+  ...
+  handleLivePreview={handleWebsiteLivePreview}  // Changed from handleLivePreview
+  ...
+/>
+```
+
+### Files Created/Modified
+
+**New Files**:
+- `pagevoo-frontend/src/components/modals/LoadWebsiteModal.tsx` (140 lines)
+
+**Modified Files (Backend)**:
+- `pagevoo-backend/app/Http/Controllers/Api/V1/UserWebsiteController.php`:
+  - Added `index()` method
+  - Updated `show($id)` to get specific website
+  - Updated `save($id)` with ID parameter
+  - Updated `publish($id)` with auto-unpublish logic
+  - Updated `unpublish($id)` and `destroy($id)` with IDs
+
+- `pagevoo-backend/routes/api.php`:
+  - Changed routes to use IDs for all operations
+
+**Modified Files (Frontend)**:
+- `pagevoo-frontend/src/services/api.ts`:
+  - Added `getUserWebsites()` - list all
+  - Updated `getUserWebsite(id)` - get specific
+  - Updated `saveWebsite(websiteId, data)`
+  - Updated `publishWebsite(websiteId)`
+  - Updated `unpublishWebsite(websiteId)`
+  - Added `deleteUserWebsite(websiteId)`
+
+- `pagevoo-frontend/src/pages/WebsiteBuilder.tsx`:
+  - Added LoadWebsiteModal state and handlers
+  - Added template filtering states
+  - Fixed `loadAvailableWebsites()` to always show modal
+  - Updated `loadWebsite(websiteId)` to accept ID
+  - Updated `handleSave` to use `website.id`
+  - Updated `handlePublish` and `handleUnpublish` to use IDs
+  - Created `handleDeleteWebsite(websiteId)`
+  - Created `handleWebsiteLivePreview()`
+  - Updated `handleNewWebsite()` to not delete from DB
+  - Rendered LoadWebsiteModal in welcome screen
+  - Added "Load Save" button to welcome screen
+  - Added template search and filters
+
+- `pagevoo-frontend/src/components/layout/Header.tsx`:
+  - Changed "Template Settings" to "Website Settings" (line 289)
+  - Replaced template fields with website fields (lines 350-447):
+    - Default Site Title
+    - Default Meta Description
+    - Website Status (read-only)
+
+### User Experience Flow
+
+**Creating Websites**:
+1. User visits `/website-builder`
+2. Always sees welcome screen
+3. Three options:
+   - **Load Save**: Browse existing websites
+   - **Create New**: Start with blank canvas
+   - **Select Template**: Choose from filtered templates
+4. Builder loads with full editing capabilities
+
+**Multiple Saves Workflow**:
+1. User creates website from template
+2. Edits and saves with name
+3. Clicks File > New (doesn't delete, just clears)
+4. Can create another website
+5. Can switch between websites via "Load Save"
+6. Only ONE can be published at a time
+
+**Publishing Workflow**:
+1. User edits website
+2. Clicks "Publish" button
+3. System auto-unpublishes other websites
+4. Selected website becomes live
+5. Can unpublish and publish different save later
+
+### Technical Notes
+
+**State Management**:
+- Multiple websites stored in `availableWebsites` array
+- Current website in `website` state
+- LoadWebsiteModal state: `showLoadWebsiteModal`, `loadingWebsites`
+- Template filter states: `templateSearch`, `selectedBusinessType`, `showRecommended`
+
+**Data Flow**:
+1. `loadAvailableWebsites()` fetches all user websites
+2. `setAvailableWebsites()` stores them
+3. User clicks website in modal
+4. `handleLoadWebsiteFromModal()` calls `loadWebsite(id)`
+5. Website loaded into builder
+6. Save/publish use `website.id`
+
+**Auto-Unpublish Logic** (Backend):
+```php
+// In publish() method
+UserWebsite::where('user_id', $user->id)
+    ->where('id', '!=', $website->id)
+    ->where('is_published', true)
+    ->update(['is_published' => false]);
+```
+
+### Bug Fixes
+
+1. **Load Save Button Not Working**:
+   - **Cause**: Modal not in DOM on welcome screen
+   - **Fix**: Added modal to welcome screen return
+
+2. **Delete Icon Overlapping Arrow**:
+   - **Cause**: Both positioned in same space
+   - **Fix**: Flex layout with separate columns
+
+3. **File > New Deleting Website**:
+   - **Cause**: Called `api.deleteUserWebsite()`
+   - **Fix**: Removed delete call, just clear state
+
+4. **Live Preview Using template_slug**:
+   - **Cause**: Using template-specific preview logic
+   - **Fix**: Created custom `handleWebsiteLivePreview()`
+
+### Testing Status
+
+**Tested & Working**:
+- ✅ Load Save button opens modal
+- ✅ Modal shows list of websites
+- ✅ Published badge displays correctly
+- ✅ Delete website works with confirmation
+- ✅ Load website switches to builder
+- ✅ File > New shows welcome screen
+- ✅ Template filtering works
+- ✅ Website Settings shows correct fields
+- ✅ Live preview generates and opens
+
+**Known Issues**:
+- None currently identified
+
+### Architecture Benefits
+
+**Scalability**:
+- Users can create unlimited saved websites
+- Easy to add features like:
+  - Website duplication
+  - Website templates
+  - Version history
+  - Scheduled publishing
+
+**User Experience**:
+- Clear workflow: Create → Edit → Save → Publish
+- Can experiment without affecting published site
+- Can maintain multiple projects
+- Simple, intuitive interface
+
+**Data Integrity**:
+- One published website enforced at database level
+- Cascading deletes for pages/sections
+- Proper relationships and constraints
+
 ## END OF MEMORY FILE 7
-**Last updated**: 2025-11-14 (Session 48)
-**Sessions covered**: 40-48 (Refactoring + Permission System + Website Builder + Pagevoo Official)
+**Last updated**: 2025-11-14 (Session 49)
+**Sessions covered**: 40-49 (Refactoring + Permissions + Website Builder + Multiple Saves)
 **Major Milestones**:
 - ✅ TemplateBuilder.tsx: 976 lines (from 9,262 lines)
 - ✅ Permission System: Database-driven with admin panel
@@ -1419,4 +1993,7 @@ Bug Fixes:
 - ✅ Template Filtering: Permission-based access control
 - ✅ Pagevoo Official System: Database-driven with filtering and badges
 - ✅ Imported Sections Workflow: Sidebar-first approach with drag-and-drop
+- ✅ Multiple Saves System: Unlimited websites, one published at a time
+- ✅ Website Settings: User-friendly with default meta tags and status
+- ✅ Live Preview: Working for user websites with auto-save
 **Status**: 🎉 **ALL SYSTEMS OPERATIONAL - READY FOR PRODUCTION TESTING**

@@ -24,12 +24,26 @@ class UserWebsiteController extends BaseController
     }
 
     /**
-     * Get user's website
+     * Get all user's websites
      */
-    public function show()
+    public function index()
+    {
+        $websites = UserWebsite::with(['template', 'pages.sections'])
+            ->where('user_id', auth()->id())
+            ->orderBy('updated_at', 'desc')
+            ->get();
+
+        return $this->sendSuccess($websites, 'Websites retrieved successfully');
+    }
+
+    /**
+     * Get a specific user website
+     */
+    public function show($id)
     {
         $website = UserWebsite::with(['template', 'pages.sections'])
             ->where('user_id', auth()->id())
+            ->where('id', $id)
             ->first();
 
         if (!$website) {
@@ -56,12 +70,6 @@ class UserWebsiteController extends BaseController
 
         if (!$template->is_active) {
             return $this->sendError('Template is not active', 400);
-        }
-
-        // Check if user already has a website
-        $existingWebsite = UserWebsite::where('user_id', auth()->id())->first();
-        if ($existingWebsite) {
-            return $this->sendError('User already has a website', 400);
         }
 
         try {
@@ -111,12 +119,6 @@ class UserWebsiteController extends BaseController
      */
     public function createBlank()
     {
-        // Check if user already has a website
-        $existingWebsite = UserWebsite::where('user_id', auth()->id())->first();
-        if ($existingWebsite) {
-            return $this->sendError('User already has a website', 400);
-        }
-
         try {
             DB::beginTransaction();
 
@@ -136,20 +138,7 @@ class UserWebsiteController extends BaseController
                 'order' => 0,
             ]);
 
-            // Create default hero section with basic content
-            UserSection::create([
-                'user_page_id' => $userPage->id,
-                'template_section_id' => null,
-                'type' => 'hero',
-                'content' => json_encode([
-                    'title' => 'Welcome to Your Website',
-                    'subtitle' => 'Start building your site by adding and customizing sections',
-                    'buttonText' => 'Get Started',
-                    'buttonUrl' => '#',
-                    'backgroundImage' => '',
-                ]),
-                'order' => 0,
-            ]);
+            // No default sections - user starts with a blank page
 
             DB::commit();
 
@@ -165,15 +154,27 @@ class UserWebsiteController extends BaseController
     /**
      * Save website (generates/updates preview files)
      */
-    public function save(Request $request)
+    public function save(Request $request, $id = null)
     {
-        $website = UserWebsite::with(['pages.sections'])->where('user_id', auth()->id())->first();
+        // If ID is provided, update that website, otherwise get the current one from request
+        $websiteId = $id ?? $request->input('id');
+
+        $website = UserWebsite::with(['pages.sections'])
+            ->where('user_id', auth()->id())
+            ->where('id', $websiteId)
+            ->first();
 
         if (!$website) {
             return $this->sendError('Website not found', 404);
         }
 
         try {
+            // Update website name if provided
+            if ($request->has('name')) {
+                $website->name = $request->input('name');
+                $website->save();
+            }
+
             // Prepare website data for file generation
             $websiteData = [
                 'site_css' => $request->input('site_css', ''),
@@ -194,6 +195,9 @@ class UserWebsiteController extends BaseController
             // Generate preview files
             $this->fileService->generatePreviewFiles($website, $websiteData);
 
+            // Reload website to get updated data
+            $website->load(['pages.sections']);
+
             return $this->sendSuccess([
                 'website' => $website,
                 'preview_url' => $website->getPreviewUrl(),
@@ -207,14 +211,25 @@ class UserWebsiteController extends BaseController
     /**
      * Publish website (requires permission & domain configuration)
      */
-    public function publish(Request $request)
+    public function publish(Request $request, $id = null)
     {
         $user = auth()->user();
-        $website = UserWebsite::with(['pages.sections'])->where('user_id', $user->id)->first();
+        $websiteId = $id ?? $request->input('id');
+
+        $website = UserWebsite::with(['pages.sections'])
+            ->where('user_id', $user->id)
+            ->where('id', $websiteId)
+            ->first();
 
         if (!$website) {
             return $this->sendError('Website not found', 404);
         }
+
+        // Unpublish any other published websites for this user
+        UserWebsite::where('user_id', $user->id)
+            ->where('id', '!=', $website->id)
+            ->where('is_published', true)
+            ->update(['is_published' => false]);
 
         // Check permission
         if (!$this->permissionService->canPublish($user)) {
@@ -272,9 +287,11 @@ class UserWebsiteController extends BaseController
     /**
      * Unpublish website (removes from production)
      */
-    public function unpublish()
+    public function unpublish($id)
     {
-        $website = UserWebsite::where('user_id', auth()->id())->first();
+        $website = UserWebsite::where('user_id', auth()->id())
+            ->where('id', $id)
+            ->first();
 
         if (!$website) {
             return $this->sendError('Website not found', 404);
@@ -399,9 +416,11 @@ class UserWebsiteController extends BaseController
     /**
      * Delete user's website
      */
-    public function destroy()
+    public function destroy($id)
     {
-        $website = UserWebsite::where('user_id', auth()->id())->first();
+        $website = UserWebsite::where('user_id', auth()->id())
+            ->where('id', $id)
+            ->first();
 
         if (!$website) {
             return $this->sendError('Website not found', 404);

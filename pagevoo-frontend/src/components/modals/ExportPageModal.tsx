@@ -7,6 +7,7 @@ interface ExportPageModalProps {
   onClose: () => void
   page: any // TemplatePage type
   siteCss?: string
+  showPagevooOption?: boolean
   onExport: (data: {
     name: string
     description: string
@@ -14,6 +15,7 @@ interface ExportPageModalProps {
     meta_keywords: string
     tags: string[]
     preview_image?: File
+    is_pagevoo_official?: boolean
   }) => Promise<void>
 }
 
@@ -22,6 +24,7 @@ export const ExportPageModal: React.FC<ExportPageModalProps> = ({
   onClose,
   page,
   siteCss,
+  showPagevooOption = false,
   onExport
 }) => {
   const [name, setName] = useState(page?.name || '')
@@ -30,6 +33,7 @@ export const ExportPageModal: React.FC<ExportPageModalProps> = ({
   const [metaKeywords, setMetaKeywords] = useState('')
   const [tags, setTags] = useState('')
   const [previewImage, setPreviewImage] = useState<File | null>(null)
+  const [isPagevooOfficial, setIsPagevooOfficial] = useState(false)
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
 
@@ -63,6 +67,10 @@ export const ExportPageModal: React.FC<ExportPageModalProps> = ({
         exportData.preview_image = previewImage
       }
 
+      if (showPagevooOption) {
+        exportData.is_pagevoo_official = isPagevooOfficial
+      }
+
       await onExport(exportData)
 
       setSuccessMessage('Page exported successfully!')
@@ -75,6 +83,7 @@ export const ExportPageModal: React.FC<ExportPageModalProps> = ({
         setMetaKeywords('')
         setTags('')
         setPreviewImage(null)
+        setIsPagevooOfficial(false)
         setSuccessMessage('')
         onClose()
       }, 1500)
@@ -215,6 +224,22 @@ export const ExportPageModal: React.FC<ExportPageModalProps> = ({
                 <p className="text-xs text-gray-400 mt-1">Selected: {previewImage.name}</p>
               )}
             </div>
+
+            {/* Pagevoo Official Checkbox */}
+            {showPagevooOption && (
+              <div className="flex items-center gap-2 p-3 bg-purple-900 bg-opacity-30 border border-purple-600 rounded-md">
+                <input
+                  id="is-pagevoo-official"
+                  type="checkbox"
+                  checked={isPagevooOfficial}
+                  onChange={(e) => setIsPagevooOfficial(e.target.checked)}
+                  className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+                />
+                <Label htmlFor="is-pagevoo-official" className="text-gray-200 cursor-pointer">
+                  <span>Mark as Pagevoo Official Page</span>
+                </Label>
+              </div>
+            )}
 
             {/* Success Message */}
             {successMessage && (

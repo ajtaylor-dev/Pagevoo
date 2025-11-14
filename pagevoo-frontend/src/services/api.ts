@@ -392,8 +392,13 @@ class ApiService {
    * User Website Management Methods
    */
 
-  async getUserWebsite(): Promise<ApiResponse<any>> {
+  async getUserWebsites(): Promise<ApiResponse<any[]>> {
     const response = await this.client.get('/v1/user-website');
+    return response.data;
+  }
+
+  async getUserWebsite(id: number): Promise<ApiResponse<any>> {
+    const response = await this.client.get(`/v1/user-website/${id}`);
     return response.data;
   }
 
@@ -409,18 +414,23 @@ class ApiService {
     return response.data;
   }
 
-  async publishWebsite(): Promise<ApiResponse<any>> {
-    const response = await this.client.post('/v1/user-website/publish');
+  async saveWebsite(websiteId: number, websiteData: any): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/v1/user-website/${websiteId}/save`, websiteData);
     return response.data;
   }
 
-  async unpublishWebsite(): Promise<ApiResponse<any>> {
-    const response = await this.client.post('/v1/user-website/unpublish');
+  async publishWebsite(websiteId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/v1/user-website/${websiteId}/publish`);
     return response.data;
   }
 
-  async deleteUserWebsite(): Promise<ApiResponse<any>> {
-    const response = await this.client.delete('/v1/user-website');
+  async unpublishWebsite(websiteId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/v1/user-website/${websiteId}/unpublish`);
+    return response.data;
+  }
+
+  async deleteUserWebsite(websiteId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.delete(`/v1/user-website/${websiteId}`);
     return response.data;
   }
 

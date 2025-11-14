@@ -286,7 +286,7 @@ export const Header: React.FC<HeaderProps> = ({
                         : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
                     }`}
                   >
-                    Template Settings
+                    Website Settings
                   </button>
                   <button
                     onClick={() => setEditSubTab('css')}
@@ -349,104 +349,99 @@ export const Header: React.FC<HeaderProps> = ({
                     </>
                   ) : editSubTab === 'settings' ? (
                   <>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-200 mb-1">
-                      Preview Image
-                    </label>
-                    {template.preview_image && (
-                      <div className="mb-2">
-                        <img
-                          src={`http://localhost:8000/storage/${template.preview_image}`}
-                          alt="Preview"
-                          className="w-full h-32 object-cover rounded border border-gray-600"
-                        />
-                      </div>
-                    )}
-                    <label className="block w-full">
+                  {/* Website Settings */}
+                  <div className="space-y-3">
+                    {/* Default Meta Title */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-200 mb-1">
+                        Default Site Title
+                      </label>
                       <input
-                        type="file"
-                        accept="image/*"
-                        onChange={handleImageUpload}
-                        disabled={uploadingImage}
-                        className="hidden"
+                        type="text"
+                        value={(template as any).default_title || ''}
+                        onChange={(e) => setTemplate({ ...template, default_title: e.target.value } as any)}
+                        className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
+                        placeholder="My Awesome Website"
                       />
-                      <div className={`w-full px-3 py-2 border border-gray-600 rounded text-xs text-center cursor-pointer transition ${
-                        uploadingImage
-                          ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                          : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-                      }`}>
-                        {uploadingImage ? 'Uploading...' : template.preview_image ? 'Change Image' : 'Upload Image'}
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        This title will be used for all pages unless overridden individually
+                      </p>
+                    </div>
+
+                    {/* Default Meta Description */}
+                    <div>
+                      <label className="block text-xs font-medium text-gray-200 mb-1">
+                        Default Meta Description
+                      </label>
+                      <textarea
+                        value={(template as any).default_description || ''}
+                        onChange={(e) => setTemplate({ ...template, default_description: e.target.value } as any)}
+                        rows={3}
+                        className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
+                        placeholder="A brief description of your website..."
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1">
+                        This description will be used for all pages unless overridden individually
+                      </p>
+                    </div>
+
+                    {/* Status Information */}
+                    <div className="border-t border-gray-600 pt-3">
+                      <label className="block text-xs font-medium text-gray-200 mb-2">
+                        Website Status
+                      </label>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-400">Status:</span>
+                          <span className={`px-2 py-0.5 rounded ${
+                            (template as any).is_published || (template as any).published_at
+                              ? 'bg-green-900/30 border border-green-700 text-green-400'
+                              : 'bg-gray-700 border border-gray-600 text-gray-300'
+                          }`}>
+                            {(template as any).is_published || (template as any).published_at ? 'Published' : 'Unpublished'}
+                          </span>
+                        </div>
+                        {(template as any).updated_at && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-400">Last Modified:</span>
+                            <span className="text-gray-300">
+                              {new Date((template as any).updated_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {(template as any).published_at && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-400">Published:</span>
+                            <span className="text-gray-300">
+                              {new Date((template as any).published_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </span>
+                          </div>
+                        )}
+                        {(template as any).created_at && (
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-400">Created:</span>
+                            <span className="text-gray-300">
+                              {new Date((template as any).created_at).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </label>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-200 mb-1">
-                      Description
-                    </label>
-                    <textarea
-                      value={template.description}
-                      onChange={(e) => setTemplate({ ...template, description: e.target.value })}
-                      rows={3}
-                      className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
-                      placeholder="Template description..."
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-200 mb-1">
-                      Business Type
-                    </label>
-                    <select
-                      value={template.business_type}
-                      onChange={(e) => setTemplate({ ...template, business_type: e.target.value })}
-                      className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
-                    >
-                      <option value="restaurant">Restaurant</option>
-                      <option value="barber">Barber</option>
-                      <option value="pizza">Pizza Shop</option>
-                      <option value="cafe">Cafe</option>
-                      <option value="gym">Gym</option>
-                      <option value="salon">Salon</option>
-                      <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-200 mb-1">
-                      Exclusive To
-                    </label>
-                    <select
-                      value={template.exclusive_to || ''}
-                      onChange={(e) => setTemplate({ ...template, exclusive_to: e.target.value as 'pro' | 'niche' | 'brochure' | null })}
-                      className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
-                    >
-                      <option value="">Trial</option>
-                      <option value="brochure">B + N + P</option>
-                      <option value="niche">N + P</option>
-                      <option value="pro">P</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-200 mb-1">
-                      Features
-                    </label>
-                    <div className="grid grid-cols-2 gap-1">
-                      {['shopping-cart', 'booking', 'blog', 'marketplace', 'forum', 'contact-form'].map((feature) => (
-                        <label key={feature} className="flex items-center gap-1 text-xs text-gray-200">
-                          <input
-                            type="checkbox"
-                            checked={template.features?.includes(feature) || false}
-                            onChange={(e) => {
-                              const feats = template.features || [];
-                              if (e.target.checked) {
-                                setTemplate({ ...template, features: [...feats, feature] });
-                              } else {
-                                setTemplate({ ...template, features: feats.filter(f => f !== feature) });
-                              }
-                            }}
-                            className="rounded border-gray-600 text-[#98b290] focus:ring-[#98b290]"
-                          />
-                          <span className="capitalize">{feature.replace('-', ' ')}</span>
-                        </label>
-                      ))}
                     </div>
                   </div>
                   </>
@@ -673,18 +668,22 @@ export const Header: React.FC<HeaderProps> = ({
       </div>
 
       {/* Center Section - Template Name */}
-      <div className="flex-1 flex justify-center">
+      <div className="flex-1 flex justify-center items-center">
         <input
           type="text"
-          value={template.name}
+          value={template.name || ''}
           onChange={(e) => {
             const updatedTemplate = { ...template, name: e.target.value }
             setTemplate(updatedTemplate)
             templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
             addToHistory(updatedTemplate)
           }}
-          className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64 text-gray-200"
+          placeholder="Untitled"
+          className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64 text-gray-200 placeholder:text-gray-400"
         />
+        {hasUnsavedChanges && (
+          <span className="ml-1 text-gray-400 text-xs">*</span>
+        )}
       </div>
 
       {/* Right Section - Actions & User */}

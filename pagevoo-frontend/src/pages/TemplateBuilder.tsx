@@ -726,6 +726,7 @@ export default function TemplateBuilder() {
     meta_keywords: string
     tags: string[]
     preview_image?: File
+    is_pagevoo_official?: boolean
   }) => {
     try {
       // Convert preview image to base64 if provided
@@ -743,7 +744,8 @@ export default function TemplateBuilder() {
         page_data: exportingPage || {},
         site_css: template?.custom_css || '',
         tags: data.tags,
-        preview_image: previewImageBase64
+        preview_image: previewImageBase64,
+        is_pagevoo_official: data.is_pagevoo_official
       })
 
       alert('Page exported to library successfully!')
@@ -1120,6 +1122,7 @@ export default function TemplateBuilder() {
         }}
         page={exportingPage}
         siteCss={template?.custom_css}
+        showPagevooOption={true}
         onExport={handlePageExport}
       />
 
