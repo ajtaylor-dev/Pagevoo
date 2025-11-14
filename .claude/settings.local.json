@@ -50,7 +50,8 @@
       "Bash(done)",
       "Bash(git reset:*)",
       "Bash(del pagevoo-frontendnul)",
-      "Bash(del pagevoo-frontendsrcnul)"
+      "Bash(del pagevoo-frontendsrcnul)",
+      "Bash(del claude_memory_7.txt)"
     ],
     "deny": [],
     "ask": []

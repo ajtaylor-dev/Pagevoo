@@ -977,13 +977,446 @@ All 11 custom hooks from TemplateBuilder integrated:
 4. Add domain configuration UI
 5. Implement storage usage tracking
 
+## SESSION 48: Pagevoo Official Sections & Imported Sections Workflow
+**Date**: 2025-11-14
+**Status**: ✅ COMPLETE
+
+### Overview
+Implemented comprehensive Pagevoo Official sections/pages system with database-driven filtering, visual badges, and imported sections workflow. Added permission-based export controls and fixed backend access permissions.
+
+### Major Features Implemented
+
+#### 1. Pagevoo Official System
+
+**Database Changes**:
+- **Migrations Created**:
+  - `2025_11_14_183012_add_is_pagevoo_official_to_section_library_table.php`
+  - `2025_11_14_183037_add_is_pagevoo_official_to_page_library_table.php`
+- Added `is_pagevoo_official` boolean field (default: false)
+- Added indexes for query performance
+- Rollback support included
+
+**Backend Implementation**:
+- **Models Updated** (SectionLibrary.php, PageLibrary.php):
+  - Added `is_pagevoo_official` to fillable array
+  - Added boolean cast for the field
+
+- **Controllers Updated** (SectionLibraryController.php, PageLibraryController.php):
+  - **index() method**: Implemented source filtering
+    - `'my'`: Only user's own content
+    - `'pagevoo'`: Only Pagevoo official content
+    - `'both'`: User's own OR Pagevoo official (default)
+
+  - **show() method**: CRITICAL BUG FIX
+    ```php
+    // BEFORE (broken - 404 errors):
+    $section = SectionLibrary::where('user_id', Auth::id())->findOrFail($id);
+
+    // AFTER (fixed):
+    $section = SectionLibrary::where(function($query) {
+        $query->where('user_id', Auth::id())
+              ->orWhere('is_pagevoo_official', true);
+    })->findOrFail($id);
+    ```
+
+  - **store() method**: Added validation and handling for `is_pagevoo_official`
+  - All responses now include `is_pagevoo_official` field
+
+**API Endpoints**:
+- `GET /api/v1/section-library?source={my|pagevoo|both}` - List with filtering
+- `GET /api/v1/section-library/{id}` - Fetch single (now allows Pagevoo official)
+- `POST /api/v1/section-library` - Create (accepts `is_pagevoo_official`)
+- Same for `/api/v1/page-library` endpoints
+
+**Frontend Implementation**:
+
+**TypeScript Interfaces** (libraryApi.ts):
+```typescript
+export interface SectionLibraryItem {
+  id: number
+  name: string
+  description?: string
+  preview_image?: string
+  section_type: string
+  tags?: string[]
+  is_pagevoo_official: boolean  // Added
+  created_at: string
+  updated_at: string
+}
+```
+
+**SectionLibraryModal.tsx** (Complete overhaul):
+- Added source filter state: `'both' | 'my' | 'pagevoo'`
+- Added dropdown filter with three options:
+  - "All Sections"
+  - "My Sections"
+  - "Pagevoo Sections"
+- **Purple Pagevoo Badge**:
+  ```tsx
+  {section.is_pagevoo_official && (
+    <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full uppercase flex items-center gap-1">
+      <svg className="w-2.5 h-2.5" fill="currentColor" viewBox="0 0 20 20">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+      </svg>
+      Pagevoo
+    </span>
+  )}
+  ```
+- **Success Feedback**:
+  - Green overlay with large checkmark icon
+  - "Imported!" button state
+  - Success state persists for 2 seconds
+  - `importedSectionIds` state tracks successful imports
+
+**ExportSectionModal.tsx** (Permission-based):
+- Added `showPagevooOption?: boolean` prop (defaults to false)
+- **Purple Checkbox Container** (only when `showPagevooOption={true}`):
+  ```tsx
+  {showPagevooOption && (
+    <div className="flex items-center gap-2 p-3 bg-purple-900 bg-opacity-30 border border-purple-600 rounded-md">
+      <input
+        id="is-pagevoo-official"
+        type="checkbox"
+        checked={isPagevooOfficial}
+        onChange={(e) => setIsPagevooOfficial(e.target.checked)}
+        className="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2"
+      />
+      <Label htmlFor="is-pagevoo-official">
+        <span>Mark as Pagevoo Official Section</span>
+      </Label>
+    </div>
+  )}
+  ```
+- Added `is_pagevoo_official` state and form handling
+
+#### 2. Imported Sections Workflow
+
+**Concept**:
+Sections from library now go to left sidebar first, then can be dragged to canvas (instead of direct-to-canvas import).
+
+**LeftSidebar.tsx** (Major Update):
+- Made imported sections props **optional** for backward compatibility:
+  ```typescript
+  interface LeftSidebarProps {
+    // ... existing props
+    importedSections?: ImportedSection[]
+    renderImportedSectionThumbnail?: (section: ImportedSection) => React.ReactNode
+    DraggableImportedSectionItem?: React.ComponentType<...>
+    onRemoveImportedSection?: (sectionId: number) => void
+    // ...
+  }
+  ```
+
+- **"Imported Sections" Category** (Blue theme):
+  - Blue border (`border-blue-400`)
+  - Blue background (`bg-blue-700 hover:bg-blue-600`)
+  - Shows import count: "Imported Sections (3)"
+  - Grid layout with 2 columns
+  - Remove button (X) on hover for each section
+  - Safety checks: `{importedSections.length > 0 && DraggableImportedSectionItem && ...}`
+
+- **Auto-expand on import**:
+  - Automatically expands "imported" category when section added
+  - Prevents duplicates
+
+**TemplateBuilder.tsx** (Full Implementation):
+- Added `importedSections` state: `useState<any[]>([])`
+- **handleImportSection()**: Adds sections to sidebar
+  ```typescript
+  const handleImportSection = async (sectionId: number) => {
+    const sectionData = await sectionLibraryApi.getById(sectionId)
+    if (!importedSections.find(s => s.id === sectionId)) {
+      setImportedSections(prev => [...prev, sectionData])
+      if (!expandedCategories.includes('imported')) {
+        setExpandedCategories(prev => [...prev, 'imported'])
+      }
+    }
+  }
+  ```
+- **handleRemoveImportedSection()**: Removes from sidebar
+- **renderImportedSectionThumbnail()**: Renders preview with fallback icon
+- **DraggableImportedSectionItem**: Uses `useDraggable` with `source: 'imported-library'`
+- Passed `showPagevooOption={true}` to ExportSectionModal
+- Updated `handleSectionExport()` to include `is_pagevoo_official` field
+
+**WebsiteBuilder.tsx** (Full Implementation):
+- Identical implementation to TemplateBuilder
+- Added all same handlers and state
+- Added all same props to LeftSidebar
+- **Does NOT pass `showPagevooOption`** to ExportSectionModal (regular users can't mark as Pagevoo)
+
+**useDragHandlers.ts** (Updated):
+- Updated to recognize `source: 'imported-library'`
+- Handles drag-and-drop from imported sections sidebar to canvas:
+  ```typescript
+  if (activeData?.source === 'library' || activeData?.source === 'imported-library') {
+    if (activeData.source === 'imported-library') {
+      const importedSectionData = activeData.section
+      const newSectionId = Date.now()
+      newSection = {
+        ...importedSectionData,
+        id: newSectionId,
+        section_id: `imported-section-${newSectionId}`,
+        order: 0
+      }
+    } else {
+      // Regular library section handling
+    }
+  }
+  ```
+
+#### 3. Section Type Updates
+
+Changed predefined section types throughout the app:
+
+**Old Types**:
+- Hero
+- Pricing
+- Features
+- Testimonials
+- etc.
+
+**New Types** (lines 159-168 in ExportSectionModal.tsx):
+1. Header/Banners
+2. Navigation
+3. Hero
+4. Gallery
+5. Informative
+6. Table/Grid
+7. Features
+8. Testimonials
+9. Standard
+10. Misc
+
+Applied to:
+- ExportSectionModal dropdown
+- SectionLibraryModal filter dropdown
+- Backend validation
+- TypeScript types
+
+### Permission-Based Controls
+
+| Feature | Trial User | Brochure/Niche/Pro User | Template Builder (Admin) |
+|---------|-----------|------------------------|-------------------------|
+| Import own sections | ❌ | ✅ | ✅ |
+| Import Pagevoo sections | ❌ | ✅ | ✅ |
+| Export own sections | ❌ | ✅ | ✅ |
+| Mark as Pagevoo official | ❌ | ❌ | ✅ |
+| Access Section Library | ❌ | ✅ | ✅ |
+
+**Implementation**:
+- **TemplateBuilder**: Passes `showPagevooOption={true}` to ExportSectionModal
+- **WebsiteBuilder**: Does NOT pass `showPagevooOption` (defaults to false)
+- Backend validates `is_pagevoo_official` field on create
+- Users can only delete their own sections (backend enforces with `user_id` check)
+
+### Bug Fixes
+
+#### 1. WebsiteBuilder Blank Screen
+**Issue**: LeftSidebar expected required props that WebsiteBuilder didn't provide
+**Symptom**: "Cannot read properties of undefined (reading 'length')"
+**Fix**: Made all imported sections props optional with defaults:
+```typescript
+importedSections?: ImportedSection[]  // Default: undefined
+// Safety check before rendering:
+{importedSections?.length > 0 && DraggableImportedSectionItem && ...}
+```
+
+#### 2. 404 Error on Section Import
+**Issue**: Regular users couldn't fetch Pagevoo official sections
+**Symptom**: `GET /api/v1/section-library/4 404 (Not Found)`
+**Root Cause**: `show()` method only checked `user_id`, not `is_pagevoo_official`
+**Fix**: Updated query to allow user's own OR Pagevoo official:
+```php
+$section = SectionLibrary::where(function($query) {
+    $query->where('user_id', Auth::id())
+          ->orWhere('is_pagevoo_official', true);
+})->findOrFail($id);
+```
+
+#### 3. Drag and Drop Not Working
+**Issue**: Imported sections wouldn't drag to canvas
+**Symptom**: No drag overlay, sections not adding to canvas
+**Fix**: Updated `useDragHandlers.ts` to recognize `source: 'imported-library'`
+
+### Files Created/Modified
+
+**New Files**:
+- `pagevoo-backend/database/migrations/2025_11_14_183012_add_is_pagevoo_official_to_section_library_table.php`
+- `pagevoo-backend/database/migrations/2025_11_14_183037_add_is_pagevoo_official_to_page_library_table.php`
+
+**Modified Files (Backend)**:
+- `pagevoo-backend/app/Models/SectionLibrary.php` - Added field to fillable and casts
+- `pagevoo-backend/app/Models/PageLibrary.php` - Added field to fillable and casts
+- `pagevoo-backend/app/Http/Controllers/SectionLibraryController.php`:
+  - Updated `index()` with source filtering
+  - Fixed `show()` to allow Pagevoo official access
+  - Updated `store()` with `is_pagevoo_official` handling
+- `pagevoo-backend/app/Http/Controllers/PageLibraryController.php`:
+  - Same updates as SectionLibraryController
+
+**Modified Files (Frontend)**:
+- `pagevoo-frontend/src/services/libraryApi.ts` - Updated interfaces
+- `pagevoo-frontend/src/components/modals/SectionLibraryModal.tsx`:
+  - Added source filter state and dropdown
+  - Added purple Pagevoo badges
+  - Added success feedback overlay
+- `pagevoo-frontend/src/components/modals/ExportSectionModal.tsx`:
+  - Added `showPagevooOption` prop
+  - Added purple checkbox for Pagevoo official
+- `pagevoo-frontend/src/components/LeftSidebar.tsx`:
+  - Made imported sections props optional
+  - Added "Imported Sections" category with blue theme
+  - Added remove button functionality
+- `pagevoo-frontend/src/pages/TemplateBuilder.tsx`:
+  - Added `importedSections` state
+  - Implemented import/remove handlers
+  - Added drag-and-drop components
+  - Passed `showPagevooOption={true}` to modal
+- `pagevoo-frontend/src/pages/WebsiteBuilder.tsx`:
+  - Added `importedSections` state
+  - Implemented import/remove handlers
+  - Added drag-and-drop components
+  - Does NOT pass `showPagevooOption`
+- `pagevoo-frontend/src/hooks/useDragHandlers.ts`:
+  - Updated to handle `source: 'imported-library'`
+
+### Visual Feedback & UX
+
+**Import Success Feedback**:
+1. Button changes from "Import to Sidebar" → "Importing..." (with spinner)
+2. On success: Green overlay covers entire card for 2 seconds
+3. Checkmark icon appears in green circle
+4. Button shows "Imported!" with checkmark
+5. Prevents duplicate imports with alert
+
+**Pagevoo Official Badge**:
+- Purple background (`bg-purple-100`)
+- Purple text (`text-purple-700`)
+- Checkmark icon
+- Uppercase "PAGEVOO" text
+- Appears in both section cards and detail views
+
+**Imported Sections Category**:
+- Blue theme to distinguish from Pagevoo (purple) and core (green)
+- Shows count: "Imported Sections (3)"
+- Grid layout with thumbnails
+- Remove button (X) appears on hover
+- Auto-expands when sections added
+
+### Database Schema
+
+```sql
+-- section_library table
+ALTER TABLE `section_library`
+  ADD COLUMN `is_pagevoo_official` BOOLEAN DEFAULT FALSE AFTER `is_public`,
+  ADD INDEX `idx_section_library_is_pagevoo_official` (`is_pagevoo_official`);
+
+-- page_library table
+ALTER TABLE `page_library`
+  ADD COLUMN `is_pagevoo_official` BOOLEAN DEFAULT FALSE AFTER `is_public`,
+  ADD INDEX `idx_page_library_is_pagevoo_official` (`is_pagevoo_official`);
+```
+
+### Testing Status
+**Tested & Working**:
+- ✅ Importing own sections to sidebar
+- ✅ Importing Pagevoo official sections to sidebar
+- ✅ Dragging imported sections to canvas
+- ✅ Removing sections from sidebar
+- ✅ Filtering by source (My/Pagevoo/Both)
+- ✅ Exporting sections with Pagevoo flag (TemplateBuilder)
+- ✅ Exporting sections without Pagevoo option (WebsiteBuilder)
+- ✅ Duplicate import prevention
+- ✅ Success feedback animations
+- ✅ Purple Pagevoo badges
+- ✅ Blue imported sections category
+
+**Known Issues**:
+- None currently identified
+
+### Git Commit
+**Commit Message**:
+```
+Feat: Implement Pagevoo Official sections system and imported sections workflow
+
+Backend Changes:
+- Add is_pagevoo_official migrations for section_library and page_library tables
+- Update SectionLibrary and PageLibrary models with new field
+- Implement source filtering in controllers (my/pagevoo/both)
+- Fix show() methods to allow fetching Pagevoo official content
+- Add is_pagevoo_official to API responses
+
+Frontend Changes:
+- Add Pagevoo official badges and source filtering to library modals
+- Implement imported sections workflow with sidebar category
+- Add drag-and-drop functionality for imported sections
+- Add permission-based export controls (TemplateBuilder only)
+- Update TypeScript interfaces for new fields
+- Implement success feedback with green overlay and checkmark
+- Add remove button for imported sections in sidebar
+- Update WebsiteBuilder to support imported sections workflow
+
+Features:
+- Template builders can mark sections/pages as Pagevoo official
+- Regular users can import both their own and Pagevoo sections
+- Regular users cannot mark sections as Pagevoo official
+- Sections from library go to sidebar first, then drag to canvas
+- Visual feedback for successful imports
+- Prevent duplicate section imports
+
+Bug Fixes:
+- Fix 404 errors when fetching Pagevoo official sections
+- Fix WebsiteBuilder blank screen with optional props
+- Fix drag-and-drop for imported sections
+```
+
+### Architecture Notes
+
+**State Management**:
+- `importedSections` state lives in parent (TemplateBuilder/WebsiteBuilder)
+- Props drilled to LeftSidebar, SectionLibraryModal
+- No context providers needed for this feature
+
+**Data Flow**:
+1. User clicks "Import to Sidebar" in SectionLibraryModal
+2. `handleImportSection()` fetches full section data
+3. Section added to `importedSections` state
+4. LeftSidebar renders in "Imported Sections" category
+5. User drags section to canvas using `DraggableImportedSectionItem`
+6. `useDragHandlers` recognizes `source: 'imported-library'`
+7. Section added to page with new ID
+
+**Permission Enforcement**:
+- Frontend: `showPagevooOption` prop controls checkbox visibility
+- Backend: Validates `is_pagevoo_official` on create
+- Database: Stores value, enforces via queries
+- Admin panel: Future - edit permissions to control who can mark as Pagevoo
+
+### Next Steps Ready
+
+**Immediate**:
+1. Test with real section data
+2. Create some Pagevoo official sections for demo
+3. Test pagination if library grows large
+
+**Future Enhancements**:
+1. Bulk import from library
+2. Section versioning for Pagevoo official updates
+3. Section ratings/reviews
+4. Section categories beyond type
+5. Search within imported sections
+6. Drag reordering of imported sections
+
 ## END OF MEMORY FILE 7
-**Last updated**: 2025-11-13 (Session 47)
-**Sessions covered**: 40-47 (Refactoring + Permission System + Website Builder)
+**Last updated**: 2025-11-14 (Session 48)
+**Sessions covered**: 40-48 (Refactoring + Permission System + Website Builder + Pagevoo Official)
 **Major Milestones**:
 - ✅ TemplateBuilder.tsx: 976 lines (from 9,262 lines)
 - ✅ Permission System: Database-driven with admin panel
 - ✅ WebsiteBuilder: Complete rebuild with full TemplateBuilder parity
 - ✅ Dark Theme: Applied throughout Website Builder
 - ✅ Template Filtering: Permission-based access control
-**Status**: 🎉 **WEBSITE BUILDER READY FOR TESTING**
+- ✅ Pagevoo Official System: Database-driven with filtering and badges
+- ✅ Imported Sections Workflow: Sidebar-first approach with drag-and-drop
+**Status**: 🎉 **ALL SYSTEMS OPERATIONAL - READY FOR PRODUCTION TESTING**
