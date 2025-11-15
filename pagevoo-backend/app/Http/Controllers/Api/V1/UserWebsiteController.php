@@ -169,10 +169,96 @@ class UserWebsiteController extends BaseController
         }
 
         try {
-            // Update website name if provided
+            \Log::info('Save website request data:', $request->all());
+
+            // Update website name and CSS if provided
             if ($request->has('name')) {
                 $website->name = $request->input('name');
-                $website->save();
+            }
+            if ($request->has('site_css')) {
+                $website->site_css = $request->input('site_css');
+            }
+            if ($request->has('default_title')) {
+                $website->default_title = $request->input('default_title');
+            }
+            if ($request->has('default_description')) {
+                $website->default_description = $request->input('default_description');
+            }
+            $website->save();
+
+            // Update pages and sections from request
+            if ($request->has('pages')) {
+                $pagesData = $request->input('pages');
+
+                foreach ($pagesData as $pageData) {
+                    // Find or create the page
+                    $page = $website->pages()->find($pageData['id']);
+
+                    if ($page) {
+                        // Update existing page
+                        $page->update([
+                            'name' => $pageData['name'],
+                            'slug' => $pageData['slug'],
+                            'is_homepage' => $pageData['is_homepage'] ?? false,
+                            'order' => $pageData['order'],
+                            'meta_description' => $pageData['meta_description'] ?? '',
+                            'page_css' => $pageData['page_css'] ?? '',
+                        ]);
+
+                        // Update sections for this page
+                        if (isset($pageData['sections'])) {
+                            // Get existing section IDs
+                            $existingSectionIds = $page->sections->pluck('id')->toArray();
+                            $updatedSectionIds = [];
+
+                            foreach ($pageData['sections'] as $sectionData) {
+                                \Log::info('Processing section:', ['section_data' => $sectionData]);
+
+                                // Ensure content and css are arrays
+                                $content = $sectionData['content'] ?? [];
+                                $css = $sectionData['css'] ?? [];
+
+                                // If they're strings, try to decode them
+                                if (is_string($content)) {
+                                    $content = json_decode($content, true) ?? [];
+                                }
+                                if (is_string($css)) {
+                                    $css = json_decode($css, true) ?? [];
+                                }
+
+                                if (isset($sectionData['id']) && in_array($sectionData['id'], $existingSectionIds)) {
+                                    // Update existing section
+                                    $section = $page->sections()->find($sectionData['id']);
+                                    if ($section) {
+                                        $section->update([
+                                            'section_id' => $sectionData['section_id'] ?? $section->section_id,
+                                            'section_name' => $sectionData['section_name'] ?? ($sectionData['type'] ?? 'section'),
+                                            'type' => $sectionData['type'] ?? $section->type,
+                                            'content' => $content,
+                                            'css' => $css,
+                                            'order' => $sectionData['order'] ?? $section->order,
+                                        ]);
+                                        $updatedSectionIds[] = $section->id;
+                                    }
+                                } else {
+                                    // Create new section
+                                    $section = $page->sections()->create([
+                                        'section_id' => $sectionData['section_id'] ?? 'section-' . uniqid(),
+                                        'section_name' => $sectionData['section_name'] ?? ($sectionData['type'] ?? 'section'),
+                                        'type' => $sectionData['type'] ?? 'unknown',
+                                        'content' => $content,
+                                        'css' => $css,
+                                        'order' => $sectionData['order'] ?? 0,
+                                    ]);
+                                    $updatedSectionIds[] = $section->id;
+                                }
+                            }
+
+                            // Delete sections that are no longer present
+                            $page->sections()->whereNotIn('id', $updatedSectionIds)->delete();
+                        }
+                    }
+                }
             }
 
             // Prepare website data for file generation
@@ -182,7 +268,10 @@ class UserWebsiteController extends BaseController
                 'images' => $request->input('images', []),
             ];
 
-            // Get all pages with their sections
+            // Reload website to get updated data
+            $website->load(['pages.sections']);
+
+            // Get all pages with their sections for file generation
             foreach ($website->pages as $page) {
                 $websiteData['pages'][] = [
                     'name' => $page->name,
@@ -194,9 +283,6 @@ class UserWebsiteController extends BaseController
 
             // Generate preview files
             $this->fileService->generatePreviewFiles($website, $websiteData);
-
-            // Reload website to get updated data
-            $website->load(['pages.sections']);
 
             return $this->sendSuccess([
                 'website' => $website,

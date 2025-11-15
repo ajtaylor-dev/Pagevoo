@@ -16,7 +16,10 @@ class UserWebsite extends Model
         'custom_domain',
         'is_published',
         'last_published_at',
-        'published_at'
+        'published_at',
+        'site_css',
+        'default_title',
+        'default_description'
     ];
 
     protected $casts = [

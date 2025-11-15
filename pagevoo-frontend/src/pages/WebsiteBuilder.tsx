@@ -131,7 +131,9 @@ interface UserWebsite {
   published_at: string | null
   technologies: string[]
   features: string[]
-  custom_css?: string
+  site_css?: string
+  default_title?: string
+  default_description?: string
   images?: Array<{
     id: string
     filename: string
@@ -573,7 +575,7 @@ export default function WebsiteBuilder() {
       // Prepare website data for saving
       const websiteData = {
         name: websiteName || website.name, // Use the new name if provided, otherwise use existing name
-        site_css: website.custom_css || '',
+        site_css: website.site_css || '',
         pages: website.pages.map(page => ({
           id: page.id,
           name: page.name,
@@ -584,8 +586,11 @@ export default function WebsiteBuilder() {
           page_css: page.page_css || '',
           sections: page.sections.map(section => ({
             id: section.id,
+            section_id: section.section_id,
+            section_name: section.section_name || section.type,
             type: section.type,
             content: section.content,
+            css: section.css || {},
             order: section.order
           }))
         })),
@@ -1005,7 +1010,7 @@ export default function WebsiteBuilder() {
         meta_description: data.meta_description,
         meta_keywords: data.meta_keywords,
         page_data: exportingPage || {},
-        site_css: website?.custom_css || '',
+        site_css: website?.site_css || '',
         tags: data.tags,
         preview_image: previewImageBase64
       })
@@ -1048,7 +1053,7 @@ export default function WebsiteBuilder() {
       if (applySiteCSS && pageData.site_css) {
         updatedWebsite = {
           ...updatedWebsite,
-          custom_css: pageData.site_css
+          site_css: pageData.site_css
         }
       }
 
@@ -1141,7 +1146,7 @@ export default function WebsiteBuilder() {
       // Prepare website data for saving
       const websiteData = {
         name: website.name || 'Untitled Website',
-        site_css: website.custom_css || '',
+        site_css: website.site_css || '',
         pages: website.pages.map(page => ({
           id: page.id,
           name: page.name,
@@ -1164,8 +1169,10 @@ export default function WebsiteBuilder() {
 
       if (response.success && response.data.preview_url) {
         // Open the preview URL
-        const pageFile = currentPage.slug === 'home' ? 'index.html' : `${currentPage.slug}.html`
-        const previewUrl = `${response.data.preview_url}/${pageFile}`
+        // Backend returns full URL to index.php, we need to replace with current page
+        const baseUrl = response.data.preview_url.replace(/\/[^\/]+\.php$/, '') // Remove filename from URL
+        const pageFile = currentPage.is_homepage ? 'index.php' : `${currentPage.slug}.php`
+        const previewUrl = `${baseUrl}/${pageFile}`
         window.open(previewUrl, '_blank')
         setHasUnsavedChanges(false)
       } else {
@@ -1748,7 +1755,7 @@ export default function WebsiteBuilder() {
           setExportingPage(null)
         }}
         page={exportingPage}
-        siteCss={website?.custom_css}
+        siteCss={website?.site_css}
         onExport={handlePageExport}
       />
 

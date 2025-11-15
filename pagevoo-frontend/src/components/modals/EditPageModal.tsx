@@ -34,11 +34,11 @@ export const EditPageModal: React.FC<EditPageModalProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Edit Page Details</h2>
+      <div className="bg-gray-800 rounded-lg shadow-xl w-full max-w-md p-6 border border-gray-700">
+        <h2 className="text-lg font-semibold text-gray-100 mb-4">Edit Page Details</h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-200 mb-1">
               Page Name
             </label>
             <input
@@ -46,12 +46,12 @@ export const EditPageModal: React.FC<EditPageModalProps> = ({
               value={editPageName}
               onChange={(e) => setEditPageName(e.target.value)}
               placeholder="e.g., About Us, Services, Contact"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-200 mb-1">
               Page Slug
             </label>
             <input
@@ -59,14 +59,14 @@ export const EditPageModal: React.FC<EditPageModalProps> = ({
               value={editPageSlug}
               onChange={(e) => setEditPageSlug(e.target.value)}
               placeholder="e.g., about-us, services, contact"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               The URL path for this page (e.g., /about-us)
             </p>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-200 mb-1">
               Meta Description
             </label>
             <textarea
@@ -74,16 +74,16 @@ export const EditPageModal: React.FC<EditPageModalProps> = ({
               onChange={(e) => setEditPageMetaDescription(e.target.value)}
               placeholder="Brief description for search engines (150-160 characters recommended)"
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
+              className="w-full px-3 py-2 bg-gray-700 border border-gray-600 text-gray-100 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290]"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-400 mt-1">
               {editPageMetaDescription.length} characters
             </p>
           </div>
           <div className="flex gap-2 pt-2">
             <button
               onClick={handleClose}
-              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition"
+              className="flex-1 px-4 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg transition"
             >
               Cancel
             </button>

@@ -1,0 +1,308 @@
+/* Pagevoo Base Styles
+ * This CSS is included in all generated websites to provide
+ * the foundational grid system and content styling
+ */
+
+/* Basic Reset */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* 12-Column Responsive Grid System */
+.row [class*="col-"] {
+  float: left;
+  width: 100%; /* Mobile default - all columns 100% */
+  box-sizing: border-box;
+  min-height: 1px; /* Prevent collapse */
+  border: 2px dashed #d1d5db;
+  border-radius: 0.5rem;
+  min-height: 200px;
+  padding: 1rem;
+}
+
+.row::after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+.row {
+  width: 100%;
+}
+
+/* Default link styles */
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Tablet Landscape (768px - 1024px) */
+@media (min-width: 768px) and (max-width: 1024px) and (orientation: landscape) {
+  .row .col-1 { width: 8.33%; }
+  .row .col-2 { width: 16.66%; }
+  .row .col-3 { width: 25%; }
+  .row .col-4 { width: 33.33%; }
+  .row .col-5 { width: 41.66%; }
+  .row .col-6 { width: 50%; }
+  .row .col-7 { width: 58.33%; }
+  .row .col-8 { width: 66.66%; }
+  .row .col-9 { width: 75%; }
+  .row .col-10 { width: 83.33%; }
+  .row .col-11 { width: 91.66%; }
+  .row .col-12 { width: 100%; }
+}
+
+/* Desktop (1025px+) */
+@media only screen and (min-width: 1025px) {
+  .row .col-1 { width: 8.33%; }
+  .row .col-2 { width: 16.66%; }
+  .row .col-3 { width: 25%; }
+  .row .col-4 { width: 33.33%; }
+  .row .col-5 { width: 41.66%; }
+  .row .col-6 { width: 50%; }
+  .row .col-7 { width: 58.33%; }
+  .row .col-8 { width: 66.66%; }
+  .row .col-9 { width: 75%; }
+  .row .col-10 { width: 83.33%; }
+  .row .col-11 { width: 91.66%; }
+  .row .col-12 { width: 100%; }
+}
+
+/* Content Styles - Typography */
+.row p {
+  margin: 1em 0;
+}
+
+.row ul, .row ol {
+  margin: 1em 0;
+  padding-left: 2.5em;
+  list-style-position: outside;
+}
+
+.row ul {
+  list-style-type: disc;
+}
+
+.row ol {
+  list-style-type: decimal;
+}
+
+.row li {
+  margin: 0.5em 0;
+  display: list-item;
+}
+
+/* Navigation Base Styles */
+nav.navbar, nav[class*="navbar-"], header[class*="header-"] {
+  padding: 16px 0;
+  background-color: #ffffff;
+  border-bottom: 2px solid #e5e7eb;
+  position: relative;
+}
+
+.nav-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  width: 100%;
+  padding: 0 16px;
+}
+
+.nav-logo {
+  font-size: 1.25rem;
+  font-weight: bold;
+  min-width: 120px;
+}
+
+.nav-links {
+  display: flex;
+  gap: 1.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.nav-link {
+  text-decoration: none;
+  color: inherit;
+  transition: opacity 0.2s;
+}
+
+.nav-link:hover {
+  opacity: 0.75;
+}
+
+.nav-dropdown {
+  position: relative;
+}
+
+.dropdown-toggle {
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 0.25rem;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.25rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  padding: 0.5rem;
+  min-width: 150px;
+  z-index: 10;
+}
+
+.nav-dropdown.active .dropdown-menu {
+  display: block;
+}
+
+.dropdown-item {
+  display: block;
+  padding: 0.5rem 0.75rem;
+  text-decoration: none;
+  color: inherit;
+  border-radius: 0.25rem;
+  transition: background-color 0.2s;
+}
+
+.dropdown-item:hover {
+  background-color: #f3f4f6;
+}
+
+.mobile-menu-btn {
+  display: none;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.menu-icon {
+  width: 1.5rem;
+  height: 1.5rem;
+  color: #374151;
+}
+
+.mobile-menu {
+  display: none;
+  width: 100%;
+  background-color: #ffffff;
+  border-top: 1px solid #e5e7eb;
+  padding: 1rem;
+}
+
+.mobile-menu.active {
+  display: block;
+}
+
+.mobile-menu a {
+  display: block;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+}
+
+.mobile-menu a:hover {
+  background-color: #f3f4f6;
+}
+
+.mobile-dropdown-toggle {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.mobile-dropdown-menu {
+  display: none;
+  padding-left: 1rem;
+}
+
+.mobile-dropdown.expanded .mobile-dropdown-menu {
+  display: block;
+}
+
+/* Footer Base Styles */
+.footer-simple {
+  background-color: #1f2937;
+  color: white;
+  padding: 32px;
+  text-align: center;
+}
+
+.footer-simple p {
+  font-size: 0.875rem;
+}
+
+.footer-columns {
+  background-color: #172554;
+  color: white;
+}
+
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2rem;
+  padding: 3rem;
+  max-width: 80rem;
+  margin: 0 auto;
+}
+
+.footer-column {
+  min-height: 150px;
+  text-align: center;
+}
+
+.footer-copyright {
+  background-color: #171717;
+  padding: 24px;
+  border-top: 1px solid #374151;
+}
+
+.footer-copyright p {
+  text-align: center;
+  font-size: 0.875rem;
+  max-width: 80rem;
+  margin: 0 auto;
+  padding: 0 3rem;
+}
+
+/* Navigation Responsive Styles */
+/* Hide mobile menu button on desktop (768px and up) */
+@media (min-width: 768px) {
+  .mobile-menu-btn {
+    display: none !important;
+  }
+
+  .mobile-menu {
+    display: none !important;
+  }
+}
+
+/* Hide desktop navigation on mobile (below 768px) */
+@media (max-width: 767px) {
+  .desktop-nav, .desktop-menu {
+    display: none !important;
+  }
+
+  .mobile-menu-btn {
+    display: block;
+  }
+}
