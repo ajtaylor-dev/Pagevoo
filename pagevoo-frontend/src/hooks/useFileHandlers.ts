@@ -112,6 +112,7 @@ export const useFileHandlers = ({
           technologies: template.technologies,
           features: template.features,
           custom_css: template.custom_css,
+          preview_image: template.preview_image,
           pages: template.pages.map(page => ({
             name: page.name,
             slug: page.slug,
@@ -141,6 +142,7 @@ export const useFileHandlers = ({
           technologies: template.technologies,
           features: template.features,
           custom_css: template.custom_css,
+          preview_image: template.preview_image,
           pages: template.pages.map(page => ({
             id: page.id > 1000000000000 ? undefined : page.id, // Don't send temporary IDs (from Date.now())
             name: page.name,

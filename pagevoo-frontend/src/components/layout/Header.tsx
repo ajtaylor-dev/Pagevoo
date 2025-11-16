@@ -2,6 +2,7 @@ import React from 'react'
 import { StyleEditor } from '@/components/StyleEditor'
 import ThemeSwitcher from '@/components/ThemeSwitcher'
 import type { ThemeColors, ThemeName } from '@/config/themes'
+import { api } from '@/services/api'
 
 interface Template {
   id: number
@@ -55,6 +56,7 @@ interface HeaderProps {
   canUndo: boolean
   canRedo: boolean
   hasUnsavedChanges: boolean
+  setHasUnsavedChanges?: (hasChanges: boolean) => void
 
   // Template and page data
   template: Template
@@ -123,6 +125,7 @@ export const Header: React.FC<HeaderProps> = ({
   canUndo,
   canRedo,
   hasUnsavedChanges,
+  setHasUnsavedChanges,
   template,
   setTemplate,
   currentPage,
@@ -374,7 +377,10 @@ export const Header: React.FC<HeaderProps> = ({
                         <input
                           type="text"
                           value={template.name || ''}
-                          onChange={(e) => setTemplate({ ...template, name: e.target.value })}
+                          onChange={(e) => {
+                            setTemplate({ ...template, name: e.target.value })
+                            setHasUnsavedChanges?.(true)
+                          }}
                           className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
                           placeholder="Professional Business Template"
                         />
@@ -387,7 +393,10 @@ export const Header: React.FC<HeaderProps> = ({
                         </label>
                         <textarea
                           value={template.description || ''}
-                          onChange={(e) => setTemplate({ ...template, description: e.target.value })}
+                          onChange={(e) => {
+                            setTemplate({ ...template, description: e.target.value })
+                            setHasUnsavedChanges?.(true)
+                          }}
                           rows={3}
                           className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
                           placeholder="A modern template for professional businesses..."
@@ -401,7 +410,10 @@ export const Header: React.FC<HeaderProps> = ({
                         </label>
                         <select
                           value={template.business_type || 'general'}
-                          onChange={(e) => setTemplate({ ...template, business_type: e.target.value })}
+                          onChange={(e) => {
+                            setTemplate({ ...template, business_type: e.target.value })
+                            setHasUnsavedChanges?.(true)
+                          }}
                           className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
                         >
                           <option value="general">General</option>
@@ -428,7 +440,10 @@ export const Header: React.FC<HeaderProps> = ({
                         </label>
                         <select
                           value={template.exclusive_to || 'null'}
-                          onChange={(e) => setTemplate({ ...template, exclusive_to: e.target.value === 'null' ? null : e.target.value as 'pro' | 'niche' })}
+                          onChange={(e) => {
+                            setTemplate({ ...template, exclusive_to: e.target.value === 'null' ? null : e.target.value as 'pro' | 'niche' })
+                            setHasUnsavedChanges?.(true)
+                          }}
                           className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
                         >
                           <option value="null">All Tiers</option>
@@ -462,13 +477,23 @@ export const Header: React.FC<HeaderProps> = ({
                             accept="image/*"
                             onChange={async (e) => {
                               const file = e.target.files?.[0]
-                              if (file) {
-                                // Upload the image first
-                                await handleImageUpload(e)
-                                // Then set it as the preview_image
-                                const filename = file.name
-                                const imagePath = `/storage/templates/${template.id}/images/${filename}`
-                                setTemplate({ ...template, preview_image: imagePath })
+                              if (file && template.id) {
+                                try {
+                                  // Upload the image to the template gallery
+                                  const response = await api.uploadGalleryImage(template.id, file)
+                                  if (response.success && response.data) {
+                                    // Set the uploaded image path as the preview_image (don't add leading slash, it's in the path)
+                                    setTemplate({ ...template, preview_image: response.data.path })
+                                    setHasUnsavedChanges?.(true)
+                                  } else {
+                                    alert(`Failed to upload thumbnail: ${response.message || 'Unknown error'}`)
+                                  }
+                                } catch (error) {
+                                  console.error('Thumbnail upload error:', error)
+                                  alert('Error uploading thumbnail. Please try again.')
+                                }
+                              } else if (!template.id) {
+                                alert('Please save the template before uploading a thumbnail.')
                               }
                             }}
                             className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs ${theme.inputBg} ${theme.inputText}`}

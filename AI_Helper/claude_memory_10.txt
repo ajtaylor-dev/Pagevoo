@@ -1,0 +1,368 @@
+PAGEVOO PROJECT - SESSION 10 DOCUMENTATION
+==========================================
+Date: November 16, 2025
+Focus: Template Thumbnail Upload & Persistence Fixes
+
+OVERVIEW
+--------
+This session was a continuation of Session 9, focusing on fixing thumbnail upload
+functionality, thumbnail persistence across saves, and addressing issues with
+preview images disappearing when toggling template published status.
+
+KEY ISSUES ADDRESSED
+--------------------
+
+1. THUMBNAIL UPLOAD NOT WORKING
+   - Initial console errors: api undefined, file undefined, 422 validation, 403 Forbidden
+   - Fixed import issues and file upload handling
+   - Fixed image path construction for different storage locations
+
+2. THUMBNAIL PERSISTENCE ACROSS SAVES
+   - Thumbnails disappeared after save when navigating away
+   - Images moved from temporary to permanent storage but paths not updated
+   - Fixed preview_image path updates during file migration
+
+3. THUMBNAIL DISAPPEARING ON PUBLISH TOGGLE
+   - Thumbnails disappeared when changing published status in Template Builder
+   - Slug changes caused directory moves but paths weren't syncing
+   - Implemented slug stability to prevent unnecessary directory moves
+
+DETAILED CHANGES
+----------------
+
+1. THUMBNAIL UPLOAD FUNCTIONALITY (Header.tsx)
+   Location: pagevoo-frontend/src/components/layout/Header.tsx
+
+   a) Fixed API Import
+      - Added: import { api } from '@/services/api'
+      - Was missing, causing "api is not defined" error
+
+   b) Fixed File Upload Handler (lines 475-502)
+      - Changed from passing event to passing File object
+      - Direct call to api.uploadGalleryImage(template.id, file)
+      - Proper error handling and user feedback
+      - Sets preview_image path after successful upload
+
+   c) Added Unsaved Changes Tracking
+      - Added setHasUnsavedChanges prop to HeaderProps interface
+      - All Template Settings fields now trigger unsaved indicator:
+        * Template Name onChange
+        * Description onChange
+        * Business Type onChange
+        * Exclusive To onChange
+        * Preview Thumbnail upload
+
+   Files Changed:
+   - pagevoo-frontend/src/components/layout/Header.tsx
+   - pagevoo-frontend/src/pages/TemplateBuilder.tsx (line 888 - pass setHasUnsavedChanges prop)
+
+2. THUMBNAIL PERSISTENCE (Backend Files)
+
+   a) Added preview_image to Save Operations (useFileHandlers.ts)
+      Location: pagevoo-frontend/src/hooks/useFileHandlers.ts
+
+      - CREATE operation (line 115): Added preview_image to payload
+      - UPDATE operation (line 145): Added preview_image to payload
+
+      This ensures preview_image is saved to database alongside other template data.
+
+   b) Smart Preview Image Path Update (TemplateFileGenerator.php)
+      Location: pagevoo-backend/app/Services/TemplateFileGenerator.php
+      Lines: 127-177 (copyTemplateImages function)
+
+      Key Logic:
+      - When moving images from image_galleries/ to template_directory/
+      - Checks if preview_image filename matches an image being moved
+      - If match found, updates preview_image path to new location
+      - Includes preview_image in database update
+
+      Example:
+      ```php
+      // If this image is also the preview_image, update that field too
+      if ($template->preview_image && basename($template->preview_image) === $filename) {
+          $template->preview_image = $newImagePath;
+          $previewImageMoved = true;
+          \Log::info("Updated preview_image path to: {$newImagePath}");
+      }
+
+      if ($previewImageMoved) {
+          $updateData['preview_image'] = $template->preview_image;
+      }
+      ```
+
+   c) Fixed Image URL Construction (TemplateManager.tsx & WebsiteBuilder.tsx)
+
+      TemplateManager.tsx (line 389):
+      ```typescript
+      src={`http://localhost:8000/${template.preview_image.startsWith('template_directory/')
+        ? template.preview_image
+        : `storage/${template.preview_image}`}`}
+      ```
+
+      WebsiteBuilder.tsx (line 1427):
+      - Applied same URL construction logic for template selection screen
+
+      Logic:
+      - If path starts with 'template_directory/', use directly (no /storage/ prefix)
+      - Otherwise add '/storage/' prefix (for image_galleries paths)
+
+3. TEMPLATE VISIBILITY FIX (is_active Default Value)
+   Location: pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php
+   Line: 156
+
+   Before: 'is_active' => $request->is_active ?? false
+   After:  'is_active' => $request->is_active ?? true
+
+   Issue: New templates defaulted to inactive, making them invisible to users
+   Fix: Templates now default to active on creation
+
+4. SLUG STABILITY & THUMBNAIL PERSISTENCE ON PUBLISH TOGGLE
+
+   ORIGINAL PROBLEM:
+   - Slug changed every time published status toggled:
+     * Published → name-based slug (e.g., "prooo")
+     * Unpublished → random slug (e.g., "kx4YBlnbYL")
+   - Each slug change moved the entire directory
+   - Image paths in database needed updating but sometimes failed
+   - Result: Thumbnails disappeared
+
+   SOLUTION IMPLEMENTED:
+
+   a) Modified Slug Generation Logic (TemplateFileGenerator.php)
+      Location: Lines 75-107
+
+      New generateSlug() function:
+      ```php
+      protected function generateSlug(Template $template): string
+      {
+          // If template already has a clean slug, keep it
+          if ($template->template_slug && !$this->isRandomSlug($template->template_slug)) {
+              return $template->template_slug;
+          }
+
+          // Generate clean name-based slug
+          $baseSlug = Str::slug($template->name);
+          // ... uniqueness checks ...
+          return $slug;
+      }
+
+      protected function isRandomSlug(string $slug): bool
+      {
+          // Random slugs are 10 characters, mixed case/numbers
+          return strlen($slug) === 10 && preg_match('/^[a-zA-Z0-9]{10}$/', $slug);
+      }
+      ```
+
+      Behavior:
+      - Keep existing clean slugs forever
+      - Only replace random slugs with clean ones
+      - No more flip-flopping on publish toggle
+
+   b) Early Return for Unchanged Slugs (updateSlugOnPublish)
+      Location: Lines 954-978
+
+      ```php
+      public function updateSlugOnPublish(Template $template, bool $isNowPublished): void
+      {
+          $oldSlug = $template->template_slug;
+          $newSlug = $this->generateSlug($template);
+
+          // If slug didn't change, just regenerate files and return
+          if ($newSlug === $oldSlug) {
+              \Log::info("Slug unchanged, just regenerating template files");
+              $this->generateTemplateFiles($template);
+              return;
+          }
+
+          // Slug is changing, proceed with directory move...
+      }
+      ```
+
+   c) Improved Path Updates During Slug Changes
+      Location: Lines 960-1065
+
+      Two scenarios handled:
+
+      Scenario 1 - Directory exists at old path:
+      - Move directory from old to new path
+      - Build single updateData array with all changes
+      - Update preview_image and images paths
+      - Single database update
+      - Refresh template to sync in-memory object
+
+      Scenario 2 - Directory doesn't exist at expected old path:
+      - Search for preview image file in any template directory
+      - If found, move that entire directory to new location
+      - Update all paths in database
+      - If not found, generate fresh files
+
+      Key improvements:
+      - Combined updates into single database transaction
+      - Immediate template refresh after update
+      - Fallback search for files in unexpected locations
+      - Comprehensive logging for debugging
+
+ERRORS ENCOUNTERED & FIXES
+---------------------------
+
+1. API Not Defined Error
+   Error: Uncaught ReferenceError: api is not defined
+   Fix: Added import { api } from '@/services/api' to Header.tsx
+
+2. Import Syntax Error
+   Error: Module does not provide export named 'default'
+   Fix: Changed from default import to named import { api }
+
+3. File Undefined in Upload
+   Error: Console showed "file: undefined"
+   Fix: Pass File object directly instead of event object
+
+4. 422 Validation Error
+   Error: The image field must be an image
+   Fix: Properly pass File object from e.target.files?.[0]
+
+5. 403 Forbidden - Double Slash
+   Error: GET /storage//image_galleries/... 403
+   Fix: Removed extra leading slash from path construction
+
+6. 403 Forbidden - Wrong Prefix
+   Error: GET /storage/template_directory/... 403
+   Fix: Conditional prefix based on path type (template_directory vs storage)
+
+7. Thumbnail Not Persisting
+   Error: Image shows during upload but disappears after save
+   Cause: preview_image not included in save payload, files moved but paths not updated
+   Fix: Added preview_image to save operations, smart path update in copyTemplateImages
+
+8. Template Not Visible to Pro User
+   Error: Pro templates invisible to pro users
+   Cause: is_active defaulted to false/null
+   Fix: Changed default to true in TemplateController
+
+9. Thumbnail Disappears on Publish Toggle
+   Error: Slug changes caused directory moves, paths became stale
+   Cause: Slug regenerated on every publish status change
+   Fix: Slug stability - keep existing clean slugs, only replace random ones
+
+CURRENT STATE
+-------------
+
+WORKING:
+✅ Thumbnail upload functionality in Template Settings
+✅ Preview images display in Template Manager
+✅ Preview images display in Website Builder welcome page
+✅ Unsaved changes indicator for all Template Settings
+✅ Template visibility permissions (tier-based access)
+✅ Template is_active defaults to true
+✅ Image path updates during normal saves
+✅ Slug stability (slugs no longer change on publish toggle)
+
+STILL INVESTIGATING:
+⚠️ Thumbnail persistence when toggling published status
+   - Slug stability implemented but user reports issues persist
+   - Thumbnails work when toggling in Template Manager
+   - Issues occur when toggling in Template Builder Settings
+   - May need to investigate timing of updates vs refreshes
+
+TECHNICAL NOTES
+---------------
+
+Image Storage Paths:
+1. Temporary: image_galleries/template_{id}/filename.ext
+   - Used during upload
+   - Deleted after successful move to permanent location
+
+2. Permanent: template_directory/{slug}/public/images/filename.ext
+   - Final storage location
+   - Slug-based path (e.g., template_directory/prooo/public/images/...)
+   - Must update database paths when files move here
+
+URL Construction Logic:
+- Paths starting with 'template_directory/' → Use directly
+- Other paths → Add '/storage/' prefix
+- Example: /storage/image_galleries/... vs /template_directory/...
+
+Slug Generation Strategy:
+- New templates: Generate clean slug from name
+- Existing clean slugs: Keep forever (stable)
+- Random slugs: Replace with clean slug once, then stable
+- Pattern: ^[a-zA-Z0-9]{10}$ = random slug
+
+Database Update Pattern for Paths:
+```php
+$updateData = [];
+if ($preview_needs_update) {
+    $updateData['preview_image'] = $newPath;
+}
+if ($images_need_update) {
+    $updateData['images'] = $updatedImages;
+}
+if (!empty($updateData)) {
+    $template->update($updateData);
+    $template->refresh(); // Critical for sync
+}
+```
+
+FILES MODIFIED THIS SESSION
+----------------------------
+
+Frontend:
+- pagevoo-frontend/src/components/layout/Header.tsx
+  * Added api import
+  * Fixed thumbnail upload handler
+  * Added unsaved changes tracking for all Template Settings fields
+
+- pagevoo-frontend/src/pages/TemplateBuilder.tsx
+  * Passed setHasUnsavedChanges prop to Header
+
+- pagevoo-frontend/src/hooks/useFileHandlers.ts
+  * Added preview_image to CREATE payload (line 115)
+  * Added preview_image to UPDATE payload (line 145)
+
+- pagevoo-frontend/src/components/TemplateManager.tsx
+  * Fixed image URL construction (line 389)
+
+- pagevoo-frontend/src/pages/WebsiteBuilder.tsx
+  * Fixed image URL construction for template selection (line 1427)
+
+Backend:
+- pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php
+  * Changed is_active default from false to true (line 156)
+  * Added debug logging for template queries
+
+- pagevoo-backend/app/Services/TemplateFileGenerator.php
+  * Modified generateSlug() - slug stability (lines 75-107)
+  * Added isRandomSlug() helper (lines 100-107)
+  * Enhanced copyTemplateImages() - preview_image path updates (lines 127-177)
+  * Improved updateSlugOnPublish() - early return, better path handling (lines 954-1065)
+
+NEXT SESSION PRIORITIES
+------------------------
+1. Continue investigating thumbnail persistence on publish toggle
+   - Check timing of template refreshes
+   - Verify database updates are committing
+   - Test with different scenarios (new template, existing template, etc.)
+
+2. Consider alternative approach:
+   - Maybe published status shouldn't affect file storage at all
+   - Keep all templates in same directory structure regardless of status
+   - Only use is_active field for visibility, not for file organization
+
+3. Test complete workflow:
+   - Create new template
+   - Upload thumbnail
+   - Save
+   - Toggle published on
+   - Save
+   - Toggle published off
+   - Save
+   - Verify thumbnail persists through all steps
+
+SESSION STATISTICS
+------------------
+Duration: Continuation of Session 9
+Files Modified: 8 files
+New Files: 0
+Primary Focus: Thumbnail upload and persistence
+Secondary Focus: Slug stability and path management
+Status: Partial completion - core functionality working, edge cases remain

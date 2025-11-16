@@ -74,26 +74,36 @@ class TemplateFileGenerator
 
     /**
      * Generate a slug for the template
+     * Only generates a new slug if the template doesn't have one yet, or if the name changed significantly
      */
     protected function generateSlug(Template $template): string
     {
-        if ($template->is_active) {
-            // Published template: use clean name-based slug
-            $baseSlug = Str::slug($template->name);
-            $slug = $baseSlug;
-            $counter = 1;
-
-            // Ensure uniqueness
-            while (Template::where('template_slug', $slug)->where('id', '!=', $template->id)->exists()) {
-                $slug = $baseSlug . '-' . $counter;
-                $counter++;
-            }
-
-            return $slug;
-        } else {
-            // Unpublished template: use random string
-            return Str::random(10);
+        // If template already has a slug that looks like a clean name-based slug (not random), keep it
+        if ($template->template_slug && !$this->isRandomSlug($template->template_slug)) {
+            return $template->template_slug;
         }
+
+        // Generate a clean name-based slug
+        $baseSlug = Str::slug($template->name);
+        $slug = $baseSlug;
+        $counter = 1;
+
+        // Ensure uniqueness
+        while (Template::where('template_slug', $slug)->where('id', '!=', $template->id)->exists()) {
+            $slug = $baseSlug . '-' . $counter;
+            $counter++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Check if a slug looks like a random string (10 characters, mixed case/numbers)
+     */
+    protected function isRandomSlug(string $slug): bool
+    {
+        // Random slugs are 10 characters long and contain mixed case letters
+        return strlen($slug) === 10 && preg_match('/^[a-zA-Z0-9]{10}$/', $slug);
     }
 
     /**
@@ -126,6 +136,7 @@ class TemplateFileGenerator
 
         $updatedImages = [];
         $hasChanges = false;
+        $previewImageMoved = false;
 
         foreach ($template->images as $image) {
             $sourcePath = public_path($image['path'] ?? '');
@@ -140,8 +151,16 @@ class TemplateFileGenerator
                     File::move($sourcePath, $newPath);
 
                     // Update path in database
-                    $image['path'] = "template_directory/{$template->template_slug}/public/images/{$filename}";
+                    $newImagePath = "template_directory/{$template->template_slug}/public/images/{$filename}";
+                    $image['path'] = $newImagePath;
                     $hasChanges = true;
+
+                    // If this image is also the preview_image, update that field too
+                    if ($template->preview_image && basename($template->preview_image) === $filename) {
+                        $template->preview_image = $newImagePath;
+                        $previewImageMoved = true;
+                        \Log::info("Updated preview_image path to: {$newImagePath}");
+                    }
                 } else {
                     // Image already in template directory, just copy
                     File::copy($sourcePath, $newPath);
@@ -153,11 +172,46 @@ class TemplateFileGenerator
 
         // Update template with new image paths if changes were made
         if ($hasChanges) {
-            $template->update(['images' => $updatedImages]);
+            $updateData = ['images' => $updatedImages];
+
+            // If preview_image was moved, include it in the update
+            if ($previewImageMoved) {
+                $updateData['preview_image'] = $template->preview_image;
+            }
+
+            $template->update($updateData);
 
             // Also update CSS references and HTML img src in all sections
             $this->updateCssImagePaths($template);
             $this->updateHtmlImagePaths($template);
+        }
+
+        // Handle preview_image if it exists and is in image_galleries
+        \Log::info("Checking preview_image", [
+            'has_preview' => !empty($template->preview_image),
+            'preview_path' => $template->preview_image,
+            'contains_galleries' => $template->preview_image ? str_contains($template->preview_image, 'image_galleries/') : false
+        ]);
+
+        if ($template->preview_image && str_contains($template->preview_image, 'image_galleries/')) {
+            $previewSourcePath = public_path($template->preview_image);
+            \Log::info("Preview image needs moving", ['source' => $previewSourcePath, 'exists' => File::exists($previewSourcePath)]);
+
+            if (File::exists($previewSourcePath)) {
+                $previewFilename = basename($previewSourcePath);
+                $previewNewPath = $targetPath . '/' . $previewFilename;
+
+                // Move the preview image
+                File::move($previewSourcePath, $previewNewPath);
+
+                // Update preview_image path in database
+                $newPreviewPath = "template_directory/{$template->template_slug}/public/images/{$previewFilename}";
+                $template->update(['preview_image' => $newPreviewPath]);
+
+                \Log::info("Moved preview image to: {$newPreviewPath}");
+            } else {
+                \Log::warning("Preview image file not found at: {$previewSourcePath}");
+            }
         }
 
         // Delete temporary image_galleries folder after moving all images
@@ -900,19 +954,144 @@ class TemplateFileGenerator
     public function updateSlugOnPublish(Template $template, bool $isNowPublished): void
     {
         $oldPath = $this->getTemplatePath($template);
+        $oldSlug = $template->template_slug;
+
+        // Store the current preview_image and images before changing slug
+        $oldPreviewImage = $template->preview_image;
+        $oldImages = $template->images;
 
         // Generate new slug based on published status
-        $template->template_slug = $this->generateSlug($template);
+        $newSlug = $this->generateSlug($template);
+
+        // If slug didn't change, just regenerate files and return
+        if ($newSlug === $oldSlug) {
+            \Log::info("Slug unchanged, just regenerating template files", ['template_id' => $template->id, 'slug' => $newSlug]);
+            $this->generateTemplateFiles($template);
+            return;
+        }
+
+        // Slug is changing, update it
+        $template->template_slug = $newSlug;
         $template->save();
+        \Log::info("Slug changed", ['template_id' => $template->id, 'old_slug' => $oldSlug, 'new_slug' => $newSlug]);
 
         $newPath = $this->getTemplatePath($template);
 
         // Move directory if it exists
         if (File::exists($oldPath) && $oldPath !== $newPath) {
             File::move($oldPath, $newPath);
+            \Log::info("Moved template directory from {$oldPath} to {$newPath}");
+
+            // Prepare single database update with all path changes
+            $updateData = [];
+
+            // Update preview_image path if it exists and contains the old slug
+            if ($oldPreviewImage && str_contains($oldPreviewImage, $oldSlug)) {
+                $newPreviewPath = str_replace(
+                    "template_directory/{$oldSlug}/",
+                    "template_directory/{$newSlug}/",
+                    $oldPreviewImage
+                );
+                $updateData['preview_image'] = $newPreviewPath;
+                \Log::info("Updating preview_image from {$oldPreviewImage} to {$newPreviewPath}");
+            }
+
+            // Update images array paths if they contain the old slug
+            if ($oldImages && is_array($oldImages)) {
+                $updatedImages = [];
+                $hasChanges = false;
+
+                foreach ($oldImages as $image) {
+                    if (isset($image['path']) && str_contains($image['path'], $oldSlug)) {
+                        $image['path'] = str_replace(
+                            "template_directory/{$oldSlug}/",
+                            "template_directory/{$newSlug}/",
+                            $image['path']
+                        );
+                        $hasChanges = true;
+                    }
+                    $updatedImages[] = $image;
+                }
+
+                if ($hasChanges) {
+                    $updateData['images'] = $updatedImages;
+                }
+            }
+
+            // Perform single database update if there are changes
+            if (!empty($updateData)) {
+                $template->update($updateData);
+                $template->refresh(); // Reload from database to ensure we have the updated values
+                \Log::info("Updated template paths in database", ['template_id' => $template->id, 'new_preview' => $template->preview_image]);
+            }
         } else {
-            // Generate fresh files
-            $this->generateTemplateFiles($template);
+            // Directory doesn't exist - need to generate fresh files
+            // But first, check if there's an old directory with different slug that has the files
+            $foundOldDirectory = false;
+
+            // Try to find an existing template directory by searching for the preview image file
+            if ($oldPreviewImage) {
+                $searchPattern = public_path('template_directory/*/public/images/' . basename($oldPreviewImage));
+                $matches = glob($searchPattern);
+
+                if (!empty($matches)) {
+                    // Found the file in an old directory - extract that directory path
+                    $actualOldPath = dirname(dirname(dirname($matches[0])));
+                    $foundOldDirectory = true;
+
+                    \Log::info("Found template files in old directory", [
+                        'old_path' => $actualOldPath,
+                        'new_path' => $newPath
+                    ]);
+
+                    // Move the entire directory
+                    if (File::exists($actualOldPath)) {
+                        File::move($actualOldPath, $newPath);
+                        \Log::info("Successfully moved directory from {$actualOldPath} to {$newPath}");
+
+                        // Now update all paths in a single database update
+                        $updateData = [];
+
+                        if ($oldPreviewImage && str_contains($oldPreviewImage, $oldSlug)) {
+                            $newPreviewPath = str_replace(
+                                "template_directory/{$oldSlug}/",
+                                "template_directory/{$newSlug}/",
+                                $oldPreviewImage
+                            );
+                            $updateData['preview_image'] = $newPreviewPath;
+                            \Log::info("Updating preview_image from {$oldPreviewImage} to {$newPreviewPath}");
+                        }
+
+                        if ($oldImages && is_array($oldImages)) {
+                            $updatedImages = [];
+                            foreach ($oldImages as $image) {
+                                if (isset($image['path']) && str_contains($image['path'], $oldSlug)) {
+                                    $image['path'] = str_replace(
+                                        "template_directory/{$oldSlug}/",
+                                        "template_directory/{$newSlug}/",
+                                        $image['path']
+                                    );
+                                }
+                                $updatedImages[] = $image;
+                            }
+                            $updateData['images'] = $updatedImages;
+                        }
+
+                        // Perform single database update if there are changes
+                        if (!empty($updateData)) {
+                            $template->update($updateData);
+                            $template->refresh(); // Reload from database to ensure we have the updated values
+                            \Log::info("Updated template paths in database", ['template_id' => $template->id, 'new_preview' => $template->preview_image]);
+                        }
+                    }
+                }
+            }
+
+            // If we didn't find and move an old directory, generate fresh files
+            if (!$foundOldDirectory) {
+                $this->generateTemplateFiles($template);
+                \Log::info("Generated fresh template files with new slug: {$newSlug}");
+            }
         }
     }
 }

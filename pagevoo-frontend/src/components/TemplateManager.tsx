@@ -386,7 +386,7 @@ export function TemplateManager() {
                 {template.preview_image ? (
                   <div className="w-full h-40 bg-gray-200 overflow-hidden">
                     <img
-                      src={`http://localhost:8000/storage/${template.preview_image}`}
+                      src={`http://localhost:8000/${template.preview_image.startsWith('template_directory/') ? template.preview_image : `storage/${template.preview_image}`}`}
                       alt={template.name}
                       className="w-full h-full object-cover"
                     />

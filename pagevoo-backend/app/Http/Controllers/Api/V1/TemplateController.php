@@ -51,6 +51,12 @@ class TemplateController extends BaseController
             return $this->sendSuccess([], 'No templates available for your tier');
         }
 
+        \Log::info('Template index query', [
+            'user_id' => $user->id,
+            'user_tier' => $user->account_tier,
+            'allowed_tiers' => $allowedTiers
+        ]);
+
         // Get templates where:
         // 1. tier_category matches user's allowed tiers OR
         // 2. exclusive_to is null (available to all) OR
@@ -64,6 +70,11 @@ class TemplateController extends BaseController
             })
             ->orderBy('created_at', 'desc')
             ->get();
+
+        \Log::info('Templates found', [
+            'count' => $templates->count(),
+            'template_ids' => $templates->pluck('id')->toArray()
+        ]);
 
         return $this->sendSuccess($templates, 'Templates retrieved successfully');
     }
@@ -142,7 +153,7 @@ class TemplateController extends BaseController
             'description' => $request->description,
             'business_type' => $request->business_type,
             'preview_image' => $request->preview_image,
-            'is_active' => $request->is_active ?? false, // Default to unpublished (draft)
+            'is_active' => $request->is_active ?? true, // Default to active
             'created_by' => auth()->id(),
             'exclusive_to' => $request->exclusive_to,
             'tier_category' => $tierCategory,
@@ -398,6 +409,9 @@ class TemplateController extends BaseController
     {
         try {
             \Log::info('Upload gallery image called for template ID: ' . $id);
+            \Log::info('Request has file:', ['has_file' => $request->hasFile('image')]);
+            \Log::info('Request all keys:', ['keys' => array_keys($request->all())]);
+            \Log::info('Request files:', ['files' => $request->allFiles()]);
 
             $template = Template::find($id);
 

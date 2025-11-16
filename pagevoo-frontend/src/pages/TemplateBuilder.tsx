@@ -885,6 +885,7 @@ export default function TemplateBuilder() {
         canUndo={canUndo}
         canRedo={canRedo}
         hasUnsavedChanges={hasUnsavedChanges}
+        setHasUnsavedChanges={setHasUnsavedChanges}
         template={template!}
         setTemplate={setTemplate}
         currentPage={currentPage}

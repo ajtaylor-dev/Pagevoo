@@ -1424,7 +1424,7 @@ export default function WebsiteBuilder() {
                       <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
                         {template.preview_image ? (
                           <img
-                            src={template.preview_image}
+                            src={`http://localhost:8000/${template.preview_image.startsWith('template_directory/') ? template.preview_image : `storage/${template.preview_image}`}`}
                             alt={template.name}
                             className="w-full h-full object-cover"
                           />
