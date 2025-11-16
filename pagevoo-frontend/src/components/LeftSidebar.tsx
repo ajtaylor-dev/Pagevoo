@@ -1,4 +1,5 @@
 import React from 'react'
+import type { ThemeColors } from '@/config/themes'
 
 interface Section {
   type: string
@@ -29,6 +30,7 @@ interface LeftSidebarProps {
   DraggableImportedSectionItem?: React.ComponentType<{ section: ImportedSection; children: React.ReactNode }>
   onRemoveImportedSection?: (sectionId: number) => void
   onMouseDown: (e: React.MouseEvent) => void
+  theme: ThemeColors
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -45,18 +47,19 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   DraggableSectionItem,
   DraggableImportedSectionItem,
   onRemoveImportedSection,
-  onMouseDown
+  onMouseDown,
+  theme
 }) => {
   return (
     <>
       <aside
         ref={sidebarRef}
         style={{ width }}
-        className="bg-gray-800 border-r border-gray-700 overflow-y-auto flex-shrink-0"
+        className={`${theme.sidebarBg} border-r ${theme.sidebarBorder} overflow-y-auto flex-shrink-0`}
       >
         <div className="p-3">
           {/* Section Library */}
-          <h2 className="text-xs font-semibold text-[#98b290] uppercase mb-3">Section Library</h2>
+          <h2 className={`text-xs font-semibold ${theme.sidebarHeading} uppercase mb-3`}>Section Library</h2>
 
           {/* Imported Sections */}
           {importedSections.length > 0 && DraggableImportedSectionItem && renderImportedSectionThumbnail && onRemoveImportedSection && (
@@ -83,7 +86,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       <div className="group relative w-full">
                         <div className="cursor-grab active:cursor-grabbing" title={section.name}>
                           {renderImportedSectionThumbnail(section)}
-                          <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-blue-400 transition truncate">
+                          <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center group-hover:text-blue-400 transition truncate`}>
                             {section.name}
                           </div>
                         </div>
@@ -111,11 +114,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="mb-3">
             <button
               onClick={() => onToggleCategory('core')}
-              className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-700 hover:bg-gray-600 border border-[#98b290] rounded text-xs font-medium text-[#98b290] transition"
+              className={`w-full flex items-center justify-between px-2 py-1.5 ${theme.categoryBg} ${theme.categoryHover} border ${theme.sidebarBorder} rounded text-xs font-medium ${theme.categoryText} transition`}
             >
               <span>Core Sections</span>
               <svg
-                className={`w-3 h-3 transition-transform text-[#98b290] ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
+                className={`w-3 h-3 transition-transform ${theme.categoryIcon} ${expandedCategories.includes('core') ? 'rotate-90' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -133,7 +136,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       title={section.description}
                     >
                       {renderSectionThumbnail(section)}
-                      <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-[#98b290] transition">
+                      <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center group-hover:${theme.categoryIcon} transition`}>
                         {section.label}
                       </div>
                     </div>
@@ -147,11 +150,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="mb-3">
             <button
               onClick={() => onToggleCategory('headerNav')}
-              className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-700 hover:bg-gray-600 border border-[#98b290] rounded text-xs font-medium text-[#98b290] transition"
+              className={`w-full flex items-center justify-between px-2 py-1.5 ${theme.categoryBg} ${theme.categoryHover} border ${theme.sidebarBorder} rounded text-xs font-medium ${theme.categoryText} transition`}
             >
               <span>Header & Navigation</span>
               <svg
-                className={`w-3 h-3 transition-transform text-[#98b290] ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
+                className={`w-3 h-3 transition-transform ${theme.categoryIcon} ${expandedCategories.includes('headerNav') ? 'rotate-90' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -169,7 +172,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       title={section.description}
                     >
                       {renderSectionThumbnail(section)}
-                      <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-[#98b290] transition">
+                      <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center group-hover:${theme.categoryIcon} transition`}>
                         {section.label}
                       </div>
                     </div>
@@ -183,11 +186,11 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
           <div className="mb-3">
             <button
               onClick={() => onToggleCategory('footers')}
-              className="w-full flex items-center justify-between px-2 py-1.5 bg-gray-700 hover:bg-gray-600 border border-[#98b290] rounded text-xs font-medium text-[#98b290] transition"
+              className={`w-full flex items-center justify-between px-2 py-1.5 ${theme.categoryBg} ${theme.categoryHover} border ${theme.sidebarBorder} rounded text-xs font-medium ${theme.categoryText} transition`}
             >
               <span>Footers</span>
               <svg
-                className={`w-3 h-3 transition-transform text-[#98b290] ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
+                className={`w-3 h-3 transition-transform ${theme.categoryIcon} ${expandedCategories.includes('footers') ? 'rotate-90' : ''}`}
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -205,7 +208,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       title={section.description}
                     >
                       {renderSectionThumbnail(section)}
-                      <div className="mt-1 text-[10px] text-gray-300 text-center group-hover:text-[#98b290] transition">
+                      <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center group-hover:${theme.categoryIcon} transition`}>
                         {section.label}
                       </div>
                     </div>
@@ -221,7 +224,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
       {/* Left Resize Handle */}
       <div
         onMouseDown={onMouseDown}
-        className="w-1 bg-gray-200 hover:bg-[#98b290] cursor-col-resize transition flex-shrink-0"
+        className={`w-1 bg-gray-200 hover:${theme.categoryIcon} cursor-col-resize transition flex-shrink-0`}
       />
     </>
   )

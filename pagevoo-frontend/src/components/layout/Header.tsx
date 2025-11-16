@@ -1,5 +1,7 @@
 import React from 'react'
 import { StyleEditor } from '@/components/StyleEditor'
+import ThemeSwitcher from '@/components/ThemeSwitcher'
+import type { ThemeColors, ThemeName } from '@/config/themes'
 
 interface Template {
   id: number
@@ -27,6 +29,14 @@ interface User {
 }
 
 interface HeaderProps {
+  // Builder type
+  builderType?: 'template' | 'website'
+
+  // Theme
+  theme: ThemeColors
+  currentTheme: ThemeName
+  onThemeChange: (theme: ThemeName) => void
+
   // Menu visibility state
   showFileMenu: boolean
   setShowFileMenu: (show: boolean) => void
@@ -96,6 +106,10 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({
+  builderType = 'website',
+  theme,
+  currentTheme,
+  onThemeChange,
   showFileMenu,
   setShowFileMenu,
   showEditMenu,
@@ -143,10 +157,10 @@ export const Header: React.FC<HeaderProps> = ({
   handleImageUpload
 }) => {
   return (
-    <header className="bg-gray-800 border-b border-gray-700 flex items-center h-9 shadow-sm">
+    <header className={`${theme.headerBg} border-b ${theme.headerBorder} flex items-center h-9 shadow-sm`}>
       {/* Left Section - Logo & Menus */}
       <div className="flex items-center h-full">
-        <div className="px-3 flex items-center space-x-2 border-r border-gray-700 h-full">
+        <div className={`px-3 flex items-center space-x-2 border-r ${theme.headerBorder} h-full`}>
           <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" className="w-[60px] h-[60px]" />
         </div>
         <div className="flex items-center h-full text-xs relative">
@@ -160,39 +174,39 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowFileMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
+              className={`px-3 h-full ${theme.headerHover} transition ${theme.headerText}`}
             >
               File
             </button>
             {showFileMenu && (
-              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-48">
+              <div className={`absolute top-full left-0 mt-0 ${theme.dropdownBg} border ${theme.dropdownBorder} shadow-lg z-50 w-48`}>
                 <button
                   onClick={() => {
                     handleNew()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center justify-between text-gray-200"
+                  className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs flex items-center justify-between ${theme.dropdownText}`}
                 >
                   <span>New</span>
-                  <span className="text-gray-400 text-[10px]">Ctrl+N</span>
+                  <span className={`${theme.helperText} text-[10px]`}>Ctrl+N</span>
                 </button>
-                <div className="border-t border-gray-700 my-1"></div>
+                <div className={`border-t ${theme.dropdownBorder} my-1`}></div>
                 <button
                   onClick={() => {
                     handleSave()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center justify-between text-gray-200"
+                  className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs flex items-center justify-between ${theme.dropdownText}`}
                 >
                   <span>Save</span>
-                  <span className="text-gray-400 text-[10px]">Ctrl+S</span>
+                  <span className={`${theme.helperText} text-[10px]`}>Ctrl+S</span>
                 </button>
                 <button
                   onClick={() => {
                     handleSaveAs()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                  className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                 >
                   Save As...
                 </button>
@@ -201,28 +215,28 @@ export const Header: React.FC<HeaderProps> = ({
                     handleLoad()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs flex items-center justify-between text-gray-200"
+                  className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs flex items-center justify-between ${theme.dropdownText}`}
                 >
                   <span>Load</span>
-                  <span className="text-gray-400 text-[10px]">Ctrl+O</span>
+                  <span className={`${theme.helperText} text-[10px]`}>Ctrl+O</span>
                 </button>
-                <div className="border-t border-gray-700 my-1"></div>
+                <div className={`border-t ${theme.dropdownBorder} my-1`}></div>
                 <button
                   onClick={() => {
                     handleExportAsHTMLTemplate()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-600 text-xs font-medium text-[#98b290]"
+                  className={`w-full text-left px-4 py-2 ${theme.buttonHover} text-xs font-medium text-[#98b290]`}
                 >
                   Publish
                 </button>
-                <div className="border-t border-gray-700 my-1"></div>
+                <div className={`border-t ${theme.dropdownBorder} my-1`}></div>
                 <button
                   onClick={() => {
                     handleExit()
                     setShowFileMenu(false)
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                  className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                 >
                   Exit
                 </button>
@@ -239,21 +253,21 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowEditMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
+              className={`px-3 h-full ${theme.headerHover} transition ${theme.headerText}`}
             >
               Edit
             </button>
             {showEditMenu && template && (
-              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-80">
+              <div className={`absolute top-full left-0 mt-0 ${theme.dropdownBg} border ${theme.dropdownBorder} shadow-lg z-50 w-80`}>
                 {/* Undo/Redo buttons */}
-                <div className="flex items-center gap-1 px-2 py-2 border-b border-gray-700 bg-gray-700">
+                <div className={`flex items-center gap-1 px-2 py-2 border-b ${theme.dropdownBorder} ${theme.buttonBg}`}>
                   <button
                     onClick={() => {
                       handleUndo()
                       setShowEditMenu(false)
                     }}
                     disabled={!canUndo}
-                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-600 text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
+                    className={`flex items-center gap-1 px-2 py-1 ${theme.buttonHover} text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition ${theme.buttonText}`}
                     title="Undo (Ctrl+Z)"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -267,7 +281,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowEditMenu(false)
                     }}
                     disabled={!canRedo}
-                    className="flex items-center gap-1 px-2 py-1 hover:bg-gray-600 text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
+                    className={`flex items-center gap-1 px-2 py-1 ${theme.buttonHover} text-xs rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition ${theme.buttonText}`}
                     title="Redo (Ctrl+Y)"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -277,23 +291,23 @@ export const Header: React.FC<HeaderProps> = ({
                   </button>
                 </div>
                 {/* Sub-navigation Tabs */}
-                <div className="flex border-b border-gray-600">
+                <div className={`flex border-b ${theme.inputBorder}`}>
                   <button
                     onClick={() => setEditSubTab('settings')}
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'settings'
-                        ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
+                        ? `${theme.tabActiveBg} ${theme.tabActiveText} border-b-2 border-[#98b290]`
+                        : `${theme.tabInactiveBg} ${theme.tabInactiveText} ${theme.tabHover}`
                     }`}
                   >
-                    Website Settings
+                    {builderType === 'template' ? 'Template Settings' : 'Website Settings'}
                   </button>
                   <button
                     onClick={() => setEditSubTab('css')}
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'css'
-                        ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
+                        ? `${theme.tabActiveBg} ${theme.tabActiveText} border-b-2 border-[#98b290]`
+                        : `${theme.tabInactiveBg} ${theme.tabInactiveText} ${theme.tabHover}`
                     }`}
                   >
                     Site CSS
@@ -302,8 +316,8 @@ export const Header: React.FC<HeaderProps> = ({
                     onClick={() => setEditSubTab('page')}
                     className={`flex-1 px-4 py-2 text-xs font-medium transition ${
                       editSubTab === 'page'
-                        ? 'bg-gray-700 text-[#98b290] border-b-2 border-[#98b290]'
-                        : 'bg-gray-800 text-gray-300 hover:bg-gray-600'
+                        ? `${theme.tabActiveBg} ${theme.tabActiveText} border-b-2 border-[#98b290]`
+                        : `${theme.tabInactiveBg} ${theme.tabInactiveText} ${theme.tabHover}`
                     }`}
                   >
                     Edit Page
@@ -316,18 +330,18 @@ export const Header: React.FC<HeaderProps> = ({
                       {/* Edit Page Tab */}
                       {currentPage ? (
                         <>
-                          <div className="text-xs text-gray-300 mb-3">
+                          <div className={`text-xs ${theme.dropdownText} mb-3`}>
                             Current Page: <span className="font-medium">{currentPage.name}</span>
                           </div>
                           <button
                             onClick={handleOpenEditPageModal}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-700 text-xs rounded border border-gray-600 text-gray-200"
+                            className={`w-full text-left px-3 py-2 ${theme.dropdownHover} text-xs rounded border ${theme.inputBorder} ${theme.dropdownText}`}
                           >
                             Rename Page & Edit Meta
                           </button>
                           <button
                             onClick={handleCopyPage}
-                            className="w-full text-left px-3 py-2 hover:bg-gray-700 text-xs rounded border border-gray-600 text-gray-200"
+                            className={`w-full text-left px-3 py-2 ${theme.dropdownHover} text-xs rounded border ${theme.inputBorder} ${theme.dropdownText}`}
                           >
                             Copy Page
                           </button>
@@ -344,67 +358,187 @@ export const Header: React.FC<HeaderProps> = ({
                           )}
                         </>
                       ) : (
-                        <div className="text-xs text-gray-400">No page selected</div>
+                        <div className={`text-xs ${theme.helperText}`}>No page selected</div>
                       )}
                     </>
                   ) : editSubTab === 'settings' ? (
                   <>
-                  {/* Website Settings */}
-                  <div className="space-y-3">
-                    {/* Default Meta Title */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-200 mb-1">
-                        Default Site Title
-                      </label>
-                      <input
-                        type="text"
-                        value={(template as any).default_title || ''}
-                        onChange={(e) => setTemplate({ ...template, default_title: e.target.value } as any)}
-                        className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
-                        placeholder="My Awesome Website"
-                      />
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        This title will be used for all pages unless overridden individually
-                      </p>
-                    </div>
+                  {builderType === 'template' ? (
+                    /* TEMPLATE SETTINGS */
+                    <div className="space-y-3">
+                      {/* Template Name */}
+                      <div>
+                        <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
+                          Template Name
+                        </label>
+                        <input
+                          type="text"
+                          value={template.name || ''}
+                          onChange={(e) => setTemplate({ ...template, name: e.target.value })}
+                          className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
+                          placeholder="Professional Business Template"
+                        />
+                      </div>
 
-                    {/* Default Meta Description */}
-                    <div>
-                      <label className="block text-xs font-medium text-gray-200 mb-1">
-                        Default Meta Description
-                      </label>
-                      <textarea
-                        value={(template as any).default_description || ''}
-                        onChange={(e) => setTemplate({ ...template, default_description: e.target.value } as any)}
-                        rows={3}
-                        className="w-full px-2 py-1.5 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] bg-gray-700 text-gray-200"
-                        placeholder="A brief description of your website..."
-                      />
-                      <p className="text-[10px] text-gray-400 mt-1">
-                        This description will be used for all pages unless overridden individually
-                      </p>
+                      {/* Template Description */}
+                      <div>
+                        <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
+                          Description
+                        </label>
+                        <textarea
+                          value={template.description || ''}
+                          onChange={(e) => setTemplate({ ...template, description: e.target.value })}
+                          rows={3}
+                          className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
+                          placeholder="A modern template for professional businesses..."
+                        />
+                      </div>
+
+                      {/* Business Type */}
+                      <div>
+                        <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
+                          Business Type
+                        </label>
+                        <select
+                          value={template.business_type || 'general'}
+                          onChange={(e) => setTemplate({ ...template, business_type: e.target.value })}
+                          className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
+                        >
+                          <option value="general">General</option>
+                          <option value="restaurant">Restaurant</option>
+                          <option value="retail">Retail</option>
+                          <option value="service">Service</option>
+                          <option value="portfolio">Portfolio</option>
+                          <option value="blog">Blog</option>
+                          <option value="ecommerce">E-commerce</option>
+                          <option value="corporate">Corporate</option>
+                          <option value="creative">Creative</option>
+                          <option value="education">Education</option>
+                          <option value="healthcare">Healthcare</option>
+                          <option value="real_estate">Real Estate</option>
+                          <option value="nonprofit">Non-Profit</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+
+                      {/* Exclusive To (Account Tier) */}
+                      <div>
+                        <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
+                          Exclusive To
+                        </label>
+                        <select
+                          value={template.exclusive_to || 'null'}
+                          onChange={(e) => setTemplate({ ...template, exclusive_to: e.target.value === 'null' ? null : e.target.value as 'pro' | 'niche' })}
+                          className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
+                        >
+                          <option value="null">All Tiers</option>
+                          <option value="trial">Trial Only</option>
+                          <option value="brochure">Brochure & Above</option>
+                          <option value="niche">Niche & Above</option>
+                          <option value="pro">Pro Only</option>
+                        </select>
+                        <p className={`text-[10px] ${theme.helperText} mt-1`}>
+                          Restrict this template to specific account tiers
+                        </p>
+                      </div>
+
+                      {/* Preview Image Upload */}
+                      <div>
+                        <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
+                          Preview Thumbnail
+                        </label>
+                        <div className="space-y-2">
+                          {template.preview_image && (
+                            <div className={`border ${theme.inputBorder} rounded p-2`}>
+                              <img
+                                src={template.preview_image}
+                                alt="Template preview"
+                                className="w-full h-24 object-cover rounded"
+                              />
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0]
+                              if (file) {
+                                // Upload the image first
+                                await handleImageUpload(e)
+                                // Then set it as the preview_image
+                                const filename = file.name
+                                const imagePath = `/storage/templates/${template.id}/images/${filename}`
+                                setTemplate({ ...template, preview_image: imagePath })
+                              }
+                            }}
+                            className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs ${theme.inputBg} ${theme.inputText}`}
+                            disabled={uploadingImage}
+                          />
+                          <p className={`text-[10px] ${theme.helperText}`}>
+                            Upload a preview image for the template library
+                          </p>
+                        </div>
+                      </div>
                     </div>
+                  ) : (
+                    /* WEBSITE SETTINGS */
+                    <div className="space-y-3">
+                      {/* Default Meta Title */}
+                      <div>
+                        <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
+                          Default Site Title
+                        </label>
+                        <input
+                          type="text"
+                          value={(template as any).default_title || ''}
+                          onChange={(e) => setTemplate({ ...template, default_title: e.target.value } as any)}
+                          className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
+                          placeholder="My Awesome Website"
+                        />
+                        <p className={`text-[10px] ${theme.helperText} mt-1`}>
+                          This title will be used for all pages unless overridden individually
+                        </p>
+                      </div>
+
+                      {/* Default Meta Description */}
+                      <div>
+                        <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
+                          Default Meta Description
+                        </label>
+                        <textarea
+                          value={(template as any).default_description || ''}
+                          onChange={(e) => setTemplate({ ...template, default_description: e.target.value } as any)}
+                          rows={3}
+                          className={`w-full px-2 py-1.5 border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${theme.inputBg} ${theme.inputText}`}
+                          placeholder="A brief description of your website..."
+                        />
+                        <p className={`text-[10px] ${theme.helperText} mt-1`}>
+                          This description will be used for all pages unless overridden individually
+                        </p>
+                      </div>
+                    </div>
+                  )}
 
                     {/* Status Information */}
-                    <div className="border-t border-gray-600 pt-3">
-                      <label className="block text-xs font-medium text-gray-200 mb-2">
-                        Website Status
+                    <div className={`border-t ${theme.inputBorder} pt-3 mt-3`}>
+                      <label className={`block text-xs font-medium ${theme.labelText} mb-2`}>
+                        {builderType === 'template' ? 'Template' : 'Website'} Status
                       </label>
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-400">Status:</span>
+                          <span className={theme.helperText}>Status:</span>
                           <span className={`px-2 py-0.5 rounded ${
                             (template as any).is_published || (template as any).published_at
                               ? 'bg-green-900/30 border border-green-700 text-green-400'
-                              : 'bg-gray-700 border border-gray-600 text-gray-300'
+                              : `${theme.buttonBg} border ${theme.inputBorder} ${theme.dropdownText}`
                           }`}>
                             {(template as any).is_published || (template as any).published_at ? 'Published' : 'Unpublished'}
                           </span>
                         </div>
                         {(template as any).updated_at && (
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-400">Last Modified:</span>
-                            <span className="text-gray-300">
+                            <span className={theme.helperText}>Last Modified:</span>
+                            <span className={theme.dropdownText}>
                               {new Date((template as any).updated_at).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -417,8 +551,8 @@ export const Header: React.FC<HeaderProps> = ({
                         )}
                         {(template as any).published_at && (
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-400">Published:</span>
-                            <span className="text-gray-300">
+                            <span className={theme.helperText}>Published:</span>
+                            <span className={theme.dropdownText}>
                               {new Date((template as any).published_at).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -431,8 +565,8 @@ export const Header: React.FC<HeaderProps> = ({
                         )}
                         {(template as any).created_at && (
                           <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-400">Created:</span>
-                            <span className="text-gray-300">
+                            <span className={theme.helperText}>Created:</span>
+                            <span className={theme.dropdownText}>
                               {new Date((template as any).created_at).toLocaleDateString('en-US', {
                                 month: 'short',
                                 day: 'numeric',
@@ -443,16 +577,15 @@ export const Header: React.FC<HeaderProps> = ({
                         )}
                       </div>
                     </div>
-                  </div>
                   </>
                 ) : (
                   <>
                     {/* Site CSS Tab */}
                     <div>
-                      <label className="block text-xs font-medium text-gray-200 mb-1">
+                      <label className={`block text-xs font-medium ${theme.labelText} mb-1`}>
                         Custom CSS
                       </label>
-                      <p className="text-[10px] text-gray-400 mb-2">
+                      <p className={`text-[10px] ${theme.helperText} mb-2`}>
                         Add custom CSS styles for your template. This CSS will be applied to all pages.
                       </p>
                       <StyleEditor
@@ -474,7 +607,7 @@ export const Header: React.FC<HeaderProps> = ({
 
                   <button
                     onClick={() => setShowEditMenu(false)}
-                    className="w-full px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded text-xs transition mt-3"
+                    className={`w-full px-3 py-1.5 ${theme.buttonBg} ${theme.buttonHover} ${theme.buttonText} rounded text-xs transition mt-3`}
                   >
                     Close
                   </button>
@@ -493,19 +626,19 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowViewMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
+              className={`px-3 h-full ${theme.headerHover} transition ${theme.headerText}`}
             >
               View
             </button>
             {showViewMenu && (
-              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-48">
+              <div className={`absolute top-full left-0 mt-0 ${theme.dropdownBg} border ${theme.dropdownBorder} shadow-lg z-50 w-48`}>
                 <div className="py-1">
                   <button
                     onClick={() => {
                       handleLivePreview()
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
                     Live Preview
                   </button>
@@ -514,7 +647,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowSourceCodeModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
                     Source Code
                   </button>
@@ -523,7 +656,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowStylesheetModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
                     Stylesheet
                   </button>
@@ -532,7 +665,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowSitemapModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
                     Sitemap
                   </button>
@@ -541,7 +674,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowSectionLibraryModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
                     Section Library
                   </button>
@@ -550,7 +683,7 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowPageLibraryModal(true)
                       setShowViewMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
                     Page Library
                   </button>
@@ -568,19 +701,19 @@ export const Header: React.FC<HeaderProps> = ({
                   setShowInsertMenu(true)
                 }
               }}
-              className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
+              className={`px-3 h-full ${theme.headerHover} transition ${theme.headerText}`}
             >
               Insert
             </button>
             {showInsertMenu && template && (
-              <div className="absolute top-full left-0 mt-0 bg-gray-800 border border-gray-700 shadow-lg z-50 w-48">
+              <div className={`absolute top-full left-0 mt-0 ${theme.dropdownBg} border ${theme.dropdownBorder} shadow-lg z-50 w-48`}>
                 <div className="py-1">
                   <button
                     onClick={() => {
                       setShowAddPageModal(true)
                       setShowInsertMenu(false)
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-gray-700 text-xs text-gray-200"
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
                     New Page
                   </button>
@@ -589,7 +722,7 @@ export const Header: React.FC<HeaderProps> = ({
             )}
           </div>
           <button
-            className="px-3 h-full hover:bg-gray-700 transition text-gray-200"
+            className={`px-3 h-full ${theme.headerHover} transition ${theme.headerText}`}
             onMouseEnter={() => {
               if (showFileMenu || showEditMenu || showInsertMenu) {
                 setShowFileMenu(false)
@@ -603,11 +736,11 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Undo/Redo Toolbar Buttons */}
-        <div className="flex items-center h-full border-l border-gray-600 pl-2 ml-2">
+        <div className={`flex items-center h-full border-l ${theme.inputBorder} pl-2 ml-2`}>
           <button
             onClick={handleUndo}
             disabled={!canUndo}
-            className="p-1.5 hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
+            className={`p-1.5 ${theme.headerHover} rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition ${theme.headerText}`}
             title="Undo (Ctrl+Z)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -617,7 +750,7 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             onClick={handleRedo}
             disabled={!canRedo}
-            className="p-1.5 hover:bg-gray-700 rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition text-gray-200"
+            className={`p-1.5 ${theme.headerHover} rounded disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent transition ${theme.headerText}`}
             title="Redo (Ctrl+Y)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -627,10 +760,10 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
 
         {/* Save Icon */}
-        <div className="flex items-center h-full border-l border-gray-600 pl-2 ml-2">
+        <div className={`flex items-center h-full border-l ${theme.inputBorder} pl-2 ml-2`}>
           <button
             onClick={handleSave}
-            className={`p-1.5 hover:bg-gray-700 rounded transition relative ${hasUnsavedChanges ? 'text-red-400' : 'text-green-400'}`}
+            className={`p-1.5 ${theme.headerHover} rounded transition relative ${hasUnsavedChanges ? 'text-red-400' : 'text-green-400'}`}
             title={hasUnsavedChanges ? 'Save (Ctrl+S) - Unsaved changes' : 'Save (Ctrl+S) - All changes saved'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -655,8 +788,8 @@ export const Header: React.FC<HeaderProps> = ({
             disabled={!template}
             className={`p-1.5 rounded transition ml-1 ${
               !template
-                ? 'text-gray-500 cursor-not-allowed'
-                : 'text-gray-300 hover:bg-gray-700'
+                ? `${theme.helperText} cursor-not-allowed`
+                : `${theme.headerText} ${theme.headerHover}`
             }`}
             title={!template ? 'Create a template first' : 'Image Gallery'}
           >
@@ -667,8 +800,8 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      {/* Center Section - Template Name */}
-      <div className="flex-1 flex justify-center items-center">
+      {/* Center Section - Template Name & Theme Switcher */}
+      <div className="flex-1 flex justify-center items-center gap-3">
         <input
           type="text"
           value={template.name || ''}
@@ -679,11 +812,12 @@ export const Header: React.FC<HeaderProps> = ({
             addToHistory(updatedTemplate)
           }}
           placeholder="Untitled"
-          className="px-2 py-0.5 bg-gray-700 border border-gray-600 rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64 text-gray-200 placeholder:text-gray-400"
+          className={`px-2 py-0.5 ${theme.inputBg} border ${theme.inputBorder} rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] text-center w-64 ${theme.inputText} ${theme.inputPlaceholder}`}
         />
         {hasUnsavedChanges && (
-          <span className="ml-1 text-gray-400 text-xs">*</span>
+          <span className={`ml-1 ${theme.helperText} text-xs`}>*</span>
         )}
+        <ThemeSwitcher currentTheme={currentTheme} onThemeChange={onThemeChange} />
       </div>
 
       {/* Right Section - Actions & User */}
@@ -699,7 +833,7 @@ export const Header: React.FC<HeaderProps> = ({
           </svg>
           Preview
         </button>
-        <div className="ml-2 px-2 text-gray-300 border-l border-gray-600">
+        <div className={`ml-2 px-2 ${theme.headerText} border-l ${theme.headerBorder}`}>
           {user?.name}
         </div>
       </div>

@@ -1,0 +1,98 @@
+PAGEVOO TEST USERS
+==================
+Created: November 16, 2025
+
+All users have verified email addresses and are active.
+Password for all test users (except admin): password
+
+---
+
+1. ADMIN ACCOUNT
+   Email: admin@pagevoo.com
+   Password: 1qaz2wsx!QAZ"WSX
+   Name: AJ
+   Role: admin
+   Tier: pro
+   Business: Pagevoo Admin
+
+   - Full access to Template Builder
+   - Access to all admin features
+   - Pro tier permissions
+
+---
+
+2. TRIAL TIER USER
+   Email: trial@test.com
+   Password: password
+   Name: Trial User
+   Role: user
+   Tier: trial
+   Business: Trial Test Business
+
+   - Basic trial tier access
+   - Limited templates and features
+
+---
+
+3. BROCHURE TIER USER
+   Email: brochure@test.com
+   Password: password
+   Name: Brochure User
+   Role: user
+   Tier: brochure
+   Business: Brochure Test Business
+
+   - Brochure tier access
+   - Access to brochure-specific templates
+
+---
+
+4. NICHE TIER USER
+   Email: niche@test.com
+   Password: password
+   Name: Niche User
+   Role: user
+   Tier: niche
+   Business: Niche Test Business
+
+   - Niche tier access
+   - Access to niche-specific templates
+
+---
+
+5. PRO TIER USER
+   Email: pro@test.com
+   Password: password
+   Name: Pro User
+   Role: user
+   Tier: pro
+   Business: Pro Test Business
+
+   - Pro tier access (highest level)
+   - Access to all templates and features
+
+---
+
+TIER HIERARCHY
+==============
+1. trial (lowest)
+2. brochure
+3. niche
+4. pro (highest)
+
+---
+
+SERVER URLS
+===========
+Backend API: http://127.0.0.1:8000
+Frontend: http://localhost:5173
+
+---
+
+TESTING NOTES
+=============
+- Use different tier accounts to test template access restrictions
+- Admin account can access Template Builder
+- Regular users can access Website Builder
+- Test tier-based permissions and feature access
+- Security services are active (CSS/HTML sanitization, path validation)

@@ -6,6 +6,10 @@ use App\Models\UserWebsite;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Services\Security\CssSanitizer;
+use App\Services\Security\HtmlSanitizer;
+use App\Services\Security\PathValidator;
+use App\Exceptions\SecurityException;
 
 /**
  * Website File Service
@@ -20,10 +24,22 @@ class WebsiteFileService
      */
     protected string $basePath;
 
+    /**
+     * Security service instances
+     */
+    protected CssSanitizer $cssSanitizer;
+    protected HtmlSanitizer $htmlSanitizer;
+    protected PathValidator $pathValidator;
+
     public function __construct()
     {
         // Use storage/app/public/websites as base
         $this->basePath = storage_path('app/public/websites');
+
+        // Initialize security services
+        $this->cssSanitizer = new CssSanitizer();
+        $this->htmlSanitizer = new HtmlSanitizer();
+        $this->pathValidator = new PathValidator();
     }
 
     /**
@@ -307,8 +323,8 @@ class WebsiteFileService
      */
     protected function escapeCss(string $css): string
     {
-        // Escape any PHP tags in CSS to prevent code injection
-        return str_replace(['<?', '?>'], ['&lt;?', '?&gt;'], $css);
+        // Use CssSanitizer for comprehensive CSS security
+        return $this->cssSanitizer->sanitize($css);
     }
 
     /**
@@ -319,8 +335,64 @@ class WebsiteFileService
      */
     protected function renderSection(array $section): string
     {
+        // Sanitize section content before rendering
+        $section = $this->sanitizeSectionContent($section);
+
         // Use the trait's buildSectionHTML method
         return "    " . str_replace("\n", "\n    ", trim($this->buildSectionHTML($section))) . "\n";
+    }
+
+    /**
+     * Sanitize section content to prevent XSS
+     *
+     * @param array $section
+     * @return array
+     */
+    protected function sanitizeSectionContent(array $section): array
+    {
+        // Get content array
+        $content = $section['content'] ?? [];
+
+        // Sanitize based on section type
+        $sectionType = $section['type'] ?? 'unknown';
+
+        // Process each content field
+        foreach ($content as $key => $value) {
+            if (is_string($value)) {
+                // Check if it's supposed to be HTML content
+                if (in_array($key, ['text', 'description', 'body', 'content', 'html'])) {
+                    // Sanitize HTML content
+                    $content[$key] = $this->htmlSanitizer->sanitize($value);
+                } elseif (in_array($key, ['title', 'heading', 'subtitle', 'label'])) {
+                    // For titles/headings, use plain text sanitization
+                    $content[$key] = $this->htmlSanitizer->sanitizePlainText($value);
+                } elseif ($key === 'url' || $key === 'link' || $key === 'href') {
+                    // Validate URLs
+                    if (preg_match('/^(javascript|vbscript|data):/i', $value)) {
+                        $content[$key] = '#'; // Replace dangerous URLs
+                    }
+                }
+            } elseif (is_array($value)) {
+                // Recursively sanitize arrays (like items in a grid)
+                $content[$key] = array_map(function($item) {
+                    if (is_array($item)) {
+                        return $this->sanitizeSectionContent(['content' => $item])['content'];
+                    } elseif (is_string($item)) {
+                        return $this->htmlSanitizer->sanitize($item);
+                    }
+                    return $item;
+                }, $value);
+            }
+        }
+
+        $section['content'] = $content;
+
+        // Sanitize section CSS if present
+        if (isset($section['css']) && is_string($section['css'])) {
+            $section['css'] = $this->cssSanitizer->sanitize($section['css']);
+        }
+
+        return $section;
     }
 
     /**
@@ -576,13 +648,66 @@ class WebsiteFileService
         $images = $data['images'] ?? [];
         $imagesPath = $basePath . '/images';
 
+        // Define allowed base paths for images
+        $allowedBasePaths = [
+            public_path('image_galleries'),
+            public_path('template_directory'),
+            storage_path('app/public/uploads'),
+            storage_path('app/public/temp'),
+        ];
+
         foreach ($images as $image) {
             $sourcePath = $image['path'] ?? null;
-            $filename = $image['filename'] ?? basename($sourcePath);
+            if (!$sourcePath) {
+                continue;
+            }
 
-            if ($sourcePath && File::exists($sourcePath)) {
+            try {
+                // Validate source path is within allowed directories
+                $validPath = false;
+                foreach ($allowedBasePaths as $allowedPath) {
+                    try {
+                        $this->pathValidator->validatePath($sourcePath, $allowedPath);
+                        $validPath = true;
+                        break;
+                    } catch (SecurityException $e) {
+                        continue;
+                    }
+                }
+
+                if (!$validPath) {
+                    \Log::warning('Attempted to copy image from restricted path', [
+                        'path' => $sourcePath,
+                        'user_id' => auth()->id()
+                    ]);
+                    continue;
+                }
+
+                // Validate and sanitize filename
+                $filename = $image['filename'] ?? basename($sourcePath);
+                $filename = $this->pathValidator->getSafeFilename($filename, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
+
+                // Validate it's actually an image
+                if (!$this->pathValidator->isValidImage($sourcePath)) {
+                    \Log::warning('Invalid image file', ['path' => $sourcePath]);
+                    continue;
+                }
+
+                // Check file size (max 10MB)
+                if (!$this->pathValidator->validateFileSize($sourcePath, 10)) {
+                    \Log::warning('Image file too large', ['path' => $sourcePath]);
+                    continue;
+                }
+
                 $destinationPath = $imagesPath . '/' . $filename;
                 File::copy($sourcePath, $destinationPath);
+
+            } catch (SecurityException $e) {
+                \Log::error('Security exception copying image', [
+                    'error' => $e->getMessage(),
+                    'path' => $sourcePath
+                ]);
+                continue;
             }
         }
     }

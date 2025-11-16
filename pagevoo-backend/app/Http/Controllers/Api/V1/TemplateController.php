@@ -8,8 +8,11 @@ use App\Models\TemplatePage;
 use App\Models\TemplateSection;
 use App\Models\Setting;
 use App\Services\TemplateFileGenerator;
+use App\Services\Security\PathValidator;
+use App\Exceptions\SecurityException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\File;
 
 class TemplateController extends BaseController
 {
@@ -48,9 +51,17 @@ class TemplateController extends BaseController
             return $this->sendSuccess([], 'No templates available for your tier');
         }
 
+        // Get templates where:
+        // 1. tier_category matches user's allowed tiers OR
+        // 2. exclusive_to is null (available to all) OR
+        // 3. exclusive_to matches one of user's allowed tiers
         $templates = Template::with(['pages.sections', 'creator'])
             ->where('is_active', true)
-            ->whereIn('tier_category', $allowedTiers)
+            ->where(function($query) use ($allowedTiers) {
+                $query->whereIn('tier_category', $allowedTiers)
+                      ->orWhereNull('exclusive_to')
+                      ->orWhereIn('exclusive_to', $allowedTiers);
+            })
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -502,7 +513,7 @@ class TemplateController extends BaseController
 
         $validator = Validator::make($request->all(), [
             'image_id' => 'required|string',
-            'new_filename' => 'required|string|max:255',
+            'new_filename' => 'required|string|max:255|regex:/^[a-zA-Z0-9\-_\.]+$/',
         ]);
 
         if ($validator->fails()) {
@@ -513,36 +524,91 @@ class TemplateController extends BaseController
         $newFilename = $request->input('new_filename');
         $images = $template->images ?? [];
 
-        // Find and update image
-        $imageFound = false;
-        foreach ($images as &$img) {
-            if ($img['id'] === $imageId) {
-                $imageFound = true;
+        // Initialize path validator
+        $pathValidator = new PathValidator();
 
-                // Rename physical file
-                $oldPath = public_path($img['path']);
-                $dir = dirname($oldPath);
-                $newPath = $dir . '/' . $newFilename;
+        try {
+            // Validate and sanitize the new filename
+            $newFilename = $pathValidator->getSafeFilename($newFilename, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg']);
 
-                if (file_exists($oldPath)) {
-                    rename($oldPath, $newPath);
+            // Find and update image
+            $imageFound = false;
+            foreach ($images as &$img) {
+                if ($img['id'] === $imageId) {
+                    $imageFound = true;
+
+                    // Get the base directory for this template's images
+                    $baseDir = public_path("template_directory/template_{$template->id}/images");
+
+                    // Ensure base directory exists
+                    if (!File::exists($baseDir)) {
+                        return $this->sendError('Image directory not found', 404);
+                    }
+
+                    // Construct and validate old path
+                    $oldPath = public_path($img['path']);
+
+                    // Validate that old path is within allowed directory
+                    try {
+                        $pathValidator->validatePath($oldPath, $baseDir);
+                    } catch (SecurityException $e) {
+                        \Log::error('Invalid image path detected', [
+                            'path' => $oldPath,
+                            'template_id' => $template->id
+                        ]);
+                        return $this->sendError('Invalid image path', 400);
+                    }
+
+                    // Construct new path
+                    $newPath = $baseDir . '/' . $newFilename;
+
+                    // Ensure new path is also within allowed directory
+                    try {
+                        $pathValidator->validatePath($newPath, $baseDir);
+                    } catch (SecurityException $e) {
+                        return $this->sendError('Invalid filename', 400);
+                    }
+
+                    // Check if file exists and rename it
+                    if (File::exists($oldPath)) {
+                        // Check if target filename already exists
+                        if (File::exists($newPath) && $oldPath !== $newPath) {
+                            return $this->sendError('A file with this name already exists', 409);
+                        }
+
+                        // Rename the file
+                        File::move($oldPath, $newPath);
+                    }
+
+                    // Update image data
+                    $img['filename'] = $newFilename;
+                    $img['path'] = "template_directory/template_{$template->id}/images/{$newFilename}";
+                    break;
                 }
-
-                // Update image data
-                $img['filename'] = $newFilename;
-                $img['path'] = "template_directory/template_{$template->id}/images/{$newFilename}";
-                break;
             }
+
+            if (!$imageFound) {
+                return $this->sendError('Image not found', 404);
+            }
+
+            // Update template
+            $template->update(['images' => $images]);
+
+            return $this->sendSuccess(null, 'Image renamed successfully');
+
+        } catch (SecurityException $e) {
+            \Log::error('Security exception in image rename', [
+                'error' => $e->getMessage(),
+                'template_id' => $template->id
+            ]);
+            return $this->sendError('Security validation failed: ' . $e->getMessage(), 400);
+        } catch (\Exception $e) {
+            \Log::error('Failed to rename image', [
+                'error' => $e->getMessage(),
+                'template_id' => $template->id
+            ]);
+            return $this->sendError('Failed to rename image: ' . $e->getMessage(), 500);
         }
-
-        if (!$imageFound) {
-            return $this->sendError('Image not found', 404);
-        }
-
-        // Update template
-        $template->update(['images' => $images]);
-
-        return $this->sendSuccess(null, 'Image renamed successfully');
     }
 
     /**

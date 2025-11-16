@@ -8,6 +8,9 @@ use App\Models\UserPage;
 use App\Models\UserSection;
 use App\Services\WebsiteFileService;
 use App\Services\PermissionService;
+use App\Services\Security\CssSanitizer;
+use App\Services\Security\HtmlSanitizer;
+use App\Http\Requests\SaveWebsiteRequest;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -154,8 +157,10 @@ class UserWebsiteController extends BaseController
     /**
      * Save website (generates/updates preview files)
      */
-    public function save(Request $request, $id = null)
+    public function save(SaveWebsiteRequest $request, $id = null)
     {
+        // The validation is already done by SaveWebsiteRequest
+
         // If ID is provided, update that website, otherwise get the current one from request
         $websiteId = $id ?? $request->input('id');
 
@@ -168,21 +173,30 @@ class UserWebsiteController extends BaseController
             return $this->sendError('Website not found', 404);
         }
 
-        try {
-            \Log::info('Save website request data:', $request->all());
+        // Initialize sanitizers
+        $cssSanitizer = new CssSanitizer();
+        $htmlSanitizer = new HtmlSanitizer();
 
-            // Update website name and CSS if provided
+        try {
+            \Log::info('Save website request data:', [
+                'website_id' => $websiteId,
+                'user_id' => auth()->id(),
+                'name' => $request->input('name')
+            ]);
+
+            // Update website fields with sanitized data
             if ($request->has('name')) {
-                $website->name = $request->input('name');
+                $website->name = $htmlSanitizer->sanitizePlainText($request->input('name'));
             }
             if ($request->has('site_css')) {
-                $website->site_css = $request->input('site_css');
+                // Sanitize CSS before saving
+                $website->site_css = $cssSanitizer->sanitize($request->input('site_css'));
             }
             if ($request->has('default_title')) {
-                $website->default_title = $request->input('default_title');
+                $website->default_title = $htmlSanitizer->sanitizePlainText($request->input('default_title'));
             }
             if ($request->has('default_description')) {
-                $website->default_description = $request->input('default_description');
+                $website->default_description = $htmlSanitizer->sanitizePlainText($request->input('default_description'));
             }
             $website->save();
 

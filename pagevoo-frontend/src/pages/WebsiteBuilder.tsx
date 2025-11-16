@@ -58,6 +58,7 @@ import { useImageGalleryHandlers } from '../hooks/useImageGalleryHandlers'
 import { useRenderSection } from '../hooks/useRenderSection'
 import { useTemplateBuilderEffects } from '../hooks/useTemplateBuilderEffects'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useTheme } from '../hooks/useTheme'
 import {
   generateRandomString,
   sanitizeName,
@@ -156,6 +157,7 @@ export default function WebsiteBuilder() {
   const { user } = useAuth()
   const navigate = useNavigate()
   const { can, tier } = usePermissions()
+  const { theme, currentTheme, changeTheme } = useTheme()
 
   const [website, setWebsite] = useState<UserWebsite | null>(null)
   const websiteRef = useRef<UserWebsite | null>(null) // Track latest website to avoid race conditions
@@ -1200,7 +1202,7 @@ export default function WebsiteBuilder() {
   // Welcome screen for users without a website
   if (showWelcome) {
     return (
-      <div className="h-screen flex flex-col bg-gray-900 text-white">
+      <div className={`h-screen flex flex-col ${theme.mainBg} ${theme.mainText}`}>
         {/* Header */}
         <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
@@ -1498,12 +1500,13 @@ export default function WebsiteBuilder() {
       onDragCancel={handleDragCancel}
     >
       <div
-        className="h-screen flex flex-col bg-gray-900 text-white select-none"
+        className={`h-screen flex flex-col ${theme.mainBg} ${theme.mainText} select-none`}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
       {/* Compact VSCode-style Header */}
       <Header
+        builderType="website"
         showFileMenu={showFileMenu}
         setShowFileMenu={setShowFileMenu}
         showEditMenu={showEditMenu}
@@ -1549,6 +1552,9 @@ export default function WebsiteBuilder() {
         handleImageUpload={handleImageUpload}
         setShowSectionLibraryModal={setShowSectionLibraryModal}
         setShowPageLibraryModal={setShowPageLibraryModal}
+        theme={theme}
+        currentTheme={currentTheme}
+        onThemeChange={changeTheme}
       />
 
       {/* Toolbar */}
@@ -1615,6 +1621,7 @@ export default function WebsiteBuilder() {
               }}
               onRemoveImportedSection={handleRemoveImportedSection}
               onMouseDown={handleLeftMouseDown}
+              theme={theme}
             />
 
             {/* Left Resize Handle */}
@@ -1695,6 +1702,7 @@ export default function WebsiteBuilder() {
               expandedColumnIndex={expandedColumnIndex}
               setExpandedColumnIndex={setExpandedColumnIndex}
               setShowNavButtonStyleModal={setShowNavButtonStyleModal}
+              theme={theme}
             />
           </>
         )}

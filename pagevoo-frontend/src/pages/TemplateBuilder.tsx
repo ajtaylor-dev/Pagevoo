@@ -42,6 +42,7 @@ import { Toolbar } from '../components/Toolbar'
 import { FloatingTextEditor } from '../components/layout/FloatingTextEditor'
 import { PageSelectorBar } from '../components/layout/PageSelectorBar'
 import { PublishedTemplateBanner } from '../components/layout/PublishedTemplateBanner'
+import { useTheme } from '../hooks/useTheme'
 import { useSectionHandlers } from '../hooks/useSectionHandlers'
 import { usePageHandlers } from '../hooks/usePageHandlers'
 import { useDragHandlers } from '../hooks/useDragHandlers'
@@ -143,6 +144,7 @@ export default function TemplateBuilder() {
   const { user } = useAuth()
   const [searchParams] = useSearchParams()
   const templateId = searchParams.get('id')
+  const { theme, currentTheme, changeTheme } = useTheme()
 
   const [template, setTemplate] = useState<Template | null>(null)
   const templateRef = useRef<Template | null>(null) // Track latest template to avoid race conditions
@@ -863,12 +865,13 @@ export default function TemplateBuilder() {
       onDragCancel={handleDragCancel}
     >
       <div
-        className="h-screen flex flex-col bg-gray-50 text-gray-900 select-none"
+        className={`h-screen flex flex-col ${theme.mainBg} ${theme.mainText} select-none`}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
       {/* Compact VSCode-style Header */}
       <Header
+        builderType="template"
         showFileMenu={showFileMenu}
         setShowFileMenu={setShowFileMenu}
         showEditMenu={showEditMenu}
@@ -914,6 +917,9 @@ export default function TemplateBuilder() {
         handleImageUpload={handleImageUpload}
         setShowSectionLibraryModal={setShowSectionLibraryModal}
         setShowPageLibraryModal={setShowPageLibraryModal}
+        theme={theme}
+        currentTheme={currentTheme}
+        onThemeChange={changeTheme}
       />
 
       {/* Toolbar */}
@@ -981,6 +987,7 @@ export default function TemplateBuilder() {
               }}
               onRemoveImportedSection={handleRemoveImportedSection}
               onMouseDown={handleLeftMouseDown}
+              theme={theme}
             />
 
             {/* Left Resize Handle */}
@@ -1061,6 +1068,7 @@ export default function TemplateBuilder() {
               expandedColumnIndex={expandedColumnIndex}
               setExpandedColumnIndex={setExpandedColumnIndex}
               setShowNavButtonStyleModal={setShowNavButtonStyleModal}
+              theme={theme}
             />
           </>
         )}
