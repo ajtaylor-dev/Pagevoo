@@ -70,7 +70,14 @@ class SaveWebsiteRequest extends FormRequest
                 'required',
                 'string',
                 Rule::in([
-                    'hero', 'navbar', 'footer', 'text', 'grid',
+                    // Grid layouts
+                    'grid-1x1', 'grid-2x1', 'grid-3x1', 'grid-4x1', 'grid-2x2', 'grid-3x2',
+                    // Navigation
+                    'navbar',
+                    // Footers
+                    'footer-simple', 'footer-columns',
+                    // Legacy/generic types (kept for backwards compatibility)
+                    'hero', 'footer', 'text', 'grid',
                     'gallery', 'testimonial', 'contact', 'features',
                     'pricing', 'cta', 'team', 'faq', 'video',
                     'map', 'social', 'newsletter', 'blog', 'portfolio'
