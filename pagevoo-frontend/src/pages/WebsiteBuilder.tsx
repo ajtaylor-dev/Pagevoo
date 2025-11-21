@@ -151,6 +151,7 @@ interface Template {
   business_type: string
   preview_image?: string
   is_active: boolean
+  tier_category: 'trial' | 'brochure' | 'niche' | 'pro'
 }
 
 export default function WebsiteBuilder() {
@@ -376,6 +377,10 @@ export default function WebsiteBuilder() {
       const response = await api.getAllTemplates()
       if (response.success && response.data) {
         // API already filters by is_active, so just set the data
+        console.log('📦 Templates loaded:', response.data.length);
+        response.data.forEach((t: Template) => {
+          console.log(`  - ${t.name}: preview_image = ${t.preview_image || 'null'}`);
+        });
         setTemplates(response.data)
       }
     } catch (error) {
@@ -1202,20 +1207,20 @@ export default function WebsiteBuilder() {
   // Welcome screen for users without a website
   if (showWelcome) {
     return (
-      <div className={`h-screen flex flex-col ${theme.mainBg} ${theme.mainText}`}>
+      <div className="h-screen flex flex-col bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Header */}
-        <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <header className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <img src="/Pagevoo_logo_500x500.png" alt="Pagevoo" className="w-[60px] h-[60px]" />
               <div>
-                <h1 className="text-xl font-semibold">Website Builder</h1>
-                <p className="text-sm text-gray-400">{user?.business_name}</p>
+                <h1 className="text-xl font-semibold text-gray-900">Website Builder</h1>
+                <p className="text-sm text-gray-600">{user?.business_name}</p>
               </div>
             </div>
             <button
               onClick={() => navigate('/my-dashboard')}
-              className="px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-md text-sm transition"
+              className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-white rounded-md text-sm transition"
             >
               Back to Dashboard
             </button>
@@ -1227,8 +1232,8 @@ export default function WebsiteBuilder() {
           <div className="max-w-6xl mx-auto">
             {/* Welcome Message */}
             <div className="text-center mb-12">
-              <h2 className="text-4xl font-bold mb-4">Welcome to Your Website Builder!</h2>
-              <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              <h2 className="text-4xl font-bold mb-4 text-gray-900">Welcome to Your Website Builder!</h2>
+              <p className="text-xl text-gray-600 max-w-2xl mx-auto">
                 Get started by selecting a professionally designed template or create your website from scratch.
               </p>
             </div>
@@ -1248,19 +1253,19 @@ export default function WebsiteBuilder() {
                   }
                 }}
                 disabled={loadingWebsites}
-                className="bg-gray-800 border-2 border-gray-700 hover:border-[#98b290] rounded-lg p-6 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-white border-2 border-gray-300 hover:border-[#98b290] hover:shadow-lg rounded-lg p-6 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="flex items-center justify-center w-16 h-16 bg-gray-700 group-hover:bg-[#98b290] rounded-lg mb-4 transition">
+                <div className="flex items-center justify-center w-16 h-16 bg-gray-100 group-hover:bg-[#98b290] rounded-lg mb-4 transition">
                   {loadingWebsites ? (
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-800"></div>
                   ) : (
-                    <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-8 h-8 text-gray-700 group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
                     </svg>
                   )}
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Load Save</h3>
-                <p className="text-gray-400 text-sm">
+                <h3 className="text-xl font-semibold mb-2 text-gray-900">Load Save</h3>
+                <p className="text-gray-600 text-sm">
                   {loadingWebsites ? 'Loading...' : 'Continue working on a previously saved website'}
                 </p>
               </button>
@@ -1269,34 +1274,34 @@ export default function WebsiteBuilder() {
               <button
                 onClick={handleCreateBlank}
                 disabled={initializingWebsite}
-                className="bg-gray-800 border-2 border-dashed border-gray-600 hover:border-[#98b290] rounded-lg p-6 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                className="bg-white border-2 border-dashed border-gray-300 hover:border-[#98b290] hover:shadow-lg rounded-lg p-6 text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <div className="flex items-center justify-center w-16 h-16 bg-gray-700 group-hover:bg-[#98b290] rounded-lg mb-4 transition">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center justify-center w-16 h-16 bg-gray-100 group-hover:bg-[#98b290] rounded-lg mb-4 transition">
+                  <svg className="w-8 h-8 text-gray-700 group-hover:text-white transition" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Create New</h3>
-                <p className="text-gray-400 text-sm">Start with a blank canvas and build from scratch</p>
+                <h3 className="text-xl font-semibold mb-2 text-gray-900">Create New</h3>
+                <p className="text-gray-600 text-sm">Start with a blank canvas and build from scratch</p>
               </button>
 
               {/* Select Template Option */}
-              <div className="bg-gray-800 border-2 border-gray-700 rounded-lg p-6">
+              <div className="bg-white border-2 border-gray-300 rounded-lg p-6 shadow-sm">
                 <div className="flex items-center justify-center w-16 h-16 bg-[#98b290] rounded-lg mb-4">
-                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1H5a1 1 0 01-1-1v-4zM14 15a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z" />
                   </svg>
                 </div>
-                <h3 className="text-xl font-semibold mb-2">Select Template</h3>
-                <p className="text-gray-400 text-sm mb-4">Choose from professionally designed templates below</p>
+                <h3 className="text-xl font-semibold mb-2 text-gray-900">Select Template</h3>
+                <p className="text-gray-600 text-sm mb-4">Choose from professionally designed templates below</p>
               </div>
             </div>
 
             {/* Templates Section */}
             <div>
               <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-semibold">Browse Templates</h3>
-                <div className="text-sm text-gray-400">
+                <h3 className="text-2xl font-semibold text-gray-900">Browse Templates</h3>
+                <div className="text-sm text-gray-600">
                   {templates.length} template{templates.length !== 1 ? 's' : ''} available
                 </div>
               </div>
@@ -1310,9 +1315,9 @@ export default function WebsiteBuilder() {
                     value={templateSearch}
                     onChange={(e) => setTemplateSearch(e.target.value)}
                     placeholder="Search templates by name or description..."
-                    className="w-full px-4 py-3 pl-12 bg-gray-800 border border-gray-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290] text-gray-200 placeholder:text-gray-500"
+                    className="w-full px-4 py-3 pl-12 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#98b290] text-gray-900 placeholder:text-gray-400"
                   />
-                  <svg className="w-5 h-5 text-gray-500 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-gray-400 absolute left-4 top-1/2 -translate-y-1/2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
                 </div>
@@ -1326,8 +1331,8 @@ export default function WebsiteBuilder() {
                     }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                       showRecommended
-                        ? 'bg-[#98b290] text-white'
-                        : 'bg-gray-800 text-gray-300 border border-gray-700 hover:border-gray-600'
+                        ? 'bg-[#98b290] text-white shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400 hover:shadow-sm'
                     }`}
                   >
                     <span className="flex items-center gap-2">
@@ -1345,8 +1350,8 @@ export default function WebsiteBuilder() {
                     }}
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
                       selectedBusinessType === 'all' && !showRecommended
-                        ? 'bg-gray-700 text-white border border-gray-600'
-                        : 'bg-gray-800 text-gray-300 border border-gray-700 hover:border-gray-600'
+                        ? 'bg-gray-800 text-white border border-gray-800 shadow-md'
+                        : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400 hover:shadow-sm'
                     }`}
                   >
                     All Types
@@ -1361,8 +1366,8 @@ export default function WebsiteBuilder() {
                       }}
                       className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition ${
                         selectedBusinessType === type && !showRecommended
-                          ? 'bg-gray-700 text-white border border-gray-600'
-                          : 'bg-gray-800 text-gray-300 border border-gray-700 hover:border-gray-600'
+                          ? 'bg-gray-800 text-white border border-gray-800 shadow-md'
+                          : 'bg-white text-gray-700 border border-gray-300 hover:border-gray-400 hover:shadow-sm'
                       }`}
                     >
                       {type}
@@ -1374,14 +1379,14 @@ export default function WebsiteBuilder() {
               {loadingTemplates ? (
                 <div className="text-center py-12">
                   <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#98b290]"></div>
-                  <p className="mt-4 text-gray-400">Loading templates...</p>
+                  <p className="mt-4 text-gray-600">Loading templates...</p>
                 </div>
               ) : templates.length === 0 ? (
-                <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
-                  <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="bg-white border border-gray-300 rounded-lg p-12 text-center shadow-sm">
+                  <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
                   </svg>
-                  <p className="text-xl text-gray-400 mb-2">No templates available yet</p>
+                  <p className="text-xl text-gray-700 mb-2">No templates available yet</p>
                   <p className="text-gray-500">Check back later or contact support</p>
                 </div>
               ) : (() => {
@@ -1404,11 +1409,11 @@ export default function WebsiteBuilder() {
                 })
 
                 return filteredTemplates.length === 0 ? (
-                  <div className="bg-gray-800 border border-gray-700 rounded-lg p-12 text-center">
-                    <svg className="w-16 h-16 text-gray-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="bg-white border border-gray-300 rounded-lg p-12 text-center shadow-sm">
+                    <svg className="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                     </svg>
-                    <p className="text-xl text-gray-400 mb-2">No templates found</p>
+                    <p className="text-xl text-gray-700 mb-2">No templates found</p>
                     <p className="text-gray-500">Try adjusting your search or filters</p>
                   </div>
                 ) : (
@@ -1418,10 +1423,10 @@ export default function WebsiteBuilder() {
                       key={template.id}
                       onClick={() => handleSelectTemplate(template.id)}
                       disabled={initializingWebsite}
-                      className="bg-gray-800 border border-gray-700 hover:border-[#98b290] rounded-lg overflow-hidden text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="bg-white border border-gray-300 hover:border-[#98b290] hover:shadow-lg rounded-lg overflow-hidden text-left transition group disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {/* Template Preview Image */}
-                      <div className="aspect-video bg-gray-700 flex items-center justify-center relative overflow-hidden">
+                      <div className="w-full h-48 bg-gray-200 overflow-hidden relative">
                         {template.preview_image ? (
                           <img
                             src={`http://localhost:8000/${template.preview_image.startsWith('template_directory/') ? template.preview_image : `storage/${template.preview_image}`}`}
@@ -1429,22 +1434,37 @@ export default function WebsiteBuilder() {
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <svg className="w-16 h-16 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                          <div className="w-full h-full flex items-center justify-center">
+                            <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
                         )}
-                        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition flex items-center justify-center">
-                          <span className="text-white opacity-0 group-hover:opacity-100 transition font-semibold">
-                            Select Template
+
+                        {/* Tier Badge */}
+                        <div className="absolute top-2 right-2">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase shadow-lg ${
+                            template.tier_category === 'trial'
+                              ? 'bg-gradient-to-b from-[#a8c2a0] to-[#98b290] text-white'
+                              : template.tier_category === 'brochure'
+                              ? 'bg-gradient-to-b from-amber-500 to-amber-700 text-white'
+                              : template.tier_category === 'niche'
+                              ? 'bg-gradient-to-b from-gray-200 to-gray-400 text-gray-900'
+                              : 'bg-gradient-to-b from-yellow-300 to-yellow-500 text-gray-900'
+                          }`}>
+                            {template.tier_category === 'trial' && 'Trial'}
+                            {template.tier_category === 'brochure' && 'Brochure'}
+                            {template.tier_category === 'niche' && 'Niche'}
+                            {template.tier_category === 'pro' && 'Pro'}
                           </span>
                         </div>
                       </div>
 
                       {/* Template Info */}
-                      <div className="p-4">
-                        <h4 className="font-semibold text-lg mb-1">{template.name}</h4>
-                        <p className="text-sm text-gray-400 mb-2">{template.description}</p>
-                        <span className="inline-block px-2 py-1 bg-gray-700 text-xs rounded capitalize">
+                      <div className="p-4 bg-white">
+                        <h4 className="font-semibold text-lg mb-1 text-gray-900">{template.name}</h4>
+                        <p className="text-sm text-gray-600 mb-2">{template.description}</p>
+                        <span className="inline-block px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded capitalize">
                           {template.business_type}
                         </span>
                       </div>

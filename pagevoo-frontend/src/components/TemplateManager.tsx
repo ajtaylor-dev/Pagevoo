@@ -15,7 +15,7 @@ interface Template {
     name: string;
   };
   pages: any[];
-  exclusive_to: 'pro' | 'niche' | 'brochure' | null;
+  exclusive_to: 'trial' | 'pro' | 'niche' | 'brochure' | null;
   technologies: string[];
   features: string[];
 }
@@ -403,12 +403,12 @@ export function TemplateManager() {
                 <div className="absolute top-2 right-2">
                   <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase shadow-lg ${
                     template.tier_category === 'trial'
-                      ? 'bg-gradient-to-r from-gray-400 to-gray-600 text-white'
+                      ? 'bg-gradient-to-b from-[#a8c2a0] to-[#98b290] text-white'
                       : template.tier_category === 'brochure'
-                      ? 'bg-gradient-to-r from-green-500 to-green-700 text-white'
+                      ? 'bg-gradient-to-b from-amber-500 to-amber-700 text-white'
                       : template.tier_category === 'niche'
-                      ? 'bg-gradient-to-r from-blue-500 to-blue-700 text-white'
-                      : 'bg-gradient-to-r from-purple-600 to-purple-800 text-white'
+                      ? 'bg-gradient-to-b from-gray-200 to-gray-400 text-gray-900'
+                      : 'bg-gradient-to-b from-yellow-300 to-yellow-500 text-gray-900'
                   }`}>
                     {template.tier_category === 'trial' && 'Trial'}
                     {template.tier_category === 'brochure' && 'Brochure'}

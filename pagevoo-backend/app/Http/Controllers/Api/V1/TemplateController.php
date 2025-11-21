@@ -57,16 +57,19 @@ class TemplateController extends BaseController
             'allowed_tiers' => $allowedTiers
         ]);
 
-        // Get templates where:
-        // 1. tier_category matches user's allowed tiers OR
-        // 2. exclusive_to is null (available to all) OR
-        // 3. exclusive_to matches one of user's allowed tiers
+        // Get templates where user has access based on tier
+        // Logic: If exclusive_to is set, it overrides tier_category
+        // If exclusive_to is null, use tier_category
         $templates = Template::with(['pages.sections', 'creator'])
             ->where('is_active', true)
             ->where(function($query) use ($allowedTiers) {
-                $query->whereIn('tier_category', $allowedTiers)
-                      ->orWhereNull('exclusive_to')
-                      ->orWhereIn('exclusive_to', $allowedTiers);
+                // Templates with exclusive_to set (explicit restriction)
+                $query->whereIn('exclusive_to', $allowedTiers)
+                      // OR templates with no exclusive_to (use tier_category)
+                      ->orWhere(function($subQuery) use ($allowedTiers) {
+                          $subQuery->whereNull('exclusive_to')
+                                   ->whereIn('tier_category', $allowedTiers);
+                      });
             })
             ->orderBy('created_at', 'desc')
             ->get();
@@ -116,7 +119,7 @@ class TemplateController extends BaseController
             'business_type' => 'required|in:restaurant,barber,pizza,cafe,gym,salon,other',
             'preview_image' => 'nullable|string',
             'is_active' => 'boolean',
-            'exclusive_to' => 'nullable|in:pro,niche,brochure',
+            'exclusive_to' => 'nullable|in:trial,pro,niche,brochure',
             'technologies' => 'nullable|array',
             'features' => 'nullable|array',
             'pages' => 'required|array',
@@ -142,6 +145,7 @@ class TemplateController extends BaseController
         // Map exclusive_to to tier_category
         $tierCategory = match($request->exclusive_to) {
             null => 'trial',           // Available to all (Trial)
+            'trial' => 'trial',        // Trial only
             'brochure' => 'brochure',  // B + N + P
             'niche' => 'niche',        // N + P
             'pro' => 'pro',            // P only
@@ -223,7 +227,7 @@ class TemplateController extends BaseController
             'business_type' => 'in:restaurant,barber,pizza,cafe,gym,salon,other',
             'preview_image' => 'nullable|string',
             'is_active' => 'boolean',
-            'exclusive_to' => 'nullable|in:pro,niche,brochure',
+            'exclusive_to' => 'nullable|in:trial,pro,niche,brochure',
             'technologies' => 'nullable|array',
             'features' => 'nullable|array',
             'pages' => 'nullable|array',
@@ -243,6 +247,8 @@ class TemplateController extends BaseController
         ]);
 
         if ($validator->fails()) {
+            \Log::error('Template validation failed:', $validator->errors()->toArray());
+            \Log::error('Request data:', $request->all());
             return $this->sendError('Validation Error', 422, $validator->errors());
         }
 
@@ -267,6 +273,7 @@ class TemplateController extends BaseController
         if ($request->has('exclusive_to')) {
             $updateData['tier_category'] = match($request->exclusive_to) {
                 null => 'trial',           // Available to all (Trial)
+                'trial' => 'trial',        // Trial only
                 'brochure' => 'brochure',  // B + N + P
                 'niche' => 'niche',        // N + P
                 'pro' => 'pro',            // P only

@@ -423,7 +423,6 @@ export const Header: React.FC<HeaderProps> = ({
                           <option value="portfolio">Portfolio</option>
                           <option value="blog">Blog</option>
                           <option value="ecommerce">E-commerce</option>
-                          <option value="corporate">Corporate</option>
                           <option value="creative">Creative</option>
                           <option value="education">Education</option>
                           <option value="healthcare">Healthcare</option>
