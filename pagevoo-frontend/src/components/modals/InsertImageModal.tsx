@@ -1,4 +1,5 @@
 import React from 'react'
+import { getAssetUrl } from '@/config/constants'
 
 interface Template {
   images?: Array<{
@@ -113,15 +114,15 @@ export const InsertImageModal: React.FC<InsertImageModalProps> = ({
                 {template.images.map((image) => (
                   <div
                     key={image.id}
-                    onClick={() => setSelectedGalleryImage(`http://localhost:8000/${image.path}`)}
+                    onClick={() => setSelectedGalleryImage(getAssetUrl(image.path))}
                     className={`cursor-pointer border-2 rounded p-1 transition ${
-                      selectedGalleryImage === `http://localhost:8000/${image.path}`
+                      selectedGalleryImage === getAssetUrl(image.path)
                         ? 'border-blue-500 bg-blue-50'
                         : 'border-gray-200 hover:border-gray-400'
                     }`}
                   >
                     <img
-                      src={`http://localhost:8000/${image.path}`}
+                      src={getAssetUrl(image.path)}
                       alt={image.filename}
                       className="w-full h-24 object-cover rounded"
                     />

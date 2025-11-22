@@ -63,7 +63,6 @@ export const PageLibraryModal: React.FC<PageLibraryModalProps> = ({
       } else {
         // No CSS, import directly
         await onImport(pageId, false)
-        console.log('Page imported successfully')
         // Mark as imported and show success feedback
         setImportedPageIds(prev => new Set([...prev, pageId]))
         setTimeout(() => {
@@ -86,7 +85,6 @@ export const PageLibraryModal: React.FC<PageLibraryModalProps> = ({
 
     try {
       await onImport(pageId, applyCss)
-      console.log('Page imported successfully with CSS choice:', applyCss)
       // Mark as imported and show success feedback
       setImportedPageIds(prev => new Set([...prev, pageId]))
       setTimeout(() => {
@@ -107,7 +105,6 @@ export const PageLibraryModal: React.FC<PageLibraryModalProps> = ({
     setDeleting(pageId)
     try {
       await pageLibraryApi.delete(pageId)
-      console.log('Page deleted successfully')
       // Refresh the list
       fetchPages()
     } catch (error) {

@@ -116,18 +116,10 @@ export const sectionLibraryApi = {
    */
   async export(data: ExportSectionData): Promise<{ id: number; name: string; preview_url?: string }> {
     try {
-      console.log('libraryApi.export: Starting export request...', {
-        url: `${API_BASE_URL}/section-library`,
-        dataKeys: Object.keys(data),
-        hasPreviewImage: !!data.preview_image,
-        previewImageLength: data.preview_image?.length || 0
-      })
-
       const response = await axios.post(`${API_BASE_URL}/v1/section-library`, data, {
         headers: getAuthHeaders()
       })
 
-      console.log('libraryApi.export: Success!', response.data)
       return response.data
     } catch (error) {
       console.error('libraryApi.export: Error occurred')

@@ -5,6 +5,7 @@ import { HexColorPicker } from 'react-colorful'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { getAssetUrl } from '@/config/constants'
 
 interface StyleProperty {
   backgroundColor?: string
@@ -925,7 +926,6 @@ export function StyleEditor({
       const normalizedText = normalizeColor(newProps.color)
 
       if (normalizedBg === normalizedText) {
-        console.log('[StyleEditor] Background color matches text color - auto-adjusting text color')
         newProps.color = getContrastColor(value)
       }
     }
@@ -936,7 +936,6 @@ export function StyleEditor({
       const normalizedText = normalizeColor(value)
 
       if (normalizedBg === normalizedText) {
-        console.log('[StyleEditor] Text color matches background - auto-adjusting to contrasting color')
         newProps.color = getContrastColor(newProps.backgroundColor)
       }
     }
@@ -946,8 +945,6 @@ export function StyleEditor({
     // If on simplified tab, update the onChange immediately
     if (activeTab === 'simplified') {
       const newCSS = generateCSS(newProps)
-      console.log('[StyleEditor] Generated CSS:', newCSS)
-      console.log('[StyleEditor] Properties:', newProps)
       setRawCSS(newCSS)
       onChange(newCSS)
     }
@@ -997,7 +994,6 @@ export function StyleEditor({
       const normalizedText = normalizeColor(parsed.color)
 
       if (normalizedBg === normalizedText) {
-        console.log('[StyleEditor] Loaded CSS has matching colors - removing text color to prevent invisible text')
         textColor = undefined // Remove the color so text inherits from parent
 
         // Generate new CSS without the bad color property
@@ -1006,7 +1002,6 @@ export function StyleEditor({
           color: undefined // Remove color
         }
         const fixedCSS = generateCSS(fixedProps)
-        console.log('[StyleEditor] Fixed CSS (removed color):', fixedCSS)
 
         // Update the database with fixed CSS
         onChange(fixedCSS)
@@ -2564,15 +2559,15 @@ export function StyleEditor({
                           {galleryImages.map((image) => (
                             <div
                               key={image.id}
-                              onClick={() => setSelectedGalleryImagePath(`http://localhost:8000/${image.path}`)}
+                              onClick={() => setSelectedGalleryImagePath(getAssetUrl(image.path))}
                               className={`cursor-pointer border-2 rounded p-1 transition ${
-                                selectedGalleryImagePath === `http://localhost:8000/${image.path}`
+                                selectedGalleryImagePath === getAssetUrl(image.path)
                                   ? 'border-blue-500 bg-blue-50'
                                   : 'border-gray-200 hover:border-gray-400'
                               }`}
                             >
                               <img
-                                src={`http://localhost:8000/${image.path}`}
+                                src={getAssetUrl(image.path)}
                                 alt={image.filename}
                                 className="w-full h-24 object-cover rounded"
                               />

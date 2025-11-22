@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { API_BASE_URL } from '@/config/constants'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -18,7 +19,7 @@ export default function Login() {
     try {
       await login(email, password)
       // Redirect based on user role
-      const response = await fetch('http://localhost:8000/api/v1/me', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/me`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }

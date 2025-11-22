@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '@/config/constants'
 
 interface Permission {
   [key: string]: boolean | number | null | string
@@ -26,7 +27,7 @@ export function PermissionManager() {
       setIsLoading(true)
       const token = localStorage.getItem('auth_token')
 
-      const response = await fetch('http://localhost:8000/api/v1/permissions', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/permissions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',
@@ -53,7 +54,7 @@ export function PermissionManager() {
 
       // Save each tier
       for (const tier of ['trial', 'brochure', 'niche', 'pro'] as const) {
-        await fetch('http://localhost:8000/api/v1/permissions', {
+        await fetch(`${API_BASE_URL}/api/v1/permissions`, {
           method: 'PUT',
           headers: {
             'Authorization': `Bearer ${token}`,

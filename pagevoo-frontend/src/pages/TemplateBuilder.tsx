@@ -642,13 +642,10 @@ export default function TemplateBuilder() {
     preview_image?: File
     is_pagevoo_official?: boolean
   }) => {
-    console.log('TemplateBuilder: Starting section export...', { data, exportingSection })
-
     try {
       // Convert preview image to base64 if provided
       let previewImageBase64: string | undefined
       if (data.preview_image) {
-        console.log('TemplateBuilder: Converting preview image to base64...')
         previewImageBase64 = await fileToBase64(data.preview_image)
       }
 
@@ -662,12 +659,9 @@ export default function TemplateBuilder() {
         is_pagevoo_official: data.is_pagevoo_official || false
       }
 
-      console.log('TemplateBuilder: Sending export request...', exportPayload)
-
       // Export to library
-      const result = await sectionLibraryApi.export(exportPayload)
+      await sectionLibraryApi.export(exportPayload)
 
-      console.log('TemplateBuilder: Export successful!', result)
       // Success - the modal will show success message and close itself
     } catch (error) {
       console.error('TemplateBuilder: Error exporting section:', error)
@@ -700,8 +694,6 @@ export default function TemplateBuilder() {
       if (!expandedCategories.includes('imported')) {
         setExpandedCategories(prev => [...prev, 'imported'])
       }
-
-      console.log('Section imported to sidebar successfully!')
     } catch (error) {
       console.error('Error importing section:', error)
       alert('Failed to import section. Please try again.')

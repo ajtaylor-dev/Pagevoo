@@ -67,14 +67,9 @@ export const CanvasDropZone: React.FC<CanvasDropZoneProps> = ({
 
   // Generate content CSS for all sections
   // Generate complete CSS with proper cascade: site → page → section → row → column
-  console.log('[CanvasDropZone] Generating CSS with:', {
-    siteCss: template?.custom_css,
-    pageCss: currentPage?.page_css
-  })
   const contentCSS = currentPage?.sections
     ? generateContentCSS(currentPage.sections, currentPage.page_css, template?.custom_css)
     : ''
-  console.log('[CanvasDropZone] Generated contentCSS:', contentCSS)
 
   // Extract fonts from all CSS for Google Fonts loading
   const allCSS = contentCSS

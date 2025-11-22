@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { API_BASE_URL } from '@/config/constants'
 
 interface PermissionsData {
   permissions: {
@@ -52,7 +53,7 @@ export function usePermissions(): UsePermissionsReturn {
         throw new Error('No authentication token found')
       }
 
-      const response = await fetch('http://localhost:8000/api/v1/me/permissions', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/me/permissions`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Accept': 'application/json',

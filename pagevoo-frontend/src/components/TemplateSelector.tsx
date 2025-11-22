@@ -26,11 +26,8 @@ export function TemplateSelector({ onSelect, onCancel }: TemplateSelectorProps) 
 
   const loadTemplates = async () => {
     try {
-      console.log('Loading templates for user...');
       const response = await api.getAllTemplates();
-      console.log('User template response:', response);
       if (response.success) {
-        console.log('User templates data:', response.data);
         setTemplates(response.data || []);
       } else {
         console.error('API returned success: false');

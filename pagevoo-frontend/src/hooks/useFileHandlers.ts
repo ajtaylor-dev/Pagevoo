@@ -1,4 +1,5 @@
 import { api } from '@/services/api'
+import { API_BASE_URL } from '@/config/constants'
 
 interface TemplateSection {
   id: number
@@ -320,9 +321,6 @@ export const useFileHandlers = ({
       return
     }
 
-    // Debug: Log template ID
-    console.log('Template ID:', currentTemplate.id, 'Type:', typeof currentTemplate.id)
-
     // If template.id === 0 or undefined (new template), prompt for name like Word
     if (!currentTemplate.id || currentTemplate.id === 0) {
       const templateName = prompt('Enter a template name:', currentTemplate.name || 'Untitled Template')
@@ -558,7 +556,7 @@ export const useFileHandlers = ({
 
     // Open physical PHP file for the current page being edited
     const pageFile = currentPage.slug === 'home' ? 'index.php' : `${currentPage.slug}.php`
-    const previewUrl = `http://localhost:8000/template_directory/${template.template_slug}/${pageFile}`
+    const previewUrl = `${API_BASE_URL}/template_directory/${template.template_slug}/${pageFile}`
     window.open(previewUrl, '_blank')
   }
 
@@ -609,12 +607,10 @@ export const useFileHandlers = ({
   }
 
   const handleExportReact = () => {
-    console.log('Export as React - to be implemented')
     // TODO: Implement React export
   }
 
   const handleExportHTML = () => {
-    console.log('Export as HTML - to be implemented')
     // TODO: Implement HTML export
   }
 

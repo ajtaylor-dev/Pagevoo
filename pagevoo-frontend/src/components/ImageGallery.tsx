@@ -1,6 +1,5 @@
 import { useState, useRef } from 'react'
-
-console.log('ImageGallery module loaded!')
+import { getAssetUrl } from '../config/constants'
 
 interface ImageItem {
   id: string
@@ -35,14 +34,9 @@ export function ImageGallery({
   const [imageDimensions, setImageDimensions] = useState<{[key: string]: {width: number, height: number}}>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  console.log('ImageGallery render - isOpen:', isOpen, 'images count:', images?.length)
-
   if (!isOpen) {
-    console.log('ImageGallery: isOpen is false, returning null')
     return null
   }
-
-  console.log('ImageGallery rendering modal...', 'images:', images)
 
   const formatFileSize = (bytes: number): string => {
     if (bytes < 1024) return bytes + ' B'
@@ -117,7 +111,7 @@ export function ImageGallery({
         [imageId]: { width: img.width, height: img.height }
       }))
     }
-    img.src = `http://localhost:8000/${imagePath}`
+    img.src = getAssetUrl(imagePath)
   }
 
   // Filter images based on search query
@@ -214,7 +208,7 @@ export function ImageGallery({
                   {/* Image Preview */}
                   <div className="aspect-square bg-gray-700 relative">
                     <img
-                      src={`http://localhost:8000/${image.path}`}
+                      src={getAssetUrl(image.path)}
                       alt={image.filename}
                       className="w-full h-full object-cover"
                     />

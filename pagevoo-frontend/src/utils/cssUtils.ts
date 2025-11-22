@@ -28,8 +28,6 @@ export const generateContentCSS = (sections: TemplateSection[], pageCSS?: string
   const scopeToCanvas = (inputCSS: string): string => {
     if (!inputCSS || inputCSS.trim() === '') return ''
 
-    console.log('[generateContentCSS] Input CSS:', inputCSS)
-
     // Extract body selector styles
     const bodyMatch = inputCSS.match(/body\s*\{([^}]+)\}/i)
     let processedCSS = inputCSS
@@ -114,7 +112,6 @@ export const generateContentCSS = (sections: TemplateSection[], pageCSS?: string
       result = headerSelectors + result
     }
 
-    console.log('[generateContentCSS] Scoped CSS:', result)
     return result
   }
 

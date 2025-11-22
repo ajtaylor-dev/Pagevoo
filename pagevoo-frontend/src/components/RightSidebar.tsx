@@ -162,7 +162,6 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   <StyleEditor
                     value={template?.custom_css || ''}
                     onChange={(css) => {
-                      console.log('[Site CSS onChange #2] New CSS:', css)
                       const updatedTemplate = { ...template!, custom_css: css }
                       setTemplate(updatedTemplate)
                       templateRef.current = updatedTemplate

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { api } from '@/services/api'
+import { getAssetUrl } from '@/config/constants'
 
 interface Template {
   id: number
@@ -489,7 +490,7 @@ export const useTextEditor = ({
 
           if (response.success && response.data) {
             // Insert the uploaded image at cursor position
-            const imageUrl = `http://localhost:8000/${response.data.path}`
+            const imageUrl = getAssetUrl(response.data.path)
 
             if (editorRef.current) {
               editorRef.current.focus()

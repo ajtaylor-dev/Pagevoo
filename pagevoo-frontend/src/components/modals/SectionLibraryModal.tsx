@@ -56,7 +56,6 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
     setImporting(sectionId)
     try {
       await onImport(sectionId)
-      console.log('Section imported successfully to sidebar')
       // Mark as successfully imported
       setImportedSectionIds(prev => [...prev, sectionId])
       // Reset after 2 seconds
@@ -79,7 +78,6 @@ export const SectionLibraryModal: React.FC<SectionLibraryModalProps> = ({
     setDeleting(sectionId)
     try {
       await sectionLibraryApi.delete(sectionId)
-      console.log('Section deleted successfully')
       // Refresh the list
       fetchSections()
     } catch (error) {

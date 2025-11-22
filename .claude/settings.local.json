@@ -53,7 +53,12 @@
       "Bash(del pagevoo-frontendsrcnul)",
       "Bash(del claude_memory_7.txt)",
       "Bash(find:*)",
-      "Bash(storage/logs/laravel.log)"
+      "Bash(storage/logs/laravel.log)",
+      "Bash(del:*)",
+      "Bash(python3:*)",
+      "Bash(php test_tiers.php:*)",
+      "Bash(php -r:*)",
+      "Bash(php:*)"
     ],
     "deny": [],
     "ask": []

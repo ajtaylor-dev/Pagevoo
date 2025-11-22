@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { API_BASE_URL } from '@/config/constants'
 
 export default function Hero() {
   const [isLoginExpanded, setIsLoginExpanded] = useState(false)
@@ -19,7 +20,7 @@ export default function Hero() {
     try {
       await login(email, password)
       // Redirect based on user role - need to get fresh user data
-      const response = await fetch('http://localhost:8000/api/v1/me', {
+      const response = await fetch(`${API_BASE_URL}/api/v1/me`, {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('auth_token')}`
         }

@@ -9,11 +9,12 @@ import TemplateBuilder from '@/pages/TemplateBuilder'
 import WebsiteBuilder from '@/pages/WebsiteBuilder'
 import AdminRoute from '@/components/guards/AdminRoute'
 import ActiveCustomerRoute from '@/components/guards/ActiveCustomerRoute'
+import { API_BASE_URL } from '@/config/constants'
 
 // Redirect component for unknown routes
 function RedirectToHome() {
   useEffect(() => {
-    window.location.href = 'http://localhost:8000/'
+    window.location.href = API_BASE_URL + '/'
   }, [])
   return null
 }

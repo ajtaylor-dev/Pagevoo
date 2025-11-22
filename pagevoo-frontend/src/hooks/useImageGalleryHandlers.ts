@@ -37,7 +37,6 @@ export const useImageGalleryHandlers = ({
 }: UseImageGalleryHandlersProps) => {
 
   const handleImageGalleryClose = () => {
-    console.log('ImageGallery onClose called')
     imageGalleryRef.current = false
     setShowImageGallery(false)
   }
@@ -51,7 +50,6 @@ export const useImageGalleryHandlers = ({
     // Auto-save template if it hasn't been saved yet
     let templateId = template.id
     if (templateId === 0) {
-      console.log('Template not saved yet, auto-saving before upload...')
       try {
         const saveResponse = await api.createTemplate({
           name: template.name || 'Untitled Template',
@@ -67,7 +65,6 @@ export const useImageGalleryHandlers = ({
         if (saveResponse.success && saveResponse.data) {
           templateId = saveResponse.data.id
           setTemplate(saveResponse.data)
-          console.log('Template auto-saved with ID:', templateId)
         } else {
           alert('Please save the template before uploading images.')
           return
@@ -79,12 +76,9 @@ export const useImageGalleryHandlers = ({
       }
     }
 
-    console.log('Starting image upload for template:', templateId, 'file:', file.name)
     try {
       const response = await api.uploadGalleryImage(templateId, file)
-      console.log('Upload response:', response)
       if (response.success && response.data) {
-        console.log('Upload successful, adding image to template')
         setTemplate({
           ...template,
           id: templateId,

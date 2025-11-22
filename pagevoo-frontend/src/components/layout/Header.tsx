@@ -615,7 +615,6 @@ export const Header: React.FC<HeaderProps> = ({
                       <StyleEditor
                         value={template.custom_css || ''}
                         onChange={(css) => {
-                          console.log('[Site CSS onChange] New CSS:', css)
                           const updatedTemplate = { ...template, custom_css: css }
                           setTemplate(updatedTemplate)
                           templateRef.current = updatedTemplate // Sync ref immediately to avoid race condition during save
@@ -802,12 +801,8 @@ export const Header: React.FC<HeaderProps> = ({
                 alert('Please create a template first.')
                 return
               }
-              console.log('Image Gallery button clicked')
               imageGalleryRef.current = true
-              setShowImageGallery(prev => {
-                console.log('setShowImageGallery called, prev:', prev, 'setting to true')
-                return true
-              })
+              setShowImageGallery(true)
             }}
             disabled={!template}
             className={`p-1.5 rounded transition ml-1 ${

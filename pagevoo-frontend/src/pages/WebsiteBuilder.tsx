@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/services/api'
+import { getAssetUrl } from '@/config/constants'
 import { sectionLibraryApi, pageLibraryApi, fileToBase64 } from '@/services/libraryApi'
 import { StyleEditor } from '@/components/StyleEditor'
 import { ImageGallery } from '@/components/ImageGallery'
@@ -350,7 +351,6 @@ export default function WebsiteBuilder() {
     setLoadingWebsites(true)
     try {
       const response = await api.getUserWebsites()
-      console.log('getUserWebsites response:', response)
 
       if (response.success) {
         // Even if data is an empty array, that's still success
@@ -377,10 +377,6 @@ export default function WebsiteBuilder() {
       const response = await api.getAllTemplates()
       if (response.success && response.data) {
         // API already filters by is_active, so just set the data
-        console.log('📦 Templates loaded:', response.data.length);
-        response.data.forEach((t: Template) => {
-          console.log(`  - ${t.name}: preview_image = ${t.preview_image || 'null'}`);
-        });
         setTemplates(response.data)
       }
     } catch (error) {
@@ -978,8 +974,6 @@ export default function WebsiteBuilder() {
       if (!expandedCategories.includes('imported')) {
         setExpandedCategories(prev => [...prev, 'imported'])
       }
-
-      console.log('Section imported to sidebar successfully!')
     } catch (error) {
       console.error('Error importing section:', error)
       alert('Failed to import section. Please try again.')
@@ -1244,12 +1238,9 @@ export default function WebsiteBuilder() {
               <button
                 onClick={async (e) => {
                   e.preventDefault()
-                  console.log('Load Save button clicked')
                   const success = await loadAvailableWebsites()
-                  console.log('Load websites result:', success)
                   if (success) {
                     setShowLoadWebsiteModal(true)
-                    console.log('Modal should be open now')
                   }
                 }}
                 disabled={loadingWebsites}
@@ -1429,7 +1420,7 @@ export default function WebsiteBuilder() {
                       <div className="w-full h-48 bg-gray-200 overflow-hidden relative">
                         {template.preview_image ? (
                           <img
-                            src={`http://localhost:8000/${template.preview_image.startsWith('template_directory/') ? template.preview_image : `storage/${template.preview_image}`}`}
+                            src={getAssetUrl(template.preview_image.startsWith('template_directory/') ? template.preview_image : `storage/${template.preview_image}`)}
                             alt={template.name}
                             className="w-full h-full object-cover"
                           />

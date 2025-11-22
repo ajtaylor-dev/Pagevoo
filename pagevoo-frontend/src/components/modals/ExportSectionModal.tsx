@@ -41,14 +41,6 @@ export const ExportSectionModal: React.FC<ExportSectionModalProps> = ({
     setSuccessMessage('')
 
     try {
-      console.log('ExportSectionModal: Starting export...', {
-        name,
-        description,
-        tags,
-        hasPreviewImage: !!previewImage,
-        section
-      })
-
       const tagsArray = tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
 
       const exportData: any = {
@@ -66,14 +58,8 @@ export const ExportSectionModal: React.FC<ExportSectionModalProps> = ({
         exportData.preview_image = previewImage
       }
 
-      console.log('ExportSectionModal: Calling onExport with data:', {
-        ...exportData,
-        preview_image: previewImage ? 'File object present' : 'No preview image'
-      })
-
       await onExport(exportData)
 
-      console.log('ExportSectionModal: Export completed successfully!')
       setSuccessMessage('Section exported successfully!')
 
       // Reset form after 1.5 seconds

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api';
+import { getAssetUrl } from '@/config/constants';
 
 interface Template {
   id: number;
@@ -128,11 +129,8 @@ export function TemplateManager() {
 
   const loadTemplates = async () => {
     try {
-      console.log('Loading templates...');
       const response = await api.getAllTemplatesAdmin();
-      console.log('Template response:', response);
       if (response.success) {
-        console.log('Templates data:', response.data);
         setTemplates(response.data || []);
       } else {
         console.error('API returned success: false');
@@ -386,7 +384,7 @@ export function TemplateManager() {
                 {template.preview_image ? (
                   <div className="w-full h-40 bg-gray-200 overflow-hidden">
                     <img
-                      src={`http://localhost:8000/${template.preview_image.startsWith('template_directory/') ? template.preview_image : `storage/${template.preview_image}`}`}
+                      src={getAssetUrl(template.preview_image.startsWith('template_directory/') ? template.preview_image : `storage/${template.preview_image}`)}
                       alt={template.name}
                       className="w-full h-full object-cover"
                     />
