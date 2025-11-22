@@ -1,0 +1,515 @@
+# PAGEVOO PROJECT - MEMORY FILE #9
+**Date:** November 22, 2025
+**Session:** Phase 2 - ALL SCRIPT FEATURES SPECIFICATIONS COMPLETED ✅
+
+---
+
+## MAJOR MILESTONE: ALL 11 FEATURES FULLY SPECIFIED
+
+**Status:** 100% complete - Ready to begin implementation
+**Deadline:** December 9, 2025 (2.5 weeks remaining)
+
+---
+
+## SESSION SUMMARY
+
+### ALL 11 SCRIPT FEATURES SPECIFIED ✅
+
+1. ✅ **Contact Form** - General contact, support tickets, mass mailer
+2. ✅ **Image Gallery** - Multi-layout, categories, lazy loading
+3. ✅ **User Access System** - Active Directory-style permissions system
+4. ✅ **Blog & News** - WordPress-style blogging with existing WYSIWYG
+5. ✅ **Events** - Full event management, RSVP, recurring events
+6. ✅ **Booking System** - Appointments, staff, payments
+7. ✅ **VooPress** - WordPress-style site quick-setup (NEW NAME!)
+8. ✅ **Shop (E-commerce)** - Full online store with cart/checkout
+9. ✅ **File Hoster** - Download management with access controls
+10. ✅ **Video Sharing** - YouTube-style video platform
+11. ✅ **Social Platform** - Facebook/Instagram-style social network
+
+---
+
+## KEY DECISIONS THIS SESSION
+
+### VooPress Branding Decision
+- **Original Name:** WordPress Integration
+- **New Name:** VooPress (customer loved it!)
+- **Concept:** WordPress-style website quick-setup using existing Pagevoo features
+- **NOT** a separate database feature - uses Blog, User Access, Contact Form
+- **Key Innovation:** Pre-configured themes + WordPress import capability
+
+### Customer Configurability
+- **User preference:** "Everything customer customizable"
+- **Applied to:** ALL features (Events, Booking, Shop, Video, Social, File Hoster)
+- **Balance:** Customer controls features, Pagevoo admin controls tier limits
+
+### Database Architecture (CRITICAL)
+- **Dual database system:** pagevoo_core + pagevoo_website_{user_id}
+- **One database per user rule:** STRICTLY ENFORCED
+- **Database locking:** User cannot create new templates while database active
+- **Must delete database to switch websites**
+
+---
+
+## FEATURE SPECIFICATIONS DETAILS
+
+### FEATURE #1: CONTACT FORM
+**Implementation:** Special section type
+**Forms:** General Contact, Support Tickets, Mass Mailer (requires UAS)
+**Configuration:**
+- Spam protection (honeypot, reCAPTCHA, or both)
+- Storage (database, email, or both)
+- Auto-responder (optional)
+- File attachments (optional, max 10MB)
+**Database:** contact_forms, form_submissions, support_tickets
+
+### FEATURE #2: IMAGE GALLERY
+**Implementation:** Special section type
+**Key Features:**
+- Multiple layouts (Grid, Masonry, Carousel, Lightbox) - user choice
+- Library approach (shared images OR section-specific)
+- Categories for organization
+- Lazy loading (optional)
+**Tier Limits:**
+- Trial: 10 images max
+- Others: Pagevoo admin configurable
+**Database:** image_galleries, gallery_images, gallery_categories
+
+### FEATURE #3: USER ACCESS SYSTEM
+**Implementation:** Full authentication & authorization system
+**Inspired by:** Windows Server Active Directory
+**Key Features:**
+- Pre-defined roles (Admin, Moderator, Member, Guest) + custom roles
+- Groups and granular permissions
+- Admin panel (Pagevoo modal OR standalone admin.php)
+- Page-level access control (lock pages to roles/groups)
+**Integration:** Required for Shop, Mass Mailer, Video, Social Platform
+**Database:** website_users, website_roles, website_permissions, user_groups, login_attempts, password_resets
+
+### FEATURE #4: BLOG & NEWS
+**Implementation:** Unified content system (blog posts = news articles)
+**Editor:** Uses existing WYSIWYG editor (no new editor needed)
+**Key Features:**
+- Categories & tags (unlimited, multiple per post)
+- Featured posts/sticky posts
+- Comments (configurable: logged-in only or guests)
+- Multi-author support (if UAS installed)
+- RSS feed (optional)
+- Post scheduling
+**Auto-Generated Pages:** blog.php, post.php, category.php, tag.php, author.php, archive.php, search.php
+**Database:** blog_posts, blog_categories, blog_tags, blog_comments
+
+### FEATURE #5: EVENTS
+**Implementation:** Full event management system
+**Key Features:**
+- Event types/categories (customer-defined)
+- RSVP system (logged-in or guest, configurable)
+- Recurring events (daily, weekly, monthly, yearly)
+- Multiple calendar views (month, week, day, list, grid, map)
+- Reminder emails (configurable timing)
+- Google Calendar/iCal integration
+**Database:** events, event_categories, event_rsvps, event_reminders
+
+### FEATURE #6: BOOKING SYSTEM
+**Implementation:** Appointment/reservation system
+**Key Features:**
+- Multiple services with custom durations
+- Staff management (requires UAS)
+- Time slot configuration
+- Payment integration (Stripe, PayPal)
+- Recurring bookings
+- Reminder emails
+- Google Calendar sync
+**Database:** booking_services, booking_staff, bookings, booking_reminders
+
+### FEATURE #7: VOOPRESS (WORDPRESS-STYLE SITES) ⭐
+**Implementation:** Quick-start template system (NO new database tables)
+**Concept:**
+- Auto-installs: Blog + User Access + Contact Form + Image Gallery
+- Pre-configured WordPress-style layout
+- WordPress-style admin panel UI
+- 4 themes: Classic Blog, Magazine, Minimal, Business
+**Special Features:**
+- WordPress-style permalinks
+- Widget system (sidebar, footer)
+- Menu builder (drag-and-drop)
+- **WordPress import** (XML import converts to Pagevoo)
+**Database:** Uses existing tables, adds flags to user_websites:
+  - is_voopress (boolean)
+  - voopress_theme (varchar 50)
+  - voopress_config (JSON)
+
+### FEATURE #8: SHOP (E-COMMERCE)
+**Implementation:** Full e-commerce system (requires UAS)
+**Product Types:**
+- Physical (shipping required)
+- Digital (downloadable)
+- Services
+- Variable (size/color options)
+- Subscription (recurring)
+**Key Features:**
+- Inventory management with SKU
+- Shopping cart (persistent if UAS)
+- Multiple payment gateways (Stripe, PayPal, COD, etc.)
+- Shipping zones and methods
+- Coupon codes
+- Product reviews
+- Abandoned cart recovery
+**Database:** shop_products, shop_categories, shop_orders, shop_carts, shop_coupons, shop_reviews
+
+### FEATURE #9: FILE HOSTER
+**Implementation:** File upload/download management
+**Key Features:**
+- Folder organization
+- Access controls (public, logged-in, role-based, password)
+- Download tracking and limits
+- File versioning
+- Expiring download links
+- Virus scanning (optional)
+**Pagevoo Admin Limits:**
+- Trial: 100MB total, 10MB per file
+- Brochure: 1GB total, 50MB per file
+- Niche: 10GB total, 500MB per file
+- Pro: 100GB total, 2GB per file
+**Security:** Detect split archives, renamed executables, MIME type validation
+**Database:** hosted_files, file_folders, file_downloads
+
+### FEATURE #10: VIDEO SHARING (YOUTUBE-STYLE)
+**Implementation:** Full video platform (requires UAS)
+**Key Features:**
+- Video uploads with processing (multiple quality versions)
+- Playlists and channels
+- Likes/dislikes, comments
+- Subscriptions (follow channels)
+- View tracking and analytics
+- Monetization options (Pro tier)
+**Database:** videos, video_playlists, video_views, video_likes, video_comments, channel_subscriptions
+
+### FEATURE #11: SOCIAL PLATFORM (FACEBOOK/INSTAGRAM-STYLE)
+**Implementation:** Full social network (requires UAS)
+**Platform Styles:** Facebook-like, Instagram-like, Twitter-like, or Custom
+**Key Features:**
+- Text, image, video, link posts
+- Stories (24-hour expiring content)
+- Likes, comments, shares
+- Direct messages
+- Follow/friend system
+- Hashtags and mentions
+- Groups/communities
+- Notifications
+**Database:** social_posts, social_comments, social_likes, social_follows, direct_messages, notifications
+
+---
+
+## PAGEVOO PLATFORM ADMIN PANEL (NEW SECTION)
+
+**Location:** Permissions Tab > Feature Permissions
+
+**New Subsections:**
+1. **User Account Limitations** - For User Access System
+2. **Blog & News Limitations** - Max posts, categories, tags, etc.
+3. **Events Limitations** - Max events, recurring occurrences, capacity
+4. **Booking System Limitations** - Max bookings/month, services, staff
+5. **Shop Limitations** - Max products, orders/month
+6. **File Hoster Limitations** - Storage quotas, file sizes
+7. **Video Sharing Limitations** - Max videos, video size/length
+8. **Social Platform Limitations** - Max users, features enabled
+
+**All configurable per tier:** Trial, Brochure, Niche, Pro
+
+---
+
+## TIER-BASED FEATURE ACCESS
+
+### Trial Tier
+- Contact Form ✅ (limited)
+- Image Gallery ✅ (10 images max)
+- Blog & News ✅ (10 posts max)
+- Events ✅ (5 events max)
+- Booking System ✅ (10 bookings/month max)
+- VooPress ❌ Not available
+- Shop ❌ Not available
+- File Hoster ✅ (100MB total)
+- Video Sharing ❌ Not available
+- Social Platform ❌ Not available
+
+### Brochure Tier
+- Contact Form ✅
+- Image Gallery ✅ (50 images)
+- Blog & News ✅ (50 posts)
+- Events ✅ (20 events)
+- Booking System ✅ (50 bookings/month)
+- VooPress ✅ (2 themes)
+- Shop ❌ Not available
+- File Hoster ✅ (1GB total)
+- Video Sharing ❌ Not available
+- Social Platform ❌ Not available
+
+### Niche Tier
+- All features ✅ with moderate limits
+
+### Pro Tier
+- All features ✅ with admin-configurable limits (usually unlimited)
+
+---
+
+## TECHNICAL ARCHITECTURE
+
+### Database Structure
+```
+Main Database: pagevoo_core
+  - users (Pagevoo customers)
+  - templates, template_pages, template_sections
+  - user_websites, user_pages, user_sections
+  - tier_permissions, settings
+  - user_databases (NEW: tracks per-user databases)
+
+Per-User Database: pagevoo_website_{user_id}
+  - Contact Form tables
+  - Image Gallery tables
+  - User Access System tables
+  - Blog tables
+  - Events tables
+  - Booking System tables
+  - Shop tables
+  - File Hoster tables
+  - Video Sharing tables
+  - Social Platform tables
+  - installed_features (tracks which features active)
+```
+
+### Migration Structure
+```
+database/migrations/
+  website_core/
+    - create_installed_features_table.php
+    - create_feature_settings_table.php
+
+  script_features/
+    contact_form/
+      - create_contact_forms_tables.php
+    image_gallery/
+      - create_image_galleries_tables.php
+    user_access/
+      - create_user_access_tables.php
+    blog/
+      - create_blog_tables.php
+    events/
+      - create_events_tables.php
+    booking/
+      - create_booking_tables.php
+    shop/
+      - create_shop_tables.php
+    file_hoster/
+      - create_file_hoster_tables.php
+    video_sharing/
+      - create_video_sharing_tables.php
+    social_platform/
+      - create_social_platform_tables.php
+```
+
+---
+
+## AUTO-GENERATED PHP PAGES
+
+**Contact Form:** (none - section only)
+**Image Gallery:** (none - section only)
+**User Access System:**
+- login.php, register.php, profile.php, forgot-password.php, logout.php, member-directory.php
+- admin.php (optional standalone)
+
+**Blog & News:**
+- blog.php, post.php, category.php, tag.php, author.php, archive.php, search.php
+
+**Events:**
+- events.php, event.php, rsvp.php, my-events.php
+
+**Booking System:**
+- book.php, booking-confirmation.php, my-bookings.php, manage-bookings.php
+
+**Shop:**
+- shop.php, product.php, cart.php, checkout.php, my-account.php, order-confirmation.php, track-order.php
+
+**File Hoster:**
+- files.php, download.php
+
+**Video Sharing:**
+- videos.php, watch.php, channel.php, upload.php, my-channel.php, subscriptions.php
+
+**Social Platform:**
+- feed.php, profile.php, messages.php, notifications.php, explore.php
+
+---
+
+## FEATURE DEPENDENCIES
+
+**Critical Dependencies:**
+- Shop → User Access System (REQUIRED for customer accounts)
+- Mass Mailer → User Access System (REQUIRED for admin authentication)
+- Video Sharing → User Access System (REQUIRED for channels/uploads)
+- Social Platform → User Access System (REQUIRED for all functionality)
+- Booking System → User Access System (OPTIONAL for staff management)
+
+**Feature Combinations (VooPress):**
+- VooPress → Blog + User Access + Contact Form + Image Gallery (auto-installed)
+
+---
+
+## IMPLEMENTATION APPROACH
+
+### Phase 2 Implementation Order
+1. **Contact Form** (simplest, no dependencies)
+2. **Image Gallery** (simple, no dependencies)
+3. **User Access System** (CRITICAL - many features depend on it)
+4. **Blog & News** (depends on UAS for multi-author)
+5. **Events** (moderate complexity)
+6. **File Hoster** (moderate complexity)
+7. **Booking System** (complex, depends on UAS)
+8. **VooPress** (wrapper around existing features)
+9. **Shop** (very complex, depends on UAS)
+10. **Video Sharing** (very complex, depends on UAS)
+11. **Social Platform** (most complex, depends on UAS)
+
+### Each Feature Implementation Includes:
+**Frontend:**
+- Configuration modal
+- Admin panel components
+- Special sections (if applicable)
+- Generated PHP pages
+
+**Backend:**
+- Controllers (API endpoints)
+- Models (Eloquent)
+- Services (business logic)
+- Migrations (database schema)
+
+---
+
+## FILES CREATED THIS SESSION
+
+### Documentation (Updated):
+- `D:\Pagevoo\PHASE_2_FEATURE_SPECIFICATIONS.md` (2,515 lines!)
+  * All 11 features fully documented
+  * Database schemas
+  * Configuration options
+  * Tier restrictions
+  * Files to create
+
+### Memory Files:
+- `D:\Pagevoo\claude_memory_9.txt` (this file)
+
+---
+
+## NEXT STEPS (Starting Tomorrow)
+
+1. **Begin Contact Form implementation** (Feature #1)
+   - Create database migrations
+   - Build frontend configuration modal
+   - Build contact form section component
+   - Build backend controllers and services
+   - Test spam protection
+   - Test email sending
+
+2. **Then Image Gallery** (Feature #2)
+3. **Then User Access System** (Feature #3 - CRITICAL)
+4. **Continue through all 11 features**
+
+**Goal:** All features implemented by December 9, 2025
+
+---
+
+## IMPORTANT NOTES FOR IMPLEMENTATION
+
+### Database Creation Workflow
+1. User publishes website → Database auto-created
+2. OR user manually creates database (for testing)
+3. Database name: `pagevoo_website_{user_id}`
+4. Core migrations run first (installed_features table)
+5. Feature migrations run when feature installed
+
+### Feature Installation Workflow
+1. User clicks Insert > Feature > [Feature Name]
+2. Check if database exists:
+   - If NO → Prompt to publish or create database
+   - If YES → Continue
+3. Show configuration modal
+4. Save configuration to database
+5. Run feature-specific migrations
+6. Create auto-generated pages (if applicable)
+7. Add feature to installed_features table
+8. Success message + redirect to feature admin
+
+### Section Types
+**Standard Sections:** hero, content, footer, etc.
+**Script Feature Sections:**
+- contact_form (Contact Form)
+- image_gallery (Image Gallery)
+- blog_list (Blog & News)
+- recent_posts (Blog & News)
+- events_calendar (Events)
+- upcoming_events (Events)
+- booking_calendar (Booking System)
+- product_grid (Shop)
+- video_player (Video Sharing)
+- social_feed (Social Platform)
+
+### Access Control
+- Check user tier before allowing feature installation
+- Check Pagevoo admin limits during feature usage
+- Validate database existence for all script features
+- Enforce one-database-per-user rule STRICTLY
+
+---
+
+## TECHNICAL CHALLENGES TO ADDRESS
+
+### Video Processing
+- Large file uploads (chunked upload needed)
+- Video encoding (FFmpeg integration)
+- Multiple quality versions (360p, 720p, 1080p)
+- Thumbnail generation
+- Consider: Cloudflare Stream or AWS MediaConvert
+
+### Payment Integration
+- Stripe API integration (Shop, Booking System)
+- PayPal API integration
+- Webhook handling for payment confirmations
+- Refund processing
+- Test mode vs production mode
+
+### Real-time Features
+- Social Platform notifications (consider Laravel Echo + Pusher)
+- Direct messages (real-time chat)
+- Live updates for bookings/events
+
+### File Security
+- Prevent direct file access (route through controller)
+- Virus scanning (ClamAV integration)
+- Hotlink prevention
+- Download link expiration
+- Prevent split archive workarounds
+
+### Performance Optimization
+- Image lazy loading (Intersection Observer)
+- Video streaming (HLS or DASH)
+- Database query optimization (indexes crucial)
+- Caching (Redis for frequently accessed data)
+- CDN for media files
+
+---
+
+## BRANDING WINS THIS SESSION
+
+**VooPress** - Excellent naming decision!
+- Combines "Voo" from Pagevoo + "Press" from WordPress
+- Memorable and unique
+- Clearly communicates WordPress-style functionality
+- Customer loved it immediately
+
+---
+
+**End of Memory File #9**
+
+🎉 **MAJOR MILESTONE:** All 11 script features fully specified and ready for implementation!
+
+**Next Session:** Begin implementation with Contact Form (Feature #1)
