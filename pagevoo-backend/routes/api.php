@@ -13,6 +13,7 @@ use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\SectionLibraryController;
 use App\Http\Controllers\PageLibraryController;
 use App\Http\Controllers\Api\V1\ScriptFeatures\ContactFormController;
+use App\Http\Controllers\Api\V1\DatabaseController;
 
 /*
 |--------------------------------------------------------------------------
@@ -204,6 +205,34 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{formId}/submissions/{submissionId}', [ContactFormController::class, 'deleteSubmission']);
         });
 
+    });
+
+    // Database Management Routes
+    Route::middleware('auth:sanctum')->prefix('database')->group(function () {
+        // Get database instance
+        Route::get('/instance', [DatabaseController::class, 'show']);
+
+        // Create database
+        Route::post('/template/create', [DatabaseController::class, 'createTemplateDatabase']);
+        Route::post('/website/create', [DatabaseController::class, 'createWebsiteDatabase']);
+
+        // Copy template database to website
+        Route::post('/copy-template', [DatabaseController::class, 'copyTemplateDatabase']);
+
+        // Delete database
+        Route::delete('/{id}', [DatabaseController::class, 'destroy']);
+
+        // Backup and restore
+        Route::post('/{id}/backup', [DatabaseController::class, 'backup']);
+        Route::post('/{id}/restore', [DatabaseController::class, 'restore']);
+
+        // Feature management
+        Route::get('/{id}/features', [DatabaseController::class, 'getInstalledFeatures']);
+        Route::post('/{id}/features/install', [DatabaseController::class, 'installFeature']);
+        Route::post('/{id}/features/uninstall', [DatabaseController::class, 'uninstallFeature']);
+
+        // Update size
+        Route::post('/{id}/update-size', [DatabaseController::class, 'updateSize']);
     });
 
     // Public form submission endpoint (no auth required)
