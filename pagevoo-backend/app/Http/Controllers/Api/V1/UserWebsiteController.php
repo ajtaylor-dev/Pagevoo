@@ -6,8 +6,10 @@ use App\Models\Template;
 use App\Models\UserWebsite;
 use App\Models\UserPage;
 use App\Models\UserSection;
+use App\Models\DatabaseInstance;
 use App\Services\WebsiteFileService;
 use App\Services\PermissionService;
+use App\Services\DatabaseManager;
 use App\Services\Security\CssSanitizer;
 use App\Services\Security\HtmlSanitizer;
 use App\Http\Requests\SaveWebsiteRequest;
@@ -19,11 +21,16 @@ class UserWebsiteController extends BaseController
 {
     protected WebsiteFileService $fileService;
     protected PermissionService $permissionService;
+    protected DatabaseManager $databaseManager;
 
-    public function __construct(WebsiteFileService $fileService, PermissionService $permissionService)
-    {
+    public function __construct(
+        WebsiteFileService $fileService,
+        PermissionService $permissionService,
+        DatabaseManager $databaseManager
+    ) {
         $this->fileService = $fileService;
         $this->permissionService = $permissionService;
+        $this->databaseManager = $databaseManager;
     }
 
     /**
@@ -102,6 +109,29 @@ class UserWebsiteController extends BaseController
                         'type' => $templateSection->type,
                         'content' => $templateSection->content,
                         'order' => $templateSection->order,
+                    ]);
+                }
+            }
+
+            // Check if template has a database - if so, copy it to user's website
+            $templateDatabase = $this->databaseManager->getTemplateDatabaseInstance($template->id);
+
+            if ($templateDatabase && $templateDatabase->isActive()) {
+                try {
+                    // Copy the template database to user's website database
+                    $websiteDatabase = $this->databaseManager->copyTemplateDatabaseToWebsite(
+                        $template->id,
+                        auth()->id()
+                    );
+
+                    // Store database reference in website metadata if needed
+                    // This allows easy lookup later
+                } catch (\Exception $dbException) {
+                    // Log the error but don't fail the whole initialization
+                    \Log::warning('Failed to copy template database', [
+                        'template_id' => $template->id,
+                        'user_id' => auth()->id(),
+                        'error' => $dbException->getMessage()
                     ]);
                 }
             }
