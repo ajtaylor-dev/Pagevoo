@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\V1\UserWebsiteController;
 use App\Http\Controllers\Api\V1\SettingController;
 use App\Http\Controllers\SectionLibraryController;
 use App\Http\Controllers\PageLibraryController;
+use App\Http\Controllers\Api\V1\ScriptFeatures\ContactFormController;
 
 /*
 |--------------------------------------------------------------------------
@@ -184,6 +185,28 @@ Route::prefix('v1')->group(function () {
         });
     });
 
-    // Future API endpoints will go here
+    // Script Features Routes
+    Route::middleware('auth:sanctum')->prefix('script-features')->group(function () {
+
+        // Contact Form Feature
+        Route::prefix('contact-forms')->group(function () {
+            // Form configuration (admin only)
+            Route::get('/', [ContactFormController::class, 'index']);
+            Route::post('/', [ContactFormController::class, 'store']);
+            Route::get('/{id}', [ContactFormController::class, 'show']);
+            Route::put('/{id}', [ContactFormController::class, 'update']);
+            Route::delete('/{id}', [ContactFormController::class, 'destroy']);
+
+            // Submissions management
+            Route::get('/{id}/submissions', [ContactFormController::class, 'getSubmissions']);
+            Route::post('/{formId}/submissions/{submissionId}/read', [ContactFormController::class, 'markAsRead']);
+            Route::post('/{formId}/submissions/{submissionId}/spam', [ContactFormController::class, 'markAsSpam']);
+            Route::delete('/{formId}/submissions/{submissionId}', [ContactFormController::class, 'deleteSubmission']);
+        });
+
+    });
+
+    // Public form submission endpoint (no auth required)
+    Route::post('/v1/contact-forms/{id}/submit', [ContactFormController::class, 'submit']);
 
 });
