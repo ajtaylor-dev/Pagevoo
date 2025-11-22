@@ -1,259 +1,289 @@
-# Claude Memory - Session 8
-Date: 2025-01-15
+# PAGEVOO PROJECT - MEMORY FILE #8
+**Date:** November 22, 2025
+**Session:** Phase 2 Planning - Script Features Requirements Gathering
 
-## Session Overview
-This session focused on unifying CSS and JavaScript generation between Template Builder and Website Builder to ensure both produce identical output that matches the React canvas preview exactly.
+---
 
-## Major Changes
+## SESSION SUMMARY
 
-### 1. Removed Duplicate Navigation CSS from TemplateFileGenerator
-**File**: `pagevoo-backend/app/Services/TemplateFileGenerator.php`
-**Lines**: 446-702 (deleted)
+### COMPLETED TASKS ✅
 
-**Problem**:
-- TemplateFileGenerator was duplicating all navigation, dropdown, and mobile menu CSS after already loading base-styles.css
-- This caused duplicate CSS rules and made template CSS much longer than website CSS
+**Phase 1 Cleanup (100% Complete):**
+1. ✅ Removed all backup files (5 files deleted)
+2. ✅ Cleaned console.log statements from 16 files
+3. ✅ Fixed hardcoded URLs - created centralized constants.ts
+4. ✅ Updated .gitignore files (frontend + backend)
+5. ✅ Created database performance indexes migration
+6. ✅ Committed all changes to git (commit: 4ee5b0b)
 
-**Solution**:
-- Removed lines 446-702 which contained duplicate link styles and navigation CSS
-- Now relies entirely on base-styles.css for structural navigation/footer/grid CSS
-- Only adds section-specific user customizations (colors, spacing, positions)
+**Phase 2 Planning (In Progress):**
+1. ✅ Created PHASE_2_IMPLEMENTATION_STRATEGY.md
+2. ✅ Created DATABASE_ARCHITECTURE.md
+3. ✅ Created PHASE_2_FEATURE_SPECIFICATIONS.md
+4. ✅ Completed Contact Form specification (Feature #1)
+5. ⏳ Prepared Image Gallery questions (Feature #2) - AWAITING USER ANSWERS
 
-**Impact**:
-- Template CSS is now clean and consistent with website CSS
-- Both builders use the same base-styles.css for structural CSS
-- Eliminated ~250 lines of duplicate CSS per template
+---
 
-### 2. Added Section-Specific CSS Extraction to WebsiteFileService
-**File**: `pagevoo-backend/app/Services/WebsiteFileService.php`
-**Lines**: 333-565
+## CRITICAL ARCHITECTURAL DECISIONS
 
-**Problem**:
-- Website Builder was only loading base-styles.css + site_css
-- Missing section-specific CSS that Template Builder was generating
-- Grid columns had no padding/borders in website preview
-- Navigation sections had no custom colors/spacing
+### Dual Database Architecture (MANDATORY)
+```
+Main Database: pagevoo_core
+  - Pagevoo platform data
+  - User accounts (Pagevoo customers)
+  - Templates & Websites metadata
+  - Subscriptions, tiers, permissions
 
-**Solution**:
-Added four new methods to WebsiteFileService:
-
-1. **addSectionCSS()** (lines 379-413)
-   - Extracts section-specific CSS from content['section_css']
-   - Routes to specific methods based on section type
-   - Handles JSON decoding of content field
-
-2. **addNavigationCSS()** (lines 418-471)
-   - Extracts containerStyle (background, padding, margin, borders, position)
-   - Extracts linkStyling (colors, hover states)
-   - Generates section-specific CSS with ID selectors
-
-3. **addGridCSS()** (lines 476-503)
-   - Extracts row CSS from content['content_css']['row']
-   - Extracts column-specific CSS from content['content_css']['columns']
-   - Generates nth-of-type selectors for each column
-
-4. **addFooterCSS()** (lines 508-565)
-   - Extracts footer-simple styling (background, color, padding)
-   - Extracts footer-columns styling (grid, copyright styles)
-   - Generates section-specific footer CSS
-
-**Updated generateCssFiles()** (lines 333-374):
-- Now loops through all pages and their sections
-- Adds page-specific CSS
-- Calls addSectionCSS() for each section to extract and add section CSS
-
-**Impact**:
-- Website CSS now matches Template CSS exactly
-- Grid columns now have proper padding, borders, min-height
-- Navigation sections have custom colors and spacing
-- Footer sections have custom styling
-
-## File Changes Summary
-
-### Modified Files:
-1. **pagevoo-backend/app/Services/TemplateFileGenerator.php**
-   - Deleted lines 446-702: Removed duplicate navigation/link CSS
-   - Now only adds: base-styles.css + template-specific logic + user customizations
-
-2. **pagevoo-backend/app/Services/WebsiteFileService.php**
-   - Added lines 349-565: Section-specific CSS extraction logic
-   - New methods: addSectionCSS, addNavigationCSS, addGridCSS, addFooterCSS
-   - Updated generateCssFiles to loop through sections
-
-### Files Referenced (Not Modified):
-- `pagevoo-backend/resources/base-styles.css` - Contains all structural CSS for navigation, footer, grid
-- `pagevoo-backend/app/Services/SectionRendererTrait.php` - Shared HTML rendering (already cleaned up in Session 7)
-
-## Technical Details
-
-### CSS Generation Flow (Now Identical for Both Builders)
-
-**Template Builder (TemplateFileGenerator.php)**:
-1. Load base-styles.css
-2. Add body padding for fixed navbar (template-specific)
-3. Add first-child margin reset
-4. Extract H1-H4, P, A styles from custom_css
-5. Add site-wide custom_css
-6. Add page-specific CSS
-7. Loop through sections:
-   - Add section_css if exists
-   - Call addNavigationCSS for navbar sections
-   - Call addGridCSS for grid sections
-   - Call addFooterCSS for footer sections
-
-**Website Builder (WebsiteFileService.php)**:
-1. Load base-styles.css
-2. Add custom site_css
-3. Add page-specific CSS
-4. Loop through sections:
-   - Add section_css if exists
-   - Call addNavigationCSS for navbar sections
-   - Call addGridCSS for grid sections
-   - Call addFooterCSS for footer sections
-
-### Section CSS Structure
-
-**Grid Section CSS Example**:
-```css
-/* Section: grid-4x1 */
-#grid4x1_wg4u48 {
-  padding: 2rem;
-}
-
-/* grid-4x1 - Column 1 */
-#grid4x1_wg4u48 .col-3:nth-of-type(1) {
-  border: 2px dashed #d1d5db;
-  border-radius: 0.5rem;
-  min-height: 200px;
-  padding: 1rem;
-}
+Per-User Database: pagevoo_website_{user_id}
+  - ONE database per user
+  - Stores ALL script feature data
+  - Products, blog posts, form submissions, etc.
 ```
 
-**Navigation Section CSS Example**:
-```css
-/* navbar - Container */
-#navbar_gehjep {
-  background: #ffffff;
-  padding-top: 16px;
-  padding-right: 0px;
-  padding-bottom: 16px;
-  padding-left: 0px;
-  margin-top: 0px;
-  margin-right: 0px;
-  margin-bottom: 0px;
-  margin-left: 0px;
-  width: 100%;
-  height: auto;
-}
+### Database Rules (CRITICAL):
+1. ✅ Each user can have **exactly ONE active database**
+2. ✅ ALL script features require a database to function
+3. ✅ Once a website has a database, ONLY that website can be edited
+4. ✅ User CANNOT create new templates while database is active
+5. ✅ Must delete database to switch websites
+
+### Database Creation:
+- Automatic when user publishes website, OR
+- Manual creation (for testing features before publish)
+
+---
+
+## PHASE 2: SCRIPT FEATURES (11 TOTAL)
+
+**Timeline:** December 9, 2025 (2.5 weeks)
+**All features built by AI assistant**
+
+### Feature List:
+1. ✅ Contact Form - FULLY SPECIFIED
+2. ⏳ Image Gallery - QUESTIONS PREPARED
+3. ⏸️ User Access System
+4. ⏸️ Blog & News
+5. ⏸️ Events
+6. ⏸️ Booking System
+7. ⏸️ WordPress Integration
+8. ⏸️ Shop (E-commerce)
+9. ⏸️ File Hoster
+10. ⏸️ Video Sharing
+11. ⏸️ Social Platform
+
+---
+
+## FEATURE #1: CONTACT FORM ✅
+
+### Form Types (Pre-configured):
+1. **General Contact** - Name, Email, Phone, Subject, Message
+2. **Support Tickets** - Issue Category, Priority, Ticket Number Generation
+3. **Mass Mailer** - Admin only, requires User Access System
+
+### Configuration Options:
+- **Spam Protection:** Honeypot, reCAPTCHA v2/v3, or both (optional)
+- **Storage:** Database, Email, or Both (user choice)
+- **Auto-responder:** Optional
+- **File Attachments:** Optional (max 10MB)
+- **Styling:** All standard CSS controls
+
+### Database Schema:
+```sql
+contact_forms (in pagevoo_website_{user_id})
+  - id, website_id, name, form_type
+  - recipient_email, spam_protection (JSON)
+  - storage_options (JSON), auto_responder (JSON)
+  - allow_attachments, allowed_file_types (JSON)
+  - styling (JSON), created_at, updated_at
+
+form_submissions
+  - id, contact_form_id, data (JSON)
+  - attachments (JSON), ip_address, user_agent
+  - status (new, read, archived, spam)
+
+support_tickets
+  - id, form_submission_id, ticket_number
+  - category, priority, status, assigned_to
 ```
 
-## Results and Benefits
+### Implementation Notes:
+- Section type: Special "Contact Form" section
+- Modal configuration on insertion
+- reCAPTCHA keys in .env (global)
+- File uploads: `storage/form_attachments/{website_id}/{form_id}/`
+- Email templates: Laravel Blade views
 
-### Before This Session:
-- Template CSS had 200+ lines of duplicate navigation CSS
-- Website CSS was missing section-specific styling
-- Grid columns had no borders/padding in website preview
-- Navigation sections had no custom colors in website preview
-- Template and website previews looked different
+---
 
-### After This Session:
-- Both builders generate identical CSS structure
-- Both rely on base-styles.css for structural CSS
-- Both extract and apply section-specific CSS
-- Grid columns have proper styling in both previews
-- Navigation sections have custom styling in both previews
-- Template and website previews now match exactly
-- CSS is cleaner and more maintainable
+## FEATURE #2: IMAGE GALLERY ⏳
 
-## Data Flow
+### Questions Prepared (AWAITING USER ANSWERS):
 
-### Website Data Structure:
-```php
-$websiteData = [
-    'site_css' => '...',
-    'pages' => [
-        [
-            'name' => 'Home',
-            'slug' => 'home',
-            'page_css' => '...',
-            'sections' => [
-                [
-                    'section_id' => 'navbar_xyz',
-                    'section_name' => 'navbar',
-                    'type' => 'navbar',
-                    'content' => [
-                        'logo' => 'Logo',
-                        'links' => [...],
-                        'containerStyle' => [
-                            'background' => '#ffffff',
-                            'paddingTop' => '16px',
-                            ...
-                        ],
-                        'section_css' => '...'
-                    ],
-                    'css' => '...',
-                    'order' => 0
-                ],
-                [
-                    'section_id' => 'grid4x1_abc',
-                    'section_name' => 'grid-4x1',
-                    'type' => 'grid-4x1',
-                    'content' => [
-                        'columns' => [...],
-                        'content_css' => [
-                            'row' => 'padding: 2rem;',
-                            'columns' => [
-                                'border: 2px dashed #d1d5db; ...',
-                                'border: 2px dashed #d1d5db; ...',
-                                ...
-                            ]
-                        ]
-                    ],
-                    'css' => '...',
-                    'order' => 1
-                ]
-            ]
-        ]
-    ],
-    'images' => [...]
-];
+1. **Gallery Creation:** Named galleries OR per-section management?
+2. **Display Layouts:** Grid? Masonry? Carousel? Lightbox?
+3. **Image Management:** Direct upload OR gallery library?
+4. **Organization:** Categories/albums OR flat list?
+5. **Captions:** Title and description per image?
+6. **Lazy Loading:** Implement for performance?
+7. **Tier Limits:** Trial = 10 images? Others = unlimited?
+
+---
+
+## FEATURE DEPENDENCIES
+
+```
+Shop → User Access System (required for customer accounts)
+Mass Mailer → User Access System (admin authentication)
+WordPress Integration → To be determined
 ```
 
-## Key Learnings
+---
 
-1. **Avoid CSS Duplication**: Don't duplicate CSS that's already in base-styles.css. Use base styles for structural CSS and only add section-specific customizations.
+## UI/UX FLOW FOR SCRIPT FEATURES
 
-2. **Consistent Logic Across Builders**: Template Builder and Website Builder should use identical CSS/JS generation logic to ensure previews match.
+1. User clicks **Insert > Feature**
+2. Select script feature (filtered by tier)
+3. **Configuration Modal** appears with:
+   - Administration options
+   - User account settings
+   - Permission settings
+   - Styling controls
+4. System checks for database:
+   - If exists → Install feature
+   - If not → Prompt to publish OR create database
+5. Feature may auto-generate pages (login.php, shop.php, etc.)
+6. Feature may add special sections to sidebar
 
-3. **Section-Specific CSS Extraction**: Always extract and apply section-specific CSS from content['content_css'] and content['containerStyle'] to maintain visual consistency.
+### Section Restrictions:
+- **Single-instance sections:** Can only appear once (e.g., Shopping Cart)
+- **Page-specific sections:** Must be on correct page type (e.g., Login on account page)
+- **Dynamic sections:** Update based on context (e.g., show logged-in user info)
 
-4. **Data Structure Matters**: Understanding the data structure (how sections store CSS in content field) is crucial for proper extraction.
+---
 
-## Related Sessions
-- **Session 7**: Removed inline styles from SectionRendererTrait, moved to base-styles.css, made JavaScript external
-- **Session 8** (this session): Unified CSS generation between Template and Website builders
+## TIER-BASED ACCESS
 
-## Testing Recommendations
+- **Trial:** Basic features only, limited resources
+- **Brochure:** Static website features
+- **Niche:** Some script features enabled
+- **Pro:** All script features unlocked
 
-1. Create a test template with:
-   - Navigation section with custom colors
-   - Grid section with 3-4 columns
-   - Footer section
+---
 
-2. Generate preview in Template Builder
-3. Create identical website in Website Builder
-4. Compare generated CSS files - should be nearly identical
-5. Verify both previews look the same
+## FILES CREATED THIS SESSION
 
-## Next Steps (Future)
+### Documentation:
+- `D:\Pagevoo\DATABASE_ARCHITECTURE.md`
+- `D:\Pagevoo\PHASE_2_IMPLEMENTATION_STRATEGY.md`
+- `D:\Pagevoo\PHASE_2_FEATURE_SPECIFICATIONS.md`
+- `D:\Pagevoo\PHASE_2_SCRIPT_FEATURES_PLAN.md`
 
-1. Consider abstracting CSS generation into a shared trait/service to eliminate any remaining duplication
-2. Add automated tests to ensure Template and Website builders generate identical output
-3. Document the content['content_css'] structure for future developers
+### Frontend:
+- `D:\Pagevoo\pagevoo-frontend\src\config\constants.ts`
 
-## Notes
+### Backend:
+- `D:\Pagevoo\pagevoo-backend\database\migrations\2025_11_22_001327_add_database_indexes_for_performance.php`
 
-- All changes maintain backward compatibility
-- No database migrations required
-- Both builders still use SectionRendererTrait for HTML generation
-- CSS generation is now consistent but still flexible for customizations
+### Environment:
+- Updated `D:\Pagevoo\pagevoo-frontend\.env.local` (added VITE_API_BASE_URL)
+
+---
+
+## FILES MODIFIED THIS SESSION
+
+### Frontend (Cleanup):
+- `.gitignore` - Added backup and temp file patterns
+- `src/App.tsx` - Centralized API URL
+- `src/components/ImageGallery.tsx` - Removed console.log, fixed URLs
+- `src/hooks/useFileHandlers.ts` - Fixed URLs, removed logs
+- `src/hooks/useImageGalleryHandlers.ts` - Removed logs
+- `src/api/libraryApi.ts` - Fixed URLs
+- `src/utils/cssUtils.ts` - Removed logs
+- `src/components/Canvas/CanvasDropZone.tsx` - Removed logs
+- `src/components/Header.tsx` - Fixed URLs, removed logs
+- `src/components/StyleEditor.tsx` - Removed logs
+- `src/components/RightSidebar.tsx` - Fixed URLs, removed logs
+- `src/pages/TemplateBuilder.tsx` - Fixed URLs, removed logs
+- `src/pages/WebsiteBuilder.tsx` - Fixed URLs, removed logs
+- `src/pages/TemplateManager.tsx` - Fixed URLs
+- `src/components/TemplateSelector.tsx` - Fixed URLs
+- `src/components/Modals/ExportSectionModal.tsx` - Fixed URLs
+- `src/components/Modals/PageLibraryModal.tsx` - Fixed URLs
+- `src/components/Modals/SectionLibraryModal.tsx` - Fixed URLs
+- `src/pages/Login.tsx` - Fixed URLs
+- `src/components/Hero.tsx` - Fixed URLs
+- `src/components/PermissionManager.tsx` - Fixed URLs
+- `src/hooks/usePermissions.ts` - Fixed URLs
+- `src/hooks/useTextEditor.ts` - Fixed URLs
+- `src/components/Modals/InsertImageModal.tsx` - Fixed URLs
+
+### Backend (Cleanup):
+- `.gitignore` - Added backup and temp file patterns
+
+---
+
+## FILES DELETED THIS SESSION
+
+Removed 5 backup files:
+- `pagevoo-frontend/src/components/StyleEditor.tsx.backup`
+- `pagevoo-frontend/src/pages/TemplateBuilder.tsx.backup`
+- `pagevoo-frontend/src/pages/TemplateBuilder.tsx.backup2`
+- `pagevoo-frontend/src/pages/WebsiteBuilder.tsx.backup`
+- `pagevoo-frontend/src/pages/WebsiteBuilder.tsx.backup_20251113_121743`
+
+---
+
+## RECENT COMMITS
+
+**Commit 4ee5b0b** - "Cleanup: Remove backups, fix hardcoded URLs, add database indexes"
+- 34 files changed
+- +251 insertions, -18,110 deletions
+
+**Commit 1f05669** - "Fix: Section type validation for website saves"
+**Commit 4786396** - "Feat: Template thumbnail upload and persistence improvements"
+**Commit f723162** - "Feat: Implement Template Settings and fix template visibility permissions"
+
+---
+
+## ERRORS FIXED THIS SESSION
+
+1. ✅ Database migration: Wrong table name (website_pages → user_pages)
+2. ✅ Database migration: Duplicate index errors (added indexExists() check)
+3. ✅ Database migration: Missing columns (corrected schema references)
+4. ✅ Laravel 12 compatibility: Removed Doctrine dependency (used raw SQL)
+5. ✅ Git: Handled "nul" file issue with selective staging
+
+---
+
+## NEXT STEPS (Tomorrow - Nov 23)
+
+1. **Get Image Gallery answers from user** (7 questions)
+2. **Document Image Gallery specification**
+3. **Prepare questions for User Access System** (Feature #3)
+4. **Continue through remaining 8 features** (Blog, Events, Booking, WordPress, Shop, File Hoster, Video, Social Platform)
+5. **Once all features specified → Begin implementation** (Starting with Contact Form)
+
+---
+
+## TECHNICAL STACK
+
+- **Frontend:** React 19 + TypeScript + Vite
+- **Backend:** Laravel 12 + PHP 8.3
+- **Database:** MySQL 8.0 (dual database architecture)
+- **Styling:** Tailwind CSS
+- **Version Control:** Git
+- **Deployment:** IONOS Hosting
+
+---
+
+## IMPORTANT REMINDERS
+
+🔴 **CRITICAL:** Every script feature MUST check for active user database before installation
+🔴 **CRITICAL:** Users can only have ONE active database at a time
+🔴 **CRITICAL:** Database locking prevents template creation when active
+🔴 **DEADLINE:** December 9, 2025 for all 11 features
+
+---
+
+**End of Memory File #8**
