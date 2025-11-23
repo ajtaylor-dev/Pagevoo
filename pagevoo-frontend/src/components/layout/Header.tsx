@@ -642,10 +642,9 @@ export const Header: React.FC<HeaderProps> = ({
                           setShowDatabaseModal(true)
                           setShowEditMenu(false)
                         }}
-                        className={`w-full text-left px-3 py-2 ${theme.dropdownHover} text-xs rounded border ${theme.inputBorder} ${theme.dropdownText} flex items-center gap-2`}
+                        className={`w-full text-left px-3 py-2 ${theme.dropdownHover} text-xs rounded border ${theme.inputBorder} ${theme.dropdownText}`}
                       >
-                        <span>📊</span>
-                        <span>Manage Database</span>
+                        Manage Database
                       </button>
                     </div>
                   )}
@@ -758,10 +757,9 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowAddPageModal(true)
                       setShowInsertMenu(false)
                     }}
-                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText} flex items-center gap-2`}
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                   >
-                    <span>📄</span>
-                    <span>New Page</span>
+                    New Page
                   </button>
 
                   {/* Install Script Feature */}
@@ -771,10 +769,9 @@ export const Header: React.FC<HeaderProps> = ({
                         setShowFeatureInstallModal(true)
                         setShowInsertMenu(false)
                       }}
-                      className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText} flex items-center gap-2`}
+                      className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
                     >
-                      <span>⚡</span>
-                      <span>Install Feature</span>
+                      Install Feature
                     </button>
                   )}
                 </div>

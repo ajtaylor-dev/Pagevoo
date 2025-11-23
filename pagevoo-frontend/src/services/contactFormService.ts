@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const API_BASE = '/api/v1'
 
-export interface ContactFormConfig {
+export type ContactFormConfig = {
   id?: number
   website_id: number
   name: string
@@ -40,7 +40,7 @@ export interface ContactFormConfig {
   submissions_count?: number
 }
 
-export interface FormSubmission {
+export type FormSubmission = {
   id: number
   contact_form_id: number
   data: Record<string, any>
@@ -60,7 +60,7 @@ export interface FormSubmission {
   }
 }
 
-export interface SubmissionListResponse {
+export type SubmissionListResponse = {
   success: boolean
   data: {
     data: FormSubmission[]
@@ -71,7 +71,7 @@ export interface SubmissionListResponse {
   }
 }
 
-export interface ApiResponse<T = any> {
+export type ApiResponse<T = any> = {
   success: boolean
   message?: string
   data?: T
@@ -305,3 +305,6 @@ class ContactFormService {
 }
 
 export const contactFormService = new ContactFormService()
+
+// Explicit re-export to ensure types are available
+export type { ContactFormConfig, FormSubmission, SubmissionListResponse, ApiResponse }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { databaseService, DatabaseInstance } from '../../services/databaseService'
+import { databaseService } from '@/services/databaseService'
+import type { DatabaseInstance } from '@/services/databaseService'
 
 interface FeatureInstallModalProps {
   isOpen: boolean
@@ -198,6 +199,29 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
     }
   }
 
+  const handleUninstallFeature = async (feature: Feature) => {
+    if (!database) return
+
+    const confirmed = confirm(
+      `Uninstall ${feature.name}?\n\nWARNING: This will permanently delete all data associated with this feature, including:\n- Database tables\n- All stored data (submissions, posts, etc.)\n- Feature configuration\n\nThis action CANNOT be undone!\n\nAre you sure you want to continue?`
+    )
+
+    if (!confirmed) return
+
+    setInstalling(feature.type)
+    try {
+      await databaseService.uninstallFeature(database.id, feature.type)
+      setInstalledFeatures(installedFeatures.filter(f => f !== feature.type))
+      alert(`${feature.name} uninstalled successfully`)
+      await loadDatabaseInfo() // Reload to refresh
+    } catch (error: any) {
+      console.error('Failed to uninstall feature:', error)
+      alert(error.message || 'Failed to uninstall feature')
+    } finally {
+      setInstalling(null)
+    }
+  }
+
   const getTierBadgeColor = (tier: string): string => {
     const colors = {
       trial: 'bg-gray-100 text-gray-800',
@@ -272,7 +296,7 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
                         ? 'border-gray-200 hover:border-[#98b290] hover:shadow-md cursor-pointer'
                         : 'border-gray-200 bg-gray-50 opacity-60'
                     }`}
-                    onClick={() => !isInstalled && feature.available && handleInstallFeature(feature)}
+                    onClick={() => !isInstalled && !isInstalling && feature.available && handleInstallFeature(feature)}
                   >
                     {/* Icon and Title */}
                     <div className="flex items-start justify-between mb-3">
@@ -306,9 +330,16 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
 
                     {/* Status/Action */}
                     {isInstalled ? (
-                      <div className="text-sm font-medium text-green-700">
-                        ✓ Installed
-                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleUninstallFeature(feature)
+                        }}
+                        disabled={isInstalling}
+                        className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isInstalling ? 'Uninstalling...' : 'Uninstall'}
+                      </button>
                     ) : !feature.available ? (
                       <div className="text-sm font-medium text-gray-500">
                         Coming Soon

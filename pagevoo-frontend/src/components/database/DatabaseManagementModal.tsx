@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { databaseService, DatabaseInstance, InstalledFeature } from '../../services/databaseService'
+import { databaseService } from '@/services/databaseService'
+import type { DatabaseInstance, InstalledFeature } from '@/services/databaseService'
 
 interface DatabaseManagementModalProps {
   isOpen: boolean
@@ -67,18 +68,31 @@ export const DatabaseManagementModal: React.FC<DatabaseManagementModalProps> = (
   const handleDeleteDatabase = async () => {
     if (!database) return
 
+    // Build list of installed features for warning
+    const featuresList = installedFeatures.length > 0
+      ? `\n\nInstalled features that will be removed:\n${installedFeatures.map(f => `- ${databaseService.getFeatureDisplayName(f.type)}`).join('\n')}`
+      : ''
+
     const confirmed = confirm(
-      'Are you sure you want to delete this database? This will permanently delete all data including form submissions, blog posts, etc. This action cannot be undone!'
+      `⚠️ DELETE DATABASE - FINAL WARNING ⚠️\n\nYou are about to PERMANENTLY DELETE the entire database: ${database.database_name}\n\nThis will DELETE ALL:\n• All installed features (${installedFeatures.length} total)\n• Contact form submissions\n• Blog posts and comments\n• User data and profiles\n• Events, bookings, and orders\n• ALL other stored data${featuresList}\n\n🔴 THIS ACTION CANNOT BE UNDONE! 🔴\n\nType 'DELETE' in the next prompt to confirm.`
     )
 
     if (!confirmed) return
+
+    // Second confirmation requiring text input
+    const confirmText = prompt('Type DELETE in capital letters to confirm database deletion:')
+
+    if (confirmText !== 'DELETE') {
+      alert('Database deletion cancelled. The text did not match.')
+      return
+    }
 
     setDeleting(true)
     try {
       await databaseService.deleteDatabase(database.id, false)
       setDatabase(null)
       setInstalledFeatures([])
-      alert('Database deleted successfully')
+      alert('Database deleted successfully. All features and data have been removed.')
     } catch (error: any) {
       console.error('Failed to delete database:', error)
       alert(error.message || 'Failed to delete database')

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { contactFormService, FormSubmission } from '../../../services/contactFormService'
+import { contactFormService } from '@/services/contactFormService'
+import type { FormSubmission } from '@/services/contactFormService'
 
 interface SubmissionViewerProps {
   formId: number

@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const API_BASE = '/api/v1/database'
 
-export interface DatabaseInstance {
+export type DatabaseInstance = {
   id: number
   type: 'template' | 'website'
   reference_id: number
@@ -22,13 +22,13 @@ export interface DatabaseInstance {
   deleted_at: string | null
 }
 
-export interface InstalledFeature {
+export type InstalledFeature = {
   type: string
   config: Record<string, any>
   installed_at: string
 }
 
-export interface ApiResponse<T = any> {
+export type ApiResponse<T = any> = {
   success: boolean
   message?: string
   data?: T
@@ -268,3 +268,6 @@ class DatabaseService {
 }
 
 export const databaseService = new DatabaseService()
+
+// Explicit re-export to ensure types are available
+export type { DatabaseInstance, InstalledFeature, ApiResponse }
