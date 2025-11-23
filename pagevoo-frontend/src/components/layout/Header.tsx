@@ -100,6 +100,10 @@ interface HeaderProps {
 
   // Insert menu handlers
   setShowAddPageModal: (show: boolean) => void
+  setShowFeatureInstallModal?: (show: boolean) => void
+
+  // Database & Features
+  setShowDatabaseModal?: (show: boolean) => void
 
   // Image gallery
   setShowImageGallery: (show: boolean | ((prev: boolean) => boolean)) => void
@@ -155,6 +159,8 @@ export const Header: React.FC<HeaderProps> = ({
   setShowSectionLibraryModal,
   setShowPageLibraryModal,
   setShowAddPageModal,
+  setShowFeatureInstallModal,
+  setShowDatabaseModal,
   setShowImageGallery,
   uploadingImage,
   handleImageUpload
@@ -628,6 +634,22 @@ export const Header: React.FC<HeaderProps> = ({
                   </>
                 )}
 
+                  {/* Database Management - Only in Settings tab */}
+                  {editSubTab === 'settings' && setShowDatabaseModal && (
+                    <div className={`border-t ${theme.dropdownBorder} pt-3 mt-3`}>
+                      <button
+                        onClick={() => {
+                          setShowDatabaseModal(true)
+                          setShowEditMenu(false)
+                        }}
+                        className={`w-full text-left px-3 py-2 ${theme.dropdownHover} text-xs rounded border ${theme.inputBorder} ${theme.dropdownText} flex items-center gap-2`}
+                      >
+                        <span>📊</span>
+                        <span>Manage Database</span>
+                      </button>
+                    </div>
+                  )}
+
                   <button
                     onClick={() => setShowEditMenu(false)}
                     className={`w-full px-3 py-1.5 ${theme.buttonBg} ${theme.buttonHover} ${theme.buttonText} rounded text-xs transition mt-3`}
@@ -736,10 +758,25 @@ export const Header: React.FC<HeaderProps> = ({
                       setShowAddPageModal(true)
                       setShowInsertMenu(false)
                     }}
-                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText}`}
+                    className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText} flex items-center gap-2`}
                   >
-                    New Page
+                    <span>📄</span>
+                    <span>New Page</span>
                   </button>
+
+                  {/* Install Script Feature */}
+                  {setShowFeatureInstallModal && (
+                    <button
+                      onClick={() => {
+                        setShowFeatureInstallModal(true)
+                        setShowInsertMenu(false)
+                      }}
+                      className={`w-full text-left px-4 py-2 ${theme.dropdownHover} text-xs ${theme.dropdownText} flex items-center gap-2`}
+                    >
+                      <span>⚡</span>
+                      <span>Install Feature</span>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
