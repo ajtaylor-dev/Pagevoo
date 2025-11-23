@@ -1,11 +1,27 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
 import type { DatabaseInstance } from '@/services/databaseService'
+import {
+  MdEmail,
+  MdPhotoLibrary,
+  MdPeople,
+  MdArticle,
+  MdEvent,
+  MdCalendarMonth,
+  MdEdit,
+  MdShoppingCart,
+  MdFolder,
+  MdVideocam,
+  MdPublic
+} from 'react-icons/md'
+import type { IconType } from 'react-icons'
 
 interface FeatureInstallModalProps {
   isOpen: boolean
   onClose: () => void
   onFeatureInstalled: (featureType: string) => void
+  onConfigureFeature?: (featureType: string) => void
+  onOpenDatabaseManagement?: () => void
   type: 'template' | 'website'
   referenceId: number
 }
@@ -14,7 +30,7 @@ interface Feature {
   type: string
   name: string
   description: string
-  icon: string
+  icon: IconType
   requiresUAS: boolean // Requires User Access System
   tier: 'trial' | 'brochure' | 'niche' | 'pro'
   available: boolean
@@ -25,7 +41,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'contact_form',
     name: 'Contact Form',
     description: 'Add contact forms, support ticket systems, and mass mailer functionality',
-    icon: '📧',
+    icon: MdEmail,
     requiresUAS: false,
     tier: 'trial',
     available: true
@@ -34,7 +50,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'image_gallery',
     name: 'Image Gallery',
     description: 'Create beautiful image galleries with lightbox, slideshows, and albums',
-    icon: '🖼️',
+    icon: MdPhotoLibrary,
     requiresUAS: false,
     tier: 'trial',
     available: false // Coming soon
@@ -43,7 +59,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'user_access_system',
     name: 'User Access System',
     description: 'User registration, login, profiles, and role-based permissions',
-    icon: '👥',
+    icon: MdPeople,
     requiresUAS: false,
     tier: 'niche',
     available: false
@@ -52,7 +68,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'blog',
     name: 'Blog',
     description: 'Full-featured blog with posts, categories, tags, and comments',
-    icon: '📝',
+    icon: MdArticle,
     requiresUAS: false,
     tier: 'brochure',
     available: false
@@ -61,7 +77,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'events',
     name: 'Events Calendar',
     description: 'Event management with calendar views, RSVPs, and reminders',
-    icon: '📅',
+    icon: MdEvent,
     requiresUAS: false,
     tier: 'niche',
     available: false
@@ -70,7 +86,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'booking',
     name: 'Booking System',
     description: 'Appointment booking, scheduling, and availability management',
-    icon: '🗓️',
+    icon: MdCalendarMonth,
     requiresUAS: true,
     tier: 'niche',
     available: false
@@ -79,7 +95,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'voopress',
     name: 'VooPress',
     description: 'WordPress-style content management with themes and plugins',
-    icon: '✍️',
+    icon: MdEdit,
     requiresUAS: true,
     tier: 'pro',
     available: false
@@ -88,7 +104,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'shop',
     name: 'E-Commerce Shop',
     description: 'Full e-commerce solution with products, cart, checkout, and payments',
-    icon: '🛒',
+    icon: MdShoppingCart,
     requiresUAS: true,
     tier: 'pro',
     available: false
@@ -97,7 +113,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'file_hoster',
     name: 'File Hosting',
     description: 'Upload, share, and manage files with download tracking',
-    icon: '📁',
+    icon: MdFolder,
     requiresUAS: true,
     tier: 'niche',
     available: false
@@ -106,7 +122,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'video_sharing',
     name: 'Video Sharing',
     description: 'YouTube-style video hosting with uploads, playlists, and comments',
-    icon: '🎥',
+    icon: MdVideocam,
     requiresUAS: true,
     tier: 'pro',
     available: false
@@ -115,7 +131,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     type: 'social_platform',
     name: 'Social Platform',
     description: 'Facebook/Instagram-style social network with posts, likes, and follows',
-    icon: '🌐',
+    icon: MdPublic,
     requiresUAS: true,
     tier: 'pro',
     available: false
@@ -126,6 +142,8 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
   isOpen,
   onClose,
   onFeatureInstalled,
+  onConfigureFeature,
+  onOpenDatabaseManagement,
   type,
   referenceId
 }) => {
@@ -271,7 +289,12 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
                 Script features require a database to store data. Please create a database first.
               </p>
               <button
-                onClick={onClose}
+                onClick={() => {
+                  onClose()
+                  if (onOpenDatabaseManagement) {
+                    onOpenDatabaseManagement()
+                  }
+                }}
                 className="px-6 py-2 bg-[#98b290] text-white rounded-lg hover:bg-[#7a9072] font-medium"
               >
                 Go to Database Management
@@ -301,7 +324,9 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
                     {/* Icon and Title */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-3">
-                        <span className="text-3xl">{feature.icon}</span>
+                        <div className="text-[#98b290]">
+                          <feature.icon className="w-10 h-10" />
+                        </div>
                         <div>
                           <h3 className="font-semibold text-gray-900">{feature.name}</h3>
                           <div className="flex items-center gap-2 mt-1">
@@ -330,16 +355,32 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
 
                     {/* Status/Action */}
                     {isInstalled ? (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUninstallFeature(feature)
-                        }}
-                        disabled={isInstalling}
-                        className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isInstalling ? 'Uninstalling...' : 'Uninstall'}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {onConfigureFeature && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onConfigureFeature(feature.type)
+                              onClose()
+                            }}
+                            disabled={isInstalling}
+                            className="text-sm font-medium text-[#98b290] hover:text-[#7a9274] disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            Configure
+                          </button>
+                        )}
+                        <span className="text-gray-300">|</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleUninstallFeature(feature)
+                          }}
+                          disabled={isInstalling}
+                          className="text-sm font-medium text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {isInstalling ? 'Uninstalling...' : 'Uninstall'}
+                        </button>
+                      </div>
                     ) : !feature.available ? (
                       <div className="text-sm font-medium text-gray-500">
                         Coming Soon

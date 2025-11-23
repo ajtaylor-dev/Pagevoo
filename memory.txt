@@ -1,0 +1,697 @@
+PAGEVOO PROJECT - COMPLETE MEMORY
+===================================
+Last Updated: November 21, 2025
+
+PROJECT OVERVIEW
+================
+
+Pagevoo is a SaaS platform for building niche local business websites with a focus on
+simplicity and professional design. The platform features both a Template Builder (for
+admins to create reusable templates) and a Website Builder (for users to build sites
+from templates).
+
+TECH STACK
+==========
+Frontend: React 19 + TypeScript + Vite + TailwindCSS
+Backend: Laravel 12 + MySQL
+Storage: Laravel Storage (public disk)
+Dev Server: Vite (5173) + Laravel Artisan (8000)
+
+ARCHITECTURE
+============
+
+Frontend Structure:
+  pagevoo-frontend/
+    src/
+      hooks/                     # Custom hooks (~14 files)
+        useFileHandlers.ts       # File operations (save, load, export)
+        useTemplateState.ts      # Template state management
+        useSectionHandlers.ts    # Section CRUD operations
+        useHistory.ts            # Undo/redo functionality
+      types/
+        template.ts              # TypeScript type definitions
+      utils/
+        helpers.ts               # Utility functions (IDs, sanitization, styling)
+        cssUtils.ts              # CSS generation utilities
+        htmlCssGenerator.ts      # HTML/CSS export generation
+      components/
+        layout/
+          Header.tsx             # Main header with settings panels
+          LeftSidebar.tsx        # Section/page navigation
+          RightSidebar.tsx       # Properties panel
+        properties/
+          NavbarProperties.tsx   # Navbar section controls
+          FooterProperties.tsx   # Footer section controls
+          GridProperties.tsx     # Grid section controls
+        modals/
+          ButtonStyleModal.tsx   # Navbar button styling
+          AddPageModal.tsx       # Add new page
+          EditPageModal.tsx      # Edit page metadata
+          LoadModal.tsx          # Load existing templates
+          SourceCodeModal.tsx    # View/export HTML
+          StylesheetModal.tsx    # View/export CSS
+          SitemapModal.tsx       # View sitemap
+          ColorPickerModal.tsx   # Color selection
+          LinkModal.tsx          # Link editor
+          InsertImageModal.tsx   # Image insertion
+        panels/
+          ImageSettingsPanel.tsx
+          TextEditorPanel.tsx
+        TemplateManager.tsx      # Template gallery component
+      pages/
+        TemplateBuilder.tsx      # Main template builder (1,311 lines - 85.8% reduction!)
+        WebsiteBuilder.tsx       # Main website builder
+
+Backend Structure:
+  pagevoo-backend/
+    app/
+      Services/
+        TemplateFileGenerator.php   # Generates template files (HTML/CSS/JS)
+        WebsiteFileService.php      # Generates website files (HTML/CSS/JS)
+        SectionRendererTrait.php    # Shared HTML rendering for sections
+      Http/Controllers/Api/V1/
+        TemplateController.php      # Template CRUD + file generation
+        WebsiteController.php       # Website CRUD + file generation
+      Models/
+        Template.php
+        TemplatePage.php
+        TemplateSection.php
+        Website.php
+        WebsitePage.php
+        UserSection.php
+        User.php
+    resources/
+      base-styles.css              # Shared structural CSS for all templates/websites
+    storage/
+      template_directory/          # Generated template files
+        {slug}/
+          public/
+            index.html
+            style.css
+            script.js
+            images/
+      image_galleries/             # Temporary image uploads
+        template_{id}/
+
+DATABASE SCHEMA
+===============
+
+users
+  - id, name, email, password
+  - account_tier: enum('trial', 'brochure', 'niche', 'pro')
+  - max_websites: int (tier-based limit)
+
+templates
+  - id, name, description, custom_css
+  - template_slug: string (for file directory)
+  - preview_image: string (path to thumbnail)
+  - business_type: string (Restaurant, E-commerce, Blog, etc.)
+  - tier_category: enum('trial', 'brochure', 'niche', 'pro')
+  - exclusive_to: nullable enum('trial', 'brochure', 'niche', 'pro')
+  - is_active: boolean (visibility)
+  - created_by: foreign key to users
+
+template_pages
+  - id, template_id, name, slug, page_css, order
+
+template_sections
+  - id, page_id, section_id, section_name, type, content (JSON), css, order, is_locked
+
+websites
+  - id, user_id, name, slug, site_css, is_active
+
+website_pages
+  - id, website_id, name, slug, page_css, order
+
+user_sections
+  - id, page_id, section_id, section_name, type, content (JSON), css, order, is_locked
+
+images (shared)
+  - id, template_id, filename, path
+
+TIER SYSTEM
+===========
+
+Hierarchy (lowest to highest):
+  trial → brochure → niche → pro
+
+Access Logic:
+  - tier_category: Organizational label for templates
+  - exclusive_to: Access restriction (null = all tiers can access)
+  - Users can access templates where:
+    * tier_category matches their tier or below, OR
+    * exclusive_to is null, OR
+    * exclusive_to matches their tier or below
+
+Template Visibility:
+  - Only templates with is_active = true are shown
+  - Filtered by user's tier permissions
+  - Users see templates they created regardless of tier
+
+Tier Badge Colors (Updated Nov 21, 2025):
+  - Trial: PageVoo Green (#98b290) - vertical gradient from #a8c2a0 to #98b290
+  - Brochure: Bronze - vertical gradient from amber-500 to amber-700
+  - Niche: Silver - vertical gradient from gray-200 to gray-400 (lighter than before)
+  - Pro: Gold - vertical gradient from yellow-300 to yellow-500
+
+SECTION TYPES
+=============
+
+Grid Layouts:
+  - grid-1x1: 1 Column
+  - grid-2x1: 2 Columns
+  - grid-3x1: 3 Columns
+  - grid-4x1: 4 Columns
+  - grid-2x2: 2x2 Grid
+  - grid-3x2: 3x2 Grid
+
+Navigation:
+  - navbar: Unified navigation with dropdowns, layout controls, mobile menu
+
+Footers:
+  - footer-simple: Simple footer with centered text
+  - footer-columns: 3-column footer grid + copyright row
+
+Section Structure (JSON in content field):
+{
+  // Navbar
+  "logo": "Logo Text",
+  "links": [...],
+  "containerStyle": {
+    "background": "#ffffff",
+    "paddingTop": "16px",
+    "paddingBottom": "16px",
+    ...
+  },
+  "linkStyling": {
+    "textColor": "#000000",
+    "textColorHover": "#666666",
+    ...
+  },
+  "layoutConfig": {
+    "logoPosition": "left",
+    "linksPosition": "right",
+    "logoWidth": 25
+  },
+  "dropdownConfig": {
+    "trigger": "hover",
+    "hoverDelay": 200
+  },
+
+  // Grid
+  "columns": [
+    { "id": 1, "content": "HTML content" }
+  ],
+  "content_css": {
+    "row": "padding: 2rem;",
+    "columns": [
+      "border: 2px dashed #d1d5db; padding: 1rem; min-height: 200px;",
+      ...
+    ]
+  },
+
+  // Footer
+  "sectionStyle": {
+    "background": "#1f2937",
+    "padding": "32px",
+    "textAlign": "center"
+  },
+  "copyrightStyle": {
+    "background": "#111827",
+    "padding": "24px"
+  }
+}
+
+CSS HIERARCHY
+=============
+
+Cascade Order (lowest to highest specificity):
+  1. base-styles.css (structural CSS)
+  2. Site CSS (template.custom_css or website.site_css)
+  3. Page CSS (page.page_css)
+  4. Section CSS (section.css)
+  5. Row CSS (content.content_css.row)
+  6. Column CSS (content.content_css.columns[n])
+  7. Inline styles (content.containerStyle)
+
+CSS Generation Process:
+  1. Load base-styles.css
+  2. Add body defaults (margin: 0, padding: 0)
+  3. Extract and add H1-H4, P, A styles from Site CSS
+  4. Add remaining Site CSS
+  5. Add Page CSS for current page
+  6. Loop through sections:
+     - Add section.css if exists
+     - Add section-specific CSS (navbar, grid, footer)
+     - Apply containerStyle as section ID selector
+     - Apply content_css for grids (row + columns)
+
+NAVBAR SECTION DETAILS
+=======================
+
+Features:
+  - Logo (text or image, configurable position)
+  - Navigation links (configurable position, supports dropdowns)
+  - Mobile hamburger menu (auto-appears on small screens)
+  - Dropdown sublinks (hover or click trigger)
+  - Flexible layout (logo left/center/right, links left/center/right)
+  - Responsive flex-wrap
+  - Button mode toggle (links as buttons or plain text)
+
+Properties Panel Controls:
+  - Background Color
+  - Padding (top, right, bottom, left)
+  - Margin (top, right, bottom, left)
+  - Width, Height
+  - Position (static, sticky, fixed)
+  - Logo Position dropdown
+  - Links Position dropdown
+  - Logo Width slider
+  - Dropdown Behavior (trigger method, hover delay)
+  - Link Colors (text, hover)
+  - Button Mode Toggle
+  - Navigation Links Manager (NavigationTreeManager)
+
+Rendering:
+  - Canvas preview uses inline styles
+  - Live preview generates CSS with section ID selectors
+  - Mobile menu appears at 768px breakpoint
+  - Dropdown menus support hover/click with configurable delay
+
+FOOTER SECTION DETAILS
+=======================
+
+footer-simple:
+  - Single centered text block
+  - Customizable background, padding, text alignment
+  - Properties: background color, padding, text align
+
+footer-columns:
+  - 3-column grid for links/content
+  - Separate copyright row at bottom
+  - Properties: footer background, copyright background, copyright padding
+
+Both types:
+  - Text editing via WYSIWYG
+  - Styling via Site CSS (global) or Section Styling (scoped)
+  - No font/color controls in properties (use WYSIWYG or CSS)
+
+GRID SECTION DETAILS
+====================
+
+Features:
+  - Responsive column layouts (1-4 columns, 2x2, 3x2)
+  - Each column is a WYSIWYG editor
+  - Per-column CSS customization
+  - Row-level CSS
+  - Border, padding, min-height controls
+
+Properties Panel Controls:
+  - Row CSS textarea
+  - Per-column CSS textareas
+  - "Remove Column Borders" button (strips all border properties)
+
+CSS Storage:
+  content: {
+    "columns": [...],
+    "content_css": {
+      "row": "CSS string",
+      "columns": ["CSS string", "CSS string", ...]
+    }
+  }
+
+CSS Application:
+  - Row CSS: #section_id { ... }
+  - Column CSS: #section_id .col-{n}:nth-of-type(1) { ... }
+
+WYSIWYG EDITOR
+==============
+
+Implementation: TinyMCE (inline mode)
+Features:
+  - Text formatting (bold, italic, underline, strikethrough)
+  - Headings (H1-H6) with dropdown selector
+  - Links (internal pages or external URLs)
+  - Images (from gallery or upload)
+  - Lists (ordered, unordered)
+  - Alignment (left, center, right, justify)
+  - Color picker (text color, background color)
+  - Code view
+
+Integration:
+  - Each grid column has its own TinyMCE instance
+  - Content stored as HTML in section.content.columns[n].content
+  - Auto-save on blur
+  - Canvas re-renders on content change
+
+IMAGE MANAGEMENT
+================
+
+Storage Locations:
+  1. Temporary Upload:
+     - image_galleries/template_{id}/filename.ext
+     - Used during editing before first save
+
+  2. Permanent Storage:
+     - template_directory/{slug}/public/images/filename.ext
+     - Final location after save
+     - Files moved here by TemplateFileGenerator::copyTemplateImages()
+
+Upload Flow:
+  1. User uploads via image gallery or thumbnail picker
+  2. File saved to image_galleries/template_{id}/
+  3. Path stored in template.images array or template.preview_image
+  4. On save, files moved to template_directory/{slug}/public/images/
+  5. Paths updated in database to reflect new location
+
+URL Construction:
+  - Paths starting with 'template_directory/' → use directly
+  - Other paths → prefix with 'storage/'
+  - Example: http://localhost:8000/template_directory/my-template/public/images/logo.png
+
+Preview Image (Thumbnail):
+  - Stored in template.preview_image field
+  - Displayed in Template Manager and Website Builder welcome page
+  - Uploaded via Template Settings panel
+  - Persists through saves and publish status changes
+
+SLUG MANAGEMENT
+===============
+
+Slug Generation:
+  - New templates: Clean slug from name (Str::slug($template->name))
+  - Existing clean slugs: Keep forever (stable)
+  - Random slugs (10 chars, mixed case/numbers): Replace with clean slug once
+
+Slug Changes:
+  - Trigger directory move from old slug to new slug
+  - Update all image paths in database
+  - Update preview_image path
+  - Regenerate HTML/CSS/JS files
+
+Slug Stability:
+  - Slugs no longer change on publish/unpublish toggle
+  - Only generate new slug when truly necessary
+  - Prevents thumbnail loss from repeated directory moves
+
+FILE GENERATION
+===============
+
+Template Files (TemplateFileGenerator.php):
+  - Triggered on: save, export, publish status change
+  - Output directory: template_directory/{slug}/public/
+  - Files generated:
+    * index.html (all pages combined)
+    * style.css (all CSS combined)
+    * script.js (mobile menu, dropdowns)
+  - Base CSS loaded from resources/base-styles.css
+
+Website Files (WebsiteFileService.php):
+  - Same structure as templates
+  - Uses same SectionRendererTrait for HTML
+  - Identical CSS/JS generation logic
+  - Ensures website preview matches template preview
+
+HTML Generation (SectionRendererTrait):
+  - Shared between TemplateFileGenerator and WebsiteFileService
+  - Methods for each section type:
+    * buildNavbarHTML()
+    * buildGridHTML()
+    * buildFooterHTML()
+  - Uses section content JSON to build HTML
+  - Applies data attributes for JavaScript
+
+CSS Generation:
+  - Combines base-styles.css + custom CSS + section CSS
+  - Section-specific methods:
+    * addNavigationCSS()
+    * addGridCSS()
+    * addFooterCSS()
+  - Generates scoped CSS with section ID selectors
+  - No duplicate CSS (removed in Session 8)
+
+JavaScript Generation:
+  - Mobile menu toggle
+  - Dropdown click/hover handlers
+  - External script.js file (not inline)
+  - Uses data-trigger attribute for behavior
+
+STATE MANAGEMENT
+================
+
+Custom Hooks Pattern (NOT Zustand):
+  - useTemplateState: Template and page state
+  - useSectionHandlers: Section CRUD operations
+  - useHistory: Undo/redo functionality
+  - useFileHandlers: File operations (save, load, export)
+
+Benefits:
+  - Eliminated 30+ useState calls from main component
+  - Centralized state logic
+  - Better performance (selective re-renders)
+  - No external dependencies needed
+  - Production-ready architecture
+
+SAVE SYSTEM
+===========
+
+Save Flow:
+  1. User clicks Save button
+  2. Frontend calls useFileHandlers.handleSave()
+  3. Determines if CREATE or UPDATE based on template.id
+  4. Sends full template data to backend
+  5. Backend validates, saves to database
+  6. Backend calls TemplateFileGenerator::generateTemplateFiles()
+  7. Files generated in template_directory/{slug}/
+  8. Images moved from temporary to permanent storage
+  9. Paths updated in database
+  10. Frontend receives updated template
+  11. hasUnsavedChanges set to false
+
+Race Condition Fix:
+  - templateRef.current synced immediately after setState
+  - Prevents save from using stale state
+  - Applied to: Page CSS, Site CSS, Template Name, Section Name, Section ID
+
+Fields Saved:
+  - Template: name, description, custom_css, preview_image, business_type,
+              tier_category, exclusive_to, is_active
+  - Pages: name, slug, page_css, order
+  - Sections: section_id, section_name, type, content (JSON), css, order, is_locked
+  - Images: filename, path
+
+TEMPLATE SETTINGS
+=================
+
+Location: Header component (builderType="template")
+
+Fields:
+  1. Template Name - Text input
+  2. Description - Textarea
+  3. Business Type - Dropdown (14 options: General, Restaurant, E-commerce, Blog,
+     Portfolio, Corporate, Real Estate, Healthcare, Education, Fitness, Legal,
+     Construction, Creative, Technology)
+  4. Exclusive To - Dropdown (tier restrictions: All Tiers, Trial Only,
+     Brochure & Above, Niche & Above, Pro Only)
+  5. Preview Thumbnail - File upload (accepts images)
+
+All changes trigger unsaved indicator and require save to persist.
+
+WEBSITE SETTINGS
+================
+
+Location: Header component (builderType="website")
+
+Fields:
+  1. Website Name - Text input
+  2. Site CSS - Textarea (global stylesheet)
+  3. Export options
+  4. Publish toggle
+
+AUTHENTICATION
+==============
+
+Test Users:
+  - admin@pagevoo.com (password: admin123) - Pro tier
+  - trial@test.com (password: password) - Trial tier
+  - brochure@test.com (password: password) - Brochure tier
+  - niche@test.com (password: password) - Niche tier
+  - pro@test.com (password: password) - Pro tier
+
+Auth Flow:
+  1. Login via /login
+  2. Laravel Sanctum token issued
+  3. Token stored in localStorage
+  4. Axios interceptor adds token to all requests
+  5. Backend validates token and user permissions
+
+Permissions:
+  - Template creation: All users can create
+  - Template visibility: Based on tier + exclusive_to
+  - Website creation: Limited by max_websites (tier-based)
+  - Admin users: Full access to all templates
+
+DEVELOPMENT WORKFLOW
+====================
+
+1. Start Servers:
+   cd pagevoo-backend && php artisan serve
+   cd pagevoo-frontend && npm run dev
+
+2. Development URLs:
+   Backend: http://127.0.0.1:8000
+   Frontend: http://localhost:5173
+   Database: MySQL on localhost:3306
+
+3. Key Commands:
+   Backend:
+     php artisan migrate:fresh --seed  # Reset database
+     php artisan storage:link          # Link storage directory
+     php artisan serve                 # Start server
+
+   Frontend:
+     npm install                       # Install dependencies
+     npm run dev                       # Start dev server
+     npm run build                     # Production build
+
+4. Debugging:
+   - Backend logs: storage/logs/laravel.log
+   - Frontend: Browser DevTools Console
+   - Network tab: API request/response inspection
+
+CRITICAL FILE LOCATIONS
+=======================
+
+Frontend:
+  - Main builders: src/pages/TemplateBuilder.tsx, src/pages/WebsiteBuilder.tsx
+  - Custom hooks: src/hooks/
+  - Type definitions: src/types/template.ts
+  - Components: src/components/
+  - API service: src/services/api.ts
+
+Backend:
+  - Controllers: app/Http/Controllers/Api/V1/
+  - Services: app/Services/
+  - Models: app/Models/
+  - Validation: app/Http/Requests/
+  - Base CSS: resources/base-styles.css
+  - Routes: routes/api.php
+
+================================================================================
+LATEST SESSION - NOVEMBER 21, 2025
+================================================================================
+
+MAJOR FIXES & IMPROVEMENTS TODAY:
+==================================
+
+1. TEMPLATE SAVE VALIDATION ERROR - FIXED ✅
+   Problem: Templates couldn't be saved due to validation error
+   Root Cause: exclusive_to field validation didn't include 'trial' option
+
+   Files Fixed:
+   - pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php:122, 229
+     * Added 'trial' to exclusive_to validation: 'nullable|in:trial,pro,niche,brochure'
+     * Added 'trial' case to tier_category match statements (lines 148, 275)
+
+   - pagevoo-backend/database/seeders/AdminUserSeeder.php
+     * Created fresh database with 1 template per tier
+     * Templates: Simple Start (trial), Business Brochure (brochure),
+                  Niche Professional (niche), Premium Pro (pro)
+
+   Additional Fixes:
+   - Added default Home page to trial template in template_pages table
+   - Fixed tier_category mapping for trial tier
+   - Templates now save successfully with thumbnail uploads
+
+2. TIER BADGE VISUAL IMPROVEMENTS - IMPLEMENTED ✅
+
+   Color Scheme Changes:
+   - Trial: PageVoo Green (#98b290) - matches "Create Template" button exactly
+   - Brochure: Bronze (amber-500 to amber-700)
+   - Niche: Lighter Silver (gray-200 to gray-400) - lightened from gray-300
+   - Pro: Gold (yellow-300 to yellow-500)
+
+   Gradient Direction:
+   - Changed from horizontal (bg-gradient-to-r) to vertical (bg-gradient-to-b)
+   - Light color on top, darker color on bottom
+   - Better visual hierarchy and modern appearance
+
+   Files Updated:
+   - pagevoo-frontend/src/components/TemplateManager.tsx:405-417
+     * Updated tier badge styling with new colors and vertical gradients
+
+   - pagevoo-frontend/src/pages/WebsiteBuilder.tsx:1443-1459
+     * Added tier badges to Website Builder template cards
+     * Positioned absolutely in top-right corner of thumbnails
+     * Same color scheme and vertical gradients as Template Manager
+
+   - pagevoo-frontend/src/pages/WebsiteBuilder.tsx:154
+     * Added tier_category field to Template interface
+
+   - pagevoo-frontend/src/components/TemplateManager.tsx:18
+     * Updated exclusive_to type to include 'trial'
+
+3. TYPE DEFINITIONS UPDATED
+   - Both Template interfaces now include tier_category field
+   - exclusive_to type now includes 'trial' option
+   - Full TypeScript type safety maintained
+
+GIT COMMIT:
+===========
+Commit: 59ed5a1
+Message: "Feat: Tier badge improvements and trial tier support"
+Changes:
+  - 5 files changed
+  - 94 insertions, 68 deletions
+  - Backend validation fixes
+  - Frontend tier badge improvements
+  - TypeScript interface updates
+
+PROJECT STATUS: PRODUCTION READY
+=================================
+
+Current State:
+- All core functionality working ✅
+- Template Builder: 1,311 lines (85.8% reduction from original 9,262 lines)
+- 48+ development sessions completed
+- Active development ongoing
+- Both servers running smoothly
+- No blocking issues
+
+Architecture: EXCELLENT
+- Clean separation of concerns
+- Custom hooks pattern working perfectly
+- Reusable components throughout
+- Type-safe with full TypeScript coverage
+- Production-ready code quality
+
+Recent Features:
+- Website Builder (complete)
+- Template Settings with thumbnails
+- Permission system (tier-based with trial support)
+- Security services (sanitizers/validators)
+- Section/Page libraries
+- Dark theme
+- Multiple saves system
+- Tier badge system with custom colors
+
+NEXT STEPS:
+===========
+
+TO-DO LIST:
+-----------
+1. Implement Features System
+   - Allow users to tag templates with features
+   - Feature filtering in Template Manager and Website Builder
+   - Feature icons and badges
+   - Examples: Shopping Cart, Booking, Blog, Contact Form, etc.
+
+Future Improvements:
+- Enhanced filtering and search
+- Template preview mode
+- Bulk template operations
+- Template categories and tags
+- Performance optimizations
+- Testing infrastructure
+
+================================================================================

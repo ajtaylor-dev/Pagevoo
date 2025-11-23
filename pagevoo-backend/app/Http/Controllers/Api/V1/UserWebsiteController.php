@@ -64,7 +64,7 @@ class UserWebsiteController extends BaseController
     }
 
     /**
-     * Initialize user website from template
+     * Get template structure for initialization (does NOT save to database)
      */
     public function initializeFromTemplate(Request $request)
     {
@@ -82,110 +82,82 @@ class UserWebsiteController extends BaseController
             return $this->sendError('Template is not active', 400);
         }
 
-        try {
-            DB::beginTransaction();
+        // Build website structure from template WITHOUT saving to database
+        $websiteStructure = [
+            'id' => null, // No ID until first save
+            'user_id' => auth()->id(),
+            'template_id' => $template->id,
+            'template' => [
+                'id' => $template->id,
+                'name' => $template->name,
+                'description' => $template->description,
+            ],
+            'is_published' => false,
+            'pages' => [],
+        ];
 
-            // Create user website
-            $userWebsite = UserWebsite::create([
-                'user_id' => auth()->id(),
-                'template_id' => $template->id,
-            ]);
+        // Copy template pages and sections structure
+        foreach ($template->pages as $templatePage) {
+            $pageStructure = [
+                'id' => null, // No ID until first save
+                'user_website_id' => null,
+                'template_page_id' => $templatePage->id,
+                'name' => $templatePage->name,
+                'slug' => $templatePage->slug,
+                'is_homepage' => $templatePage->is_homepage,
+                'order' => $templatePage->order,
+                'sections' => [],
+            ];
 
-            // Copy template pages and sections
-            foreach ($template->pages as $templatePage) {
-                $userPage = UserPage::create([
-                    'user_website_id' => $userWebsite->id,
-                    'template_page_id' => $templatePage->id,
-                    'name' => $templatePage->name,
-                    'slug' => $templatePage->slug,
-                    'is_homepage' => $templatePage->is_homepage,
-                    'order' => $templatePage->order,
-                ]);
-
-                foreach ($templatePage->sections as $templateSection) {
-                    UserSection::create([
-                        'user_page_id' => $userPage->id,
-                        'template_section_id' => $templateSection->id,
-                        'type' => $templateSection->type,
-                        'content' => $templateSection->content,
-                        'order' => $templateSection->order,
-                    ]);
-                }
+            foreach ($templatePage->sections as $templateSection) {
+                $pageStructure['sections'][] = [
+                    'id' => null, // No ID until first save
+                    'user_page_id' => null,
+                    'template_section_id' => $templateSection->id,
+                    'type' => $templateSection->type,
+                    'content' => $templateSection->content,
+                    'order' => $templateSection->order,
+                ];
             }
 
-            // Check if template has a database - if so, copy it to user's website
-            $templateDatabase = $this->databaseManager->getTemplateDatabaseInstance($template->id);
-
-            if ($templateDatabase && $templateDatabase->isActive()) {
-                try {
-                    // Copy the template database to user's website database
-                    $websiteDatabase = $this->databaseManager->copyTemplateDatabaseToWebsite(
-                        $template->id,
-                        auth()->id()
-                    );
-
-                    // Store database reference in website metadata if needed
-                    // This allows easy lookup later
-                } catch (\Exception $dbException) {
-                    // Log the error but don't fail the whole initialization
-                    \Log::warning('Failed to copy template database', [
-                        'template_id' => $template->id,
-                        'user_id' => auth()->id(),
-                        'error' => $dbException->getMessage()
-                    ]);
-                }
-            }
-
-            DB::commit();
-
-            $userWebsite->load(['template', 'pages.sections']);
-
-            return $this->sendSuccess($userWebsite, 'Website initialized successfully');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->sendError('Failed to initialize website: ' . $e->getMessage(), 500);
+            $websiteStructure['pages'][] = $pageStructure;
         }
+
+        return $this->sendSuccess($websiteStructure, 'Template structure retrieved successfully');
     }
 
     /**
-     * Create a blank user website
+     * Get blank website structure (does NOT save to database)
      */
     public function createBlank()
     {
-        try {
-            DB::beginTransaction();
+        // Build blank website structure WITHOUT saving to database
+        $websiteStructure = [
+            'id' => null, // No ID until first save
+            'user_id' => auth()->id(),
+            'template_id' => null,
+            'template' => null,
+            'is_published' => false,
+            'pages' => [
+                [
+                    'id' => null, // No ID until first save
+                    'user_website_id' => null,
+                    'template_page_id' => null,
+                    'name' => 'Home',
+                    'slug' => 'home',
+                    'is_homepage' => true,
+                    'order' => 0,
+                    'sections' => [], // No default sections - user starts with a blank page
+                ],
+            ],
+        ];
 
-            // Create user website with no template
-            $userWebsite = UserWebsite::create([
-                'user_id' => auth()->id(),
-                'template_id' => null,
-            ]);
-
-            // Create default homepage
-            $userPage = UserPage::create([
-                'user_website_id' => $userWebsite->id,
-                'template_page_id' => null,
-                'name' => 'Home',
-                'slug' => 'home',
-                'is_homepage' => true,
-                'order' => 0,
-            ]);
-
-            // No default sections - user starts with a blank page
-
-            DB::commit();
-
-            $userWebsite->load(['template', 'pages.sections']);
-
-            return $this->sendSuccess($userWebsite, 'Blank website created successfully');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            return $this->sendError('Failed to create blank website: ' . $e->getMessage(), 500);
-        }
+        return $this->sendSuccess($websiteStructure, 'Blank website structure retrieved successfully');
     }
 
     /**
      * Save website (generates/updates preview files)
+     * Handles both first-time save (create) and subsequent saves (update)
      */
     public function save(SaveWebsiteRequest $request, $id = null)
     {
@@ -194,13 +166,24 @@ class UserWebsiteController extends BaseController
         // If ID is provided, update that website, otherwise get the current one from request
         $websiteId = $id ?? $request->input('id');
 
-        $website = UserWebsite::with(['pages.sections'])
-            ->where('user_id', auth()->id())
-            ->where('id', $websiteId)
-            ->first();
+        // Check if this is a first save (no website ID)
+        $isFirstSave = empty($websiteId) || $websiteId === 'null' || $websiteId === null;
 
-        if (!$website) {
-            return $this->sendError('Website not found', 404);
+        if ($isFirstSave) {
+            // First save - create new website
+            $website = new UserWebsite();
+            $website->user_id = auth()->id();
+            $website->template_id = $request->input('template_id');
+        } else {
+            // Update existing website
+            $website = UserWebsite::with(['pages.sections'])
+                ->where('user_id', auth()->id())
+                ->where('id', $websiteId)
+                ->first();
+
+            if (!$website) {
+                return $this->sendError('Website not found', 404);
+            }
         }
 
         // Initialize sanitizers
@@ -220,7 +203,16 @@ class UserWebsiteController extends BaseController
             }
             if ($request->has('site_css')) {
                 // Sanitize CSS before saving
-                $website->site_css = $cssSanitizer->sanitize($request->input('site_css'));
+                $siteCss = $request->input('site_css');
+                // Ensure site_css is a string (handle null, empty, or array cases)
+                if (is_array($siteCss)) {
+                    $siteCss = ''; // Default to empty string if array
+                } elseif (is_null($siteCss)) {
+                    $siteCss = '';
+                } else {
+                    $siteCss = (string) $siteCss;
+                }
+                $website->site_css = $cssSanitizer->sanitize($siteCss);
             }
             if ($request->has('default_title')) {
                 $website->default_title = $htmlSanitizer->sanitizePlainText($request->input('default_title'));
@@ -235,8 +227,13 @@ class UserWebsiteController extends BaseController
                 $pagesData = $request->input('pages');
 
                 foreach ($pagesData as $pageData) {
-                    // Find or create the page
-                    $page = $website->pages()->find($pageData['id']);
+                    // Check if page has ID and exists
+                    $pageId = $pageData['id'] ?? null;
+                    $page = null;
+
+                    if ($pageId && !$isFirstSave) {
+                        $page = $website->pages()->find($pageId);
+                    }
 
                     if ($page) {
                         // Update existing page
@@ -300,6 +297,44 @@ class UserWebsiteController extends BaseController
 
                             // Delete sections that are no longer present
                             $page->sections()->whereNotIn('id', $updatedSectionIds)->delete();
+                        }
+                    } else {
+                        // Create new page (first save)
+                        $page = $website->pages()->create([
+                            'template_page_id' => $pageData['template_page_id'] ?? null,
+                            'name' => $pageData['name'],
+                            'slug' => $pageData['slug'],
+                            'is_homepage' => $pageData['is_homepage'] ?? false,
+                            'order' => $pageData['order'],
+                            'meta_description' => $pageData['meta_description'] ?? '',
+                            'page_css' => $pageData['page_css'] ?? '',
+                        ]);
+
+                        // Create sections for this new page
+                        if (isset($pageData['sections'])) {
+                            foreach ($pageData['sections'] as $sectionData) {
+                                // Ensure content and css are arrays
+                                $content = $sectionData['content'] ?? [];
+                                $css = $sectionData['css'] ?? [];
+
+                                // If they're strings, try to decode them
+                                if (is_string($content)) {
+                                    $content = json_decode($content, true) ?? [];
+                                }
+                                if (is_string($css)) {
+                                    $css = json_decode($css, true) ?? [];
+                                }
+
+                                $page->sections()->create([
+                                    'template_section_id' => $sectionData['template_section_id'] ?? null,
+                                    'section_id' => $sectionData['section_id'] ?? 'section-' . uniqid(),
+                                    'section_name' => $sectionData['section_name'] ?? ($sectionData['type'] ?? 'section'),
+                                    'type' => $sectionData['type'] ?? 'unknown',
+                                    'content' => $content,
+                                    'css' => $css,
+                                    'order' => $sectionData['order'] ?? 0,
+                                ]);
+                            }
                         }
                     }
                 }

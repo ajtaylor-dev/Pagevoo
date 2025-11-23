@@ -82,9 +82,10 @@ class DatabaseController extends Controller
     public function createWebsiteDatabase(Request $request): JsonResponse
     {
         $userId = $request->user()->id;
+        $websiteName = $request->input('website_name', 'website'); // Optional website name
 
         try {
-            $instance = $this->databaseManager->createWebsiteDatabase($userId);
+            $instance = $this->databaseManager->createWebsiteDatabase($userId, $websiteName);
 
             return response()->json([
                 'success' => true,
@@ -117,9 +118,10 @@ class DatabaseController extends Controller
 
         $userId = $request->user()->id;
         $templateId = $request->input('template_id');
+        $websiteName = $request->input('website_name', 'website'); // Optional website name
 
         try {
-            $instance = $this->databaseManager->copyTemplateDatabaseToWebsite($templateId, $userId);
+            $instance = $this->databaseManager->copyTemplateDatabaseToWebsite($templateId, $userId, $websiteName);
 
             return response()->json([
                 'success' => true,
@@ -142,7 +144,7 @@ class DatabaseController extends Controller
         $instance = DatabaseInstance::findOrFail($id);
 
         // Check permissions
-        if ($instance->isTemplateDatabase() && !$request->user()->is_admin) {
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Only admins can delete template databases',
@@ -180,7 +182,7 @@ class DatabaseController extends Controller
         $instance = DatabaseInstance::findOrFail($id);
 
         // Check permissions
-        if ($instance->isTemplateDatabase() && !$request->user()->is_admin) {
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Only admins can backup template databases',
@@ -232,7 +234,7 @@ class DatabaseController extends Controller
         $instance = DatabaseInstance::findOrFail($id);
 
         // Check permissions
-        if ($instance->isTemplateDatabase() && !$request->user()->is_admin) {
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Only admins can restore template databases',
@@ -294,7 +296,7 @@ class DatabaseController extends Controller
         $instance = DatabaseInstance::findOrFail($id);
 
         // Check permissions
-        if ($instance->isTemplateDatabase() && !$request->user()->is_admin) {
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Only admins can install features on template databases',
@@ -347,7 +349,7 @@ class DatabaseController extends Controller
         $instance = DatabaseInstance::findOrFail($id);
 
         // Check permissions
-        if ($instance->isTemplateDatabase() && !$request->user()->is_admin) {
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Only admins can uninstall features from template databases',

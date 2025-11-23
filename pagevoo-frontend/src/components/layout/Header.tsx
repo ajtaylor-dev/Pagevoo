@@ -104,6 +104,7 @@ interface HeaderProps {
 
   // Database & Features
   setShowDatabaseModal?: (show: boolean) => void
+  setShowManageFeaturesModal?: (show: boolean) => void
 
   // Image gallery
   setShowImageGallery: (show: boolean | ((prev: boolean) => boolean)) => void
@@ -161,6 +162,7 @@ export const Header: React.FC<HeaderProps> = ({
   setShowAddPageModal,
   setShowFeatureInstallModal,
   setShowDatabaseModal,
+  setShowManageFeaturesModal,
   setShowImageGallery,
   uploadingImage,
   handleImageUpload
@@ -634,9 +636,9 @@ export const Header: React.FC<HeaderProps> = ({
                   </>
                 )}
 
-                  {/* Database Management - Only in Settings tab */}
+                  {/* Database & Features Management - Only in Settings tab */}
                   {editSubTab === 'settings' && setShowDatabaseModal && (
-                    <div className={`border-t ${theme.dropdownBorder} pt-3 mt-3`}>
+                    <div className={`border-t ${theme.dropdownBorder} pt-3 mt-3 space-y-2`}>
                       <button
                         onClick={() => {
                           setShowDatabaseModal(true)
@@ -646,6 +648,17 @@ export const Header: React.FC<HeaderProps> = ({
                       >
                         Manage Database
                       </button>
+                      {setShowManageFeaturesModal && (
+                        <button
+                          onClick={() => {
+                            setShowManageFeaturesModal(true)
+                            setShowEditMenu(false)
+                          }}
+                          className={`w-full text-left px-3 py-2 ${theme.dropdownHover} text-xs rounded border ${theme.inputBorder} ${theme.dropdownText}`}
+                        >
+                          Manage Features
+                        </button>
+                      )}
                     </div>
                   )}
 

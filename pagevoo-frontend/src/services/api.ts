@@ -186,6 +186,11 @@ class ApiService {
     return response.data;
   }
 
+  async resetToFactory(): Promise<ApiResponse<{ message: string; templates_kept: number; users_kept: number }>> {
+    const response = await this.client.post('/v1/users/reset-to-factory');
+    return response.data;
+  }
+
   /**
    * Collaborator Management Methods
    */
@@ -414,7 +419,17 @@ class ApiService {
     return response.data;
   }
 
-  async saveWebsite(websiteId: number, websiteData: any): Promise<ApiResponse<any>> {
+  async saveWebsite(websiteId: number | null, websiteData: any): Promise<ApiResponse<any>> {
+    // If no website ID, this is a first save - send the data without an ID in the URL
+    if (!websiteId || websiteId === null) {
+      const response = await this.client.post('/v1/user-website/save', {
+        ...websiteData,
+        id: null
+      });
+      return response.data;
+    }
+
+    // Otherwise, update existing website
     const response = await this.client.post(`/v1/user-website/${websiteId}/save`, websiteData);
     return response.data;
   }

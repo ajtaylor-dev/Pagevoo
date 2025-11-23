@@ -1,9 +1,10 @@
-import React, { useState, useRef, useEffect, memo, useCallback } from 'react'
+import React, { useState, useRef, useEffect, memo, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '@/services/api'
 import { sectionLibraryApi, pageLibraryApi, fileToBase64 } from '@/services/libraryApi'
+import { databaseService } from '@/services/databaseService'
 import { StyleEditor } from '@/components/StyleEditor'
 import { ImageGallery } from '@/components/ImageGallery'
 import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
@@ -25,6 +26,7 @@ import { ExportPageModal } from '@/components/modals/ExportPageModal'
 import { PageLibraryModal } from '@/components/modals/PageLibraryModal'
 import { DatabaseManagementModal } from '@/components/database/DatabaseManagementModal'
 import { FeatureInstallModal } from '@/components/features/FeatureInstallModal'
+import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
@@ -67,7 +69,7 @@ import {
   generateActiveIndicatorStyle
 } from '../utils/helpers'
 import { getLinkHref, getLinkLabel, getCanvasWidth, handleAddPredefinedPage as addPredefinedPage } from '../utils/templateHelpers'
-import { coreSections, headerNavigationSections, footerSections } from '../constants/sectionTemplates'
+import { coreSections, headerNavigationSections, footerSections, specialSections } from '../constants/sectionTemplates'
 import {
   isActivePage,
   generateContentCSS,
@@ -221,7 +223,9 @@ export default function TemplateBuilder() {
   // Database & Features
   const [showDatabaseModal, setShowDatabaseModal] = useState(false)
   const [showFeatureInstallModal, setShowFeatureInstallModal] = useState(false)
+  const [showManageFeaturesModal, setShowManageFeaturesModal] = useState(false)
   const [showContactFormModal, setShowContactFormModal] = useState(false)
+  const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
 
   // Undo/Redo and Save state
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -334,6 +338,45 @@ export default function TemplateBuilder() {
     setSelectedSection,
     resetHistory
   })
+
+  // Load installed features when template is available
+  useEffect(() => {
+    if (template?.id) {
+      loadInstalledFeatures()
+    }
+  }, [template?.id])
+
+  const loadInstalledFeatures = async () => {
+    if (!template?.id) return
+
+    try {
+      // Get database instance for this template
+      const database = await databaseService.getInstance('template', template.id)
+
+      if (!database) {
+        setInstalledFeatures([])
+        return
+      }
+
+      // Get installed features
+      const features = await databaseService.getInstalledFeatures(database.id)
+      setInstalledFeatures(features.map(f => f.type))
+    } catch (error) {
+      console.error('Failed to load installed features:', error)
+      setInstalledFeatures([])
+    }
+  }
+
+  // Filter special sections based on installed features
+  const filteredSpecialSections = useMemo(() => {
+    return specialSections.filter(section => {
+      if (!section.category) return false
+      // Convert category hyphen format to underscore format for comparison
+      // e.g., 'contact-form' becomes 'contact_form'
+      const categoryAsFeature = section.category.replace(/-/g, '_')
+      return installedFeatures.includes(categoryAsFeature)
+    })
+  }, [installedFeatures])
 
   // Template Builder Effects (useEffects)
   useTemplateBuilderEffects({
@@ -915,6 +958,7 @@ export default function TemplateBuilder() {
         setShowAddPageModal={setShowAddPageModal}
         setShowFeatureInstallModal={setShowFeatureInstallModal}
         setShowDatabaseModal={setShowDatabaseModal}
+        setShowManageFeaturesModal={setShowManageFeaturesModal}
         setShowImageGallery={setShowImageGallery}
         uploadingImage={uploadingImage}
         handleImageUpload={handleImageUpload}
@@ -933,6 +977,8 @@ export default function TemplateBuilder() {
         setShowRightSidebar={setShowRightSidebar}
         viewport={viewport}
         setViewport={setViewport}
+        builderType="template"
+        itemId={template?.id}
       />
 
       {/* Published Template Indicator Banner */}
@@ -958,6 +1004,7 @@ export default function TemplateBuilder() {
               coreSections={coreSections}
               headerNavigationSections={headerNavigationSections}
               footerSections={footerSections}
+              specialSections={filteredSpecialSections}
               importedSections={importedSections}
               renderSectionThumbnail={(section) => <SectionThumbnail section={section} />}
               renderImportedSectionThumbnail={(section) => (
@@ -1318,15 +1365,36 @@ export default function TemplateBuilder() {
       {/* Feature Installation Modal */}
       <FeatureInstallModal
         isOpen={showFeatureInstallModal}
-        onClose={() => setShowFeatureInstallModal(false)}
+        onClose={() => {
+          setShowFeatureInstallModal(false)
+          loadInstalledFeatures() // Reload features when modal closes
+        }}
         onFeatureInstalled={(featureType) => {
+          loadInstalledFeatures() // Reload features after installation
           if (featureType === 'contact_form') {
             setShowContactFormModal(true)
           }
         }}
+        onOpenDatabaseManagement={() => setShowDatabaseModal(true)}
         type="template"
         referenceId={template?.id || 0}
       />
+
+      {/* Manage Features Modal */}
+      {showManageFeaturesModal && (
+        <ManageFeaturesModal
+          onClose={() => {
+            setShowManageFeaturesModal(false)
+            loadInstalledFeatures() // Reload features when modal closes
+          }}
+          websiteId={template?.id || 0}
+          onConfigureFeature={(featureType) => {
+            if (featureType === 'contact_form') {
+              setShowContactFormModal(true)
+            }
+          }}
+        />
+      )}
 
       {/* Contact Form Config Modal */}
       <ContactFormConfigModal

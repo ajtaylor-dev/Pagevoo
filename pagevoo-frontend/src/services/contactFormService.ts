@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const API_BASE = '/api/v1'
+const API_BASE = '/v1'
 
 // Create axios instance with authentication
 const apiClient = axios.create({

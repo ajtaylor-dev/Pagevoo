@@ -7,6 +7,8 @@ interface ToolbarProps {
   setShowRightSidebar: (show: boolean) => void
   viewport: 'desktop' | 'tablet' | 'mobile'
   setViewport: (viewport: 'desktop' | 'tablet' | 'mobile') => void
+  builderType?: 'template' | 'website'
+  itemId?: number | null
 }
 
 export const Toolbar: React.FC<ToolbarProps> = ({
@@ -15,7 +17,9 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   showRightSidebar,
   setShowRightSidebar,
   viewport,
-  setViewport
+  setViewport,
+  builderType = 'website',
+  itemId
 }) => {
   return (
     <div className="bg-white border-b border-gray-200 px-2 py-1 flex items-center justify-between h-10">
@@ -72,9 +76,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({
         </button>
       </div>
 
-      {/* Right Controls */}
+      {/* Right Controls - Show ID if saved */}
       <div className="flex items-center space-x-1">
-        <span className="text-xs text-gray-600">Zoom: 100%</span>
+        {itemId !== null && itemId !== undefined && itemId > 0 && (
+          <span className="text-xs text-gray-600">
+            {builderType === 'template' ? 'Template' : 'Website'} ID: {itemId}
+          </span>
+        )}
       </div>
     </div>
   )

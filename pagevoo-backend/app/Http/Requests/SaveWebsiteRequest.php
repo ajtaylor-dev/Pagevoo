@@ -101,7 +101,8 @@ class SaveWebsiteRequest extends FormRequest
 
             // Grid content validation
             'pages.*.sections.*.content.columns' => 'nullable|array|max:12',
-            'pages.*.sections.*.content.columns.*' => 'nullable|string|max:10000',
+            // Columns can be either strings or objects/arrays (for rich content)
+            // We don't validate the exact structure here - it's flexible
 
             // Navigation items validation
             'pages.*.sections.*.content.items' => 'nullable|array|max:20',

@@ -57,9 +57,12 @@ class DatabaseManager
     /**
      * Create a new database for a user website.
      */
-    public function createWebsiteDatabase(int $userId): DatabaseInstance
+    public function createWebsiteDatabase(int $userId, string $websiteName = 'website'): DatabaseInstance
     {
-        $databaseName = "pagevoo_website_{$userId}";
+        // Sanitize website name and generate random suffix
+        $sanitized = $this->sanitizeForDatabaseName($websiteName);
+        $randomSuffix = bin2hex(random_bytes(4)); // 8 character random string
+        $databaseName = "pagevoo_{$sanitized}_{$randomSuffix}";
 
         // Check if database already exists
         $existing = DatabaseInstance::where('type', 'website')
@@ -101,7 +104,7 @@ class DatabaseManager
     /**
      * Copy a template database to a website database.
      */
-    public function copyTemplateDatabaseToWebsite(int $templateId, int $userId): DatabaseInstance
+    public function copyTemplateDatabaseToWebsite(int $templateId, int $userId, string $websiteName = 'website'): DatabaseInstance
     {
         // Get template database
         $templateDb = DatabaseInstance::where('type', 'template')
@@ -110,7 +113,11 @@ class DatabaseManager
             ->firstOrFail();
 
         $sourceName = $templateDb->database_name;
-        $targetName = "pagevoo_website_{$userId}";
+
+        // Sanitize website name and generate random suffix
+        $sanitized = $this->sanitizeForDatabaseName($websiteName);
+        $randomSuffix = bin2hex(random_bytes(4)); // 8 character random string
+        $targetName = "pagevoo_{$sanitized}_{$randomSuffix}";
 
         // Check if website database already exists
         $existing = DatabaseInstance::where('type', 'website')
@@ -400,5 +407,33 @@ class DatabaseManager
         $this->updateDatabaseSize($instance);
 
         return true;
+    }
+
+    /**
+     * Sanitize a string to make it safe for use in a database name.
+     * Keeps only alphanumeric characters and underscores, converts to lowercase.
+     */
+    private function sanitizeForDatabaseName(string $name): string
+    {
+        // Convert to lowercase
+        $sanitized = strtolower($name);
+
+        // Replace spaces and hyphens with underscores
+        $sanitized = str_replace([' ', '-'], '_', $sanitized);
+
+        // Remove all non-alphanumeric characters except underscores
+        $sanitized = preg_replace('/[^a-z0-9_]/', '', $sanitized);
+
+        // Remove multiple consecutive underscores
+        $sanitized = preg_replace('/_+/', '_', $sanitized);
+
+        // Trim underscores from start and end
+        $sanitized = trim($sanitized, '_');
+
+        // Limit length to 20 characters
+        $sanitized = substr($sanitized, 0, 20);
+
+        // If empty after sanitization, use 'website' as default
+        return empty($sanitized) ? 'website' : $sanitized;
     }
 }

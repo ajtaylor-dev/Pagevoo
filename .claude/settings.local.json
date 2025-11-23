@@ -58,7 +58,8 @@
       "Bash(python3:*)",
       "Bash(php test_tiers.php:*)",
       "Bash(php -r:*)",
-      "Bash(php:*)"
+      "Bash(php:*)",
+      "Bash(.gitignore)"
     ],
     "deny": [],
     "ask": []

@@ -1,0 +1,626 @@
+PAGEVOO PROJECT - TODO LIST
+===========================
+Last Updated: November 21, 2025
+
+NEXT PRIORITY
+=============
+
+[ ] 1. IMPLEMENT FEATURES SYSTEM
+    Status: NOT STARTED
+    Description: Add template features tagging and filtering system
+    Requirements:
+      - Add 'features' field to templates table (JSON array)
+      - Create feature icon components (Shopping Cart, Booking, Blog, etc.)
+      - Add feature selection UI in Template Settings panel
+      - Display feature badges on template cards (Template Manager & Website Builder)
+      - Add feature filtering in both builders
+      - Predefined features list:
+        * Shopping Cart (e-commerce)
+        * Booking System (appointments, reservations)
+        * Blog (posts, categories)
+        * Contact Form
+        * Gallery/Portfolio
+        * Testimonials
+        * FAQ Section
+        * Newsletter Signup
+        * Social Media Integration
+        * Maps Integration
+        * Multi-language Support
+    Implementation:
+      - Backend: Add 'features' column to templates table (JSON type)
+      - Update Template model casts to include 'features' => 'array'
+      - Frontend: Create FeatureIcon component similar to TechIcon in TemplateManager
+      - Add feature selector to Template Settings in Header.tsx
+      - Display feature badges alongside tier badges on template cards
+      - Add "Filter by Features" dropdown in Template Manager and Website Builder
+    Files:
+      - Backend: database/migrations, app/Models/Template.php
+      - Frontend: src/components/TemplateManager.tsx, src/pages/WebsiteBuilder.tsx,
+                  src/components/layout/Header.tsx
+    Estimate: 2-3 days
+
+CRITICAL PRIORITIES
+===================
+
+[ ] 1. NPM Installation Issue Resolution
+    Status: BLOCKED
+    Issue: npm install fails with "Cannot read properties of null (reading 'matches')"
+    Impact: Cannot install new dependencies or update existing ones
+    Workaround: npm cache clean --force, then npm install
+    Next Steps:
+      - Try deleting node_modules and package-lock.json
+      - Re-run npm install
+      - Consider upgrading npm version
+      - Test with different Node.js version if needed
+
+[ ] 2. Complete Zustand Migration
+    Status: IN PROGRESS (Foundation complete, migration pending)
+    Progress: Stores created, not yet integrated into TemplateBuilder
+    Impact: Better state management, improved performance
+    Steps:
+      - Replace useState for template with useTemplateStore
+      - Replace useState for sections with useSectionStore
+      - Replace useState for history with useHistoryStore
+      - Replace useState for UI modals with useUIStore
+      - Test each replacement incrementally
+      - Remove old useState declarations
+      - Verify no regressions
+    Files: src/pages/TemplateBuilder.tsx, src/pages/WebsiteBuilder.tsx
+    Estimate: 1-2 days
+
+[ ] 3. Thumbnail Persistence Edge Cases
+    Status: NEEDS INVESTIGATION
+    Issue: Thumbnails occasionally disappear when toggling publish status
+    What Works: Normal saves, slug stability implemented
+    What Doesn't: Rapid publish toggles in some scenarios
+    Investigation Steps:
+      - Add comprehensive logging to updateSlugOnPublish
+      - Test publish toggle timing with various templates
+      - Verify database updates are committing
+      - Check file system directory moves
+      - Test with different template states (new, existing, etc.)
+    Files: TemplateFileGenerator.php, Header.tsx
+    Estimate: 2-4 hours
+
+HIGH PRIORITY
+=============
+
+[ ] 4. CSS Hierarchy Synchronization
+    Status: NOT STARTED
+    Description: Lower-level CSS controls should reflect inherited values
+    Requirements:
+      - Site CSS values should appear as defaults in Page CSS
+      - Page CSS values should appear as defaults in Section CSS
+      - Visual indicators for inherited vs explicitly set values
+      - Ability to override at each level
+      - Clear cascade visualization
+    Example:
+      If Site CSS sets padding: 20px, Page CSS slider should show 20px as default
+      If Page CSS overrides to 40px, Section CSS should show 40px as inherited value
+    Implementation:
+      - Add inheritance chain tracking to StyleEditor component
+      - Calculate effective computed values at each level
+      - Update slider/input default values dynamically
+      - Add visual badges (e.g., "Inherited from Site CSS")
+    Files: src/components/StyleEditor.tsx
+    Estimate: 2-3 days
+
+[ ] 5. Enhanced CSS Tooltip with Inheritance Info
+    Status: NOT STARTED
+    Description: Improve "Show CSS" tooltip to display full inheritance chain
+    Requirements:
+      - Show which level each style comes from (site/page/section/row/column/inline)
+      - Indicate when a property is overriding a previous level
+      - Display computed final values
+      - Clear visual hierarchy
+    Example Output:
+      Padding-Top:
+        └─ Site CSS: 20px (inherited)
+        └─ Page CSS: — (not set)
+        └─ Section CSS: 40px ← OVERRIDING
+        └─ Computed: 40px
+    Implementation:
+      - Parse all CSS levels in cascade order
+      - Build inheritance tree for each property
+      - Generate formatted output with color coding
+      - Use icons or badges to highlight overrides
+    Files: src/components/properties/*.tsx
+    Estimate: 1-2 days
+
+[ ] 6. CSS Tooltip Z-Index Fix
+    Status: NOT STARTED
+    Problem: CSS tooltips in top sections are hidden by canvas overflow
+    Solution:
+      - Add high z-index value to tooltip container (z-index: 9999)
+      - Ensure tooltip portal renders outside overflow context
+      - Use React Portal if necessary
+      - Test across all section positions
+    Files: Tooltip component CSS, canvas container styles
+    Estimate: 2-4 hours
+
+[ ] 7. Continue Component Extraction
+    Status: IN PROGRESS (3 components extracted, more to go)
+    Target: Reduce TemplateBuilder.tsx from 7,741 to < 1,000 lines
+    Progress: 16.4% reduction complete
+    Next Components to Extract:
+      - Rich text editor (WYSIWYG) → TextEditor.tsx
+      - Drag/drop logic → useDragDrop hook
+      - Section rendering → SectionRenderer.tsx
+      - Canvas rendering → CanvasRenderer.tsx
+      - HTML/CSS generation (already partially done)
+    Priority Order:
+      1. SectionRenderer (handles all section type rendering)
+      2. TextEditor (TinyMCE wrapper)
+      3. CanvasRenderer (main canvas layout)
+      4. useDragDrop hook (drag/drop state + handlers)
+    Files: src/pages/TemplateBuilder.tsx → src/components/*, src/hooks/*
+    Estimate: 3-5 days
+
+MEDIUM PRIORITY
+===============
+
+[ ] 8. Section Locking UI Improvements
+    Status: WORKING but UI could be better
+    Current: Lock icon in section list
+    Improvements:
+      - Visual lock overlay on locked sections in canvas
+      - Clearer indication of who locked the section
+      - Unlock button more prominent
+      - Warning when trying to edit locked section
+    Files: LeftSidebar.tsx, Canvas rendering
+    Estimate: 1 day
+
+[ ] 9. Undo/Redo UI Indicators
+    Status: History store exists, no UI
+    Implementation:
+      - Add Undo/Redo buttons to toolbar
+      - Show keyboard shortcuts (Ctrl+Z, Ctrl+Y)
+      - Gray out when unavailable
+      - Show current history position
+      - Consider history timeline visualization
+    Files: src/components/layout/Header.tsx or new Toolbar.tsx
+    Estimate: 1-2 days
+
+[ ] 10. Image Management Improvements
+    Status: WORKING but could be enhanced
+    Enhancements:
+      - Bulk image upload
+      - Image search/filter in gallery
+      - Image optimization on upload
+      - Alt text editor
+      - Image cropping/resizing in UI
+      - Delete unused images
+    Files: InsertImageModal.tsx, ImageGallery components
+    Estimate: 2-3 days
+
+[ ] 11. Template Duplication Feature
+    Status: NOT STARTED
+    Description: Allow users to duplicate existing templates
+    Requirements:
+      - "Duplicate" button in Template Manager
+      - Copy all pages, sections, and content
+      - Copy images to new template directory
+      - Generate new unique IDs
+      - Append "(Copy)" to template name
+      - Open duplicated template in builder
+    Files: TemplateManager.tsx, TemplateController.php
+    Estimate: 1 day
+
+[ ] 12. Page Duplication Feature
+    Status: NOT STARTED
+    Description: Allow users to duplicate pages within a template
+    Requirements:
+      - "Duplicate" button in page dropdown
+      - Copy all sections and content
+      - Generate new unique page slug
+      - Append "(Copy)" to page name
+      - Switch to duplicated page
+    Files: LeftSidebar.tsx, TemplateBuilder.tsx
+    Estimate: 4-6 hours
+
+[ ] 13. Section Templates/Presets
+    Status: NOT STARTED
+    Description: Predefined section layouts with sample content
+    Examples:
+      - Hero sections (various layouts)
+      - Pricing tables
+      - Testimonial grids
+      - Contact forms
+      - Team member grids
+    Implementation:
+      - Create section preset JSON files
+      - Add "Templates" tab in Add Section modal
+      - Preview thumbnails for each preset
+      - Insert with sample content
+    Files: AddSectionModal.tsx, section presets directory
+    Estimate: 2-3 days
+
+LOW PRIORITY / NICE TO HAVE
+============================
+
+[ ] 14. Collaborative Editing
+    Status: NOT STARTED
+    Description: Allow multiple users to edit same template simultaneously
+    Requirements:
+      - WebSocket connection for real-time updates
+      - Show other users' cursors/selections
+      - Conflict resolution strategy
+      - Section-level locking
+      - Activity feed
+    Impact: Major feature, significant development effort
+    Estimate: 2-3 weeks
+
+[ ] 15. Version History
+    Status: NOT STARTED
+    Description: Save snapshots of templates at key points
+    Requirements:
+      - Auto-save versions on publish
+      - Manual "Create Version" button
+      - Version comparison view
+      - Restore from version
+      - Version naming/notes
+    Files: New VersionController.php, new Version model
+    Estimate: 1-2 weeks
+
+[ ] 16. Template Preview Mode
+    Status: NOT STARTED
+    Description: Full-screen preview without builder UI
+    Requirements:
+      - "Preview" button in toolbar
+      - Full-screen overlay
+      - Responsive device frames (desktop/tablet/mobile)
+      - Switch between pages
+      - Exit preview mode
+    Files: TemplateBuilder.tsx, new PreviewModal.tsx
+    Estimate: 2-3 days
+
+[ ] 17. Responsive Design Tools
+    Status: PARTIALLY IMPLEMENTED (mobile menu exists)
+    Enhancements:
+      - Breakpoint editor
+      - Device frame preview
+      - Hide/show elements per breakpoint
+      - Responsive spacing controls
+      - Mobile-first design mode
+    Files: StyleEditor.tsx, responsive utilities
+    Estimate: 1-2 weeks
+
+[ ] 18. Animation & Transition Builder
+    Status: NOT STARTED
+    Description: Visual editor for CSS animations
+    Features:
+      - Entrance animations (fade in, slide in, etc.)
+      - Hover effects
+      - Scroll-triggered animations
+      - Transition duration/easing controls
+      - Animation preview
+    Files: New AnimationEditor.tsx component
+    Estimate: 1-2 weeks
+
+[ ] 19. SEO Metadata Editor
+    Status: NOT STARTED
+    Description: Edit meta tags for each page
+    Fields:
+      - Page title
+      - Meta description
+      - Open Graph tags
+      - Twitter Card tags
+      - Canonical URL
+      - Robots directives
+    Files: EditPageModal.tsx, backend page model
+    Estimate: 2-3 days
+
+[ ] 20. Custom Domain Support
+    Status: NOT STARTED
+    Description: Allow users to point custom domains to their websites
+    Requirements:
+      - Domain verification
+      - DNS configuration instructions
+      - SSL certificate generation
+      - Domain management UI
+    Impact: Requires infrastructure changes
+    Estimate: 1-2 weeks
+
+TESTING & QUALITY
+==================
+
+[ ] 21. Add Unit Tests
+    Status: NOT STARTED
+    Coverage Needed:
+      - Zustand stores (all actions)
+      - Utility functions (helpers.ts, cssUtils.ts)
+      - CSS generation logic
+      - Slug generation
+      - Path construction
+    Framework: Jest + React Testing Library
+    Target: 80% coverage for utilities and stores
+    Estimate: 3-5 days
+
+[ ] 22. Add Integration Tests
+    Status: NOT STARTED
+    Scenarios:
+      - Template creation flow
+      - Page addition/deletion
+      - Section CRUD operations
+      - Save workflow
+      - Image upload flow
+      - Export functionality
+    Framework: Jest + React Testing Library
+    Estimate: 3-5 days
+
+[ ] 23. Add E2E Tests
+    Status: NOT STARTED
+    Critical Paths:
+      - User registration and login
+      - Create template from scratch
+      - Add sections and content
+      - Save and publish
+      - Create website from template
+      - Edit website sections
+      - Export files
+    Framework: Playwright or Cypress
+    Estimate: 1 week
+
+[ ] 24. Performance Audit
+    Status: NOT STARTED
+    Areas to Check:
+      - Initial load time
+      - Section rendering performance
+      - WYSIWYG editor lag
+      - Save operation speed
+      - Image loading optimization
+      - Bundle size analysis
+    Tools: Lighthouse, React Profiler, Webpack Bundle Analyzer
+    Estimate: 2-3 days
+
+[ ] 25. Accessibility Audit
+    Status: NOT STARTED
+    Requirements:
+      - Keyboard navigation for all features
+      - Screen reader support (ARIA labels)
+      - Color contrast checks (WCAG AA)
+      - Focus indicators
+      - Alt text for images
+      - Semantic HTML
+    Tools: axe DevTools, Lighthouse
+    Estimate: 3-5 days
+
+BUG FIXES
+=========
+
+[ ] 26. Rich Text Editor Focus Issues
+    Status: REPORTED (minor)
+    Description: Occasional focus loss when switching between sections
+    Impact: Low (workaround: click again)
+    Investigation: TinyMCE instance management
+    Estimate: 2-4 hours
+
+[ ] 27. Mobile Menu Overlap on Small Screens
+    Status: REPORTED (minor)
+    Description: Mobile menu may overlap with content on very small screens
+    Solution: Adjust z-index and positioning
+    Files: base-styles.css, navbar rendering
+    Estimate: 1-2 hours
+
+[ ] 28. Grid Column Minimum Width
+    Status: NOT STARTED (enhancement)
+    Description: Grid columns can become too narrow on small screens
+    Solution: Add min-width CSS or prevent shrinking below threshold
+    Files: Grid rendering, grid CSS generation
+    Estimate: 2-3 hours
+
+DOCUMENTATION
+=============
+
+[ ] 29. User Documentation
+    Status: NOT STARTED
+    Sections Needed:
+      - Getting started guide
+      - Template builder tutorial
+      - Website builder tutorial
+      - Section type reference
+      - CSS styling guide
+      - Image management
+      - Publishing workflow
+      - FAQ
+    Format: Markdown or built-in help system
+    Estimate: 1-2 weeks
+
+[ ] 30. Developer Documentation
+    Status: PARTIAL (memory.txt covers most)
+    Additional Needed:
+      - API documentation
+      - Database schema reference
+      - Component architecture diagrams
+      - State management guide
+      - Contribution guidelines
+      - Deployment instructions
+    Format: Markdown + JSDoc/PHPDoc comments
+    Estimate: 3-5 days
+
+[ ] 31. Code Comments
+    Status: MINIMAL
+    Priority Areas:
+      - Complex algorithms (CSS generation, slug management)
+      - Public API methods
+      - Component props interfaces
+      - Store actions
+      - Utility functions
+    Standard: JSDoc for TypeScript, PHPDoc for Laravel
+    Estimate: Ongoing (add as you code)
+
+INFRASTRUCTURE
+==============
+
+[ ] 32. Production Deployment Setup
+    Status: NOT STARTED
+    Requirements:
+      - Production environment configuration
+      - Database migration strategy
+      - Asset optimization (minification, compression)
+      - CDN setup for static files
+      - SSL certificate
+      - Monitoring and logging
+      - Backup strategy
+    Platform: TBD (AWS, DigitalOcean, Vercel, etc.)
+    Estimate: 1 week
+
+[ ] 33. CI/CD Pipeline
+    Status: NOT STARTED
+    Steps:
+      - Automated testing on push
+      - Linting and type checking
+      - Build verification
+      - Automated deployment to staging
+      - Manual approval for production
+    Platform: GitHub Actions, GitLab CI, or Jenkins
+    Estimate: 2-3 days
+
+[ ] 34. Error Tracking
+    Status: NOT STARTED
+    Tools: Sentry, Rollbar, or similar
+    Coverage:
+      - Frontend JavaScript errors
+      - Backend PHP exceptions
+      - API errors
+      - User actions leading to errors
+    Estimate: 1 day
+
+[ ] 35. Analytics Integration
+    Status: NOT STARTED
+    Metrics to Track:
+      - User registrations
+      - Template creations
+      - Website creations
+      - Section usage (which types are most popular)
+      - Save frequency
+      - Export frequency
+      - User retention
+    Tools: Google Analytics, Mixpanel, or custom
+    Estimate: 2-3 days
+
+COMPLETED RECENTLY
+==================
+
+[✓] Extract ButtonStyleModal component
+[✓] Extract NavbarProperties component
+[✓] Extract FooterProperties component
+[✓] Create Zustand stores (template, section, history, UI)
+[✓] Create centralized type definitions
+[✓] Extract helper utilities
+[✓] Fix section type validation (422 error)
+[✓] Fix template visibility permissions
+[✓] Implement template settings panel
+[✓] Fix thumbnail upload and persistence
+[✓] Implement slug stability
+[✓] Unify CSS generation between Template and Website builders
+[✓] Fix canvas vs live preview consistency
+[✓] Add navbar dropdown sublinks
+[✓] Add navbar layout controls
+[✓] Add footer property controls
+[✓] Fix save race conditions
+[✓] Add section locking feature
+
+DEPENDENCIES
+============
+
+Before starting certain tasks, these dependencies must be resolved:
+
+Task 2 (Zustand Migration) requires:
+  - Task 1 (NPM Installation) must be resolved to install Zustand
+
+Task 21-23 (Testing) requires:
+  - Test framework installation (depends on Task 1)
+
+Task 32 (Deployment) requires:
+  - Tasks 21-25 (Testing & Quality) should be complete
+  - Task 29 (User Documentation) should be complete
+
+Task 34-35 (Error Tracking/Analytics) should be done:
+  - Before or immediately after Task 32 (Deployment)
+
+ESTIMATED TIMELINE
+==================
+
+Critical (1-2 weeks):
+  - Task 1: NPM Installation Resolution
+  - Task 2: Complete Zustand Migration
+  - Task 3: Thumbnail Persistence Fix
+
+High Priority (2-4 weeks):
+  - Task 4: CSS Hierarchy Synchronization
+  - Task 5: Enhanced CSS Tooltip
+  - Task 6: CSS Tooltip Z-Index Fix
+  - Task 7: Continue Component Extraction
+
+Medium Priority (4-8 weeks):
+  - Tasks 8-13: UI/UX Improvements
+
+Testing & Quality (2-3 weeks):
+  - Tasks 21-25: Comprehensive testing and audits
+
+Infrastructure (2-3 weeks):
+  - Tasks 32-35: Deployment and monitoring
+
+Total Estimated Effort: 3-6 months for complete roadmap
+Recommended Team Size: 2-3 developers
+
+NEXT SESSION RECOMMENDATIONS
+=============================
+
+1. Resolve NPM installation issue (CRITICAL)
+2. Test and verify thumbnail persistence with various scenarios
+3. Begin Zustand migration (start with templateStore)
+4. Extract SectionRenderer component
+5. Add unit tests for existing stores
+
+Focus on completing critical and high-priority items before expanding to
+medium/low priority features.
+
+BUGS FROM FUNCTIONAL CHECKS (November 2025)
+============================================
+
+[ ] 36. Site CSS - Add "Body Margin" and "Body Padding" controls
+    Status: NOT STARTED
+    Location: StyleEditor.tsx (Site CSS section)
+    Description: Site CSS panel needs dedicated body margin/padding controls
+    Impact: Users currently can't easily set body spacing
+    Estimate: 2-3 hours
+
+[ ] 37. Auto-Switch Properties Panel on Section Click
+    Status: NOT STARTED
+    Description: When clicking a section, automatically switch to section properties
+    Current Behavior: Properties panel stays on Site/Page CSS if already open
+    Desired Behavior: Automatically switch to clicked section's properties
+    Files: TemplateBuilder.tsx, section click handlers
+    Estimate: 2-3 hours
+
+[ ] 38. Fixed Navbar - Content Spacing Issue
+    Status: NOT STARTED
+    Problem: When navbar is position:fixed, content below is hidden
+    Solution: Add automatic top padding to body based on navbar height
+    Implementation: Calculate navbar height and apply body padding-top
+    Files: Navbar rendering, CSS generation
+    Estimate: 3-4 hours
+
+[ ] 39. Padding Unit Inconsistency (rem vs px)
+    Status: NOT STARTED
+    Problem: Default padding in code uses rem, but slider shows px
+    Solution: Standardize on px throughout or convert properly
+    Files: StyleEditor.tsx, default values
+    Estimate: 2-3 hours
+
+[ ] 40. Background-Image Repeat Temperamental
+    Status: NEEDS INVESTIGATION
+    Problem: background-repeat property sometimes works, sometimes doesn't
+    Next Steps: Test various scenarios, check CSS generation
+    Files: StyleEditor.tsx, CSS generation
+    Estimate: 2-4 hours
+
+[ ] 41. Logo Image Replaces Text Instead of Alongside
+    Status: NOT STARTED
+    Problem: When image is set as logo, logo text disappears instead of being replaced
+    Expected: Logo image should replace the text cleanly
+    Files: Navbar rendering (TemplateBuilder.tsx, TemplateFileGenerator.php)
+    Estimate: 1-2 hours
+

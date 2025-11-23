@@ -60,6 +60,7 @@ Route::prefix('v1')->group(function () {
             Route::put('/users/{id}', [UserController::class, 'update']);
             Route::delete('/users/{id}', [UserController::class, 'destroy']);
             Route::post('/users/delete-inactive', [UserController::class, 'deleteInactiveUsers']);
+            Route::post('/users/reset-to-factory', [UserController::class, 'resetToFactory']);
         });
 
         // Collaborator management (Pro users only)
@@ -118,7 +119,8 @@ Route::prefix('v1')->group(function () {
             Route::delete('/{id}', [UserWebsiteController::class, 'destroy']);
 
             // Save & Publish workflow
-            Route::post('/{id}/save', [UserWebsiteController::class, 'save']);
+            Route::post('/save', [UserWebsiteController::class, 'save']); // First save (no ID)
+            Route::post('/{id}/save', [UserWebsiteController::class, 'save']); // Update save (with ID)
             Route::post('/{id}/publish', [UserWebsiteController::class, 'publish'])->middleware('permission:publish_website');
             Route::post('/{id}/unpublish', [UserWebsiteController::class, 'unpublish']);
 

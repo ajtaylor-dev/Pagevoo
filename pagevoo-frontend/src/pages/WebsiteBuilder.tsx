@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect, memo, useCallback } from 'react'
+import React, { useState, useRef, useEffect, memo, useCallback, useMemo } from 'react'
 import { createPortal } from 'react-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@/services/api'
 import { getAssetUrl } from '@/config/constants'
 import { sectionLibraryApi, pageLibraryApi, fileToBase64 } from '@/services/libraryApi'
+import { databaseService } from '@/services/databaseService'
 import { StyleEditor } from '@/components/StyleEditor'
 import { ImageGallery } from '@/components/ImageGallery'
 import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
@@ -28,6 +29,7 @@ import { SaveWebsiteModal } from '@/components/modals/SaveWebsiteModal'
 import { LoadWebsiteModal } from '@/components/modals/LoadWebsiteModal'
 import { DatabaseManagementModal } from '@/components/database/DatabaseManagementModal'
 import { FeatureInstallModal } from '@/components/features/FeatureInstallModal'
+import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
@@ -72,7 +74,7 @@ import {
   generateActiveIndicatorStyle
 } from '../utils/helpers'
 import { getLinkHref, getLinkLabel, getCanvasWidth, handleAddPredefinedPage as addPredefinedPage } from '../utils/templateHelpers'
-import { coreSections, headerNavigationSections, footerSections } from '../constants/sectionTemplates'
+import { coreSections, headerNavigationSections, footerSections, specialSections } from '../constants/sectionTemplates'
 import {
   isActivePage,
   generateContentCSS,
@@ -302,7 +304,11 @@ export default function WebsiteBuilder() {
   // Database & Features states
   const [showDatabaseModal, setShowDatabaseModal] = useState(false)
   const [showFeatureInstallModal, setShowFeatureInstallModal] = useState(false)
+  const [showManageFeaturesModal, setShowManageFeaturesModal] = useState(false)
   const [showContactFormModal, setShowContactFormModal] = useState(false)
+
+  // Installed features state
+  const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
 
   // Imported sections state (sections imported from library to sidebar)
   const [importedSections, setImportedSections] = useState<any[]>([])
@@ -330,6 +336,13 @@ export default function WebsiteBuilder() {
     setLoading(false)
   }, [])
 
+  // Load installed features when user is available
+  useEffect(() => {
+    if (user) {
+      loadInstalledFeatures()
+    }
+  }, [user])
+
   const loadWebsite = async (websiteId: number) => {
     try {
       setLoading(true)
@@ -354,6 +367,38 @@ export default function WebsiteBuilder() {
       setLoading(false)
     }
   }
+
+  const loadInstalledFeatures = async () => {
+    if (!user?.id) return
+
+    try {
+      // Get database instance for this user
+      const database = await databaseService.getInstance('website', user.id)
+
+      if (!database) {
+        setInstalledFeatures([])
+        return
+      }
+
+      // Get installed features
+      const features = await databaseService.getInstalledFeatures(database.id)
+      setInstalledFeatures(features.map(f => f.type))
+    } catch (error) {
+      console.error('Failed to load installed features:', error)
+      setInstalledFeatures([])
+    }
+  }
+
+  // Filter special sections based on installed features
+  const filteredSpecialSections = useMemo(() => {
+    return specialSections.filter(section => {
+      if (!section.category) return false
+      // Convert category hyphen format to underscore format for comparison
+      // e.g., 'contact-form' becomes 'contact_form'
+      const categoryAsFeature = section.category.replace(/-/g, '_')
+      return installedFeatures.includes(categoryAsFeature)
+    })
+  }, [installedFeatures])
 
   const loadAvailableWebsites = async () => {
     setLoadingWebsites(true)
@@ -586,9 +631,11 @@ export default function WebsiteBuilder() {
       // Prepare website data for saving
       const websiteData = {
         name: websiteName || website.name, // Use the new name if provided, otherwise use existing name
+        template_id: website.template_id || null, // Include template_id for first save
         site_css: website.site_css || '',
         pages: website.pages.map(page => ({
           id: page.id,
+          template_page_id: page.template_page_id || null,
           name: page.name,
           slug: page.slug,
           is_homepage: page.is_homepage,
@@ -597,6 +644,7 @@ export default function WebsiteBuilder() {
           page_css: page.page_css || '',
           sections: page.sections.map(section => ({
             id: section.id,
+            template_section_id: section.template_section_id || null,
             section_id: section.section_id,
             section_name: section.section_name || section.type,
             type: section.type,
@@ -615,6 +663,9 @@ export default function WebsiteBuilder() {
         const updatedWebsite = response.data.website
         setWebsite(updatedWebsite)
         websiteRef.current = updatedWebsite
+
+        // Reset history with the saved website (including new ID if first save)
+        resetHistory(updatedWebsite)
 
         setHasUnsavedChanges(false)
         setShowSaveWebsiteModal(false)
@@ -1573,6 +1624,7 @@ export default function WebsiteBuilder() {
         setShowPageLibraryModal={setShowPageLibraryModal}
         setShowFeatureInstallModal={setShowFeatureInstallModal}
         setShowDatabaseModal={setShowDatabaseModal}
+        setShowManageFeaturesModal={setShowManageFeaturesModal}
         theme={theme}
         currentTheme={currentTheme}
         onThemeChange={changeTheme}
@@ -1586,6 +1638,8 @@ export default function WebsiteBuilder() {
         setShowRightSidebar={setShowRightSidebar}
         viewport={viewport}
         setViewport={setViewport}
+        builderType="website"
+        itemId={website.id}
       />
 
       {/* Published Website Banner */}
@@ -1610,6 +1664,7 @@ export default function WebsiteBuilder() {
               coreSections={coreSections}
               headerNavigationSections={headerNavigationSections}
               footerSections={footerSections}
+              specialSections={filteredSpecialSections}
               importedSections={importedSections}
               renderSectionThumbnail={(section) => <SectionThumbnail section={section} />}
               renderImportedSectionThumbnail={(section) => (
@@ -1992,15 +2047,41 @@ export default function WebsiteBuilder() {
       {/* Feature Installation Modal */}
       <FeatureInstallModal
         isOpen={showFeatureInstallModal}
-        onClose={() => setShowFeatureInstallModal(false)}
+        onClose={() => {
+          setShowFeatureInstallModal(false)
+          loadInstalledFeatures() // Reload features when modal closes
+        }}
         onFeatureInstalled={(featureType) => {
+          loadInstalledFeatures() // Reload features after installation
           if (featureType === 'contact_form') {
             setShowContactFormModal(true)
           }
         }}
+        onConfigureFeature={(featureType) => {
+          if (featureType === 'contact_form') {
+            setShowContactFormModal(true)
+          }
+        }}
+        onOpenDatabaseManagement={() => setShowDatabaseModal(true)}
         type="website"
         referenceId={user?.id || 0}
       />
+
+      {/* Manage Features Modal */}
+      {showManageFeaturesModal && (
+        <ManageFeaturesModal
+          onClose={() => {
+            setShowManageFeaturesModal(false)
+            loadInstalledFeatures() // Reload features when modal closes
+          }}
+          websiteId={user?.id || 0}
+          onConfigureFeature={(featureType) => {
+            if (featureType === 'contact_form') {
+              setShowContactFormModal(true)
+            }
+          }}
+        />
+      )}
 
       {/* Contact Form Config Modal */}
       <ContactFormConfigModal

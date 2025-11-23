@@ -137,6 +137,37 @@ export default function Dashboard() {
     }
   }
 
+  const handleResetToFactory = async () => {
+    if (!window.confirm('⚠️ WARNING: This will reset the system to factory defaults!\n\nThis will:\n- Delete ALL templates except test templates (IDs 1-4)\n- Delete ALL websites\n- Delete ALL users except test users\n- Delete ALL databases\n- Reset template ID counter to 5\n- Reset website ID counter to 1\n\nThis action CANNOT be undone!\n\nAre you absolutely sure?')) {
+      return
+    }
+
+    // Double confirmation
+    if (!window.confirm('This is your FINAL warning. Type YES in the next prompt to proceed.')) {
+      return
+    }
+
+    const confirmation = window.prompt('Type "YES" to confirm factory reset:')
+    if (confirmation !== 'YES') {
+      alert('Factory reset cancelled.')
+      return
+    }
+
+    try {
+      setIsLoading(true)
+      const response = await api.resetToFactory()
+      if (response.success && response.data) {
+        alert(`Factory reset completed!\n\nTemplates kept: ${response.data.templates_kept}\nUsers kept: ${response.data.users_kept}`)
+        await loadUsers()
+        window.location.reload() // Reload page to refresh all data
+      }
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Failed to reset to factory')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
   const handleEditUser = (userId: number) => {
     const userToEdit = users.find(u => u.id === userId)
     if (userToEdit) {
@@ -413,6 +444,13 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold text-[#4b4b4b]">User Management</h2>
                 <div className="flex items-center space-x-3">
+                  <button
+                    onClick={handleResetToFactory}
+                    className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-md text-sm font-medium transition"
+                    title="Reset system to factory defaults"
+                  >
+                    ⚠️ Reset to Factory
+                  </button>
                   <button
                     onClick={handleDeleteInactiveUsers}
                     className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md text-sm font-medium transition"

@@ -23,6 +23,7 @@ interface LeftSidebarProps {
   coreSections: Section[]
   headerNavigationSections: Section[]
   footerSections: Section[]
+  specialSections: Section[]
   importedSections?: ImportedSection[]
   renderSectionThumbnail: (section: Section) => React.ReactNode
   renderImportedSectionThumbnail?: (section: ImportedSection) => React.ReactNode
@@ -41,6 +42,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   coreSections,
   headerNavigationSections,
   footerSections,
+  specialSections,
   importedSections = [],
   renderSectionThumbnail,
   renderImportedSectionThumbnail,
@@ -217,6 +219,77 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
               </div>
             )}
           </div>
+
+          {/* Special Sections */}
+          {specialSections.length > 0 && (
+            <div className="mb-3">
+              <button
+                onClick={() => onToggleCategory('special')}
+                className={`w-full flex items-center justify-between px-2 py-1.5 ${theme.categoryBg} ${theme.categoryHover} border ${theme.sidebarBorder} rounded text-xs font-medium ${theme.categoryText} transition`}
+              >
+                <span>Special Sections</span>
+                <svg
+                  className={`w-3 h-3 transition-transform ${theme.categoryIcon} ${expandedCategories.includes('special') ? 'rotate-90' : ''}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+
+              {expandedCategories.includes('special') && (
+                <div className="mt-2 ml-2">
+                  {/* Group sections by category */}
+                  {Object.entries(
+                    specialSections.reduce((acc, section) => {
+                      const category = section.category || 'other'
+                      if (!acc[category]) acc[category] = []
+                      acc[category].push(section)
+                      return acc
+                    }, {} as Record<string, typeof specialSections>)
+                  ).map(([category, sections]) => (
+                    <div key={category} className="mb-2">
+                      {/* Subcategory Header */}
+                      <button
+                        onClick={() => onToggleCategory(`special-${category}`)}
+                        className={`w-full flex items-center justify-between px-2 py-1 ${theme.categoryBg} ${theme.categoryHover} border ${theme.sidebarBorder} rounded text-xs font-medium ${theme.categoryText} transition`}
+                      >
+                        <span className="capitalize">{category.replace(/-/g, ' ')}</span>
+                        <svg
+                          className={`w-3 h-3 transition-transform ${theme.categoryIcon} ${expandedCategories.includes(`special-${category}`) ? 'rotate-90' : ''}`}
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+
+                      {/* Subcategory Sections */}
+                      {expandedCategories.includes(`special-${category}`) && (
+                        <div className="grid grid-cols-2 gap-2 mt-2">
+                          {sections.map((section) => (
+                            <DraggableSectionItem key={section.type} section={section}>
+                              <div
+                                className="group relative w-full cursor-grab active:cursor-grabbing"
+                                title={section.description}
+                              >
+                                {renderSectionThumbnail(section)}
+                                <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center group-hover:${theme.categoryIcon} transition truncate`}>
+                                  {section.label}
+                                </div>
+                              </div>
+                            </DraggableSectionItem>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
         </div>
       </aside>
