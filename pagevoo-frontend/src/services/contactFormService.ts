@@ -2,6 +2,30 @@ import axios from 'axios'
 
 const API_BASE = '/api/v1'
 
+// Create axios instance with authentication
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+})
+
+// Add auth token interceptor
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
 export type ContactFormConfig = {
   id?: number
   website_id: number
@@ -84,7 +108,7 @@ class ContactFormService {
    */
   async getForms(websiteId?: number): Promise<ContactFormConfig[]> {
     const params = websiteId ? { website_id: websiteId } : {}
-    const response = await axios.get<ApiResponse<ContactFormConfig[]>>(
+    const response = await apiClient.get<ApiResponse<ContactFormConfig[]>>(
       `${API_BASE}/script-features/contact-forms`,
       { params }
     )
@@ -95,7 +119,7 @@ class ContactFormService {
    * Get a specific contact form
    */
   async getForm(formId: number): Promise<ContactFormConfig> {
-    const response = await axios.get<ApiResponse<ContactFormConfig>>(
+    const response = await apiClient.get<ApiResponse<ContactFormConfig>>(
       `${API_BASE}/script-features/contact-forms/${formId}`
     )
     if (!response.data.data) {
@@ -108,7 +132,7 @@ class ContactFormService {
    * Create a new contact form
    */
   async createForm(config: Omit<ContactFormConfig, 'id' | 'created_at' | 'updated_at'>): Promise<ContactFormConfig> {
-    const response = await axios.post<ApiResponse<ContactFormConfig>>(
+    const response = await apiClient.post<ApiResponse<ContactFormConfig>>(
       `${API_BASE}/script-features/contact-forms`,
       config
     )
@@ -122,7 +146,7 @@ class ContactFormService {
    * Update an existing contact form
    */
   async updateForm(formId: number, config: Partial<ContactFormConfig>): Promise<ContactFormConfig> {
-    const response = await axios.put<ApiResponse<ContactFormConfig>>(
+    const response = await apiClient.put<ApiResponse<ContactFormConfig>>(
       `${API_BASE}/script-features/contact-forms/${formId}`,
       config
     )
@@ -136,7 +160,7 @@ class ContactFormService {
    * Delete a contact form
    */
   async deleteForm(formId: number): Promise<void> {
-    const response = await axios.delete<ApiResponse>(
+    const response = await apiClient.delete<ApiResponse>(
       `${API_BASE}/script-features/contact-forms/${formId}`
     )
     if (!response.data.success) {
@@ -156,7 +180,7 @@ class ContactFormService {
       per_page?: number
     }
   ): Promise<SubmissionListResponse['data']> {
-    const response = await axios.get<SubmissionListResponse>(
+    const response = await apiClient.get<SubmissionListResponse>(
       `${API_BASE}/script-features/contact-forms/${formId}/submissions`,
       { params: options }
     )
@@ -167,7 +191,7 @@ class ContactFormService {
    * Mark a submission as read
    */
   async markSubmissionAsRead(formId: number, submissionId: number): Promise<void> {
-    const response = await axios.post<ApiResponse>(
+    const response = await apiClient.post<ApiResponse>(
       `${API_BASE}/script-features/contact-forms/${formId}/submissions/${submissionId}/read`
     )
     if (!response.data.success) {
@@ -179,7 +203,7 @@ class ContactFormService {
    * Mark a submission as spam
    */
   async markSubmissionAsSpam(formId: number, submissionId: number): Promise<void> {
-    const response = await axios.post<ApiResponse>(
+    const response = await apiClient.post<ApiResponse>(
       `${API_BASE}/script-features/contact-forms/${formId}/submissions/${submissionId}/spam`
     )
     if (!response.data.success) {
@@ -191,7 +215,7 @@ class ContactFormService {
    * Delete a submission
    */
   async deleteSubmission(formId: number, submissionId: number): Promise<void> {
-    const response = await axios.delete<ApiResponse>(
+    const response = await apiClient.delete<ApiResponse>(
       `${API_BASE}/script-features/contact-forms/${formId}/submissions/${submissionId}`
     )
     if (!response.data.success) {
@@ -216,7 +240,7 @@ class ContactFormService {
       })
     }
 
-    const response = await axios.post<ApiResponse<{ submission_id: number; ticket_number?: string }>>(
+    const response = await apiClient.post<ApiResponse<{ submission_id: number; ticket_number?: string }>>(
       `/api/v1/contact-forms/${formId}/submit`,
       formData,
       {

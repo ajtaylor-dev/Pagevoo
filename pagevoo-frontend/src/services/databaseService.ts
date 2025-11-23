@@ -2,6 +2,30 @@ import axios from 'axios'
 
 const API_BASE = '/api/v1/database'
 
+// Create axios instance with authentication
+const apiClient = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8000/api',
+  timeout: 10000,
+  headers: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  },
+})
+
+// Add auth token interceptor
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
 export type DatabaseInstance = {
   id: number
   type: 'template' | 'website'
@@ -41,7 +65,7 @@ class DatabaseService {
    */
   async getInstance(type: 'template' | 'website', referenceId: number): Promise<DatabaseInstance | null> {
     try {
-      const response = await axios.get<ApiResponse<DatabaseInstance>>(
+      const response = await apiClient.get<ApiResponse<DatabaseInstance>>(
         `${API_BASE}/instance`,
         {
           params: { type, reference_id: referenceId }
@@ -60,7 +84,7 @@ class DatabaseService {
    * Create a database for a template
    */
   async createTemplateDatabase(templateId: number): Promise<DatabaseInstance> {
-    const response = await axios.post<ApiResponse<DatabaseInstance>>(
+    const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
       `${API_BASE}/template/create`,
       { template_id: templateId }
     )
@@ -76,7 +100,7 @@ class DatabaseService {
    * Create a database for user's website
    */
   async createWebsiteDatabase(): Promise<DatabaseInstance> {
-    const response = await axios.post<ApiResponse<DatabaseInstance>>(
+    const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
       `${API_BASE}/website/create`
     )
 
@@ -91,7 +115,7 @@ class DatabaseService {
    * Copy template database to user's website (happens automatically on template init)
    */
   async copyTemplateDatabase(templateId: number): Promise<DatabaseInstance> {
-    const response = await axios.post<ApiResponse<DatabaseInstance>>(
+    const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
       `${API_BASE}/copy-template`,
       { template_id: templateId }
     )
@@ -107,7 +131,7 @@ class DatabaseService {
    * Delete a database instance
    */
   async deleteDatabase(instanceId: number, hardDelete: boolean = false): Promise<void> {
-    const response = await axios.delete<ApiResponse>(
+    const response = await apiClient.delete<ApiResponse>(
       `${API_BASE}/${instanceId}`,
       { data: { hard_delete: hardDelete } }
     )
@@ -121,7 +145,7 @@ class DatabaseService {
    * Backup a database
    */
   async backupDatabase(instanceId: number): Promise<{ backup_path: string; backup_time: string }> {
-    const response = await axios.post<ApiResponse<{ backup_path: string; backup_time: string }>>(
+    const response = await apiClient.post<ApiResponse<{ backup_path: string; backup_time: string }>>(
       `${API_BASE}/${instanceId}/backup`
     )
 
@@ -136,7 +160,7 @@ class DatabaseService {
    * Restore database from backup
    */
   async restoreDatabase(instanceId: number, backupPath: string): Promise<void> {
-    const response = await axios.post<ApiResponse>(
+    const response = await apiClient.post<ApiResponse>(
       `${API_BASE}/${instanceId}/restore`,
       { backup_path: backupPath }
     )
@@ -150,7 +174,7 @@ class DatabaseService {
    * Get installed features for a database
    */
   async getInstalledFeatures(instanceId: number): Promise<InstalledFeature[]> {
-    const response = await axios.get<ApiResponse<InstalledFeature[]>>(
+    const response = await apiClient.get<ApiResponse<InstalledFeature[]>>(
       `${API_BASE}/${instanceId}/features`
     )
 
@@ -165,7 +189,7 @@ class DatabaseService {
     featureType: string,
     config: Record<string, any> = {}
   ): Promise<DatabaseInstance> {
-    const response = await axios.post<ApiResponse<DatabaseInstance>>(
+    const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
       `${API_BASE}/${instanceId}/features/install`,
       {
         feature_type: featureType,
@@ -184,7 +208,7 @@ class DatabaseService {
    * Uninstall a feature from a database
    */
   async uninstallFeature(instanceId: number, featureType: string): Promise<DatabaseInstance> {
-    const response = await axios.post<ApiResponse<DatabaseInstance>>(
+    const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
       `${API_BASE}/${instanceId}/features/uninstall`,
       { feature_type: featureType }
     )
@@ -200,7 +224,7 @@ class DatabaseService {
    * Update database size statistics
    */
   async updateSize(instanceId: number): Promise<{ size_bytes: number; size_mb: number }> {
-    const response = await axios.post<ApiResponse<{ size_bytes: number; size_mb: number }>>(
+    const response = await apiClient.post<ApiResponse<{ size_bytes: number; size_mb: number }>>(
       `${API_BASE}/${instanceId}/update-size`
     )
 
