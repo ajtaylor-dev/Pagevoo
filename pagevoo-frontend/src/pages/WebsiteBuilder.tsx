@@ -26,6 +26,9 @@ import { ExportPageModal } from '@/components/modals/ExportPageModal'
 import { PageLibraryModal } from '@/components/modals/PageLibraryModal'
 import { SaveWebsiteModal } from '@/components/modals/SaveWebsiteModal'
 import { LoadWebsiteModal } from '@/components/modals/LoadWebsiteModal'
+import { DatabaseManagementModal } from '@/components/database/DatabaseManagementModal'
+import { FeatureInstallModal } from '@/components/features/FeatureInstallModal'
+import { ContactFormConfigModal } from '@/components/script-features/contact-form'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
@@ -295,6 +298,11 @@ export default function WebsiteBuilder() {
   const [showLoadWebsiteModal, setShowLoadWebsiteModal] = useState(false)
   const [availableWebsites, setAvailableWebsites] = useState<any[]>([])
   const [loadingWebsites, setLoadingWebsites] = useState(false)
+
+  // Database & Features states
+  const [showDatabaseModal, setShowDatabaseModal] = useState(false)
+  const [showFeatureInstallModal, setShowFeatureInstallModal] = useState(false)
+  const [showContactFormModal, setShowContactFormModal] = useState(false)
 
   // Imported sections state (sections imported from library to sidebar)
   const [importedSections, setImportedSections] = useState<any[]>([])
@@ -1563,6 +1571,8 @@ export default function WebsiteBuilder() {
         handleImageUpload={handleImageUpload}
         setShowSectionLibraryModal={setShowSectionLibraryModal}
         setShowPageLibraryModal={setShowPageLibraryModal}
+        setShowFeatureInstallModal={setShowFeatureInstallModal}
+        setShowDatabaseModal={setShowDatabaseModal}
         theme={theme}
         currentTheme={currentTheme}
         onThemeChange={changeTheme}
@@ -1969,6 +1979,37 @@ export default function WebsiteBuilder() {
           }
         }}
         onExportPage={handleExportPage}
+      />
+
+      {/* Database Management Modal */}
+      <DatabaseManagementModal
+        isOpen={showDatabaseModal}
+        onClose={() => setShowDatabaseModal(false)}
+        type="website"
+        referenceId={user?.id || 0}
+      />
+
+      {/* Feature Installation Modal */}
+      <FeatureInstallModal
+        isOpen={showFeatureInstallModal}
+        onClose={() => setShowFeatureInstallModal(false)}
+        onFeatureInstalled={(featureType) => {
+          if (featureType === 'contact_form') {
+            setShowContactFormModal(true)
+          }
+        }}
+        type="website"
+        referenceId={user?.id || 0}
+      />
+
+      {/* Contact Form Config Modal */}
+      <ContactFormConfigModal
+        isOpen={showContactFormModal}
+        onClose={() => setShowContactFormModal(false)}
+        onSave={(config) => {
+          console.log('Contact form configured:', config)
+          setShowContactFormModal(false)
+        }}
       />
   </DndContext>
   )
