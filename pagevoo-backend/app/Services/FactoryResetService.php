@@ -79,7 +79,7 @@ class FactoryResetService
         User::create([
             'name' => 'AJ',
             'email' => 'admin@pagevoo.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('1qaz2wsx!QAZ"WSX'),
             'business_name' => 'Pagevoo Admin',
             'business_type' => 'software',
             'role' => 'admin',

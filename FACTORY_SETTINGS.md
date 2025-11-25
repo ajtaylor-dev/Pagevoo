@@ -25,7 +25,7 @@ The factory reset functionality restores the system to a clean, predictable stat
 
 These 5 user accounts are recreated with sequential IDs during factory reset:
 
-1. **ID 1: admin@pagevoo.com** - Admin account (password: `password`)
+1. **ID 1: admin@pagevoo.com** - Admin account (password: `1qaz2wsx!QAZ"WSX`)
 2. **ID 2: trial@test.com** - Trial tier test account (password: `password`)
 3. **ID 3: brochure@test.com** - Brochure tier test account (password: `password`)
 4. **ID 4: niche@test.com** - Niche tier test account (password: `password`)
@@ -173,7 +173,7 @@ After factory reset, verify:
 5. **No websites exist** (user_websites table is empty)
 6. **No database instances exist**
 7. **Auto-increment counters** are properly reset
-8. **All test users can log in** with password: `password`
+8. **All test users can log in** with their respective passwords (admin: `1qaz2wsx!QAZ"WSX`, others: `password`)
 
 ## Notes
 
