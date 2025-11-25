@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import { MdEmail, MdClose, MdSettings } from 'react-icons/md'
+import { MdEmail, MdClose, MdSettings, MdDelete } from 'react-icons/md'
 import type { IconType } from 'react-icons'
 
 interface ManageFeaturesModalProps {
   onClose: () => void
-  websiteId: number | null
+  referenceId: number | null
+  referenceType: 'template' | 'website'
   onConfigureFeature: (featureType: string) => void
 }
 
@@ -28,20 +29,24 @@ const FEATURE_DETAILS: Record<string, InstalledFeature> = {
 
 export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
   onClose,
-  websiteId,
+  referenceId,
+  referenceType,
   onConfigureFeature
 }) => {
   const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [uninstalling, setUninstalling] = useState<string | null>(null)
+  const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null)
+  const [databaseId, setDatabaseId] = useState<number | null>(null)
 
   useEffect(() => {
     loadInstalledFeatures()
-  }, [websiteId])
+  }, [referenceId, referenceType])
 
   const loadInstalledFeatures = async () => {
-    if (!websiteId) {
-      setError('No website ID available')
+    if (!referenceId) {
+      setError('No ID available')
       setLoading(false)
       return
     }
@@ -50,14 +55,17 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
       setLoading(true)
       setError(null)
 
-      // Get database instance for this website
-      const database = await databaseService.getInstance('website', websiteId)
+      // Get database instance for this template or website
+      const database = await databaseService.getInstance(referenceType, referenceId)
 
       if (!database) {
         setInstalledFeatures([])
+        setDatabaseId(null)
         setLoading(false)
         return
       }
+
+      setDatabaseId(database.id)
 
       // Get installed features
       const features = await databaseService.getInstalledFeatures(database.id)
@@ -73,6 +81,23 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
   const handleConfigure = (featureType: string) => {
     onConfigureFeature(featureType)
     onClose()
+  }
+
+  const handleUninstall = async (featureType: string) => {
+    if (!databaseId) return
+
+    try {
+      setUninstalling(featureType)
+      await databaseService.uninstallFeature(databaseId, featureType)
+      // Remove from local state
+      setInstalledFeatures(prev => prev.filter(f => f !== featureType))
+      setConfirmUninstall(null)
+    } catch (err: any) {
+      console.error('Error uninstalling feature:', err)
+      setError(err.message || 'Failed to uninstall feature')
+    } finally {
+      setUninstalling(null)
+    }
   }
 
   return (
@@ -120,38 +145,91 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
 
                 const FeatureIcon = feature.icon
 
+                const isConfirming = confirmUninstall === featureType
+                const isUninstalling = uninstalling === featureType
+
                 return (
                   <div
                     key={featureType}
-                    className="border border-gray-200 rounded-lg p-4 hover:border-[#98b290] transition"
+                    className={`border rounded-lg p-4 transition ${
+                      isConfirming ? 'border-red-300 bg-red-50' : 'border-gray-200 hover:border-[#98b290]'
+                    }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start space-x-3 flex-1">
-                        <div className="text-[#98b290] flex-shrink-0">
-                          <FeatureIcon className="w-10 h-10" />
-                        </div>
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-800 mb-1">
-                            {feature.name}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {feature.description}
-                          </p>
-                          <div className="mt-2">
-                            <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-green-100 text-green-700">
-                              ✓ Installed
-                            </span>
-                          </div>
+                    {isConfirming ? (
+                      // Confirmation view
+                      <div className="text-center py-2">
+                        <p className="text-gray-800 font-medium mb-2">
+                          Uninstall {feature.name}?
+                        </p>
+                        <p className="text-sm text-gray-600 mb-4">
+                          This will remove all {feature.name.toLowerCase()} data and cannot be undone.
+                        </p>
+                        <div className="flex justify-center gap-3">
+                          <button
+                            onClick={() => setConfirmUninstall(null)}
+                            disabled={isUninstalling}
+                            className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded transition"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            onClick={() => handleUninstall(featureType)}
+                            disabled={isUninstalling}
+                            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition flex items-center gap-2"
+                          >
+                            {isUninstalling ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                Uninstalling...
+                              </>
+                            ) : (
+                              <>
+                                <MdDelete className="w-4 h-4" />
+                                Uninstall
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
-                      <button
-                        onClick={() => handleConfigure(featureType)}
-                        className="ml-4 px-4 py-2 bg-[#98b290] hover:bg-[#7a9274] text-white rounded transition flex items-center gap-2 whitespace-nowrap"
-                      >
-                        <MdSettings className="w-4 h-4" />
-                        Configure
-                      </button>
-                    </div>
+                    ) : (
+                      // Normal view
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-3 flex-1">
+                          <div className="text-[#98b290] flex-shrink-0">
+                            <FeatureIcon className="w-10 h-10" />
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-gray-800 mb-1">
+                              {feature.name}
+                            </h3>
+                            <p className="text-sm text-gray-600">
+                              {feature.description}
+                            </p>
+                            <div className="mt-2">
+                              <span className="inline-flex items-center px-2 py-1 rounded text-xs bg-green-100 text-green-700">
+                                ✓ Installed
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="ml-4 flex flex-col gap-2">
+                          <button
+                            onClick={() => handleConfigure(featureType)}
+                            className="px-4 py-2 bg-[#98b290] hover:bg-[#7a9274] text-white rounded transition flex items-center gap-2 whitespace-nowrap"
+                          >
+                            <MdSettings className="w-4 h-4" />
+                            Configure
+                          </button>
+                          <button
+                            onClick={() => setConfirmUninstall(featureType)}
+                            className="px-4 py-2 bg-gray-200 hover:bg-red-100 text-gray-600 hover:text-red-600 rounded transition flex items-center gap-2 whitespace-nowrap"
+                          >
+                            <MdDelete className="w-4 h-4" />
+                            Uninstall
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )
               })}

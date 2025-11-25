@@ -142,6 +142,54 @@ class FactoryResetService
     }
 
     /**
+     * Get default navbar content structure
+     */
+    private function getNavbarContent($logoText)
+    {
+        return [
+            'logo' => $logoText,
+            'logoWidth' => 25,
+            'links' => ['Home', 'About', 'Services', 'Contact'],
+            'position' => 'static',
+            'content_css' => '',
+            'containerStyle' => [
+                'paddingTop' => '16px',
+                'paddingBottom' => '16px',
+                'paddingLeft' => '0px',
+                'paddingRight' => '0px',
+                'marginTop' => '0px',
+                'marginBottom' => '0px',
+                'marginLeft' => '0px',
+                'marginRight' => '0px',
+                'width' => '100%',
+                'height' => 'auto',
+                'background' => '#ffffff'
+            ]
+        ];
+    }
+
+    /**
+     * Get default grid-1x1 content structure
+     */
+    private function getGrid1x1Content()
+    {
+        return [
+            'columns' => [
+                [
+                    'content' => '<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>',
+                    'colWidth' => 12
+                ]
+            ],
+            'content_css' => [
+                'columns' => [
+                    '0' => "border: 2px dashed #d1d5db;\nborder-radius: 0.5rem;\nmin-height: 200px;\npadding: 1rem;"
+                ]
+            ],
+            'section_css' => 'padding: 2rem;'
+        ];
+    }
+
+    /**
      * Create Trial Template (ID: 1)
      */
     private function createTrialTemplate($userId)
@@ -167,71 +215,24 @@ class FactoryResetService
             'meta_description' => 'Trial template homepage'
         ]);
 
-        // Navbar
+        // Navbar with "Trial" as logo
         TemplateSection::create([
             'template_page_id' => $page->id,
             'section_name' => 'Navigation Bar',
             'section_id' => 'navbar-' . uniqid(),
             'type' => 'navbar',
             'order' => 0,
-            'content' => json_encode([
-                'columns' => [[
-                    'content' => '<nav style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #4f46e5;"><div style="font-size: 1.5rem; font-weight: bold; color: white;">TrialBrand</div><div style="display: flex; gap: 2rem;"><a href="#" style="color: white; text-decoration: none;">Home</a><a href="#" style="color: white; text-decoration: none;">About</a><a href="#" style="color: white; text-decoration: none;">Contact</a></div></nav>',
-                    'colWidth' => 12
-                ]],
-                'cols' => 1,
-                'rows' => 1,
-                'col_widths' => [12]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#4f46e5', 'padding' => '0', 'margin' => '0'],
-                'columns' => [['padding' => '0', 'display' => 'flex', 'alignItems' => 'center', 'justifyContent' => 'center']]
-            ])
+            'content' => $this->getNavbarContent('Trial')
         ]);
 
-        // Hero
+        // 1x1 Grid section
         TemplateSection::create([
             'template_page_id' => $page->id,
-            'section_name' => 'Hero Section',
-            'section_id' => 'hero-' . uniqid(),
-            'type' => 'hero',
+            'section_name' => '1 Column',
+            'section_id' => 'grid-1x1-' . uniqid(),
+            'type' => 'grid-1x1',
             'order' => 1,
-            'content' => json_encode([
-                'columns' => [[
-                    'content' => '<div style="text-align: center; padding: 4rem 2rem;"><h1 style="font-size: 2.5rem; font-weight: bold; color: #4f46e5; margin-bottom: 1rem;">Welcome to Trial Template</h1><p style="font-size: 1.25rem; color: #6b7280; margin-bottom: 2rem;">Start building your website with our easy-to-use template</p><button style="background: #4f46e5; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 0.375rem; font-size: 1rem; cursor: pointer;">Get Started</button></div>',
-                    'colWidth' => 12
-                ]],
-                'cols' => 1,
-                'rows' => 1,
-                'col_widths' => [12]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#ffffff', 'padding' => '4rem 0', 'margin' => '0'],
-                'columns' => [['padding' => '2rem', 'display' => 'flex', 'alignItems' => 'center', 'justifyContent' => 'center']]
-            ])
-        ]);
-
-        // Features
-        TemplateSection::create([
-            'template_page_id' => $page->id,
-            'section_name' => 'Features',
-            'section_id' => 'features-' . uniqid(),
-            'type' => 'features',
-            'order' => 2,
-            'content' => json_encode([
-                'columns' => [
-                    ['content' => '<div style="text-align: center; padding: 2rem;"><div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #4f46e5; margin-bottom: 0.5rem;">Fast Setup</h3><p style="color: #6b7280;">Get started in minutes</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem;"><div style="font-size: 3rem; margin-bottom: 1rem;">🎨</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #4f46e5; margin-bottom: 0.5rem;">Easy Customization</h3><p style="color: #6b7280;">Personalize your site</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem;"><div style="font-size: 3rem; margin-bottom: 1rem;">📱</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #4f46e5; margin-bottom: 0.5rem;">Mobile Friendly</h3><p style="color: #6b7280;">Works on all devices</p></div>', 'colWidth' => 4]
-                ],
-                'cols' => 3,
-                'rows' => 1,
-                'col_widths' => [4, 4, 4]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#f9fafb', 'padding' => '3rem 2rem', 'margin' => '0'],
-                'columns' => [['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem']]
-            ])
+            'content' => $this->getGrid1x1Content()
         ]);
     }
 
@@ -261,72 +262,24 @@ class FactoryResetService
             'meta_description' => 'Brochure template homepage'
         ]);
 
-        // Navbar
+        // Navbar with "Brochure" as logo
         TemplateSection::create([
             'template_page_id' => $page->id,
             'section_name' => 'Navigation Bar',
             'section_id' => 'navbar-' . uniqid(),
             'type' => 'navbar',
             'order' => 0,
-            'content' => json_encode([
-                'columns' => [[
-                    'content' => '<nav style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #059669;"><div style="font-size: 1.5rem; font-weight: bold; color: white;">BrochureBrand</div><div style="display: flex; gap: 2rem;"><a href="#" style="color: white; text-decoration: none;">Home</a><a href="#" style="color: white; text-decoration: none;">Services</a><a href="#" style="color: white; text-decoration: none;">About</a><a href="#" style="color: white; text-decoration: none;">Contact</a></div></nav>',
-                    'colWidth' => 12
-                ]],
-                'cols' => 1,
-                'rows' => 1,
-                'col_widths' => [12]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#059669', 'padding' => '0', 'margin' => '0'],
-                'columns' => [['padding' => '0', 'display' => 'flex', 'alignItems' => 'center', 'justifyContent' => 'center']]
-            ])
+            'content' => $this->getNavbarContent('Brochure')
         ]);
 
-        // Hero
+        // 1x1 Grid section
         TemplateSection::create([
             'template_page_id' => $page->id,
-            'section_name' => 'Hero Section',
-            'section_id' => 'hero-' . uniqid(),
-            'type' => 'hero',
+            'section_name' => '1 Column',
+            'section_id' => 'grid-1x1-' . uniqid(),
+            'type' => 'grid-1x1',
             'order' => 1,
-            'content' => json_encode([
-                'columns' => [
-                    ['content' => '<div style="padding: 3rem 2rem;"><h1 style="font-size: 2.5rem; font-weight: bold; color: #059669; margin-bottom: 1rem;">Professional Business Solutions</h1><p style="font-size: 1.125rem; color: #6b7280; margin-bottom: 2rem;">Grow your business with our comprehensive services</p><button style="background: #059669; color: white; padding: 0.75rem 1.5rem; border: none; border-radius: 0.375rem; font-size: 1rem; cursor: pointer;">Learn More</button></div>', 'colWidth' => 6],
-                    ['content' => '<div style="padding: 3rem 2rem; background: linear-gradient(135deg, #059669 0%, #10b981 100%); min-height: 300px; display: flex; align-items: center; justify-content: center;"><div style="font-size: 4rem; color: white;">💼</div></div>', 'colWidth' => 6]
-                ],
-                'cols' => 2,
-                'rows' => 1,
-                'col_widths' => [6, 6]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#ffffff', 'padding' => '3rem 0', 'margin' => '0'],
-                'columns' => [['padding' => '2rem'], ['padding' => '2rem']]
-            ])
-        ]);
-
-        // Services
-        TemplateSection::create([
-            'template_page_id' => $page->id,
-            'section_name' => 'Services Grid',
-            'section_id' => 'services-' . uniqid(),
-            'type' => 'services',
-            'order' => 2,
-            'content' => json_encode([
-                'columns' => [
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">📊</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #059669; margin-bottom: 0.5rem;">Consulting</h3><p style="color: #6b7280;">Expert business advice</p></div>', 'colWidth' => 6],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">🎯</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #059669; margin-bottom: 0.5rem;">Strategy</h3><p style="color: #6b7280;">Business planning</p></div>', 'colWidth' => 6],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">💻</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #059669; margin-bottom: 0.5rem;">Digital Services</h3><p style="color: #6b7280;">Online solutions</p></div>', 'colWidth' => 6],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">📈</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #059669; margin-bottom: 0.5rem;">Growth Support</h3><p style="color: #6b7280;">Scale your business</p></div>', 'colWidth' => 6]
-                ],
-                'cols' => 2,
-                'rows' => 2,
-                'col_widths' => [6, 6]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#f9fafb', 'padding' => '3rem 2rem', 'margin' => '0'],
-                'columns' => [['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem']]
-            ])
+            'content' => $this->getGrid1x1Content()
         ]);
     }
 
@@ -356,74 +309,24 @@ class FactoryResetService
             'meta_description' => 'Niche template homepage'
         ]);
 
-        // Navbar
+        // Navbar with "Niche" as logo
         TemplateSection::create([
             'template_page_id' => $page->id,
             'section_name' => 'Navigation Bar',
             'section_id' => 'navbar-' . uniqid(),
             'type' => 'navbar',
             'order' => 0,
-            'content' => json_encode([
-                'columns' => [[
-                    'content' => '<nav style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #ea580c;"><div style="font-size: 1.5rem; font-weight: bold; color: white;">NicheBrand</div><div style="display: flex; gap: 2rem;"><a href="#" style="color: white; text-decoration: none;">Home</a><a href="#" style="color: white; text-decoration: none;">Features</a><a href="#" style="color: white; text-decoration: none;">Pricing</a><a href="#" style="color: white; text-decoration: none;">Contact</a></div></nav>',
-                    'colWidth' => 12
-                ]],
-                'cols' => 1,
-                'rows' => 1,
-                'col_widths' => [12]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#ea580c', 'padding' => '0', 'margin' => '0'],
-                'columns' => [['padding' => '0', 'display' => 'flex', 'alignItems' => 'center', 'justifyContent' => 'center']]
-            ])
+            'content' => $this->getNavbarContent('Niche')
         ]);
 
-        // Hero
+        // 1x1 Grid section
         TemplateSection::create([
             'template_page_id' => $page->id,
-            'section_name' => 'Hero Section',
-            'section_id' => 'hero-' . uniqid(),
-            'type' => 'hero',
+            'section_name' => '1 Column',
+            'section_id' => 'grid-1x1-' . uniqid(),
+            'type' => 'grid-1x1',
             'order' => 1,
-            'content' => json_encode([
-                'columns' => [[
-                    'content' => '<div style="text-align: center; padding: 4rem 2rem;"><h1 style="font-size: 3rem; font-weight: bold; color: #ea580c; margin-bottom: 1.5rem;">Specialized Solutions for Your Industry</h1><p style="font-size: 1.25rem; color: #6b7280; margin-bottom: 2rem;">Tailored features designed specifically for your niche market</p><button style="background: #ea580c; color: white; padding: 1rem 2rem; border: none; border-radius: 0.5rem; font-size: 1rem; cursor: pointer;">Explore Features</button></div>',
-                    'colWidth' => 12
-                ]],
-                'cols' => 1,
-                'rows' => 1,
-                'col_widths' => [12]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#ffffff', 'padding' => '4rem 0', 'margin' => '0'],
-                'columns' => [['padding' => '2rem', 'display' => 'flex', 'alignItems' => 'center', 'justifyContent' => 'center']]
-            ])
-        ]);
-
-        // Features Grid
-        TemplateSection::create([
-            'template_page_id' => $page->id,
-            'section_name' => 'Features Grid',
-            'section_id' => 'features-' . uniqid(),
-            'type' => 'features',
-            'order' => 2,
-            'content' => json_encode([
-                'columns' => [
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">🎯</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #ea580c; margin-bottom: 0.5rem;">Targeted Solutions</h3><p style="color: #6b7280;">Built for your specific needs</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">⚙️</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #ea580c; margin-bottom: 0.5rem;">Automation</h3><p style="color: #6b7280;">Streamline workflows</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">📊</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #ea580c; margin-bottom: 0.5rem;">Analytics</h3><p style="color: #6b7280;">Track performance</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">🔧</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #ea580c; margin-bottom: 0.5rem;">Customization</h3><p style="color: #6b7280;">Adapt to your workflow</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">🚀</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #ea580c; margin-bottom: 0.5rem;">Performance</h3><p style="color: #6b7280;">Optimized for speed</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"><div style="font-size: 2.5rem; margin-bottom: 1rem;">🔒</div><h3 style="font-size: 1.25rem; font-weight: bold; color: #ea580c; margin-bottom: 0.5rem;">Security</h3><p style="color: #6b7280;">Enterprise-grade protection</p></div>', 'colWidth' => 4]
-                ],
-                'cols' => 3,
-                'rows' => 2,
-                'col_widths' => [4, 4, 4]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#f9fafb', 'padding' => '3rem 2rem', 'margin' => '0'],
-                'columns' => [['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem']]
-            ])
+            'content' => $this->getGrid1x1Content()
         ]);
     }
 
@@ -453,74 +356,24 @@ class FactoryResetService
             'meta_description' => 'Professional template homepage'
         ]);
 
-        // Navbar
+        // Navbar with "Pro" as logo
         TemplateSection::create([
             'template_page_id' => $page->id,
             'section_name' => 'Navigation Bar',
             'section_id' => 'navbar-' . uniqid(),
             'type' => 'navbar',
             'order' => 0,
-            'content' => json_encode([
-                'columns' => [[
-                    'content' => '<nav style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem; background: #7c3aed;"><div style="font-size: 1.5rem; font-weight: bold; color: white;">ProBrand</div><div style="display: flex; gap: 2rem;"><a href="#" style="color: white; text-decoration: none;">Home</a><a href="#" style="color: white; text-decoration: none;">Services</a><a href="#" style="color: white; text-decoration: none;">Portfolio</a><a href="#" style="color: white; text-decoration: none;">Contact</a></div></nav>',
-                    'colWidth' => 12
-                ]],
-                'cols' => 1,
-                'rows' => 1,
-                'col_widths' => [12]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#7c3aed', 'padding' => '0', 'margin' => '0'],
-                'columns' => [['padding' => '0', 'display' => 'flex', 'alignItems' => 'center', 'justifyContent' => 'center']]
-            ])
+            'content' => $this->getNavbarContent('Pro')
         ]);
 
-        // Hero
+        // 1x1 Grid section
         TemplateSection::create([
             'template_page_id' => $page->id,
-            'section_name' => 'Hero Section',
-            'section_id' => 'hero-' . uniqid(),
-            'type' => 'hero',
+            'section_name' => '1 Column',
+            'section_id' => 'grid-1x1-' . uniqid(),
+            'type' => 'grid-1x1',
             'order' => 1,
-            'content' => json_encode([
-                'columns' => [
-                    ['content' => '<div style="padding: 4rem 2rem;"><h1 style="font-size: 3rem; font-weight: bold; color: #7c3aed; margin-bottom: 1.5rem;">Premium Professional Solutions</h1><p style="font-size: 1.25rem; color: #6b7280; margin-bottom: 2rem;">Elevate your business with enterprise-grade solutions tailored for success</p><button style="background: #7c3aed; color: white; padding: 1rem 2rem; border: none; border-radius: 0.5rem; font-size: 1.125rem; cursor: pointer;">Get Started</button></div>', 'colWidth' => 6],
-                    ['content' => '<div style="padding: 4rem 2rem; background: linear-gradient(135deg, #7c3aed 0%, #a78bfa 100%); min-height: 400px; display: flex; align-items: center; justify-content: center;"><div style="font-size: 4rem; color: white;">🚀</div></div>', 'colWidth' => 6]
-                ],
-                'cols' => 2,
-                'rows' => 1,
-                'col_widths' => [6, 6]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#ffffff', 'padding' => '4rem 0', 'margin' => '0'],
-                'columns' => [['padding' => '2rem'], ['padding' => '2rem']]
-            ])
-        ]);
-
-        // Features Grid
-        TemplateSection::create([
-            'template_page_id' => $page->id,
-            'section_name' => 'Features Grid',
-            'section_id' => 'features-' . uniqid(),
-            'type' => 'features',
-            'order' => 2,
-            'content' => json_encode([
-                'columns' => [
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="font-size: 3rem; margin-bottom: 1rem;">💼</div><h3 style="font-size: 1.5rem; font-weight: bold; color: #7c3aed; margin-bottom: 1rem;">Enterprise Solutions</h3><p style="color: #6b7280;">Scalable solutions for large organizations</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div><h3 style="font-size: 1.5rem; font-weight: bold; color: #7c3aed; margin-bottom: 1rem;">Advanced Security</h3><p style="color: #6b7280;">Bank-grade encryption and protection</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="font-size: 3rem; margin-bottom: 1rem;">📊</div><h3 style="font-size: 1.5rem; font-weight: bold; color: #7c3aed; margin-bottom: 1rem;">Analytics Dashboard</h3><p style="color: #6b7280;">Real-time insights and reporting</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="font-size: 3rem; margin-bottom: 1rem;">⚡</div><h3 style="font-size: 1.5rem; font-weight: bold; color: #7c3aed; margin-bottom: 1rem;">Lightning Fast</h3><p style="color: #6b7280;">Optimized performance guaranteed</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="font-size: 3rem; margin-bottom: 1rem;">🌐</div><h3 style="font-size: 1.5rem; font-weight: bold; color: #7c3aed; margin-bottom: 1rem;">Global CDN</h3><p style="color: #6b7280;">Worldwide content delivery network</p></div>', 'colWidth' => 4],
-                    ['content' => '<div style="text-align: center; padding: 2rem; background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px rgba(0,0,0,0.1);"><div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div><h3 style="font-size: 1.5rem; font-weight: bold; color: #7c3aed; margin-bottom: 1rem;">Custom Solutions</h3><p style="color: #6b7280;">Tailored to your specific needs</p></div>', 'colWidth' => 4]
-                ],
-                'cols' => 3,
-                'rows' => 2,
-                'col_widths' => [4, 4, 4]
-            ]),
-            'css' => json_encode([
-                'section' => ['backgroundColor' => '#f9fafb', 'padding' => '4rem 2rem', 'margin' => '0'],
-                'columns' => [['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem'], ['padding' => '1rem']]
-            ])
+            'content' => $this->getGrid1x1Content()
         ]);
     }
 }

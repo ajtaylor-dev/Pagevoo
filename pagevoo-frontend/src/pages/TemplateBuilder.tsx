@@ -28,6 +28,7 @@ import { DatabaseManagementModal } from '@/components/database/DatabaseManagemen
 import { FeatureInstallModal } from '@/components/features/FeatureInstallModal'
 import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
+import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
@@ -1387,7 +1388,8 @@ export default function TemplateBuilder() {
             setShowManageFeaturesModal(false)
             loadInstalledFeatures() // Reload features when modal closes
           }}
-          websiteId={template?.id || 0}
+          referenceId={template?.id || 0}
+          referenceType="template"
           onConfigureFeature={(featureType) => {
             if (featureType === 'contact_form') {
               setShowContactFormModal(true)
@@ -1400,10 +1402,20 @@ export default function TemplateBuilder() {
       <ContactFormConfigModal
         isOpen={showContactFormModal}
         onClose={() => setShowContactFormModal(false)}
-        onSave={(config) => {
-          console.log('Contact form configured:', config)
-          // TODO: Save contact form configuration
-          setShowContactFormModal(false)
+        onSave={async (config) => {
+          try {
+            // Convert frontend config to backend format and save
+            const backendConfig = contactFormService.convertToBackendFormat({
+              ...config,
+              websiteId: template?.id || 0 // Use template ID for now
+            })
+            await contactFormService.createForm(backendConfig)
+            alert('Contact form created successfully!')
+            setShowContactFormModal(false)
+          } catch (error) {
+            console.error('Failed to save contact form:', error)
+            alert('Failed to save contact form. Please try again.')
+          }
         }}
       />
   </DndContext>

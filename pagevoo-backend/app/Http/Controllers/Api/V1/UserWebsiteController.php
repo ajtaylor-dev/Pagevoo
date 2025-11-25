@@ -114,8 +114,11 @@ class UserWebsiteController extends BaseController
                     'id' => null, // No ID until first save
                     'user_page_id' => null,
                     'template_section_id' => $templateSection->id,
+                    'section_id' => $templateSection->section_id,
+                    'section_name' => $templateSection->section_name,
                     'type' => $templateSection->type,
                     'content' => $templateSection->content,
+                    'css' => $templateSection->css,
                     'order' => $templateSection->order,
                 ];
             }

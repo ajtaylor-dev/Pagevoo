@@ -31,6 +31,7 @@ import { DatabaseManagementModal } from '@/components/database/DatabaseManagemen
 import { FeatureInstallModal } from '@/components/features/FeatureInstallModal'
 import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
+import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
 import { SectionThumbnail } from '../components/SectionThumbnail'
@@ -444,14 +445,30 @@ export default function WebsiteBuilder() {
     try {
       const response = await api.initializeWebsiteFromTemplate(templateId)
       if (response.success && response.data) {
-        setWebsite(response.data)
-        websiteRef.current = response.data
-        const homepage = response.data.pages.find((p: UserPage) => p.is_homepage) || response.data.pages[0]
+        // Generate temporary IDs for pages and sections (they don't have IDs until saved)
+        let tempPageId = Date.now()
+        let tempSectionId = Date.now() + 1000
+
+        const websiteData = {
+          ...response.data,
+          pages: response.data.pages.map((page: any) => ({
+            ...page,
+            id: page.id || tempPageId++,
+            sections: (page.sections || []).map((section: any) => ({
+              ...section,
+              id: section.id || tempSectionId++
+            }))
+          }))
+        }
+
+        setWebsite(websiteData)
+        websiteRef.current = websiteData
+        const homepage = websiteData.pages.find((p: UserPage) => p.is_homepage) || websiteData.pages[0]
         setCurrentPage(homepage)
         setShowWelcome(false)
 
         // Initialize history
-        setHistory([JSON.parse(JSON.stringify(response.data))])
+        setHistory([JSON.parse(JSON.stringify(websiteData))])
         setHistoryIndex(0)
         setCanUndo(false)
         setCanRedo(false)
@@ -2074,7 +2091,8 @@ export default function WebsiteBuilder() {
             setShowManageFeaturesModal(false)
             loadInstalledFeatures() // Reload features when modal closes
           }}
-          websiteId={user?.id || 0}
+          referenceId={user?.id || 0}
+          referenceType="website"
           onConfigureFeature={(featureType) => {
             if (featureType === 'contact_form') {
               setShowContactFormModal(true)
@@ -2087,9 +2105,20 @@ export default function WebsiteBuilder() {
       <ContactFormConfigModal
         isOpen={showContactFormModal}
         onClose={() => setShowContactFormModal(false)}
-        onSave={(config) => {
-          console.log('Contact form configured:', config)
-          setShowContactFormModal(false)
+        onSave={async (config) => {
+          try {
+            // Convert frontend config to backend format and save
+            const backendConfig = contactFormService.convertToBackendFormat({
+              ...config,
+              websiteId: user?.id || 0 // Use user ID for website
+            })
+            await contactFormService.createForm(backendConfig)
+            alert('Contact form created successfully!')
+            setShowContactFormModal(false)
+          } catch (error) {
+            console.error('Failed to save contact form:', error)
+            alert('Failed to save contact form. Please try again.')
+          }
         }}
       />
   </DndContext>

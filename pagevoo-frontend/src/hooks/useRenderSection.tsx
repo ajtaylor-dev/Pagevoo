@@ -3,6 +3,7 @@ import { GridSection } from '../components/sections/GridSection'
 import { NavbarSection } from '../components/sections/NavbarSection'
 import { FooterSection } from '../components/sections/FooterSection'
 import { SectionWrapper } from '../components/sections/SectionWrapper'
+import { ContactFormPreview } from '@/components/script-features/contact-form/ContactFormPreview'
 
 interface TemplateSection {
   id: number
@@ -139,6 +140,22 @@ export const useRenderSection = ({
               selectedSection={selectedSection}
               editingText={editingText}
               onOpenTextEditor={handleOpenTextEditor}
+            />
+          )
+          break
+
+        // Contact form sections
+        case 'contact-form-full':
+        case 'contact-form-input':
+        case 'contact-form-email':
+        case 'contact-form-textarea':
+        case 'contact-form-dropdown':
+        case 'contact-form-checkbox':
+        case 'contact-form-submit':
+          sectionContent = (
+            <ContactFormPreview
+              section={section}
+              selectedSection={selectedSection}
             />
           )
           break
