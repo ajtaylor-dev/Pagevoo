@@ -7,6 +7,7 @@ use App\Models\TemplatePage;
 use App\Models\TemplateSection;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 
 class FactoryResetService
 {
@@ -78,12 +79,12 @@ class FactoryResetService
         User::create([
             'name' => 'AJ',
             'email' => 'admin@pagevoo.com',
-            'password' => \Hash::make('password'),
+            'password' => Hash::make('password'),
             'business_name' => 'Pagevoo Admin',
             'business_type' => 'software',
             'role' => 'admin',
             'account_status' => 'active',
-            'account_tier' => null, // Admins don't have tiers
+            'account_tier' => 'pro', // Set as pro tier
             'email_verified_at' => now()
         ]);
 
@@ -91,7 +92,7 @@ class FactoryResetService
         User::create([
             'name' => 'Trial User',
             'email' => 'trial@test.com',
-            'password' => \Hash::make('password'),
+            'password' => Hash::make('password'),
             'business_name' => 'Trial Business',
             'business_type' => 'other',
             'role' => 'user',
@@ -104,7 +105,7 @@ class FactoryResetService
         User::create([
             'name' => 'Brochure User',
             'email' => 'brochure@test.com',
-            'password' => \Hash::make('password'),
+            'password' => Hash::make('password'),
             'business_name' => 'Brochure Business',
             'business_type' => 'other',
             'role' => 'user',
@@ -117,7 +118,7 @@ class FactoryResetService
         User::create([
             'name' => 'Niche User',
             'email' => 'niche@test.com',
-            'password' => \Hash::make('password'),
+            'password' => Hash::make('password'),
             'business_name' => 'Niche Business',
             'business_type' => 'other',
             'role' => 'user',
@@ -130,7 +131,7 @@ class FactoryResetService
         User::create([
             'name' => 'Pro User',
             'email' => 'pro@test.com',
-            'password' => \Hash::make('password'),
+            'password' => Hash::make('password'),
             'business_name' => 'Pro Business',
             'business_type' => 'other',
             'role' => 'user',
