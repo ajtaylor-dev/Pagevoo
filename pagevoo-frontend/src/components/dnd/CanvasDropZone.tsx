@@ -101,10 +101,11 @@ export const CanvasDropZone: React.FC<CanvasDropZoneProps> = ({
       {currentPage && currentPage.sections && currentPage.sections.length > 0 ? (
         <>
           <SortableContext
-            items={currentPage.sections.map((s: any) => s.id)}
+            items={currentPage.sections.filter((s: any) => s && s.id).map((s: any) => s.id)}
             strategy={verticalListSortingStrategy}
           >
             {currentPage.sections
+              .filter((s: any) => s && s.id)
               .sort((a: any, b: any) => a.order - b.order)
               .map((section: any, index: number) => (
                 <SortableSectionItem key={section.id} section={section} index={index} activeId={activeId} overId={overId}>

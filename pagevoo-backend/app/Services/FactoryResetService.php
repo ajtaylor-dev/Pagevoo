@@ -16,14 +16,6 @@ class FactoryResetService
     public function resetToFactory()
     {
         try {
-            $testUserEmails = [
-                'admin@pagevoo.com',
-                'trial@test.com',
-                'brochure@test.com',
-                'niche@test.com',
-                'pro@test.com'
-            ];
-
             // Temporarily disable foreign key checks
             DB::statement('SET FOREIGN_KEY_CHECKS=0');
 
@@ -37,11 +29,11 @@ class FactoryResetService
             DB::table('user_pages')->truncate();
             DB::table('user_websites')->truncate();
 
-            // Delete all users except test users
-            User::whereNotIn('email', $testUserEmails)->delete();
-
             // Delete all database instances
             \App\Models\DatabaseInstance::truncate();
+
+            // Delete ALL users (we'll recreate the test users with correct IDs)
+            DB::table('users')->truncate();
 
             // Reset auto-increment counters to 1
             DB::statement('ALTER TABLE templates AUTO_INCREMENT = 1');
@@ -50,33 +42,102 @@ class FactoryResetService
             DB::statement('ALTER TABLE user_websites AUTO_INCREMENT = 1');
             DB::statement('ALTER TABLE user_pages AUTO_INCREMENT = 1');
             DB::statement('ALTER TABLE user_sections AUTO_INCREMENT = 1');
+            DB::statement('ALTER TABLE users AUTO_INCREMENT = 1');
 
             // Re-enable foreign key checks
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
-            // Get admin user
-            $adminUser = User::where('email', 'admin@pagevoo.com')->first();
-            if (!$adminUser) {
-                throw new \Exception('Admin user not found');
-            }
+            // Recreate test users with IDs 1-5
+            $this->createTestUsers();
 
-            // Create the 4 test templates
-            $this->createTrialTemplate($adminUser->id);
-            $this->createBrochureTemplate($adminUser->id);
-            $this->createNicheTemplate($adminUser->id);
-            $this->createProTemplate($adminUser->id);
+            // Create the 4 test templates (using admin user ID 1)
+            $this->createTrialTemplate(1);
+            $this->createBrochureTemplate(1);
+            $this->createNicheTemplate(1);
+            $this->createProTemplate(1);
 
             return [
                 'success' => true,
                 'message' => 'System reset to factory defaults successfully',
                 'templates_created' => 4,
-                'users_kept' => count($testUserEmails)
+                'users_created' => 5
             ];
 
         } catch (\Exception $e) {
             DB::statement('SET FOREIGN_KEY_CHECKS=1');
             throw $e;
         }
+    }
+
+    /**
+     * Create test users with IDs 1-5
+     */
+    private function createTestUsers()
+    {
+        // ID 1: Admin
+        User::create([
+            'name' => 'AJ',
+            'email' => 'admin@pagevoo.com',
+            'password' => \Hash::make('password'),
+            'business_name' => 'Pagevoo Admin',
+            'business_type' => 'software',
+            'role' => 'admin',
+            'account_status' => 'active',
+            'account_tier' => null, // Admins don't have tiers
+            'email_verified_at' => now()
+        ]);
+
+        // ID 2: Trial User
+        User::create([
+            'name' => 'Trial User',
+            'email' => 'trial@test.com',
+            'password' => \Hash::make('password'),
+            'business_name' => 'Trial Business',
+            'business_type' => 'other',
+            'role' => 'user',
+            'account_status' => 'active',
+            'account_tier' => 'trial',
+            'email_verified_at' => now()
+        ]);
+
+        // ID 3: Brochure User
+        User::create([
+            'name' => 'Brochure User',
+            'email' => 'brochure@test.com',
+            'password' => \Hash::make('password'),
+            'business_name' => 'Brochure Business',
+            'business_type' => 'other',
+            'role' => 'user',
+            'account_status' => 'active',
+            'account_tier' => 'brochure',
+            'email_verified_at' => now()
+        ]);
+
+        // ID 4: Niche User
+        User::create([
+            'name' => 'Niche User',
+            'email' => 'niche@test.com',
+            'password' => \Hash::make('password'),
+            'business_name' => 'Niche Business',
+            'business_type' => 'other',
+            'role' => 'user',
+            'account_status' => 'active',
+            'account_tier' => 'niche',
+            'email_verified_at' => now()
+        ]);
+
+        // ID 5: Pro User
+        User::create([
+            'name' => 'Pro User',
+            'email' => 'pro@test.com',
+            'password' => \Hash::make('password'),
+            'business_name' => 'Pro Business',
+            'business_type' => 'other',
+            'role' => 'user',
+            'account_status' => 'active',
+            'account_tier' => 'pro',
+            'email_verified_at' => now()
+        ]);
     }
 
     /**

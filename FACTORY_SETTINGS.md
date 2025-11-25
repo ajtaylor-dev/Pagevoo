@@ -21,15 +21,17 @@ The factory reset functionality restores the system to a clean, predictable stat
 ### Recreated Data
 - **4 Test Templates** with full content (navbar, hero, features/services sections)
 
-## Test Users (Always Preserved)
+## Test Users (Always Recreated with Sequential IDs 1-5)
 
-These 5 user accounts are never deleted during factory reset:
+These 5 user accounts are recreated with sequential IDs during factory reset:
 
-1. **admin@pagevoo.com** - Admin account
-2. **trial@test.com** - Trial tier test account
-3. **brochure@test.com** - Brochure tier test account
-4. **niche@test.com** - Niche tier test account
-5. **pro@test.com** - Pro tier test account
+1. **ID 1: admin@pagevoo.com** - Admin account (password: `password`)
+2. **ID 2: trial@test.com** - Trial tier test account (password: `password`)
+3. **ID 3: brochure@test.com** - Brochure tier test account (password: `password`)
+4. **ID 4: niche@test.com** - Niche tier test account (password: `password`)
+5. **ID 5: pro@test.com** - Pro tier test account (password: `password`)
+
+**Note:** All users are deleted and recreated to ensure sequential IDs. Next new user will have ID 6.
 
 ## Test Templates (Always Recreated)
 
@@ -81,7 +83,8 @@ These 5 user accounts are never deleted during factory reset:
 
 After factory reset, all auto-increment counters are reset to ensure predictable IDs:
 
-- **templates**: Next ID will be 5
+- **users**: Next ID will be 6 (IDs 1-5 used by test users)
+- **templates**: Next ID will be 5 (IDs 1-4 used by test templates)
 - **template_pages**: Next ID will be 5
 - **template_sections**: Next ID will be 13
 - **user_websites**: Next ID will be 1
@@ -103,12 +106,13 @@ After factory reset, all auto-increment counters are reset to ensure predictable
 
 1. Disable foreign key checks
 2. Truncate all template and website tables
-3. Delete non-test users
+3. Truncate ALL users table (including test users)
 4. Truncate database instances
-5. Reset all auto-increment counters to 1
+5. Reset all auto-increment counters to 1 (including users table)
 6. Re-enable foreign key checks
-7. Create 4 test templates with full content
-8. Return success response
+7. Recreate 5 test users with IDs 1-5
+8. Create 4 test templates with full content (using admin user ID 1)
+9. Return success response
 
 ### Template Creation
 
@@ -157,13 +161,19 @@ $result = $factoryResetService->resetToFactory();
 
 After factory reset, verify:
 
-1. **4 templates exist** with IDs 1-4
-2. **4 template pages exist** (one per template)
-3. **12 template sections exist** (3 per template: navbar, hero, features/services)
-4. **5 test users exist** (admin, trial, brochure, niche, pro)
+1. **5 test users exist with sequential IDs 1-5**
+   - ID 1: admin@pagevoo.com
+   - ID 2: trial@test.com
+   - ID 3: brochure@test.com
+   - ID 4: niche@test.com
+   - ID 5: pro@test.com
+2. **4 templates exist** with IDs 1-4
+3. **4 template pages exist** (one per template)
+4. **12 template sections exist** (3 per template: navbar, hero, features/services)
 5. **No websites exist** (user_websites table is empty)
 6. **No database instances exist**
 7. **Auto-increment counters** are properly reset
+8. **All test users can log in** with password: `password`
 
 ## Notes
 
