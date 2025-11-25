@@ -154,53 +154,18 @@ class UserController extends BaseController
 
     /**
      * Reset system to factory defaults
-     * Deletes all templates and resets ID counter to 1
+     * Resets to clean state with 4 test templates (Trial, Brochure, Niche, Pro)
+     * and 5 test users
      */
     public function resetToFactory()
     {
         try {
-            $testUserEmails = ['admin@pagevoo.com', 'trial@test.com', 'brochure@test.com', 'niche@test.com', 'pro@test.com'];
+            $factoryResetService = new \App\Services\FactoryResetService();
+            $result = $factoryResetService->resetToFactory();
 
-            // Temporarily disable foreign key checks to allow truncation
-            // Note: This causes an implicit commit, so we can't use transactions
-            \DB::statement('SET FOREIGN_KEY_CHECKS=0');
-
-            // Delete all templates and related records
-            \DB::table('template_sections')->truncate();
-            \DB::table('template_pages')->truncate();
-            \DB::table('templates')->truncate();
-
-            // Delete all websites and their related records
-            \DB::table('user_sections')->truncate();
-            \DB::table('user_pages')->truncate();
-            \DB::table('user_websites')->truncate();
-
-            // Delete all users except test users
-            User::whereNotIn('email', $testUserEmails)->delete();
-
-            // Delete all database instances
-            \App\Models\DatabaseInstance::truncate();
-
-            // Reset auto-increment counters to 1
-            \DB::statement('ALTER TABLE templates AUTO_INCREMENT = 1');
-            \DB::statement('ALTER TABLE template_pages AUTO_INCREMENT = 1');
-            \DB::statement('ALTER TABLE template_sections AUTO_INCREMENT = 1');
-            \DB::statement('ALTER TABLE user_websites AUTO_INCREMENT = 1');
-            \DB::statement('ALTER TABLE user_pages AUTO_INCREMENT = 1');
-            \DB::statement('ALTER TABLE user_sections AUTO_INCREMENT = 1');
-
-            // Re-enable foreign key checks
-            \DB::statement('SET FOREIGN_KEY_CHECKS=1');
-
-            return $this->sendSuccess([
-                'message' => 'System reset to factory defaults successfully',
-                'templates_deleted' => 'all',
-                'users_kept' => count($testUserEmails)
-            ], 'Factory reset completed');
+            return $this->sendSuccess($result, 'Factory reset completed');
 
         } catch (\Exception $e) {
-            // Re-enable foreign key checks in case of error
-            \DB::statement('SET FOREIGN_KEY_CHECKS=1');
             return $this->sendError('Factory reset failed: ' . $e->getMessage(), 500);
         }
     }

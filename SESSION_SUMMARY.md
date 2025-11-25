@@ -148,12 +148,15 @@ if ($existingCount > 0) {
 - `uses_trial_features_only` flag for trial-compatible templates
 
 ### 8. Factory Reset Functionality
-**Location:** `pagevoo-backend/app/Http/Controllers/Api/V1/UserController.php:159-206`
+**Location:**
+- `pagevoo-backend/app/Services/FactoryResetService.php` (NEW SERVICE)
+- `pagevoo-backend/app/Http/Controllers/Api/V1/UserController.php:160-171`
 
 #### What It Does:
-- Deletes ALL templates (no exceptions)
 - Deletes all websites and their data
 - Deletes all database instances
+- Deletes all user-created templates
+- **RECREATES 4 test templates** with full content (Trial, Brochure, Niche, Pro)
 - Resets all auto-increment counters to 1
 - Keeps only 5 test users:
   - admin@pagevoo.com
@@ -162,13 +165,22 @@ if ($existingCount > 0) {
   - niche@test.com
   - pro@test.com
 
+#### Test Templates Created (IDs 1-4):
+1. **Trial Template** - Blue theme, navbar + hero + 3-column features
+2. **Brochure Template** - Green theme, navbar + hero + 2x2 services grid
+3. **Niche Template** - Orange theme, navbar + hero + 3x2 features grid
+4. **Pro Template** - Purple theme, navbar + hero + 3x2 features grid
+
 #### Tables Reset:
-- `templates` → ID starts at 1
-- `template_pages` → ID starts at 1
-- `template_sections` → ID starts at 1
-- `user_websites` → ID starts at 1
-- `user_pages` → ID starts at 1
-- `user_sections` → ID starts at 1
+- `templates` → Recreated with IDs 1-4, next ID: 5
+- `template_pages` → 4 pages (one per template), next ID: 5
+- `template_sections` → 12 sections (3 per template), next ID: 13
+- `user_websites` → Empty, next ID: 1
+- `user_pages` → Empty, next ID: 1
+- `user_sections` → Empty, next ID: 1
+
+#### Documentation:
+See `FACTORY_SETTINGS.md` for complete factory reset documentation
 
 ### 9. Contact Form Feature Components
 **Location:** `pagevoo-frontend/src/constants/sectionTemplates.ts:175-355`
@@ -224,14 +236,27 @@ Each component includes:
 
 ### 4 Test Templates (IDs 1-4)
 1. **Trial Template** - Blue theme (#4f46e5), tier: trial
-2. **Brochure Template** - Green theme (#059669), tier: brochure, exclusive to brochure
-3. **Niche Template** - Orange theme (#ea580c), tier: niche, exclusive to niche
-4. **Pro Template** - Purple theme (#7c3aed), tier: pro, exclusive to pro
+   - Navigation bar + Hero + 3-column Features grid
+   - Available to all trial users (not exclusive)
 
-Each template has:
+2. **Brochure Template** - Green theme (#059669), tier: brochure, exclusive to brochure
+   - Navigation bar + 2-column Hero + 2x2 Services grid
+   - Exclusive to brochure tier users
+
+3. **Niche Template** - Orange theme (#ea580c), tier: niche, exclusive to niche
+   - Navigation bar + Hero + 3x2 Features grid (6 features)
+   - Exclusive to niche tier users
+
+4. **Pro Template** - Purple theme (#7c3aed), tier: pro, exclusive to pro
+   - Navigation bar + 2-column Hero + 3x2 Features grid (6 features)
+   - Exclusive to pro tier users
+
+Each template includes:
 - 1 homepage with slug "index"
-- 1 styled section with tier-specific colors
-- Proper tier categorization
+- 3 complete sections (navbar, hero, features/services)
+- Full content with styled HTML and inline CSS
+- Professional design with icons and descriptions
+- Proper tier categorization and exclusivity settings
 
 ## Files Modified
 
@@ -247,9 +272,13 @@ Each template has:
 
 ### Backend
 - `app/Http/Controllers/Api/V1/UserWebsiteController.php` - Multiple save system
-- `app/Http/Controllers/Api/V1/UserController.php` - Simplified factory reset
+- `app/Http/Controllers/Api/V1/UserController.php` - Updated factory reset to use service
+- `app/Services/FactoryResetService.php` - **NEW FILE** - Complete factory reset with template recreation
 - `app/Http/Controllers/Api/V1/DatabaseController.php` - Feature installation endpoints
 - `app/Services/DatabaseManager.php` - Database management logic
+
+### Documentation
+- `FACTORY_SETTINGS.md` - **NEW FILE** - Complete factory reset documentation
 
 ## Key Architectural Decisions
 
