@@ -71,6 +71,7 @@ import {
 } from '../utils/helpers'
 import { getLinkHref, getLinkLabel, getCanvasWidth, handleAddPredefinedPage as addPredefinedPage } from '../utils/templateHelpers'
 import { coreSections, headerNavigationSections, footerSections, specialSections } from '../constants/sectionTemplates'
+import { additionalFormSections } from '../constants/formSectionTemplates'
 import {
   isActivePage,
   generateContentCSS,
@@ -368,16 +369,21 @@ export default function TemplateBuilder() {
     }
   }
 
+  // Merge special sections with additional form sections (form-wrap first)
+  const allSpecialSections = useMemo(() => {
+    return [...additionalFormSections, ...specialSections]
+  }, [])
+
   // Filter special sections based on installed features
   const filteredSpecialSections = useMemo(() => {
-    return specialSections.filter(section => {
+    return allSpecialSections.filter((section: any) => {
       if (!section.category) return false
       // Convert category hyphen format to underscore format for comparison
       // e.g., 'contact-form' becomes 'contact_form'
       const categoryAsFeature = section.category.replace(/-/g, '_')
       return installedFeatures.includes(categoryAsFeature)
     })
-  }, [installedFeatures])
+  }, [installedFeatures, allSpecialSections])
 
   // Template Builder Effects (useEffects)
   useTemplateBuilderEffects({
