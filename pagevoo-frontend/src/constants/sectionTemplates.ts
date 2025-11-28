@@ -208,7 +208,7 @@ export const specialSections = [
     type: 'gallery-wrap',
     label: 'Image Gallery',
     description: 'Display images from an album',
-    category: 'gallery',
+    category: 'image-gallery',
     cols: 1,
     rows: 1,
     colWidths: [12],
