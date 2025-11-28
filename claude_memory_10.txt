@@ -1,0 +1,275 @@
+# PAGEVOO PROJECT - MEMORY FILE #10
+**Date:** November 28, 2025
+**Session:** Image Gallery Feature Implementation & Contact Form Improvements
+
+---
+
+## SESSION SUMMARY
+
+### Image Gallery Feature - FULLY IMPLEMENTED
+
+The Image Gallery feature has been built to support albums/categories with configurable gallery sections on the canvas.
+
+#### Key Architecture Decisions:
+- **Image Gallery Manager (toolbar)** - Works independently of the Gallery feature installation
+- **Albums managed from toolbar** - Users manage all images and albums from the "Image Gallery" button
+- **Gallery sections link to albums** - Canvas sections display images from selected albums
+- **Same pattern as Contact Form** - Install feature via Features panel, drag gallery-wrap to canvas
+
+### Contact Form Feature - IMPROVEMENTS
+
+- Reorganized contact form settings:
+  - **Global config (ContactFormConfigModal):** Email settings, spam protection, storage options
+  - **Per-form sidebar (FormWrapProperties):** Form name, recipient email, auto-responder, fields
+
+---
+
+## FILES CREATED THIS SESSION
+
+### New Frontend Components:
+
+1. **GalleryWrapPreview.tsx** - `pagevoo-frontend/src/components/script-features/gallery/GalleryWrapPreview.tsx`
+   - Canvas preview component for gallery sections
+   - Supports: grid, masonry, carousel layouts
+   - Configurable: hover effects, captions, lightbox
+   - Shows empty state when no album selected
+
+2. **GalleryWrapProperties.tsx** - `pagevoo-frontend/src/components/properties/GalleryWrapProperties.tsx`
+   - Sidebar properties component for gallery configuration
+   - Settings: album selection, layout type, columns, gap, aspect ratio
+   - Appearance: hover effects, captions, lightbox, border radius
+   - Carousel options: autoplay, interval, arrows, dots
+   - Container styling: padding, background, border radius
+
+3. **FormWrapPreview.tsx** - `pagevoo-frontend/src/components/script-features/contact-form/FormWrapPreview.tsx`
+   - Canvas preview component for form sections
+   - Shows form header, field previews, submit button
+
+4. **FormWrapProperties.tsx** - `pagevoo-frontend/src/components/properties/FormWrapProperties.tsx`
+   - Sidebar properties for per-form settings
+   - Form name, recipient email, auto-responder configuration
+   - Form fields management (add, edit, delete, reorder)
+
+---
+
+## FILES MODIFIED THIS SESSION
+
+### Frontend:
+
+1. **ImageGallery.tsx** - `pagevoo-frontend/src/components/ImageGallery.tsx`
+   - Complete rewrite with album support
+   - New features: album navigation, image selection, bulk move/delete
+   - Image details modal for editing title, description, alt text
+
+2. **useImageGalleryHandlers.ts** - `pagevoo-frontend/src/hooks/useImageGalleryHandlers.ts`
+   - Extended with all album operations
+   - New handlers: handleImageUpdate, handleImageMove, handleCreateAlbum, handleUpdateAlbum, handleDeleteAlbum, handleSetAlbumCover
+
+3. **api.ts** - `pagevoo-frontend/src/services/api.ts`
+   - Added new album API methods:
+     - updateGalleryImage, moveGalleryImage
+     - createGalleryAlbum, updateGalleryAlbum, deleteGalleryAlbum
+     - setAlbumCover
+   - Modified uploadGalleryImage to accept optional albumId
+
+4. **sectionTemplates.ts** - `pagevoo-frontend/src/constants/sectionTemplates.ts`
+   - Added form-wrap section template
+   - Added gallery-wrap section template
+
+5. **useRenderSection.tsx** - `pagevoo-frontend/src/hooks/useRenderSection.tsx`
+   - Added gallery-wrap case
+   - Added FormWrapPreview and GalleryWrapPreview imports
+   - Extended Template interface with images and albums arrays
+
+6. **RightSidebar.tsx** - `pagevoo-frontend/src/components/RightSidebar.tsx`
+   - Added GalleryWrapProperties import and case
+   - Added albums to Template interface
+   - Added onOpenGallery prop
+
+7. **TemplateBuilder.tsx** - `pagevoo-frontend/src/pages/TemplateBuilder.tsx`
+   - Added onOpenGallery prop to RightSidebar
+
+8. **FeatureInstallModal.tsx** - `pagevoo-frontend/src/components/features/FeatureInstallModal.tsx`
+   - Set image_gallery available: true (was false/coming soon)
+
+9. **DatabaseManagementModal.tsx** - `pagevoo-frontend/src/components/database/DatabaseManagementModal.tsx`
+   - Fixed console errors for unsaved templates
+   - Added isUnsaved check before API calls
+   - Shows "Save Required" message for unsaved templates
+
+10. **ContactFormConfigModal.tsx** - `pagevoo-frontend/src/components/script-features/contact-form/ContactFormConfigModal.tsx`
+    - Reorganized settings tabs
+    - Added default recipient email field
+    - Moved global settings to config modal
+
+### Backend:
+
+1. **TemplateController.php** - `pagevoo-backend/app/Http/Controllers/Api/V1/TemplateController.php`
+   - Added 6 new methods:
+     - updateGalleryImage - Update image metadata
+     - moveGalleryImage - Move image to album
+     - createGalleryAlbum - Create new album
+     - updateGalleryAlbum - Update album details
+     - deleteGalleryAlbum - Delete album (images moved to uncategorized)
+     - setAlbumCover - Set album cover image
+   - Modified uploadGalleryImage to include album_id, title, description, alt_text, order
+
+2. **api.php** - `pagevoo-backend/routes/api.php`
+   - Added routes:
+     - POST /{id}/gallery/update
+     - POST /{id}/gallery/move
+     - POST /{id}/gallery/albums
+     - PUT /{id}/gallery/albums/{albumId}
+     - DELETE /{id}/gallery/albums/{albumId}
+     - POST /{id}/gallery/albums/{albumId}/cover
+
+---
+
+## BUG FIXES THIS SESSION
+
+### Database Management Modal Console Errors
+**Issue:** 404 errors when opening modal on unsaved template
+**Fix:** Added `isUnsaved` check (`!referenceId || referenceId === 0`) and shows "Save Required" message instead of making API calls
+
+---
+
+## INTERFACE PATTERNS ESTABLISHED
+
+### Gallery Config Structure:
+```typescript
+interface GalleryConfig {
+  name?: string
+  albumId?: string | null
+  layout: 'grid' | 'masonry' | 'carousel' | 'justified'
+  columns: number
+  gap: string
+  enableLightbox: boolean
+  showCaptions: 'hover' | 'below' | 'none'
+  hoverEffect: 'none' | 'zoom' | 'darken' | 'brighten' | 'grayscale'
+  borderRadius: string
+  aspectRatio: 'square' | '4:3' | '16:9' | 'original'
+  autoPlay?: boolean
+  autoPlayInterval?: number
+  showDots?: boolean
+  showArrows?: boolean
+  containerStyle?: {
+    padding?: string
+    background?: string
+    borderRadius?: string
+  }
+}
+```
+
+### Album Structure:
+```typescript
+interface Album {
+  id: string
+  name: string
+  description?: string
+  cover_image_id?: string
+  image_count: number
+  order: number
+}
+```
+
+### Image with Album Support:
+```typescript
+interface ImageItem {
+  id: string
+  filename: string
+  path: string
+  thumbnail_path?: string
+  title?: string
+  description?: string
+  alt_text?: string
+  album_id: string | null
+  order: number
+}
+```
+
+---
+
+## FEATURE WORKFLOW
+
+### Gallery Section Usage:
+1. Open Image Gallery Manager from toolbar
+2. Create albums, upload images, organize
+3. Install Gallery feature from Features panel (if needed)
+4. Drag gallery-wrap section to canvas
+5. In sidebar, select album and configure layout options
+6. Preview shows images from selected album
+
+### Contact Form Section Usage:
+1. Install Contact Form feature from Features panel
+2. Configure global settings (email, spam, storage)
+3. Drag form-wrap section to canvas
+4. In sidebar, configure per-form settings (recipient, auto-responder)
+5. Add form fields using field editor
+6. Preview shows form with all fields
+
+---
+
+## GIT COMMIT
+
+```
+Feat: Image Gallery with albums support and contact form improvements
+
+Image Gallery Feature:
+- Extended ImageGallery component with full album support
+- Created GalleryWrapPreview and GalleryWrapProperties components
+- Added backend API routes for album CRUD operations
+- Gallery feature now available in FeatureInstallModal
+
+Contact Form Improvements:
+- Reorganized settings (global vs per-form)
+- Created FormWrapPreview and FormWrapProperties components
+
+Bug Fixes:
+- Fixed Database Management Modal console errors for unsaved templates
+```
+
+Commit: de883ab
+Branch: main
+Pushed to: https://github.com/ajtaylor-dev/Pagevoo.git
+
+---
+
+## REMAINING WORK FOR IMAGE GALLERY
+
+### Still TODO:
+1. **GalleryLightbox component** - Full lightbox modal for image viewing
+2. **Gallery runtime scripts** - JavaScript for carousel, lightbox in published site
+3. **Image optimization** - Thumbnail generation, lazy loading
+4. **Backend database feature** - Feature installation with database tables (currently uses JSON in template)
+
+### Works Now:
+- Album management in Image Gallery Manager
+- Image organization with albums
+- Gallery sections on canvas with preview
+- All layout options (grid, masonry, carousel)
+- Hover effects and appearance settings
+- Album selection in gallery properties
+
+---
+
+## DEVELOPMENT SERVERS
+
+Backend: `cd /d/Pagevoo/pagevoo-backend && php artisan serve` (port 8000)
+Frontend: `cd /d/Pagevoo/pagevoo-frontend && npm run dev` (port 5173)
+
+Both servers were running during this session.
+
+---
+
+## NEXT SESSION TASKS
+
+1. Test the Image Gallery feature end-to-end
+2. Create GalleryLightbox component for runtime
+3. Continue with remaining features or bug fixes
+4. Consider implementing gallery as database feature (vs JSON storage)
+
+---
+
+**End of Memory File #10**
+
+Session focused on Image Gallery feature implementation with albums support and contact form improvements.
