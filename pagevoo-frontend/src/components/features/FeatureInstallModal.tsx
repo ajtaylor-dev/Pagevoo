@@ -12,7 +12,8 @@ import {
   MdShoppingCart,
   MdFolder,
   MdVideocam,
-  MdPublic
+  MdPublic,
+  MdSchool
 } from 'react-icons/md'
 import type { IconType } from 'react-icons'
 
@@ -71,7 +72,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     icon: MdArticle,
     requiresUAS: false,
     tier: 'brochure',
-    available: false
+    available: true
   },
   {
     type: 'events',
@@ -79,8 +80,8 @@ const AVAILABLE_FEATURES: Feature[] = [
     description: 'Event management with calendar views, RSVPs, and reminders',
     icon: MdEvent,
     requiresUAS: false,
-    tier: 'niche',
-    available: false
+    tier: 'brochure',
+    available: true
   },
   {
     type: 'booking',
@@ -97,7 +98,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     description: 'WordPress-style content management with themes and plugins',
     icon: MdEdit,
     requiresUAS: true,
-    tier: 'pro',
+    tier: 'niche',
     available: false
   },
   {
@@ -106,7 +107,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     description: 'Full e-commerce solution with products, cart, checkout, and payments',
     icon: MdShoppingCart,
     requiresUAS: true,
-    tier: 'pro',
+    tier: 'niche',
     available: false
   },
   {
@@ -115,7 +116,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     description: 'Upload, share, and manage files with download tracking',
     icon: MdFolder,
     requiresUAS: true,
-    tier: 'niche',
+    tier: 'pro',
     available: false
   },
   {
@@ -132,6 +133,15 @@ const AVAILABLE_FEATURES: Feature[] = [
     name: 'Social Platform',
     description: 'Facebook/Instagram-style social network with posts, likes, and follows',
     icon: MdPublic,
+    requiresUAS: true,
+    tier: 'pro',
+    available: false
+  },
+  {
+    type: 'courses',
+    name: 'Courses & Teaching',
+    description: 'Create and sell online courses with lessons, quizzes, and progress tracking',
+    icon: MdSchool,
     requiresUAS: true,
     tier: 'pro',
     available: false

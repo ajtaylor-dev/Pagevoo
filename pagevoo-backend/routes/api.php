@@ -14,6 +14,8 @@ use App\Http\Controllers\SectionLibraryController;
 use App\Http\Controllers\PageLibraryController;
 use App\Http\Controllers\Api\V1\ScriptFeatures\ContactFormController;
 use App\Http\Controllers\Api\V1\DatabaseController;
+use App\Http\Controllers\Api\V1\BlogController;
+use App\Http\Controllers\Api\V1\EventController;
 
 /*
 |--------------------------------------------------------------------------
@@ -212,6 +214,45 @@ Route::prefix('v1')->group(function () {
             Route::post('/{formId}/submissions/{submissionId}/read', [ContactFormController::class, 'markAsRead']);
             Route::post('/{formId}/submissions/{submissionId}/spam', [ContactFormController::class, 'markAsSpam']);
             Route::delete('/{formId}/submissions/{submissionId}', [ContactFormController::class, 'deleteSubmission']);
+        });
+
+        // Blog Feature
+        Route::prefix('blog')->group(function () {
+            // Posts
+            Route::get('/posts', [BlogController::class, 'index']);
+            Route::post('/posts', [BlogController::class, 'store']);
+            Route::put('/posts/{id}', [BlogController::class, 'update']);
+            Route::delete('/posts/{id}', [BlogController::class, 'destroy']);
+
+            // Categories
+            Route::get('/categories', [BlogController::class, 'getCategories']);
+            Route::post('/categories', [BlogController::class, 'storeCategory']);
+            Route::put('/categories/{id}', [BlogController::class, 'updateCategory']);
+            Route::delete('/categories/{id}', [BlogController::class, 'destroyCategory']);
+
+            // Tags
+            Route::get('/tags', [BlogController::class, 'getTags']);
+            Route::post('/tags', [BlogController::class, 'storeTag']);
+            Route::delete('/tags/{id}', [BlogController::class, 'destroyTag']);
+        });
+
+        // Events Feature
+        Route::prefix('events')->group(function () {
+            // Events
+            Route::get('/', [EventController::class, 'index']);
+            Route::get('/{id}', [EventController::class, 'show']);
+            Route::post('/', [EventController::class, 'store']);
+            Route::put('/{id}', [EventController::class, 'update']);
+            Route::delete('/{id}', [EventController::class, 'destroy']);
+
+            // Calendar view
+            Route::get('/calendar/month', [EventController::class, 'getCalendarEvents']);
+
+            // Categories
+            Route::get('/categories/all', [EventController::class, 'getCategories']);
+            Route::post('/categories', [EventController::class, 'storeCategory']);
+            Route::put('/categories/{id}', [EventController::class, 'updateCategory']);
+            Route::delete('/categories/{id}', [EventController::class, 'destroyCategory']);
         });
 
     });

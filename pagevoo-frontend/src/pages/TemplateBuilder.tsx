@@ -28,6 +28,8 @@ import { DatabaseManagementModal } from '@/components/database/DatabaseManagemen
 import { FeatureInstallModal } from '@/components/features/FeatureInstallModal'
 import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
+import { BlogManager } from '@/components/BlogManager'
+import { EventsManager } from '@/components/EventsManager'
 import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
@@ -227,6 +229,8 @@ export default function TemplateBuilder() {
   const [showFeatureInstallModal, setShowFeatureInstallModal] = useState(false)
   const [showManageFeaturesModal, setShowManageFeaturesModal] = useState(false)
   const [showContactFormModal, setShowContactFormModal] = useState(false)
+  const [showBlogManager, setShowBlogManager] = useState(false)
+  const [showEventsManager, setShowEventsManager] = useState(false)
   const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
 
   // Undo/Redo and Save state
@@ -668,7 +672,8 @@ export default function TemplateBuilder() {
     handleToggleSectionLock,
     handleMoveSidebar,
     handleUpdateSectionContent,
-    handleGridColumnUpdate
+    handleGridColumnUpdate,
+    handleRemoveFeatureSections
   } = useSectionHandlers({
     template,
     setTemplate,
@@ -1139,6 +1144,8 @@ export default function TemplateBuilder() {
               setShowNavButtonStyleModal={setShowNavButtonStyleModal}
               theme={theme}
               onOpenGallery={() => setShowImageGallery(true)}
+              onOpenBlogManager={() => setShowBlogManager(true)}
+              onOpenEventsManager={() => setShowEventsManager(true)}
             />
           </>
         )}
@@ -1316,6 +1323,26 @@ export default function TemplateBuilder() {
         />
       )}
 
+      {/* Blog Manager Modal */}
+      {showBlogManager && (
+        <BlogManager
+          isOpen={showBlogManager}
+          onClose={() => setShowBlogManager(false)}
+          type="template"
+          referenceId={template?.id || 0}
+        />
+      )}
+
+      {/* Events Manager Modal */}
+      {showEventsManager && (
+        <EventsManager
+          isOpen={showEventsManager}
+          onClose={() => setShowEventsManager(false)}
+          type="template"
+          referenceId={template?.id || 0}
+        />
+      )}
+
       {/* Load Template Modal */}
       <LoadModal
         isOpen={showLoadModal}
@@ -1424,6 +1451,10 @@ export default function TemplateBuilder() {
             if (featureType === 'contact_form') {
               setShowContactFormModal(true)
             }
+          }}
+          onFeatureUninstalled={(featureType) => {
+            // Remove all sections related to this feature from all pages
+            handleRemoveFeatureSections(featureType)
           }}
         />
       )}

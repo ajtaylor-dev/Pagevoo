@@ -5,6 +5,8 @@ import { NavbarProperties } from './properties/NavbarProperties'
 import { FooterProperties } from './properties/FooterProperties'
 import { FormWrapProperties } from './properties/FormWrapProperties'
 import { GalleryWrapProperties } from './properties/GalleryWrapProperties'
+import { BlogWrapProperties } from './properties/BlogWrapProperties'
+import { EventsWrapProperties } from './properties/EventsWrapProperties'
 import type { ThemeColors } from '@/config/themes'
 
 interface TemplateSection {
@@ -90,6 +92,8 @@ interface RightSidebarProps {
   setShowNavButtonStyleModal: (show: boolean) => void
   theme: ThemeColors
   onOpenGallery?: () => void
+  onOpenBlogManager?: () => void
+  onOpenEventsManager?: () => void
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({
@@ -120,7 +124,9 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   setExpandedColumnIndex,
   setShowNavButtonStyleModal,
   theme,
-  onOpenGallery
+  onOpenGallery,
+  onOpenBlogManager,
+  onOpenEventsManager
 }) => {
   return (
     <>
@@ -431,6 +437,24 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   onUpdateContent={handleUpdateSectionContent}
                   albums={template?.albums || []}
                   onOpenGallery={onOpenGallery}
+                />
+              )}
+
+              {/* Blog Wrap Section Controls */}
+              {selectedSection.type === 'blog-wrap' && (
+                <BlogWrapProperties
+                  selectedSection={selectedSection}
+                  onUpdateContent={handleUpdateSectionContent}
+                  onOpenBlogManager={onOpenBlogManager}
+                />
+              )}
+
+              {/* Events Wrap Section Controls */}
+              {selectedSection.type === 'events-wrap' && (
+                <EventsWrapProperties
+                  selectedSection={selectedSection}
+                  onUpdateContent={handleUpdateSectionContent}
+                  onOpenEventsManager={onOpenEventsManager}
                 />
               )}
                 </>

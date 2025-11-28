@@ -89,6 +89,8 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
   // Special sections that cannot be exported (contact form fields, navbars, footers, etc.)
   const isSpecialSection = section.type.startsWith('contact-form-') ||
     section.type === 'form-wrap' ||
+    section.type === 'gallery-wrap' ||
+    section.type === 'blog-wrap' ||
     section.type === 'navbar' ||
     section.type.startsWith('navbar-') ||
     section.type.startsWith('footer-') ||

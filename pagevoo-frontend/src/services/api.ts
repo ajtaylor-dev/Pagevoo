@@ -513,6 +513,249 @@ class ApiService {
     const response = await this.client.put('/v1/settings/upload', data);
     return response.data;
   }
+
+  /**
+   * Blog Feature Methods
+   */
+
+  // Posts
+  async getBlogPosts(type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/script-features/blog/posts', {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  async createBlogPost(data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    title: string;
+    slug?: string;
+    excerpt?: string;
+    content: string;
+    featured_image?: string;
+    author_name?: string;
+    category_id?: number;
+    status: 'draft' | 'published';
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/script-features/blog/posts', data);
+    return response.data;
+  }
+
+  async updateBlogPost(postId: number, data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    title?: string;
+    slug?: string;
+    excerpt?: string;
+    content?: string;
+    featured_image?: string;
+    author_name?: string;
+    category_id?: number | null;
+    status?: 'draft' | 'published';
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/script-features/blog/posts/${postId}`, data);
+    return response.data;
+  }
+
+  async deleteBlogPost(postId: number, type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.delete(`/v1/script-features/blog/posts/${postId}`, {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  // Categories
+  async getBlogCategories(type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/script-features/blog/categories', {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  async createBlogCategory(data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    name: string;
+    description?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/script-features/blog/categories', data);
+    return response.data;
+  }
+
+  async updateBlogCategory(categoryId: number, data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    name?: string;
+    description?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/script-features/blog/categories/${categoryId}`, data);
+    return response.data;
+  }
+
+  async deleteBlogCategory(categoryId: number, type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.delete(`/v1/script-features/blog/categories/${categoryId}`, {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  // Tags
+  async getBlogTags(type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/script-features/blog/tags', {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  async createBlogTag(data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    name: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/script-features/blog/tags', data);
+    return response.data;
+  }
+
+  async deleteBlogTag(tagId: number, type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.delete(`/v1/script-features/blog/tags/${tagId}`, {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  // ========== Events API ==========
+
+  // Events
+  async getEvents(type: 'template' | 'website', referenceId: number, filter?: 'all' | 'upcoming' | 'past', categoryId?: number): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/script-features/events', {
+      params: { type, reference_id: referenceId, filter, category_id: categoryId }
+    });
+    return response.data;
+  }
+
+  async getEvent(eventId: number, type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.get(`/v1/script-features/events/${eventId}`, {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  async createEvent(data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    title: string;
+    slug?: string;
+    description?: string;
+    content?: string;
+    featured_image?: string;
+    start_date: string;
+    end_date?: string;
+    start_time?: string;
+    end_time?: string;
+    is_all_day?: boolean;
+    location?: string;
+    location_url?: string;
+    is_online?: boolean;
+    online_url?: string;
+    category_id?: number;
+    status: 'draft' | 'published' | 'cancelled';
+    is_featured?: boolean;
+    organizer_name?: string;
+    organizer_email?: string;
+    organizer_phone?: string;
+    ticket_url?: string;
+    price?: number;
+    price_text?: string;
+    capacity?: number;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/script-features/events', data);
+    return response.data;
+  }
+
+  async updateEvent(eventId: number, data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    title?: string;
+    slug?: string;
+    description?: string;
+    content?: string;
+    featured_image?: string;
+    start_date?: string;
+    end_date?: string;
+    start_time?: string;
+    end_time?: string;
+    is_all_day?: boolean;
+    location?: string;
+    location_url?: string;
+    is_online?: boolean;
+    online_url?: string;
+    category_id?: number;
+    status?: 'draft' | 'published' | 'cancelled';
+    is_featured?: boolean;
+    organizer_name?: string;
+    organizer_email?: string;
+    organizer_phone?: string;
+    ticket_url?: string;
+    price?: number;
+    price_text?: string;
+    capacity?: number;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/script-features/events/${eventId}`, data);
+    return response.data;
+  }
+
+  async deleteEvent(eventId: number, type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.delete(`/v1/script-features/events/${eventId}`, {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  // Calendar view
+  async getCalendarEvents(type: 'template' | 'website', referenceId: number, year: number, month: number): Promise<ApiResponse<{ events: any[]; year: number; month: number }>> {
+    const response = await this.client.get('/v1/script-features/events/calendar/month', {
+      params: { type, reference_id: referenceId, year, month }
+    });
+    return response.data;
+  }
+
+  // Event Categories
+  async getEventCategories(type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any[]>> {
+    const response = await this.client.get('/v1/script-features/events/categories/all', {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
+
+  async createEventCategory(data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    name: string;
+    description?: string;
+    color?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/v1/script-features/events/categories', data);
+    return response.data;
+  }
+
+  async updateEventCategory(categoryId: number, data: {
+    type: 'template' | 'website';
+    reference_id: number;
+    name?: string;
+    description?: string;
+    color?: string;
+  }): Promise<ApiResponse<any>> {
+    const response = await this.client.put(`/v1/script-features/events/categories/${categoryId}`, data);
+    return response.data;
+  }
+
+  async deleteEventCategory(categoryId: number, type: 'template' | 'website', referenceId: number): Promise<ApiResponse<any>> {
+    const response = await this.client.delete(`/v1/script-features/events/categories/${categoryId}`, {
+      params: { type, reference_id: referenceId }
+    });
+    return response.data;
+  }
 }
 
 // Export singleton instance

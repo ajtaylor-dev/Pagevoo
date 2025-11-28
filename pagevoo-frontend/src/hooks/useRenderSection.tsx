@@ -6,6 +6,8 @@ import { SectionWrapper } from '../components/sections/SectionWrapper'
 import { ContactFormPreview } from '@/components/script-features/contact-form/ContactFormPreview'
 import { FormWrapPreview } from '@/components/script-features/contact-form/FormWrapPreview'
 import { GalleryWrapPreview } from '@/components/script-features/gallery/GalleryWrapPreview'
+import { BlogWrapPreview } from '@/components/script-features/blog/BlogWrapPreview'
+import { EventsWrapPreview } from '@/components/script-features/events/EventsWrapPreview'
 
 interface TemplateSection {
   id: number
@@ -187,6 +189,26 @@ export const useRenderSection = ({
               albumName={template?.albums?.find(
                 a => a.id === section.content?.galleryConfig?.albumId
               )?.name}
+            />
+          )
+          break
+
+        // Blog Wrap Container
+        case 'blog-wrap':
+          sectionContent = (
+            <BlogWrapPreview
+              section={section}
+              selectedSection={selectedSection}
+            />
+          )
+          break
+
+        // Events Wrap Container
+        case 'events-wrap':
+          sectionContent = (
+            <EventsWrapPreview
+              section={section}
+              selectedSection={selectedSection}
             />
           )
           break

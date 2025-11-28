@@ -181,15 +181,16 @@ return [
         // Script Features
         'script_contact_form' => true,
         'script_image_gallery' => true,
-        'script_blog_news' => true,
-        'script_wordpress_style' => false,
-        'script_event_planner' => false,
-        'script_booking_system' => false,
-        'script_simple_shop' => false,
-        'script_video_hosting' => false,
-        'script_file_sharing' => false,
-        'script_social_engine' => false,
-        'script_courses_teaching' => false,
+        'script_blog' => false,
+        'script_events' => false,
+        'script_user_access_system' => false,
+        'script_booking' => false,
+        'script_voopress' => false,
+        'script_shop' => false,
+        'script_file_hoster' => false,
+        'script_video_sharing' => false,
+        'script_social_platform' => false,
+        'script_courses' => false,
     ],
 
     'brochure' => [
@@ -363,15 +364,16 @@ return [
         // Script Features - Expanded
         'script_contact_form' => true,
         'script_image_gallery' => true,
-        'script_blog_news' => true,
-        'script_wordpress_style' => true, // NOW ENABLED
-        'script_event_planner' => false,
-        'script_booking_system' => false,
-        'script_simple_shop' => false,
-        'script_video_hosting' => false,
-        'script_file_sharing' => false,
-        'script_social_engine' => false,
-        'script_courses_teaching' => false,
+        'script_blog' => true, // NOW ENABLED
+        'script_events' => true, // NOW ENABLED
+        'script_user_access_system' => false,
+        'script_booking' => false,
+        'script_voopress' => false,
+        'script_shop' => false,
+        'script_file_hoster' => false,
+        'script_video_sharing' => false,
+        'script_social_platform' => false,
+        'script_courses' => false,
     ],
 
     'niche' => [
@@ -547,15 +549,16 @@ return [
         // Script Features - Expanded
         'script_contact_form' => true,
         'script_image_gallery' => true,
-        'script_blog_news' => true,
-        'script_wordpress_style' => true,
-        'script_event_planner' => true, // NOW ENABLED
-        'script_booking_system' => true, // NOW ENABLED
-        'script_simple_shop' => true, // NOW ENABLED
-        'script_video_hosting' => false,
-        'script_file_sharing' => false,
-        'script_social_engine' => false,
-        'script_courses_teaching' => false,
+        'script_blog' => true,
+        'script_events' => true,
+        'script_user_access_system' => true, // NOW ENABLED
+        'script_booking' => true, // NOW ENABLED (requires UAS)
+        'script_voopress' => true, // NOW ENABLED (requires UAS)
+        'script_shop' => true, // NOW ENABLED (requires UAS)
+        'script_file_hoster' => false,
+        'script_video_sharing' => false,
+        'script_social_platform' => false,
+        'script_courses' => false,
     ],
 
     'pro' => [
@@ -731,14 +734,15 @@ return [
         // Script Features - ALL ENABLED
         'script_contact_form' => true,
         'script_image_gallery' => true,
-        'script_blog_news' => true,
-        'script_wordpress_style' => true,
-        'script_event_planner' => true,
-        'script_booking_system' => true,
-        'script_simple_shop' => true,
-        'script_video_hosting' => true, // ONLY PRO
-        'script_file_sharing' => true, // ONLY PRO
-        'script_social_engine' => true, // ONLY PRO
-        'script_courses_teaching' => true, // ONLY PRO
+        'script_blog' => true,
+        'script_events' => true,
+        'script_user_access_system' => true,
+        'script_booking' => true,
+        'script_voopress' => true,
+        'script_shop' => true,
+        'script_file_hoster' => true, // ONLY PRO (requires UAS)
+        'script_video_sharing' => true, // ONLY PRO (requires UAS)
+        'script_social_platform' => true, // ONLY PRO (requires UAS)
+        'script_courses' => true, // ONLY PRO (requires UAS)
     ],
 ];

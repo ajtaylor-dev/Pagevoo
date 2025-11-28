@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary } from 'react-icons/md'
+import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary, MdArticle, MdEvent } from 'react-icons/md'
 import type { IconType } from 'react-icons'
 
 interface ManageFeaturesModalProps {
@@ -8,6 +8,7 @@ interface ManageFeaturesModalProps {
   referenceId: number | null
   referenceType: 'template' | 'website'
   onConfigureFeature: (featureType: string) => void
+  onFeatureUninstalled?: (featureType: string) => void
 }
 
 interface InstalledFeature {
@@ -29,6 +30,18 @@ const FEATURE_DETAILS: Record<string, InstalledFeature> = {
     name: 'Image Gallery',
     description: 'Beautiful image galleries with lightbox, multiple layouts, and album organization',
     icon: MdPhotoLibrary
+  },
+  blog: {
+    type: 'blog',
+    name: 'Blog',
+    description: 'Full-featured blog with posts, categories, tags, and rich text editing',
+    icon: MdArticle
+  },
+  events: {
+    type: 'events',
+    name: 'Events Calendar',
+    description: 'Event management with calendar views, categories, and scheduling',
+    icon: MdEvent
   }
   // Add more features as they're implemented
 }
@@ -37,7 +50,8 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
   onClose,
   referenceId,
   referenceType,
-  onConfigureFeature
+  onConfigureFeature,
+  onFeatureUninstalled
 }) => {
   const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,6 +112,10 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
       // Remove from local state
       setInstalledFeatures(prev => prev.filter(f => f !== featureType))
       setConfirmUninstall(null)
+      // Notify parent to remove related sections
+      if (onFeatureUninstalled) {
+        onFeatureUninstalled(featureType)
+      }
     } catch (err: any) {
       console.error('Error uninstalling feature:', err)
       setError(err.message || 'Failed to uninstall feature')

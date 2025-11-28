@@ -238,6 +238,82 @@ export const specialSections = [
       subtitle: ''
     }
   },
+  // Blog Wrap Container
+  {
+    type: 'blog-wrap',
+    label: 'Blog Posts',
+    description: 'Display a list of blog posts',
+    category: 'blog',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      blogConfig: {
+        name: 'Blog Posts',
+        layout: 'list', // list, grid, cards
+        postsPerPage: 10,
+        columns: 2, // For grid/cards layout
+        gap: '24px',
+        showFeaturedImage: true,
+        showExcerpt: true,
+        showAuthor: true,
+        showDate: true,
+        showCategory: true,
+        showTags: false,
+        showReadMore: true,
+        readMoreText: 'Read More',
+        sortBy: 'newest', // newest, oldest, title_asc, title_desc
+        filterCategory: null, // null = all categories
+        excerptLength: 150, // characters
+        dateFormat: 'MMM D, YYYY',
+        containerStyle: {
+          padding: '32px',
+          background: 'transparent',
+          borderRadius: '0'
+        }
+      },
+      title: '',
+      subtitle: ''
+    }
+  },
+  // Events Wrap Container
+  {
+    type: 'events-wrap',
+    label: 'Events Calendar',
+    description: 'Display a list of events',
+    category: 'events',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      eventsConfig: {
+        name: 'Events',
+        layout: 'list', // list, grid, cards
+        eventsPerPage: 10,
+        columns: 2, // For grid/cards layout
+        gap: '24px',
+        showFeaturedImage: true,
+        showDescription: true,
+        showDate: true,
+        showTime: true,
+        showLocation: true,
+        showCategory: true,
+        showPrice: true,
+        showReadMore: true,
+        readMoreText: 'View Details',
+        filter: 'upcoming', // upcoming, past, all
+        filterCategory: null, // null = all categories
+        currency: '$', // $, £, or €
+        containerStyle: {
+          padding: '32px',
+          background: 'transparent',
+          borderRadius: '0'
+        }
+      },
+      title: '',
+      subtitle: ''
+    }
+  },
   {
     type: 'contact-form-input',
     label: 'Text Input',

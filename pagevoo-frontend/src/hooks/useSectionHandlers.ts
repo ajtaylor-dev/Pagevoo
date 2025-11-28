@@ -264,6 +264,54 @@ export const useSectionHandlers = ({
     setCurrentPage({ ...currentPage, sections: updatedSections })
   }
 
+  // Remove all sections related to a feature type (across all pages)
+  const handleRemoveFeatureSections = (featureType: string) => {
+    if (!template) return
+
+    // Define which section types belong to each feature
+    const featureSectionTypes: Record<string, (sectionType: string) => boolean> = {
+      contact_form: (type) => type === 'form-wrap' || type.startsWith('contact-form-'),
+      image_gallery: (type) => type === 'gallery-wrap',
+      blog: (type) => type === 'blog-wrap'
+    }
+
+    const shouldRemove = featureSectionTypes[featureType]
+    if (!shouldRemove) return
+
+    // Count how many sections will be removed
+    let removedCount = 0
+    const updatedPages = template.pages.map(page => {
+      const filteredSections = page.sections.filter(section => {
+        const remove = shouldRemove(section.type)
+        if (remove) removedCount++
+        return !remove
+      })
+      // Reorder remaining sections
+      filteredSections.forEach((section, idx) => {
+        section.order = idx
+      })
+      return { ...page, sections: filteredSections }
+    })
+
+    if (removedCount > 0) {
+      const updatedTemplate = { ...template, pages: updatedPages }
+      setTemplate(updatedTemplate)
+
+      // Update current page if it was affected
+      const updatedCurrentPage = updatedPages.find(p => p.id === currentPage?.id)
+      if (updatedCurrentPage) {
+        setCurrentPage(updatedCurrentPage)
+      }
+
+      // Clear selected section if it was removed
+      if (selectedSection && shouldRemove(selectedSection.type)) {
+        setSelectedSection(null)
+      }
+
+      addToHistory(updatedTemplate)
+    }
+  }
+
   return {
     handleAddSection,
     handleDeleteSection,
@@ -271,6 +319,7 @@ export const useSectionHandlers = ({
     handleToggleSectionLock,
     handleMoveSidebar,
     handleUpdateSectionContent,
-    handleGridColumnUpdate
+    handleGridColumnUpdate,
+    handleRemoveFeatureSections
   }
 }

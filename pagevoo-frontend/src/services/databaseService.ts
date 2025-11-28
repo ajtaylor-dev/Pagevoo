@@ -277,15 +277,16 @@ class DatabaseService {
     const names: Record<string, string> = {
       contact_form: 'Contact Form',
       image_gallery: 'Image Gallery',
-      user_access_system: 'User Access System',
       blog: 'Blog',
-      events: 'Events',
+      events: 'Events Calendar',
+      user_access_system: 'User Access System',
       booking: 'Booking System',
-      voopress: 'VooPress (WordPress-style)',
+      voopress: 'VooPress',
       shop: 'E-Commerce Shop',
       file_hoster: 'File Hosting',
       video_sharing: 'Video Sharing',
       social_platform: 'Social Platform',
+      courses: 'Courses & Teaching',
     }
     return names[featureType] || featureType
   }
