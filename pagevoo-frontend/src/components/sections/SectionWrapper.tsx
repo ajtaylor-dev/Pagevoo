@@ -86,6 +86,15 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
   const isPositionLocked = isTopLocked || isBottomLocked
   const isHovered = hoveredSection === section.id
 
+  // Special sections that cannot be exported (contact form fields, navbars, footers, etc.)
+  const isSpecialSection = section.type.startsWith('contact-form-') ||
+    section.type === 'form-wrap' ||
+    section.type === 'navbar' ||
+    section.type.startsWith('navbar-') ||
+    section.type.startsWith('footer-') ||
+    section.type.startsWith('header-') ||
+    section.type.startsWith('sidebar-nav-')
+
   // Track sidebar visibility for menu-click mode
   const [sidebarVisible, setSidebarVisible] = useState(content.positioned !== 'menu-click')
 
@@ -360,19 +369,21 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             </svg>
           </button>
 
-          {/* Export to Library button */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handleExportSection(section)
-            }}
-            className="builder-ui p-1 hover:bg-[#e8f0e6] rounded transition"
-            title="Export to Library"
-          >
-            <svg className="builder-ui w-4 h-4 text-[#98b290]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
-            </svg>
-          </button>
+          {/* Export to Library button - hidden for special sections */}
+          {!isSpecialSection && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleExportSection(section)
+              }}
+              className="builder-ui p-1 hover:bg-[#e8f0e6] rounded transition"
+              title="Export to Library"
+            >
+              <svg className="builder-ui w-4 h-4 text-[#98b290]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+              </svg>
+            </button>
+          )}
 
           <button
             onClick={(e) => {

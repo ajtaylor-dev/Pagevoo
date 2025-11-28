@@ -367,9 +367,13 @@ class ApiService {
     return response.data;
   }
 
-  async uploadGalleryImage(templateId: number, file: File): Promise<ApiResponse<any>> {
+  // Image Gallery Methods
+  async uploadGalleryImage(templateId: number, file: File, albumId: string | null = null): Promise<ApiResponse<any>> {
     const formData = new FormData();
     formData.append('image', file);
+    if (albumId) {
+      formData.append('album_id', albumId);
+    }
     const response = await this.client.post(`/v1/templates/${templateId}/gallery/upload`, formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
@@ -389,6 +393,48 @@ class ApiService {
     const response = await this.client.post(`/v1/templates/${templateId}/gallery/rename`, {
       image_id: imageId,
       new_filename: newFilename
+    });
+    return response.data;
+  }
+
+  async updateGalleryImage(templateId: number, imageId: string, updates: any): Promise<ApiResponse> {
+    const response = await this.client.post(`/v1/templates/${templateId}/gallery/update`, {
+      image_id: imageId,
+      ...updates
+    });
+    return response.data;
+  }
+
+  async moveGalleryImage(templateId: number, imageId: string, albumId: string | null): Promise<ApiResponse> {
+    const response = await this.client.post(`/v1/templates/${templateId}/gallery/move`, {
+      image_id: imageId,
+      album_id: albumId
+    });
+    return response.data;
+  }
+
+  // Album Methods
+  async createGalleryAlbum(templateId: number, name: string, description?: string): Promise<ApiResponse<any>> {
+    const response = await this.client.post(`/v1/templates/${templateId}/gallery/albums`, {
+      name,
+      description
+    });
+    return response.data;
+  }
+
+  async updateGalleryAlbum(templateId: number, albumId: string, updates: any): Promise<ApiResponse> {
+    const response = await this.client.put(`/v1/templates/${templateId}/gallery/albums/${albumId}`, updates);
+    return response.data;
+  }
+
+  async deleteGalleryAlbum(templateId: number, albumId: string): Promise<ApiResponse> {
+    const response = await this.client.delete(`/v1/templates/${templateId}/gallery/albums/${albumId}`);
+    return response.data;
+  }
+
+  async setAlbumCover(templateId: number, albumId: string, imageId: string): Promise<ApiResponse> {
+    const response = await this.client.post(`/v1/templates/${templateId}/gallery/albums/${albumId}/cover`, {
+      image_id: imageId
     });
     return response.data;
   }

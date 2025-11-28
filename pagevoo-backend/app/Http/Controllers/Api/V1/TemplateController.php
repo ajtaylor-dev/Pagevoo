@@ -464,7 +464,12 @@ class TemplateController extends BaseController
                 'filename' => $filename,
                 'path' => "image_galleries/template_{$template->id}/{$filename}",
                 'size' => $fileSize,
-                'uploaded_at' => now()->toDateTimeString()
+                'uploaded_at' => now()->toDateTimeString(),
+                'album_id' => $request->input('album_id', null),
+                'title' => null,
+                'description' => null,
+                'alt_text' => null,
+                'order' => count($images)
             ];
             $images[] = $newImage;
 
@@ -630,6 +635,227 @@ class TemplateController extends BaseController
             ]);
             return $this->sendError('Failed to rename image: ' . $e->getMessage(), 500);
         }
+    }
+
+    /**
+     * Update image metadata in template gallery
+     */
+    public function updateGalleryImage(Request $request, $id)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $imageId = $request->input('image_id');
+        $images = $template->images ?? [];
+
+        // Find and update image
+        $imageFound = false;
+        foreach ($images as &$img) {
+            if ($img['id'] === $imageId) {
+                $imageFound = true;
+                // Update allowed fields
+                if ($request->has('title')) {
+                    $img['title'] = $request->input('title');
+                }
+                if ($request->has('description')) {
+                    $img['description'] = $request->input('description');
+                }
+                if ($request->has('alt_text')) {
+                    $img['alt_text'] = $request->input('alt_text');
+                }
+                break;
+            }
+        }
+
+        if (!$imageFound) {
+            return $this->sendError('Image not found', 404);
+        }
+
+        $template->update(['images' => $images]);
+
+        return $this->sendSuccess(null, 'Image updated successfully');
+    }
+
+    /**
+     * Move image to a different album
+     */
+    public function moveGalleryImage(Request $request, $id)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $imageId = $request->input('image_id');
+        $albumId = $request->input('album_id'); // Can be null for uncategorized
+        $images = $template->images ?? [];
+
+        // Find and update image
+        $imageFound = false;
+        foreach ($images as &$img) {
+            if ($img['id'] === $imageId) {
+                $imageFound = true;
+                $img['album_id'] = $albumId;
+                break;
+            }
+        }
+
+        if (!$imageFound) {
+            return $this->sendError('Image not found', 404);
+        }
+
+        $template->update(['images' => $images]);
+
+        return $this->sendSuccess(null, 'Image moved successfully');
+    }
+
+    /**
+     * Create a new album for template gallery
+     */
+    public function createGalleryAlbum(Request $request, $id)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $validator = Validator::make($request->all(), [
+            'name' => 'required|string|max:255',
+            'description' => 'nullable|string|max:1000',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->sendError('Validation Error', 422, $validator->errors());
+        }
+
+        $albums = $template->albums ?? [];
+
+        $newAlbum = [
+            'id' => uniqid(),
+            'name' => $request->input('name'),
+            'description' => $request->input('description', ''),
+            'cover_image_id' => null,
+            'image_count' => 0,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+            'order' => count($albums)
+        ];
+
+        $albums[] = $newAlbum;
+        $template->update(['albums' => $albums]);
+
+        return $this->sendSuccess($newAlbum, 'Album created successfully');
+    }
+
+    /**
+     * Update an existing album
+     */
+    public function updateGalleryAlbum(Request $request, $id, $albumId)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $albums = $template->albums ?? [];
+
+        // Find and update album
+        $albumFound = false;
+        foreach ($albums as &$album) {
+            if ($album['id'] === $albumId) {
+                $albumFound = true;
+                if ($request->has('name')) {
+                    $album['name'] = $request->input('name');
+                }
+                if ($request->has('description')) {
+                    $album['description'] = $request->input('description');
+                }
+                $album['updated_at'] = now()->toDateTimeString();
+                break;
+            }
+        }
+
+        if (!$albumFound) {
+            return $this->sendError('Album not found', 404);
+        }
+
+        $template->update(['albums' => $albums]);
+
+        return $this->sendSuccess(null, 'Album updated successfully');
+    }
+
+    /**
+     * Delete an album (images are moved to uncategorized)
+     */
+    public function deleteGalleryAlbum(Request $request, $id, $albumId)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $albums = $template->albums ?? [];
+        $images = $template->images ?? [];
+
+        // Remove album
+        $albums = array_filter($albums, function($album) use ($albumId) {
+            return $album['id'] !== $albumId;
+        });
+
+        // Move images from deleted album to uncategorized
+        foreach ($images as &$img) {
+            if (isset($img['album_id']) && $img['album_id'] === $albumId) {
+                $img['album_id'] = null;
+            }
+        }
+
+        $template->update([
+            'albums' => array_values($albums),
+            'images' => $images
+        ]);
+
+        return $this->sendSuccess(null, 'Album deleted successfully');
+    }
+
+    /**
+     * Set album cover image
+     */
+    public function setAlbumCover(Request $request, $id, $albumId)
+    {
+        $template = Template::find($id);
+
+        if (!$template) {
+            return $this->sendError('Template not found', 404);
+        }
+
+        $imageId = $request->input('image_id');
+        $albums = $template->albums ?? [];
+
+        // Find and update album
+        $albumFound = false;
+        foreach ($albums as &$album) {
+            if ($album['id'] === $albumId) {
+                $albumFound = true;
+                $album['cover_image_id'] = $imageId;
+                $album['updated_at'] = now()->toDateTimeString();
+                break;
+            }
+        }
+
+        if (!$albumFound) {
+            return $this->sendError('Album not found', 404);
+        }
+
+        $template->update(['albums' => $albums]);
+
+        return $this->sendSuccess(null, 'Album cover set successfully');
     }
 
     /**

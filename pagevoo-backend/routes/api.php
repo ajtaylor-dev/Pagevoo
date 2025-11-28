@@ -106,6 +106,13 @@ Route::prefix('v1')->group(function () {
                 Route::post('/{id}/gallery/upload', [TemplateController::class, 'uploadGalleryImage']);
                 Route::post('/{id}/gallery/delete', [TemplateController::class, 'deleteGalleryImage']);
                 Route::post('/{id}/gallery/rename', [TemplateController::class, 'renameGalleryImage']);
+                Route::post('/{id}/gallery/update', [TemplateController::class, 'updateGalleryImage']);
+                Route::post('/{id}/gallery/move', [TemplateController::class, 'moveGalleryImage']);
+                // Album routes
+                Route::post('/{id}/gallery/albums', [TemplateController::class, 'createGalleryAlbum']);
+                Route::put('/{id}/gallery/albums/{albumId}', [TemplateController::class, 'updateGalleryAlbum']);
+                Route::delete('/{id}/gallery/albums/{albumId}', [TemplateController::class, 'deleteGalleryAlbum']);
+                Route::post('/{id}/gallery/albums/{albumId}/cover', [TemplateController::class, 'setAlbumCover']);
             });
         });
 

@@ -23,13 +23,18 @@ export const DatabaseManagementModal: React.FC<DatabaseManagementModalProps> = (
   const [deleting, setDeleting] = useState(false)
   const [backingUp, setBackingUp] = useState(false)
 
+  // Check if the template/website has been saved (has a valid ID)
+  const isUnsaved = !referenceId || referenceId === 0
+
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isUnsaved) {
       loadDatabase()
     }
   }, [isOpen, referenceId, type])
 
   const loadDatabase = async () => {
+    if (isUnsaved) return
+
     setLoading(true)
     try {
       const instance = await databaseService.getInstance(type, referenceId)
@@ -153,7 +158,29 @@ export const DatabaseManagementModal: React.FC<DatabaseManagementModalProps> = (
           </button>
         </div>
 
-        {loading ? (
+        {isUnsaved ? (
+          /* Template/Website Not Saved Yet */
+          <div className="flex-1 flex flex-col items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-8 h-8 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Save Required</h3>
+              <p className="text-gray-600 mb-6">
+                {type === 'template'
+                  ? 'Please save your template first before creating a database. The template needs to be saved so the database can be associated with it.'
+                  : 'Please save your website first before creating a database.'}
+              </p>
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-left">
+                <p className="text-sm text-amber-800">
+                  <strong>How to save:</strong> Click the "Save" button in the top toolbar, or press <kbd className="px-1.5 py-0.5 bg-amber-100 rounded text-xs font-mono">Ctrl+S</kbd>
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="flex-1 flex items-center justify-center p-8">
             <p className="text-gray-500">Loading database information...</p>
           </div>

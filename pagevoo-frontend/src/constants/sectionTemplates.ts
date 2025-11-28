@@ -173,6 +173,71 @@ export const footerSections = [
 
 // Special Sections - Feature-specific components
 export const specialSections = [
+  // Form Wrap Container
+  {
+    type: 'form-wrap',
+    label: 'Contact Form',
+    description: 'Form container for contact form fields',
+    category: 'contact-form',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      formConfig: {
+        name: 'Contact Form',
+        title: 'Get in Touch',
+        subtitle: 'Fill out the form below and we\'ll get back to you.',
+        formType: 'contact',
+        submitButtonText: 'Send Message',
+        sendAutoResponder: false,
+        recipientEmail: ''
+      },
+      formFields: [],
+      formCSS: {
+        container: {
+          padding: '32px',
+          background: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb'
+        }
+      }
+    }
+  },
+  // Gallery Wrap Container
+  {
+    type: 'gallery-wrap',
+    label: 'Image Gallery',
+    description: 'Display images from an album',
+    category: 'gallery',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      galleryConfig: {
+        name: 'Image Gallery',
+        albumId: null,
+        layout: 'grid',
+        columns: 3,
+        gap: '16px',
+        enableLightbox: true,
+        showCaptions: 'hover',
+        hoverEffect: 'zoom',
+        borderRadius: '8px',
+        aspectRatio: 'square',
+        autoPlay: false,
+        autoPlayInterval: 5000,
+        showDots: true,
+        showArrows: true,
+        containerStyle: {
+          padding: '32px',
+          background: 'transparent',
+          borderRadius: '0'
+        }
+      },
+      title: '',
+      subtitle: ''
+    }
+  },
   {
     type: 'contact-form-input',
     label: 'Text Input',
@@ -293,59 +358,6 @@ export const specialSections = [
     Submit
   </button>
 </div>`,
-        colWidth: 12
-      }],
-      content_css: createDefaultContentCSS(1),
-      section_css: getDefaultSectionCSS()
-    }
-  },
-  {
-    type: 'contact-form-full',
-    label: 'Complete Form',
-    description: 'Full contact form with all fields',
-    category: 'contact-form',
-    cols: 1,
-    rows: 1,
-    colWidths: [12],
-    defaultContent: {
-      columns: [{
-        content: `<form style="max-width: 600px; margin: 0 auto;">
-  <h2 style="margin-bottom: 1.5rem; font-size: 1.5rem; font-weight: 700; color: #111827;">Contact Us</h2>
-
-  <div style="margin-bottom: 1rem;">
-    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151;">Name</label>
-    <input type="text" name="name" placeholder="Your name" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem;" />
-  </div>
-
-  <div style="margin-bottom: 1rem;">
-    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151;">Email</label>
-    <input type="email" name="email" placeholder="your@email.com" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem;" />
-  </div>
-
-  <div style="margin-bottom: 1rem;">
-    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151;">Subject</label>
-    <select name="subject" style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem; background-color: white;">
-      <option value="">Select a subject</option>
-      <option value="general">General Inquiry</option>
-      <option value="support">Support</option>
-      <option value="sales">Sales</option>
-    </select>
-  </div>
-
-  <div style="margin-bottom: 1rem;">
-    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500; color: #374151;">Message</label>
-    <textarea name="message" rows="4" placeholder="Your message..." style="width: 100%; padding: 0.5rem; border: 1px solid #d1d5db; border-radius: 0.375rem; font-size: 1rem; resize: vertical;"></textarea>
-  </div>
-
-  <div style="margin-bottom: 1.5rem; display: flex; align-items: center;">
-    <input type="checkbox" name="subscribe" id="subscribe" style="width: 1rem; height: 1rem; margin-right: 0.5rem;" />
-    <label for="subscribe" style="font-weight: 400; color: #374151; cursor: pointer;">Subscribe to newsletter</label>
-  </div>
-
-  <button type="submit" style="width: 100%; padding: 0.75rem; background-color: #3b82f6; color: white; border: none; border-radius: 0.375rem; font-size: 1rem; font-weight: 500; cursor: pointer;">
-    Send Message
-  </button>
-</form>`,
         colWidth: 12
       }],
       content_css: createDefaultContentCSS(1),

@@ -407,6 +407,11 @@ export default function WebsiteBuilder() {
     })
   }, [installedFeatures, allSpecialSections])
 
+  // Check if current page has a form container
+  const hasFormContainer = useMemo(() => {
+    return currentPage?.sections?.some((section: any) => section.type === 'form-wrap') || false
+  }, [currentPage?.sections])
+
   const loadAvailableWebsites = async () => {
     setLoadingWebsites(true)
     try {
@@ -1721,6 +1726,7 @@ export default function WebsiteBuilder() {
               onRemoveImportedSection={handleRemoveImportedSection}
               onMouseDown={handleLeftMouseDown}
               theme={theme}
+              hasFormContainer={hasFormContainer}
             />
 
             {/* Left Resize Handle */}

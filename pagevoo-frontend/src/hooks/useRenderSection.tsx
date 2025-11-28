@@ -4,6 +4,8 @@ import { NavbarSection } from '../components/sections/NavbarSection'
 import { FooterSection } from '../components/sections/FooterSection'
 import { SectionWrapper } from '../components/sections/SectionWrapper'
 import { ContactFormPreview } from '@/components/script-features/contact-form/ContactFormPreview'
+import { FormWrapPreview } from '@/components/script-features/contact-form/FormWrapPreview'
+import { GalleryWrapPreview } from '@/components/script-features/gallery/GalleryWrapPreview'
 
 interface TemplateSection {
   id: number
@@ -39,6 +41,25 @@ interface Template {
   technologies: string[]
   features: string[]
   custom_css?: string
+  images?: Array<{
+    id: string
+    filename: string
+    path: string
+    thumbnail_path?: string
+    title?: string
+    description?: string
+    alt_text?: string
+    album_id: string | null
+    order: number
+  }>
+  albums?: Array<{
+    id: string
+    name: string
+    description?: string
+    cover_image_id?: string
+    image_count: number
+    order: number
+  }>
 }
 
 interface UseRenderSectionProps {
@@ -144,13 +165,41 @@ export const useRenderSection = ({
           )
           break
 
+        // Form Wrap Container
+        case 'form-wrap':
+          sectionContent = (
+            <FormWrapPreview
+              section={section}
+              selectedSection={selectedSection}
+            />
+          )
+          break
+
+        // Gallery Wrap Container
+        case 'gallery-wrap':
+          sectionContent = (
+            <GalleryWrapPreview
+              section={section}
+              selectedSection={selectedSection}
+              images={(template?.images || []).filter(
+                img => img.album_id === section.content?.galleryConfig?.albumId
+              )}
+              albumName={template?.albums?.find(
+                a => a.id === section.content?.galleryConfig?.albumId
+              )?.name}
+            />
+          )
+          break
+
         // Contact form sections
-        case 'contact-form-full':
         case 'contact-form-input':
         case 'contact-form-email':
+        case 'contact-form-phone':
         case 'contact-form-textarea':
         case 'contact-form-dropdown':
         case 'contact-form-checkbox':
+        case 'contact-form-radio':
+        case 'contact-form-file':
         case 'contact-form-submit':
           sectionContent = (
             <ContactFormPreview

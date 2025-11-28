@@ -385,6 +385,11 @@ export default function TemplateBuilder() {
     })
   }, [installedFeatures, allSpecialSections])
 
+  // Check if current page has a form container
+  const hasFormContainer = useMemo(() => {
+    return currentPage?.sections?.some((section: any) => section.type === 'form-wrap') || false
+  }, [currentPage?.sections])
+
   // Template Builder Effects (useEffects)
   useTemplateBuilderEffects({
     templateRef,
@@ -641,7 +646,13 @@ export default function TemplateBuilder() {
     handleImageGalleryClose,
     handleImageUpload,
     handleImageDelete,
-    handleImageRename
+    handleImageRename,
+    handleImageUpdate,
+    handleImageMove,
+    handleCreateAlbum,
+    handleUpdateAlbum,
+    handleDeleteAlbum,
+    handleSetAlbumCover
   } = useImageGalleryHandlers({
     template,
     setTemplate,
@@ -1045,6 +1056,7 @@ export default function TemplateBuilder() {
               onRemoveImportedSection={handleRemoveImportedSection}
               onMouseDown={handleLeftMouseDown}
               theme={theme}
+              hasFormContainer={hasFormContainer}
             />
 
             {/* Left Resize Handle */}
@@ -1126,6 +1138,7 @@ export default function TemplateBuilder() {
               setExpandedColumnIndex={setExpandedColumnIndex}
               setShowNavButtonStyleModal={setShowNavButtonStyleModal}
               theme={theme}
+              onOpenGallery={() => setShowImageGallery(true)}
             />
           </>
         )}
@@ -1285,10 +1298,21 @@ export default function TemplateBuilder() {
           isOpen={true}
           onClose={handleImageGalleryClose}
           templateId={template?.id || 0}
-          images={template?.images || []}
+          images={(template?.images || []).map(img => ({
+            ...img,
+            album_id: img.album_id || null,
+            order: img.order || 0
+          }))}
+          albums={template?.albums || []}
           onUpload={handleImageUpload}
           onDelete={handleImageDelete}
           onRename={handleImageRename}
+          onUpdateImage={handleImageUpdate}
+          onMoveImage={handleImageMove}
+          onCreateAlbum={handleCreateAlbum}
+          onUpdateAlbum={handleUpdateAlbum}
+          onDeleteAlbum={handleDeleteAlbum}
+          onSetAlbumCover={handleSetAlbumCover}
         />
       )}
 

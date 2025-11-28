@@ -3,6 +3,8 @@ import { StyleEditor } from './StyleEditor'
 import GridProperties from './properties/GridProperties'
 import { NavbarProperties } from './properties/NavbarProperties'
 import { FooterProperties } from './properties/FooterProperties'
+import { FormWrapProperties } from './properties/FormWrapProperties'
+import { GalleryWrapProperties } from './properties/GalleryWrapProperties'
 import type { ThemeColors } from '@/config/themes'
 
 interface TemplateSection {
@@ -27,6 +29,15 @@ interface TemplatePage {
   page_id?: string
 }
 
+interface Album {
+  id: string
+  name: string
+  description?: string
+  cover_image_id?: string
+  image_count: number
+  order: number
+}
+
 interface Template {
   id: number
   name: string
@@ -45,7 +56,9 @@ interface Template {
     path: string
     size: number
     uploaded_at: string
+    album_id?: string | null
   }>
+  albums?: Album[]
 }
 
 interface RightSidebarProps {
@@ -76,6 +89,7 @@ interface RightSidebarProps {
   setExpandedColumnIndex: (index: number | null) => void
   setShowNavButtonStyleModal: (show: boolean) => void
   theme: ThemeColors
+  onOpenGallery?: () => void
 }
 
 export const RightSidebar: React.FC<RightSidebarProps> = ({
@@ -105,7 +119,8 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   expandedColumnIndex,
   setExpandedColumnIndex,
   setShowNavButtonStyleModal,
-  theme
+  theme,
+  onOpenGallery
 }) => {
   return (
     <>
@@ -398,6 +413,24 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                 <FooterProperties
                   selectedSection={selectedSection}
                   onUpdateContent={handleUpdateSectionContent}
+                />
+              )}
+
+              {/* Form Wrap Section Controls */}
+              {selectedSection.type === 'form-wrap' && (
+                <FormWrapProperties
+                  selectedSection={selectedSection}
+                  onUpdateContent={handleUpdateSectionContent}
+                />
+              )}
+
+              {/* Gallery Wrap Section Controls */}
+              {selectedSection.type === 'gallery-wrap' && (
+                <GalleryWrapProperties
+                  selectedSection={selectedSection}
+                  onUpdateContent={handleUpdateSectionContent}
+                  albums={template?.albums || []}
+                  onOpenGallery={onOpenGallery}
                 />
               )}
                 </>

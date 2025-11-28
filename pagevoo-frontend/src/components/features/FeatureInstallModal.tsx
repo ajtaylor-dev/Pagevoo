@@ -53,7 +53,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     icon: MdPhotoLibrary,
     requiresUAS: false,
     tier: 'trial',
-    available: false // Coming soon
+    available: true
   },
   {
     type: 'user_access_system',

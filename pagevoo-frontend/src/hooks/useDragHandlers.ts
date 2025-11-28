@@ -1,6 +1,7 @@
 import type { DragStartEvent, DragOverEvent, DragEndEvent } from '@dnd-kit/core'
 import { arrayMove } from '@dnd-kit/sortable'
 import { generateIdentifier } from '../utils/helpers'
+import { formFieldTypes } from '../constants/formSectionTemplates'
 
 interface TemplateSection {
   id: number
@@ -89,6 +90,65 @@ export const useDragHandlers = ({
     if (!currentPage || !template) return
 
     const activeData = active.data.current
+    const overData = over?.data.current
+
+    // Case 0: Dragging a form field into a form-wrap section
+    if (activeData?.source === 'library' && over) {
+      const sectionConfig = activeData.section
+      const isFormField = formFieldTypes.includes(sectionConfig.type)
+
+      // Check if dropping onto a form-wrap section
+      if (isFormField && overData?.source === 'canvas') {
+        const targetSectionIndex = overData.index
+        const targetSection = currentPage.sections[targetSectionIndex]
+
+        if (targetSection && targetSection.type === 'form-wrap') {
+          // Add the field to the form-wrap's formFields array instead of creating a new section
+          const fieldConfig = sectionConfig.defaultContent?.fieldConfig || {
+            fieldType: sectionConfig.type.replace('contact-form-', ''),
+            name: sectionConfig.type.replace('contact-form-', ''),
+            label: sectionConfig.label || sectionConfig.type,
+            required: false
+          }
+
+          const newField = {
+            id: `field-${Date.now()}`,
+            type: sectionConfig.type,
+            ...fieldConfig,
+            order: targetSection.content?.formFields?.length || 0
+          }
+
+          const updatedFormFields = [...(targetSection.content?.formFields || []), newField]
+
+          const updatedSections = currentPage.sections.map((s, idx) => {
+            if (idx === targetSectionIndex) {
+              return {
+                ...s,
+                content: {
+                  ...s.content,
+                  formFields: updatedFormFields
+                }
+              }
+            }
+            return s
+          })
+
+          const updatedPages = template.pages.map(p => {
+            if (p.id === currentPage.id) {
+              return { ...p, sections: updatedSections }
+            }
+            return p
+          })
+
+          const updatedTemplate = { ...template, pages: updatedPages }
+          setTemplate(updatedTemplate)
+          setCurrentPage({ ...currentPage, sections: updatedSections })
+          setSelectedSection(updatedSections[targetSectionIndex])
+          addToHistory(updatedTemplate)
+          return
+        }
+      }
+    }
 
     // Case 1: Dragging from library to canvas
     if (activeData?.source === 'library' || activeData?.source === 'imported-library') {
@@ -158,8 +218,6 @@ export const useDragHandlers = ({
 
     // If no over target for reordering, return
     if (!over) return
-
-    const overData = over.data.current
 
     // Case 2: Reordering sections on canvas
     if (activeData?.source === 'canvas' && overData?.source === 'canvas') {

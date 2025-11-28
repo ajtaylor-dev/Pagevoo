@@ -59,7 +59,8 @@
       "Bash(php test_tiers.php:*)",
       "Bash(php -r:*)",
       "Bash(php:*)",
-      "Bash(.gitignore)"
+      "Bash(.gitignore)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

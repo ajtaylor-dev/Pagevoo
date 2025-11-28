@@ -5,6 +5,7 @@ interface Section {
   type: string
   label: string
   description: string
+  category?: string
 }
 
 interface ImportedSection {
@@ -32,6 +33,7 @@ interface LeftSidebarProps {
   onRemoveImportedSection?: (sectionId: number) => void
   onMouseDown: (e: React.MouseEvent) => void
   theme: ThemeColors
+  hasFormContainer?: boolean
 }
 
 export const LeftSidebar: React.FC<LeftSidebarProps> = ({
@@ -50,8 +52,13 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
   DraggableImportedSectionItem,
   onRemoveImportedSection,
   onMouseDown,
-  theme
+  theme,
+  hasFormContainer = false
 }) => {
+  // Check if a section is a form field (not form-wrap itself)
+  const isFormField = (sectionType: string) => {
+    return sectionType.startsWith('contact-form-') && sectionType !== 'form-wrap'
+  }
   return (
     <>
       <aside
@@ -269,19 +276,39 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                       {/* Subcategory Sections */}
                       {expandedCategories.includes(`special-${category}`) && (
                         <div className="grid grid-cols-2 gap-2 mt-2">
-                          {sections.map((section) => (
-                            <DraggableSectionItem key={section.type} section={section}>
-                              <div
-                                className="group relative w-full cursor-grab active:cursor-grabbing"
-                                title={section.description}
-                              >
-                                {renderSectionThumbnail(section)}
-                                <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center group-hover:${theme.categoryIcon} transition truncate`}>
-                                  {section.label}
+                          {sections.map((section) => {
+                            const isDisabled = isFormField(section.type) && !hasFormContainer
+
+                            if (isDisabled) {
+                              // Render greyed out non-draggable version
+                              return (
+                                <div
+                                  key={section.type}
+                                  className="group relative w-full cursor-not-allowed opacity-40"
+                                  title="Add a Form Container first"
+                                >
+                                  {renderSectionThumbnail(section)}
+                                  <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center transition truncate`}>
+                                    {section.label}
+                                  </div>
                                 </div>
-                              </div>
-                            </DraggableSectionItem>
-                          ))}
+                              )
+                            }
+
+                            return (
+                              <DraggableSectionItem key={section.type} section={section}>
+                                <div
+                                  className="group relative w-full cursor-grab active:cursor-grabbing"
+                                  title={section.description}
+                                >
+                                  {renderSectionThumbnail(section)}
+                                  <div className={`mt-1 text-[10px] ${theme.sidebarText} text-center group-hover:${theme.categoryIcon} transition truncate`}>
+                                    {section.label}
+                                  </div>
+                                </div>
+                              </DraggableSectionItem>
+                            )
+                          })}
                         </div>
                       )}
                     </div>
