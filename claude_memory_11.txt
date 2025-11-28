@@ -1,0 +1,315 @@
+# PAGEVOO PROJECT - MEMORY FILE #11
+**Date:** November 28, 2025
+**Session:** Blog and Events Calendar Features Implementation
+
+---
+
+## SESSION SUMMARY
+
+This session implemented two Brochure tier script features: Blog and Events Calendar.
+
+### Blog Feature - FULLY IMPLEMENTED
+
+A complete blog system with posts, categories, and tags.
+
+#### Backend Components:
+- **BlogController.php** - `pagevoo-backend/app/Http/Controllers/Api/V1/BlogController.php`
+  - Full CRUD for posts, categories, and tags
+  - Uses dynamic database connection pattern
+  - Slug generation, status management, featured posts
+
+- **Blog Migration** - `pagevoo-backend/database/migrations/script_features/blog/2025_11_28_000001_create_blog_tables.php`
+  - `blog_categories` - Categories with slug, description, order
+  - `blog_posts` - Full posts with content, excerpt, featured image, SEO fields
+  - `blog_tags` - Simple tags with slug
+  - `blog_post_tag` - Many-to-many pivot table
+  - `blog_settings` - Configurable blog settings
+
+#### Frontend Components:
+- **BlogManager.tsx** - `pagevoo-frontend/src/components/BlogManager.tsx`
+  - Full management modal (~900 lines)
+  - Views: list, categories, tags, editor
+  - Rich post editor with all fields
+  - Category and tag management
+
+- **BlogWrapPreview.tsx** - `pagevoo-frontend/src/components/script-features/blog/BlogWrapPreview.tsx`
+  - Canvas preview with sample posts
+  - Supports: list, grid, cards layouts
+  - Configurable display options
+
+- **BlogWrapProperties.tsx** - `pagevoo-frontend/src/components/properties/BlogWrapProperties.tsx`
+  - Dark theme sidebar properties
+  - Collapsible sections: general, layout, display, filtering, container
+
+### Events Calendar Feature - FULLY IMPLEMENTED
+
+Event management with calendar views and scheduling.
+
+#### Backend Components:
+- **EventController.php** - `pagevoo-backend/app/Http/Controllers/Api/V1/EventController.php`
+  - Full CRUD for events and categories
+  - Calendar view endpoint for month queries
+  - Dynamic database connection
+
+- **Event Models**:
+  - `Event.php` - Full model with scopes, relationships, accessors
+  - `EventCategory.php` - Categories with color support
+  - `EventSettings.php` - Settings model
+
+- **Events Migration** - `pagevoo-backend/database/migrations/script_features/events/2025_11_28_000001_create_events_tables.php`
+  - `event_categories` - Categories with color for calendar display
+  - `events` - Full event details (dates, times, location, online support, pricing, capacity)
+  - `event_settings` - Configuration options
+
+#### Frontend Components:
+- **EventsManager.tsx** - `pagevoo-frontend/src/components/EventsManager.tsx`
+  - Full management modal
+  - Views: list, calendar, categories, editor
+  - Calendar view with month navigation
+  - Complete event form
+
+- **EventsWrapPreview.tsx** - `pagevoo-frontend/src/components/script-features/events/EventsWrapPreview.tsx`
+  - Canvas preview with sample events
+  - Supports: list, grid, cards layouts
+  - Date blocks, location, pricing display
+  - **Configurable currency ($, £, €)**
+
+- **EventsWrapProperties.tsx** - `pagevoo-frontend/src/components/properties/EventsWrapProperties.tsx`
+  - Dark theme sidebar properties
+  - Currency selector in Display Options
+  - Collapsible sections
+
+---
+
+## API ROUTES ADDED
+
+### Blog Routes (api.php):
+```php
+Route::prefix('blog')->group(function () {
+    Route::get('/', [BlogController::class, 'index']);
+    Route::get('/{id}', [BlogController::class, 'show']);
+    Route::post('/', [BlogController::class, 'store']);
+    Route::put('/{id}', [BlogController::class, 'update']);
+    Route::delete('/{id}', [BlogController::class, 'destroy']);
+    Route::get('/categories/all', [BlogController::class, 'getCategories']);
+    Route::post('/categories', [BlogController::class, 'storeCategory']);
+    Route::put('/categories/{id}', [BlogController::class, 'updateCategory']);
+    Route::delete('/categories/{id}', [BlogController::class, 'destroyCategory']);
+    Route::get('/tags/all', [BlogController::class, 'getTags']);
+    Route::post('/tags', [BlogController::class, 'storeTag']);
+    Route::delete('/tags/{id}', [BlogController::class, 'destroyTag']);
+});
+```
+
+### Events Routes (api.php):
+```php
+Route::prefix('events')->group(function () {
+    Route::get('/', [EventController::class, 'index']);
+    Route::get('/{id}', [EventController::class, 'show']);
+    Route::post('/', [EventController::class, 'store']);
+    Route::put('/{id}', [EventController::class, 'update']);
+    Route::delete('/{id}', [EventController::class, 'destroy']);
+    Route::get('/calendar/month', [EventController::class, 'getCalendarEvents']);
+    Route::get('/categories/all', [EventController::class, 'getCategories']);
+    Route::post('/categories', [EventController::class, 'storeCategory']);
+    Route::put('/categories/{id}', [EventController::class, 'updateCategory']);
+    Route::delete('/categories/{id}', [EventController::class, 'destroyCategory']);
+});
+```
+
+---
+
+## FILES MODIFIED
+
+### pagevoo_permissions.php
+Updated tier structure to match frontend:
+- **Trial:** contact_form, image_gallery
+- **Brochure:** + blog, events
+- **Niche:** + user_access_system, booking, voopress, shop
+- **Pro:** + file_hoster, video_sharing, social_platform, courses
+
+### api.ts
+Added all API methods for:
+- Blog: getPosts, getPost, createPost, updatePost, deletePost, getCategories, etc.
+- Events: getEvents, getEvent, createEvent, updateEvent, deleteEvent, getCalendarEvents, etc.
+
+### sectionTemplates.ts
+Added section templates:
+- `blog-wrap` - Blog posts display section
+- `events-wrap` - Events calendar display section (with currency config)
+
+### useRenderSection.tsx
+Added cases for:
+- `blog-wrap` -> BlogWrapPreview
+- `events-wrap` -> EventsWrapPreview
+
+### RightSidebar.tsx
+- Added BlogWrapProperties import and case
+- Added EventsWrapProperties import and case
+- Added onOpenBlogManager and onOpenEventsManager props
+
+### TemplateBuilder.tsx & WebsiteBuilder.tsx
+- Added BlogManager and EventsManager imports
+- Added showBlogManager and showEventsManager state
+- Added modal rendering for both managers
+- Passed props to RightSidebar
+
+### FeatureInstallModal.tsx
+- Set blog available: true
+- Set events available: true
+
+### ManageFeaturesModal.tsx
+- Added blog to FEATURE_DETAILS
+- Added events to FEATURE_DETAILS
+
+### databaseService.ts
+- Already had events and blog in getFeatureDisplayName
+
+---
+
+## INTERFACE STRUCTURES
+
+### BlogConfig:
+```typescript
+interface BlogConfig {
+  layout: 'list' | 'grid' | 'cards'
+  postsPerPage: number
+  columns: number
+  gap: string
+  showFeaturedImage: boolean
+  showExcerpt: boolean
+  showAuthor: boolean
+  showDate: boolean
+  showCategory: boolean
+  showTags: boolean
+  showReadMore: boolean
+  readMoreText: string
+  sortBy: 'newest' | 'oldest' | 'title_asc' | 'title_desc'
+  filterCategory: number | null
+  excerptLength: number
+  dateFormat: string
+  containerStyle?: { padding, background, borderRadius }
+}
+```
+
+### EventsConfig:
+```typescript
+interface EventsConfig {
+  layout: 'list' | 'grid' | 'cards'
+  eventsPerPage: number
+  columns: number
+  gap: string
+  showFeaturedImage: boolean
+  showDescription: boolean
+  showDate: boolean
+  showTime: boolean
+  showLocation: boolean
+  showCategory: boolean
+  showPrice: boolean
+  showReadMore: boolean
+  readMoreText: string
+  filter: 'upcoming' | 'past' | 'all'
+  filterCategory: number | null
+  currency: '$' | '£' | '€'  // NEW: Configurable currency
+  containerStyle?: { padding, background, borderRadius }
+}
+```
+
+---
+
+## FEATURE TIER STRUCTURE
+
+| Tier | Features |
+|------|----------|
+| Trial | contact_form, image_gallery |
+| Brochure | + blog, events |
+| Niche | + user_access_system, booking, voopress, shop |
+| Pro | + file_hoster, video_sharing, social_platform, courses |
+
+---
+
+## GIT COMMIT
+
+```
+Feat: Add Blog and Events Calendar features
+
+Blog Feature:
+- Add BlogController with full CRUD operations
+- Create blog posts migration with categories and tags
+- Add BlogManager component for post/category/tag management
+- Add BlogWrapPreview and BlogWrapProperties components
+- Add blog-wrap section type for displaying posts
+
+Events Calendar Feature:
+- Add EventController with CRUD and calendar endpoints
+- Create events migration with categories and settings
+- Add EventsManager component with calendar view
+- Add EventsWrapPreview and EventsWrapProperties components
+- Add events-wrap section type with configurable currency ($, £, €)
+
+Also includes:
+- Update permissions config to match frontend tier structure
+- Wire up both features in TemplateBuilder and WebsiteBuilder
+- Add features to FeatureInstallModal and ManageFeaturesModal
+```
+
+Commit: b2b4446
+Branch: main
+Pushed to: https://github.com/ajtaylor-dev/Pagevoo.git
+
+---
+
+## DEVELOPMENT SERVERS
+
+Backend: `cd /d/Pagevoo/pagevoo-backend && php artisan serve` (port 8000)
+Frontend: `cd /d/Pagevoo/pagevoo-frontend && npm run dev` (port 5173)
+
+---
+
+## NEXT SESSION - USER ACCESS SYSTEM
+
+The next feature is **User Access System (UAS)** - the first major Niche tier feature.
+
+This is a foundational feature that other features depend on:
+- Booking System (requires UAS)
+- VooPress (requires UAS)
+- Shop (requires UAS)
+- File Hoster (requires UAS)
+- Video Sharing (requires UAS)
+- Social Platform (requires UAS)
+- Courses (requires UAS)
+
+### UAS Feature Scope (to be planned):
+- User registration and login
+- User roles and permissions
+- Profile management
+- Password reset
+- Email verification
+- Session management
+- User-specific content access
+- Admin user management
+
+---
+
+## COMPLETED FEATURES (Script Features)
+
+| Feature | Tier | Status |
+|---------|------|--------|
+| Contact Form | Trial | ✅ Complete |
+| Image Gallery | Trial | ✅ Complete |
+| Blog | Brochure | ✅ Complete |
+| Events Calendar | Brochure | ✅ Complete |
+| User Access System | Niche | 🔜 Next |
+| Booking | Niche | Pending |
+| VooPress | Niche | Pending |
+| Shop | Niche | Pending |
+| File Hoster | Pro | Pending |
+| Video Sharing | Pro | Pending |
+| Social Platform | Pro | Pending |
+| Courses | Pro | Pending |
+
+---
+
+**End of Memory File #11**
+
+Session completed Blog and Events Calendar features. Ready for User Access System implementation.
