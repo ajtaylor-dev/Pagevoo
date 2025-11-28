@@ -8,6 +8,7 @@ import { FormWrapPreview } from '@/components/script-features/contact-form/FormW
 import { GalleryWrapPreview } from '@/components/script-features/gallery/GalleryWrapPreview'
 import { BlogWrapPreview } from '@/components/script-features/blog/BlogWrapPreview'
 import { EventsWrapPreview } from '@/components/script-features/events/EventsWrapPreview'
+import LoginBoxPreview from '@/components/script-features/uas/LoginBoxPreview'
 
 interface TemplateSection {
   id: number
@@ -209,6 +210,16 @@ export const useRenderSection = ({
             <EventsWrapPreview
               section={section}
               selectedSection={selectedSection}
+            />
+          )
+          break
+
+        // User Access System - Login Box
+        case 'login-box':
+          sectionContent = (
+            <LoginBoxPreview
+              config={section.content?.loginConfig || {}}
+              isPreview={true}
             />
           )
           break

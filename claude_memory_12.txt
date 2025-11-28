@@ -1,0 +1,141 @@
+# Claude Memory File #12 - User Access System (UAS) Implementation
+Date: November 28, 2025
+
+## What Was Accomplished
+
+Implemented the User Access System (UAS) feature - the foundational Niche tier feature that other features (Booking, VooPress, Shop, etc.) will depend on.
+
+## Backend Implementation
+
+### Database Migration Files
+Created in `pagevoo-backend/database/migrations/script_features/user_access_system/`:
+
+1. **2025_11_28_000001_create_uas_tables.php**
+   - `uas_groups` - User groups with hierarchical levels (level determines permissions priority)
+   - `uas_users` - End-users with email verification status, group assignment, permission overrides
+   - `uas_email_verifications` - Email verification tokens for registration
+   - `uas_security_questions` - 5 standard security questions
+   - `uas_user_security_answers` - User's selected 3 security questions and hashed answers
+   - `uas_password_resets` - Password reset tokens with security question verification status
+   - `uas_sessions` - User sessions with remember_me support (2 hours vs 30 days)
+   - `uas_page_access` - Page-level access control with allowed_groups, allowed_users, denied_users
+   - `uas_permission_definitions` - Expandable permission system
+   - `uas_settings` - UAS configuration (allow_registration, require_email_verification, etc.)
+   - `uas_activity_log` - Audit trail for all UAS actions
+
+2. **2025_11_28_000002_seed_uas_defaults.php**
+   - Seeds default groups: Admins (level 1), Moderators (level 2), Members (level 3), Banned (level 999)
+   - Seeds 5 security questions (mother's maiden name, first pet, birth city, first school, favorite movie)
+   - Seeds core permission definitions
+   - Seeds default settings
+
+### Models
+Created in `pagevoo-backend/app/Models/Uas/`:
+- UasGroup.php, UasUser.php, UasSecurityQuestion.php, UasUserSecurityAnswer.php
+- UasEmailVerification.php, UasPasswordReset.php, UasSession.php
+- UasPageAccess.php, UasPermissionDefinition.php, UasSetting.php, UasActivityLog.php
+- All models use dynamic database connection pattern for multi-tenant architecture
+
+### Controllers
+1. **UasController.php** - Management panel operations:
+   - Dashboard stats
+   - CRUD for users and groups
+   - Page access control (sync/update)
+   - Permission definitions (get/grouped)
+   - Settings management
+   - Activity log viewing
+
+2. **UasAuthController.php** - Public auth endpoints:
+   - Registration flow: initiateRegistration -> verifyEmail -> completeRegistration
+   - Login/Logout with remember_me support
+   - getCurrentUser
+   - Password reset: requestPasswordReset -> verifyResetToken -> verifySecurityQuestions -> resetPassword
+   - getSecurityQuestions
+
+### Routes (in routes/api.php)
+- `/api/v1/script-features/uas/*` - Management panel (auth required)
+- `/api/v1/uas-auth/*` - Public auth endpoints
+
+## Frontend Implementation
+
+### UasManager Component
+`pagevoo-frontend/src/components/UasManager.tsx` (~850 lines):
+- Full management panel with tabs: Users, Groups, Page Access, Settings
+- Sub-components: UsersTab, GroupsTab, PageAccessTab, SettingsTab
+- User form modal for create/edit
+- Group form modal with color picker
+- Page access toggle controls
+
+### Section Templates (in sectionTemplates.ts)
+Added UAS section templates with category 'user_access_system':
+- `login-box` - Login form that transforms to status box when logged in
+- `register-form` - Registration form with email verification
+- `user-dashboard` - User dashboard with profile and feature integrations
+
+### Preview/Properties Components
+- `LoginBoxPreview.tsx` - Shows login form or logged-in status with toggle in builder
+- `LoginBoxProperties.tsx` - Configuration panel for login box section
+
+### Integration Points
+1. **Header.tsx** - Added UAS icon button next to image gallery (visible when UAS installed)
+2. **TemplateBuilder.tsx** - Added state, import, Header props, modal rendering for UasManager
+3. **WebsiteBuilder.tsx** - Same as TemplateBuilder
+4. **FeatureInstallModal.tsx** - Set UAS available: true
+5. **ManageFeaturesModal.tsx** - Added UAS feature details
+6. **useRenderSection.tsx** - Added case for 'login-box' section type
+7. **RightSidebar.tsx** - Added LoginBoxProperties for 'login-box' sections
+
+## Key Design Decisions
+
+1. **Hierarchical Groups**: Groups have levels (1=highest privilege, 999=banned). Lower level = more privileges.
+
+2. **Permission Overrides**: Individual user permissions can override their group's permissions.
+
+3. **Email Verification Required**: Users must verify email before completing registration with security questions.
+
+4. **Security Questions**: 5 standard questions, user picks 3 during registration. Used for password reset.
+
+5. **Remember Me**: 30 days vs 2 hours session duration.
+
+6. **Banned Users**: Cannot login at all (level 999).
+
+7. **Page Lockdown**: Each page can have access control with allowed groups, specific users, or denied users.
+
+8. **Special UAS Pages**: Login, Register, Dashboard, User Settings, Reset Password - undeletable but stylable.
+
+## Files Modified/Created
+
+### Backend New Files:
+- database/migrations/script_features/user_access_system/2025_11_28_000001_create_uas_tables.php
+- database/migrations/script_features/user_access_system/2025_11_28_000002_seed_uas_defaults.php
+- app/Models/Uas/*.php (11 model files)
+- app/Http/Controllers/Api/V1/UasController.php
+- app/Http/Controllers/Api/V1/UasAuthController.php
+
+### Backend Modified Files:
+- routes/api.php (added UAS routes)
+
+### Frontend New Files:
+- src/components/UasManager.tsx
+- src/components/script-features/uas/LoginBoxPreview.tsx
+- src/components/properties/LoginBoxProperties.tsx
+
+### Frontend Modified Files:
+- src/constants/sectionTemplates.ts (added UAS section templates)
+- src/components/layout/Header.tsx (added UAS icon and props)
+- src/pages/TemplateBuilder.tsx (added UAS state, import, wiring)
+- src/pages/WebsiteBuilder.tsx (added UAS state, import, wiring)
+- src/components/features/FeatureInstallModal.tsx (enabled UAS)
+- src/components/features/ManageFeaturesModal.tsx (added UAS details)
+- src/hooks/useRenderSection.tsx (added login-box case)
+- src/components/RightSidebar.tsx (added LoginBoxProperties case)
+
+## Remaining Work (Future Sessions)
+
+1. Create actual special UAS pages in page templates
+2. Add Register form preview/properties components
+3. Add User Dashboard preview/properties components
+4. Implement the actual frontend auth service to call UAS API
+5. Test the full registration/login/reset password flows
+6. Add email sending functionality for verification codes
+7. Add frontend route guards for protected pages

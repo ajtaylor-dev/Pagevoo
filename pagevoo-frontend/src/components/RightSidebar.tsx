@@ -7,6 +7,7 @@ import { FormWrapProperties } from './properties/FormWrapProperties'
 import { GalleryWrapProperties } from './properties/GalleryWrapProperties'
 import { BlogWrapProperties } from './properties/BlogWrapProperties'
 import { EventsWrapProperties } from './properties/EventsWrapProperties'
+import LoginBoxProperties from './properties/LoginBoxProperties'
 import type { ThemeColors } from '@/config/themes'
 
 interface TemplateSection {
@@ -455,6 +456,14 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   selectedSection={selectedSection}
                   onUpdateContent={handleUpdateSectionContent}
                   onOpenEventsManager={onOpenEventsManager}
+                />
+              )}
+
+              {/* Login Box Section Controls */}
+              {selectedSection.type === 'login-box' && (
+                <LoginBoxProperties
+                  section={selectedSection}
+                  onUpdate={handleUpdateSectionContent}
                 />
               )}
                 </>

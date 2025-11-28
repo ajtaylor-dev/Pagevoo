@@ -16,6 +16,8 @@ use App\Http\Controllers\Api\V1\ScriptFeatures\ContactFormController;
 use App\Http\Controllers\Api\V1\DatabaseController;
 use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\EventController;
+use App\Http\Controllers\Api\V1\UasController;
+use App\Http\Controllers\Api\V1\UasAuthController;
 
 /*
 |--------------------------------------------------------------------------
@@ -255,6 +257,64 @@ Route::prefix('v1')->group(function () {
             Route::delete('/categories/{id}', [EventController::class, 'destroyCategory']);
         });
 
+        // User Access System (UAS) Feature - Management Panel
+        Route::prefix('uas')->group(function () {
+            // Dashboard stats
+            Route::get('/dashboard', [UasController::class, 'getDashboardStats']);
+
+            // Users management
+            Route::get('/users', [UasController::class, 'getUsers']);
+            Route::get('/users/{id}', [UasController::class, 'getUser']);
+            Route::post('/users', [UasController::class, 'createUser']);
+            Route::put('/users/{id}', [UasController::class, 'updateUser']);
+            Route::delete('/users/{id}', [UasController::class, 'deleteUser']);
+
+            // Groups management
+            Route::get('/groups', [UasController::class, 'getGroups']);
+            Route::get('/groups/{id}', [UasController::class, 'getGroup']);
+            Route::post('/groups', [UasController::class, 'createGroup']);
+            Route::put('/groups/{id}', [UasController::class, 'updateGroup']);
+            Route::delete('/groups/{id}', [UasController::class, 'deleteGroup']);
+
+            // Page access control
+            Route::get('/page-access', [UasController::class, 'getPageAccess']);
+            Route::post('/page-access/sync', [UasController::class, 'syncPageAccess']);
+            Route::put('/page-access/{pageId}', [UasController::class, 'updatePageAccess']);
+
+            // Permission definitions
+            Route::get('/permissions', [UasController::class, 'getPermissionDefinitions']);
+            Route::get('/permissions/grouped', [UasController::class, 'getPermissionsGrouped']);
+
+            // Settings
+            Route::get('/settings', [UasController::class, 'getSettings']);
+            Route::put('/settings', [UasController::class, 'updateSettings']);
+
+            // Activity log
+            Route::get('/activity-log', [UasController::class, 'getActivityLog']);
+        });
+
+    });
+
+    // UAS Public Auth Routes (for end-user authentication on published sites)
+    Route::prefix('uas-auth')->group(function () {
+        // Registration flow
+        Route::post('/register', [UasAuthController::class, 'initiateRegistration']);
+        Route::post('/verify-email', [UasAuthController::class, 'verifyEmail']);
+        Route::post('/complete-registration', [UasAuthController::class, 'completeRegistration']);
+
+        // Login/logout
+        Route::post('/login', [UasAuthController::class, 'login']);
+        Route::post('/logout', [UasAuthController::class, 'logout']);
+        Route::get('/me', [UasAuthController::class, 'getCurrentUser']);
+
+        // Password reset flow
+        Route::post('/forgot-password', [UasAuthController::class, 'requestPasswordReset']);
+        Route::post('/verify-reset-token', [UasAuthController::class, 'verifyResetToken']);
+        Route::post('/verify-security-questions', [UasAuthController::class, 'verifySecurityQuestions']);
+        Route::post('/reset-password', [UasAuthController::class, 'resetPassword']);
+
+        // Security questions (for registration)
+        Route::get('/security-questions', [UasAuthController::class, 'getSecurityQuestions']);
     });
 
     // Database Management Routes

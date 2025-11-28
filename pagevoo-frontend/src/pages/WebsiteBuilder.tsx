@@ -33,6 +33,7 @@ import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
 import { BlogManager } from '@/components/BlogManager'
 import { EventsManager } from '@/components/EventsManager'
+import { UasManager } from '@/components/UasManager'
 import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
@@ -312,6 +313,7 @@ export default function WebsiteBuilder() {
   const [showContactFormModal, setShowContactFormModal] = useState(false)
   const [showBlogManager, setShowBlogManager] = useState(false)
   const [showEventsManager, setShowEventsManager] = useState(false)
+  const [showUasManager, setShowUasManager] = useState(false)
 
   // Installed features state
   const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
@@ -1661,6 +1663,8 @@ export default function WebsiteBuilder() {
         theme={theme}
         currentTheme={currentTheme}
         onThemeChange={changeTheme}
+        setShowUasManager={setShowUasManager}
+        isUasInstalled={installedFeatures.includes('user_access_system')}
       />
 
       {/* Toolbar */}
@@ -2024,6 +2028,16 @@ export default function WebsiteBuilder() {
         />
       )}
 
+      {/* UAS Manager Modal */}
+      {showUasManager && (
+        <UasManager
+          isOpen={showUasManager}
+          onClose={() => setShowUasManager(false)}
+          type="website"
+          referenceId={website?.id || 0}
+        />
+      )}
+
       {/* Load Template Modal */}
       <LoadModal
         isOpen={showLoadModal}
@@ -2117,6 +2131,12 @@ export default function WebsiteBuilder() {
         onConfigureFeature={(featureType) => {
           if (featureType === 'contact_form') {
             setShowContactFormModal(true)
+          } else if (featureType === 'blog') {
+            setShowBlogManager(true)
+          } else if (featureType === 'events') {
+            setShowEventsManager(true)
+          } else if (featureType === 'user_access_system') {
+            setShowUasManager(true)
           }
         }}
         onOpenDatabaseManagement={() => setShowDatabaseModal(true)}
@@ -2136,6 +2156,12 @@ export default function WebsiteBuilder() {
           onConfigureFeature={(featureType) => {
             if (featureType === 'contact_form') {
               setShowContactFormModal(true)
+            } else if (featureType === 'blog') {
+              setShowBlogManager(true)
+            } else if (featureType === 'events') {
+              setShowEventsManager(true)
+            } else if (featureType === 'user_access_system') {
+              setShowUasManager(true)
             }
           }}
           onFeatureUninstalled={(featureType) => {

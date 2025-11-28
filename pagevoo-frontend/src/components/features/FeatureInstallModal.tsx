@@ -63,7 +63,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     icon: MdPeople,
     requiresUAS: false,
     tier: 'niche',
-    available: false
+    available: true
   },
   {
     type: 'blog',

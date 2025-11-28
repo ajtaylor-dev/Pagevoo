@@ -439,5 +439,99 @@ export const specialSections = [
       content_css: createDefaultContentCSS(1),
       section_css: getDefaultSectionCSS()
     }
-  }
+  },
+  // User Access System (UAS) - Login Box
+  {
+    type: 'login-box',
+    label: 'Login Box',
+    description: 'Login form that shows status when logged in',
+    category: 'user_access_system',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      loginConfig: {
+        name: 'Login Box',
+        showTitle: true,
+        title: 'Sign In',
+        showRememberMe: true,
+        showForgotPassword: true,
+        showRegisterLink: true,
+        registerLinkText: "Don't have an account? Sign up",
+        forgotPasswordText: 'Forgot your password?',
+        submitButtonText: 'Sign In',
+        welcomeText: 'Welcome back,',
+        showDashboardLink: true,
+        dashboardLinkText: 'Dashboard',
+        showLogoutButton: true,
+        logoutButtonText: 'Sign Out',
+        containerStyle: {
+          padding: '32px',
+          background: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb',
+          maxWidth: '400px',
+          margin: '0 auto'
+        }
+      }
+    }
+  },
+  // UAS Registration Form
+  {
+    type: 'register-form',
+    label: 'Registration Form',
+    description: 'User registration form',
+    category: 'user_access_system',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      registerConfig: {
+        name: 'Registration Form',
+        showTitle: true,
+        title: 'Create Account',
+        subtitle: 'Enter your details to get started',
+        showLoginLink: true,
+        loginLinkText: 'Already have an account? Sign in',
+        submitButtonText: 'Create Account',
+        showFirstName: true,
+        showLastName: true,
+        showDisplayName: false,
+        containerStyle: {
+          padding: '32px',
+          background: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb',
+          maxWidth: '480px',
+          margin: '0 auto'
+        }
+      }
+    }
+  },
+  // UAS User Dashboard
+  {
+    type: 'user-dashboard',
+    label: 'User Dashboard',
+    description: 'Dashboard for logged-in users',
+    category: 'user_access_system',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      dashboardConfig: {
+        name: 'User Dashboard',
+        showWelcome: true,
+        welcomeText: 'Welcome back,',
+        showProfileLink: true,
+        showLogoutButton: true,
+        showFeatureArea: true,
+        featureAreaTitle: 'Quick Links',
+        containerStyle: {
+          padding: '32px',
+          background: '#ffffff',
+          borderRadius: '8px'
+        }
+      }
+    }
+  },
 ]

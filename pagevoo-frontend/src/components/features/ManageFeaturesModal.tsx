@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary, MdArticle, MdEvent } from 'react-icons/md'
+import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary, MdArticle, MdEvent, MdPeople } from 'react-icons/md'
 import type { IconType } from 'react-icons'
 
 interface ManageFeaturesModalProps {
@@ -42,6 +42,12 @@ const FEATURE_DETAILS: Record<string, InstalledFeature> = {
     name: 'Events Calendar',
     description: 'Event management with calendar views, categories, and scheduling',
     icon: MdEvent
+  },
+  user_access_system: {
+    type: 'user_access_system',
+    name: 'User Access System',
+    description: 'User registration, login, profiles, groups, and role-based permissions',
+    icon: MdPeople
   }
   // Add more features as they're implemented
 }
