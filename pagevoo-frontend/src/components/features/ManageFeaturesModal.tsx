@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import { MdEmail, MdClose, MdSettings, MdDelete } from 'react-icons/md'
+import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary } from 'react-icons/md'
 import type { IconType } from 'react-icons'
 
 interface ManageFeaturesModalProps {
@@ -23,6 +23,12 @@ const FEATURE_DETAILS: Record<string, InstalledFeature> = {
     name: 'Contact Form',
     description: 'Contact forms, support ticket systems, and mass mailer functionality',
     icon: MdEmail
+  },
+  image_gallery: {
+    type: 'image_gallery',
+    name: 'Image Gallery',
+    description: 'Beautiful image galleries with lightbox, multiple layouts, and album organization',
+    icon: MdPhotoLibrary
   }
   // Add more features as they're implemented
 }
