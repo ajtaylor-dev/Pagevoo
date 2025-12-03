@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
-interface LoginConfig {
+interface RegisterConfig {
   name: string;
   showTitle: boolean;
   title: string;
-  showRememberMe: boolean;
-  showForgotPassword: boolean;
-  showRegisterLink: boolean;
-  registerLinkText: string;
-  forgotPasswordText: string;
+  subtitle: string;
+  showLoginLink: boolean;
+  loginLinkText: string;
   submitButtonText: string;
-  welcomeText: string;
-  showDashboardLink: boolean;
-  dashboardLinkText: string;
-  showLogoutButton: boolean;
-  logoutButtonText: string;
+  verifyButtonText: string;
+  completeButtonText: string;
+  showSecurityQuestions: boolean;
+  securityQuestionsCount: number;
   containerStyle: {
     padding: string;
     background: string;
@@ -26,41 +23,42 @@ interface LoginConfig {
   };
 }
 
-interface LoginBoxPropertiesProps {
+interface RegisterFormPropertiesProps {
   section: {
     id: number;
     type: string;
     content: {
-      loginConfig: LoginConfig;
+      registerConfig: RegisterConfig;
     };
   };
   onUpdate: (sectionId: number, updates: any) => void;
 }
 
-const LoginBoxProperties: React.FC<LoginBoxPropertiesProps> = ({ section, onUpdate }) => {
+const RegisterFormProperties: React.FC<RegisterFormPropertiesProps> = ({ section, onUpdate }) => {
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    loginForm: true,
-    loggedInDisplay: false,
+    header: true,
+    buttons: false,
+    security: false,
     container: false,
   });
 
-  const config = section.content?.loginConfig || {};
+  const config = section.content?.registerConfig || {};
 
   const toggleSection = (key: string) => {
     setExpandedSections((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const updateConfig = (updates: Partial<LoginConfig>) => {
+  const updateConfig = (updates: Partial<RegisterConfig>) => {
     onUpdate(section.id, {
       ...section.content,
-      loginConfig: {
+      registerConfig: {
         ...config,
         ...updates,
       },
     });
   };
 
-  const updateContainerStyle = (updates: Partial<LoginConfig['containerStyle']>) => {
+  const updateContainerStyle = (updates: Partial<RegisterConfig['containerStyle']>) => {
     updateConfig({
       containerStyle: {
         ...config.containerStyle,
@@ -74,7 +72,7 @@ const LoginBoxProperties: React.FC<LoginBoxPropertiesProps> = ({ section, onUpda
     title,
     children,
   }: {
-    id: number;
+    id: string;
     title: string;
     children: React.ReactNode;
   }) => (
@@ -96,8 +94,8 @@ const LoginBoxProperties: React.FC<LoginBoxPropertiesProps> = ({ section, onUpda
 
   return (
     <div className="text-sm">
-      {/* Login Form Section */}
-      <CollapsibleSection id="loginForm" title="Login Form">
+      {/* Header Section */}
+      <CollapsibleSection id="header" title="Form Header">
         <div>
           <label className="block text-xs text-gray-400 mb-1">Show Title</label>
           <label className="flex items-center gap-2 cursor-pointer">
@@ -112,133 +110,117 @@ const LoginBoxProperties: React.FC<LoginBoxPropertiesProps> = ({ section, onUpda
         </div>
 
         {config.showTitle && (
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">Title Text</label>
-            <input
-              type="text"
-              value={config.title || 'Sign In'}
-              onChange={(e) => updateConfig({ title: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-            />
-          </div>
-        )}
+          <>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Title Text</label>
+              <input
+                type="text"
+                value={config.title || 'Create Account'}
+                onChange={(e) => updateConfig({ title: e.target.value })}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+              />
+            </div>
 
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">Submit Button Text</label>
-          <input
-            type="text"
-            value={config.submitButtonText || 'Sign In'}
-            onChange={(e) => updateConfig({ submitButtonText: e.target.value })}
-            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
-          />
-        </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Subtitle</label>
+              <input
+                type="text"
+                value={config.subtitle || 'Join us today'}
+                onChange={(e) => updateConfig({ subtitle: e.target.value })}
+                className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+              />
+            </div>
+          </>
+        )}
 
         <div className="space-y-2">
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
-              checked={config.showRememberMe ?? true}
-              onChange={(e) => updateConfig({ showRememberMe: e.target.checked })}
+              checked={config.showLoginLink ?? true}
+              onChange={(e) => updateConfig({ showLoginLink: e.target.checked })}
               className="rounded border-gray-600"
             />
-            <span className="text-gray-300">Show "Remember me"</span>
+            <span className="text-gray-300">Show login link</span>
           </label>
 
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={config.showForgotPassword ?? true}
-              onChange={(e) => updateConfig({ showForgotPassword: e.target.checked })}
-              className="rounded border-gray-600"
-            />
-            <span className="text-gray-300">Show "Forgot password"</span>
-          </label>
-
-          {config.showForgotPassword && (
+          {config.showLoginLink && (
             <input
               type="text"
-              value={config.forgotPasswordText || 'Forgot your password?'}
-              onChange={(e) => updateConfig({ forgotPasswordText: e.target.value })}
+              value={config.loginLinkText || 'Already have an account?'}
+              onChange={(e) => updateConfig({ loginLinkText: e.target.value })}
               className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm ml-6"
-              placeholder="Forgot password link text"
-            />
-          )}
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={config.showRegisterLink ?? true}
-              onChange={(e) => updateConfig({ showRegisterLink: e.target.checked })}
-              className="rounded border-gray-600"
-            />
-            <span className="text-gray-300">Show register link</span>
-          </label>
-
-          {config.showRegisterLink && (
-            <input
-              type="text"
-              value={config.registerLinkText || "Don't have an account? Sign up"}
-              onChange={(e) => updateConfig({ registerLinkText: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm ml-6"
-              placeholder="Register link text"
+              placeholder="Login link text"
             />
           )}
         </div>
       </CollapsibleSection>
 
-      {/* Logged In Display Section */}
-      <CollapsibleSection id="loggedInDisplay" title="Logged In Display">
+      {/* Buttons Section */}
+      <CollapsibleSection id="buttons" title="Button Text">
         <div>
-          <label className="block text-xs text-gray-400 mb-1">Welcome Text</label>
+          <label className="block text-xs text-gray-400 mb-1">Submit Button (Step 1)</label>
           <input
             type="text"
-            value={config.welcomeText || 'Welcome back,'}
-            onChange={(e) => updateConfig({ welcomeText: e.target.value })}
+            value={config.submitButtonText || 'Create Account'}
+            onChange={(e) => updateConfig({ submitButtonText: e.target.value })}
             className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
           />
         </div>
 
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={config.showDashboardLink ?? true}
-              onChange={(e) => updateConfig({ showDashboardLink: e.target.checked })}
-              className="rounded border-gray-600"
-            />
-            <span className="text-gray-300">Show Dashboard link</span>
-          </label>
-
-          {config.showDashboardLink && (
-            <input
-              type="text"
-              value={config.dashboardLinkText || 'Dashboard'}
-              onChange={(e) => updateConfig({ dashboardLinkText: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm ml-6"
-              placeholder="Dashboard link text"
-            />
-          )}
-
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={config.showLogoutButton ?? true}
-              onChange={(e) => updateConfig({ showLogoutButton: e.target.checked })}
-              className="rounded border-gray-600"
-            />
-            <span className="text-gray-300">Show Logout button</span>
-          </label>
-
-          {config.showLogoutButton && (
-            <input
-              type="text"
-              value={config.logoutButtonText || 'Sign Out'}
-              onChange={(e) => updateConfig({ logoutButtonText: e.target.value })}
-              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm ml-6"
-              placeholder="Logout button text"
-            />
-          )}
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Verify Button (Step 2)</label>
+          <input
+            type="text"
+            value={config.verifyButtonText || 'Verify Email'}
+            onChange={(e) => updateConfig({ verifyButtonText: e.target.value })}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+          />
         </div>
+
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Complete Button (Step 3)</label>
+          <input
+            type="text"
+            value={config.completeButtonText || 'Complete Registration'}
+            onChange={(e) => updateConfig({ completeButtonText: e.target.value })}
+            className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+          />
+        </div>
+      </CollapsibleSection>
+
+      {/* Security Questions Section */}
+      <CollapsibleSection id="security" title="Security Questions">
+        <div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={config.showSecurityQuestions ?? true}
+              onChange={(e) => updateConfig({ showSecurityQuestions: e.target.checked })}
+              className="rounded border-gray-600"
+            />
+            <span className="text-gray-300">Require security questions</span>
+          </label>
+          <p className="text-xs text-gray-500 mt-1 ml-6">
+            Users must answer security questions during registration for password recovery
+          </p>
+        </div>
+
+        {config.showSecurityQuestions && (
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Number of Questions</label>
+            <select
+              value={config.securityQuestionsCount || 3}
+              onChange={(e) => updateConfig({ securityQuestionsCount: parseInt(e.target.value) })}
+              className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
+            >
+              <option value={2}>2 Questions</option>
+              <option value={3}>3 Questions</option>
+              <option value={4}>4 Questions</option>
+              <option value={5}>5 Questions</option>
+            </select>
+          </div>
+        )}
       </CollapsibleSection>
 
       {/* Container Style Section */}
@@ -287,7 +269,7 @@ const LoginBoxProperties: React.FC<LoginBoxPropertiesProps> = ({ section, onUpda
           <label className="block text-xs text-gray-400 mb-1">Max Width</label>
           <input
             type="text"
-            value={config.containerStyle?.maxWidth || '400px'}
+            value={config.containerStyle?.maxWidth || '450px'}
             onChange={(e) => updateContainerStyle({ maxWidth: e.target.value })}
             className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-white text-sm"
           />
@@ -307,4 +289,4 @@ const LoginBoxProperties: React.FC<LoginBoxPropertiesProps> = ({ section, onUpda
   );
 };
 
-export default LoginBoxProperties;
+export default RegisterFormProperties;

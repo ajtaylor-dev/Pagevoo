@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Models\DatabaseInstance;
 use App\Models\Uas\UasUser;
 use App\Models\Uas\UasGroup;
 use App\Models\Uas\UasPageAccess;
@@ -12,16 +13,44 @@ use App\Models\Uas\UasActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Str;
 
 class UasController extends Controller
 {
-    protected $connection;
-
-    public function __construct(Request $request)
+    /**
+     * Set up connection to user's database by database instance ID
+     */
+    private function connectToUserDatabase(int $dbId): ?string
     {
-        // Get database connection from request (set by middleware)
-        $this->connection = $request->get('db_connection', 'mysql');
+        $instance = DatabaseInstance::where('id', $dbId)
+            ->where('status', 'active')
+            ->first();
+
+        if (!$instance) {
+            return null;
+        }
+
+        // Configure dynamic database connection
+        Config::set('database.connections.user_db', [
+            'driver' => 'mysql',
+            'host' => Config::get('database.connections.mysql.host'),
+            'port' => Config::get('database.connections.mysql.port'),
+            'database' => $instance->database_name,
+            'username' => Config::get('database.connections.mysql.username'),
+            'password' => Config::get('database.connections.mysql.password'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+            'prefix' => '',
+            'strict' => true,
+        ]);
+
+        // Purge and reconnect
+        DB::purge('user_db');
+        DB::reconnect('user_db');
+
+        return 'user_db';
     }
 
     // ==================== USERS ====================
@@ -31,21 +60,28 @@ class UasController extends Controller
      */
     public function getUsers(Request $request): JsonResponse
     {
-        $query = UasUser::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $query = UasUser::on($connection)
             ->with('group')
             ->orderBy('created_at', 'desc');
 
-        // Filter by status
         if ($request->has('status')) {
             $query->where('status', $request->status);
         }
 
-        // Filter by group
         if ($request->has('group_id')) {
             $query->where('group_id', $request->group_id);
         }
 
-        // Search
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -62,23 +98,37 @@ class UasController extends Controller
         return response()->json($users);
     }
 
-    /**
-     * Get a single user
-     */
-    public function getUser(int $id): JsonResponse
+    public function getUser(Request $request, int $id): JsonResponse
     {
-        $user = UasUser::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $user = UasUser::on($connection)
             ->with(['group', 'securityAnswers.question'])
             ->findOrFail($id);
 
         return response()->json($user);
     }
 
-    /**
-     * Create a new user (admin creation - skips email verification)
-     */
     public function createUser(Request $request): JsonResponse
     {
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
         $validated = $request->validate([
             'email' => 'required|email',
             'password' => 'required|min:8',
@@ -89,8 +139,7 @@ class UasController extends Controller
             'status' => 'nullable|in:pending,active,suspended',
         ]);
 
-        // Check email doesn't already exist
-        $exists = UasUser::on($this->connection)
+        $exists = UasUser::on($connection)
             ->where('email', $validated['email'])
             ->exists();
 
@@ -98,7 +147,7 @@ class UasController extends Controller
             return response()->json(['error' => 'Email already registered'], 422);
         }
 
-        $user = UasUser::on($this->connection)->create([
+        $user = UasUser::on($connection)->create([
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'first_name' => $validated['first_name'],
@@ -106,27 +155,34 @@ class UasController extends Controller
             'display_name' => $validated['display_name'] ?? null,
             'group_id' => $validated['group_id'],
             'status' => $validated['status'] ?? 'active',
-            'email_verified' => true, // Admin-created users are pre-verified
+            'email_verified' => true,
             'email_verified_at' => now(),
         ]);
 
-        UasActivityLog::on($this->connection)->log(
-            'admin_create_user',
-            null,
-            $request->ip(),
-            $request->userAgent(),
-            ['created_user_id' => $user->id]
-        );
+        UasActivityLog::on($connection)->create([
+            'action' => 'admin_create_user',
+            'user_id' => null,
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'details' => json_encode(['created_user_id' => $user->id]),
+        ]);
 
         return response()->json($user->load('group'), 201);
     }
 
-    /**
-     * Update a user
-     */
     public function updateUser(Request $request, int $id): JsonResponse
     {
-        $user = UasUser::on($this->connection)->findOrFail($id);
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $user = UasUser::on($connection)->findOrFail($id);
 
         $validated = $request->validate([
             'email' => 'nullable|email',
@@ -139,9 +195,8 @@ class UasController extends Controller
             'permission_overrides' => 'nullable|array',
         ]);
 
-        // Check email uniqueness if changing
         if (isset($validated['email']) && $validated['email'] !== $user->email) {
-            $exists = UasUser::on($this->connection)
+            $exists = UasUser::on($connection)
                 ->where('email', $validated['email'])
                 ->where('id', '!=', $id)
                 ->exists();
@@ -151,39 +206,28 @@ class UasController extends Controller
             }
         }
 
-        // Hash password if provided
         if (isset($validated['password'])) {
             $validated['password'] = Hash::make($validated['password']);
         }
 
         $user->update(array_filter($validated, fn($v) => $v !== null));
 
-        UasActivityLog::on($this->connection)->log(
-            'admin_update_user',
-            null,
-            $request->ip(),
-            $request->userAgent(),
-            ['updated_user_id' => $user->id]
-        );
-
         return response()->json($user->load('group'));
     }
 
-    /**
-     * Delete a user
-     */
     public function deleteUser(Request $request, int $id): JsonResponse
     {
-        $user = UasUser::on($this->connection)->findOrFail($id);
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
 
-        UasActivityLog::on($this->connection)->log(
-            'admin_delete_user',
-            null,
-            $request->ip(),
-            $request->userAgent(),
-            ['deleted_user_email' => $user->email]
-        );
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
 
+        $user = UasUser::on($connection)->findOrFail($id);
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully']);
@@ -191,12 +235,19 @@ class UasController extends Controller
 
     // ==================== GROUPS ====================
 
-    /**
-     * List all groups
-     */
-    public function getGroups(): JsonResponse
+    public function getGroups(Request $request): JsonResponse
     {
-        $groups = UasGroup::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $groups = UasGroup::on($connection)
             ->withCount('users')
             ->orderBy('hierarchy_level')
             ->get();
@@ -204,23 +255,37 @@ class UasController extends Controller
         return response()->json($groups);
     }
 
-    /**
-     * Get a single group
-     */
-    public function getGroup(int $id): JsonResponse
+    public function getGroup(Request $request, int $id): JsonResponse
     {
-        $group = UasGroup::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $group = UasGroup::on($connection)
             ->withCount('users')
             ->findOrFail($id);
 
         return response()->json($group);
     }
 
-    /**
-     * Create a new group
-     */
     public function createGroup(Request $request): JsonResponse
     {
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -231,18 +296,16 @@ class UasController extends Controller
 
         $slug = Str::slug($validated['name']);
 
-        // Ensure unique slug
-        $existingSlug = UasGroup::on($this->connection)->where('slug', $slug)->exists();
+        $existingSlug = UasGroup::on($connection)->where('slug', $slug)->exists();
         if ($existingSlug) {
             $slug = $slug . '-' . Str::random(4);
         }
 
-        // If setting as default, remove default from other groups
         if ($validated['is_default'] ?? false) {
-            UasGroup::on($this->connection)->where('is_default', true)->update(['is_default' => false]);
+            UasGroup::on($connection)->where('is_default', true)->update(['is_default' => false]);
         }
 
-        $group = UasGroup::on($this->connection)->create([
+        $group = UasGroup::on($connection)->create([
             'name' => $validated['name'],
             'slug' => $slug,
             'description' => $validated['description'] ?? null,
@@ -255,12 +318,19 @@ class UasController extends Controller
         return response()->json($group, 201);
     }
 
-    /**
-     * Update a group
-     */
     public function updateGroup(Request $request, int $id): JsonResponse
     {
-        $group = UasGroup::on($this->connection)->findOrFail($id);
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $group = UasGroup::on($connection)->findOrFail($id);
 
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
@@ -270,16 +340,13 @@ class UasController extends Controller
             'is_default' => 'nullable|boolean',
         ]);
 
-        // System groups have restrictions
         if ($group->is_system) {
-            // Can only update permissions and description for system groups
             unset($validated['name']);
             unset($validated['hierarchy_level']);
         }
 
-        // If setting as default, remove default from other groups
         if ($validated['is_default'] ?? false) {
-            UasGroup::on($this->connection)
+            UasGroup::on($connection)
                 ->where('is_default', true)
                 ->where('id', '!=', $id)
                 ->update(['is_default' => false]);
@@ -290,19 +357,24 @@ class UasController extends Controller
         return response()->json($group);
     }
 
-    /**
-     * Delete a group
-     */
-    public function deleteGroup(int $id): JsonResponse
+    public function deleteGroup(Request $request, int $id): JsonResponse
     {
-        $group = UasGroup::on($this->connection)->findOrFail($id);
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
 
-        // Cannot delete system groups
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $group = UasGroup::on($connection)->findOrFail($id);
+
         if ($group->is_system) {
             return response()->json(['error' => 'Cannot delete system groups'], 422);
         }
 
-        // Cannot delete if users are in this group
         if ($group->users()->count() > 0) {
             return response()->json(['error' => 'Cannot delete group with users. Reassign users first.'], 422);
         }
@@ -314,23 +386,37 @@ class UasController extends Controller
 
     // ==================== PAGE ACCESS ====================
 
-    /**
-     * Get page access list (for all pages)
-     */
-    public function getPageAccess(): JsonResponse
+    public function getPageAccess(Request $request): JsonResponse
     {
-        $pageAccess = UasPageAccess::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $pageAccess = UasPageAccess::on($connection)
             ->orderBy('page_name')
             ->get();
 
         return response()->json($pageAccess);
     }
 
-    /**
-     * Sync page access (upsert from frontend page list)
-     */
     public function syncPageAccess(Request $request): JsonResponse
     {
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
         $validated = $request->validate([
             'pages' => 'required|array',
             'pages.*.page_id' => 'required|string',
@@ -338,27 +424,33 @@ class UasController extends Controller
         ]);
 
         foreach ($validated['pages'] as $page) {
-            UasPageAccess::on($this->connection)->updateOrCreate(
+            UasPageAccess::on($connection)->updateOrCreate(
                 ['page_id' => $page['page_id']],
                 ['page_name' => $page['page_name']]
             );
         }
 
-        // Remove any pages that no longer exist
         $pageIds = array_column($validated['pages'], 'page_id');
-        UasPageAccess::on($this->connection)
+        UasPageAccess::on($connection)
             ->whereNotIn('page_id', $pageIds)
             ->delete();
 
         return response()->json(['message' => 'Page access synced']);
     }
 
-    /**
-     * Update page access settings
-     */
     public function updatePageAccess(Request $request, string $pageId): JsonResponse
     {
-        $pageAccess = UasPageAccess::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $pageAccess = UasPageAccess::on($connection)
             ->where('page_id', $pageId)
             ->firstOrFail();
 
@@ -378,12 +470,19 @@ class UasController extends Controller
 
     // ==================== PERMISSIONS ====================
 
-    /**
-     * Get all permission definitions
-     */
-    public function getPermissionDefinitions(): JsonResponse
+    public function getPermissionDefinitions(Request $request): JsonResponse
     {
-        $permissions = UasPermissionDefinition::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $permissions = UasPermissionDefinition::on($connection)
             ->orderBy('category')
             ->orderBy('order')
             ->get();
@@ -391,12 +490,19 @@ class UasController extends Controller
         return response()->json($permissions);
     }
 
-    /**
-     * Get permissions grouped by category
-     */
-    public function getPermissionsGrouped(): JsonResponse
+    public function getPermissionsGrouped(Request $request): JsonResponse
     {
-        $permissions = UasPermissionDefinition::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $permissions = UasPermissionDefinition::on($connection)
             ->orderBy('category')
             ->orderBy('order')
             ->get()
@@ -407,20 +513,34 @@ class UasController extends Controller
 
     // ==================== SETTINGS ====================
 
-    /**
-     * Get all UAS settings
-     */
-    public function getSettings(): JsonResponse
+    public function getSettings(Request $request): JsonResponse
     {
-        $settings = UasSetting::on($this->connection)->pluck('value', 'key');
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $settings = UasSetting::on($connection)->pluck('value', 'key');
         return response()->json($settings);
     }
 
-    /**
-     * Update UAS settings
-     */
     public function updateSettings(Request $request): JsonResponse
     {
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
         $settings = $request->validate([
             'registration_enabled' => 'nullable|string',
             'email_verification_required' => 'nullable|string',
@@ -434,7 +554,7 @@ class UasController extends Controller
 
         foreach ($settings as $key => $value) {
             if ($value !== null) {
-                UasSetting::on($this->connection)->updateOrCreate(
+                UasSetting::on($connection)->updateOrCreate(
                     ['key' => $key],
                     ['value' => $value]
                 );
@@ -446,12 +566,19 @@ class UasController extends Controller
 
     // ==================== ACTIVITY LOG ====================
 
-    /**
-     * Get activity log
-     */
     public function getActivityLog(Request $request): JsonResponse
     {
-        $query = UasActivityLog::on($this->connection)
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        $query = UasActivityLog::on($connection)
             ->with('user')
             ->orderBy('created_at', 'desc');
 
@@ -471,19 +598,26 @@ class UasController extends Controller
 
     // ==================== DASHBOARD STATS ====================
 
-    /**
-     * Get UAS dashboard statistics
-     */
-    public function getDashboardStats(): JsonResponse
+    public function getDashboardStats(Request $request): JsonResponse
     {
+        $dbId = $request->query('db');
+        if (!$dbId) {
+            return response()->json(['error' => 'Database ID is required'], 400);
+        }
+
+        $connection = $this->connectToUserDatabase((int)$dbId);
+        if (!$connection) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
         $stats = [
-            'total_users' => UasUser::on($this->connection)->count(),
-            'active_users' => UasUser::on($this->connection)->where('status', 'active')->count(),
-            'pending_users' => UasUser::on($this->connection)->where('status', 'pending')->count(),
-            'suspended_users' => UasUser::on($this->connection)->where('status', 'suspended')->count(),
-            'total_groups' => UasGroup::on($this->connection)->count(),
-            'locked_pages' => UasPageAccess::on($this->connection)->where('is_locked', true)->count(),
-            'recent_logins' => UasActivityLog::on($this->connection)
+            'total_users' => UasUser::on($connection)->count(),
+            'active_users' => UasUser::on($connection)->where('status', 'active')->count(),
+            'pending_users' => UasUser::on($connection)->where('status', 'pending')->count(),
+            'suspended_users' => UasUser::on($connection)->where('status', 'suspended')->count(),
+            'total_groups' => UasGroup::on($connection)->count(),
+            'locked_pages' => UasPageAccess::on($connection)->where('is_locked', true)->count(),
+            'recent_logins' => UasActivityLog::on($connection)
                 ->where('action', 'login')
                 ->where('created_at', '>=', now()->subDays(7))
                 ->count(),

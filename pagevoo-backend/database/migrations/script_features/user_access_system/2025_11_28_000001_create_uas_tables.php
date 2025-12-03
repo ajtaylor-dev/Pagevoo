@@ -52,7 +52,7 @@ return new class extends Migration
             $table->string('email');
             $table->string('token', 64)->unique();
             $table->json('registration_data'); // Store form data until verified
-            $table->timestamp('expires_at');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });
 
@@ -83,7 +83,7 @@ return new class extends Migration
             $table->string('token', 64)->unique();
             $table->boolean('email_verified')->default(false);
             $table->boolean('questions_verified')->default(false);
-            $table->timestamp('expires_at');
+            $table->timestamp('expires_at')->nullable();
             $table->timestamps();
         });
 
@@ -95,8 +95,8 @@ return new class extends Migration
             $table->string('ip_address')->nullable();
             $table->string('user_agent')->nullable();
             $table->boolean('remember_me')->default(false);
-            $table->timestamp('expires_at');
-            $table->timestamp('last_activity_at');
+            $table->timestamp('expires_at')->nullable();
+            $table->timestamp('last_activity_at')->useCurrent();
             $table->timestamps();
         });
 

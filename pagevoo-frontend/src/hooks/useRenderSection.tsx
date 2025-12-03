@@ -9,6 +9,8 @@ import { GalleryWrapPreview } from '@/components/script-features/gallery/Gallery
 import { BlogWrapPreview } from '@/components/script-features/blog/BlogWrapPreview'
 import { EventsWrapPreview } from '@/components/script-features/events/EventsWrapPreview'
 import LoginBoxPreview from '@/components/script-features/uas/LoginBoxPreview'
+import RegisterFormPreview from '@/components/script-features/uas/RegisterFormPreview'
+import UserDashboardPreview from '@/components/script-features/uas/UserDashboardPreview'
 
 interface TemplateSection {
   id: number
@@ -219,6 +221,26 @@ export const useRenderSection = ({
           sectionContent = (
             <LoginBoxPreview
               config={section.content?.loginConfig || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        // User Access System - Register Form
+        case 'register-form':
+          sectionContent = (
+            <RegisterFormPreview
+              config={section.content?.registerConfig || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        // User Access System - User Dashboard
+        case 'user-dashboard':
+          sectionContent = (
+            <UserDashboardPreview
+              config={section.content?.dashboardConfig || {}}
               isPreview={true}
             />
           )

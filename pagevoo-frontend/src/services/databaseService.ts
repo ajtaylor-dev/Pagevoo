@@ -59,6 +59,14 @@ export type ApiResponse<T = any> = {
   errors?: Record<string, string[]>
 }
 
+export type TableInfo = {
+  name: string
+  row_count: number
+  size_bytes: number
+  created_at: string | null
+  updated_at: string | null
+}
+
 class DatabaseService {
   /**
    * Get database instance for a template or website
@@ -236,6 +244,17 @@ class DatabaseService {
   }
 
   /**
+   * Get list of tables in a database
+   */
+  async getTables(instanceId: number): Promise<TableInfo[]> {
+    const response = await apiClient.get<ApiResponse<TableInfo[]>>(
+      `${API_BASE}/${instanceId}/tables`
+    )
+
+    return response.data.data || []
+  }
+
+  /**
    * Helper: Format database size for display
    */
   formatSize(bytes: number): string {
@@ -295,4 +314,4 @@ class DatabaseService {
 export const databaseService = new DatabaseService()
 
 // Explicit re-export to ensure types are available
-export type { DatabaseInstance, InstalledFeature, ApiResponse }
+export type { DatabaseInstance, InstalledFeature, ApiResponse, TableInfo }

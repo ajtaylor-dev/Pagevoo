@@ -8,6 +8,8 @@ import { GalleryWrapProperties } from './properties/GalleryWrapProperties'
 import { BlogWrapProperties } from './properties/BlogWrapProperties'
 import { EventsWrapProperties } from './properties/EventsWrapProperties'
 import LoginBoxProperties from './properties/LoginBoxProperties'
+import RegisterFormProperties from './properties/RegisterFormProperties'
+import UserDashboardProperties from './properties/UserDashboardProperties'
 import type { ThemeColors } from '@/config/themes'
 
 interface TemplateSection {
@@ -462,6 +464,22 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               {/* Login Box Section Controls */}
               {selectedSection.type === 'login-box' && (
                 <LoginBoxProperties
+                  section={selectedSection}
+                  onUpdate={handleUpdateSectionContent}
+                />
+              )}
+
+              {/* Register Form Section Controls */}
+              {selectedSection.type === 'register-form' && (
+                <RegisterFormProperties
+                  section={selectedSection}
+                  onUpdate={handleUpdateSectionContent}
+                />
+              )}
+
+              {/* User Dashboard Section Controls */}
+              {selectedSection.type === 'user-dashboard' && (
+                <UserDashboardProperties
                   section={selectedSection}
                   onUpdate={handleUpdateSectionContent}
                 />

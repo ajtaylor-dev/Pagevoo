@@ -33,7 +33,7 @@ import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
 import { BlogManager } from '@/components/BlogManager'
 import { EventsManager } from '@/components/EventsManager'
-import { UasManager } from '@/components/UasManager'
+import UasManager from '@/components/UasManager'
 import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
@@ -2014,7 +2014,7 @@ export default function WebsiteBuilder() {
           isOpen={showBlogManager}
           onClose={() => setShowBlogManager(false)}
           type="website"
-          referenceId={website?.id || 0}
+          referenceId={user?.id || 0}
         />
       )}
 
@@ -2024,7 +2024,7 @@ export default function WebsiteBuilder() {
           isOpen={showEventsManager}
           onClose={() => setShowEventsManager(false)}
           type="website"
-          referenceId={website?.id || 0}
+          referenceId={user?.id || 0}
         />
       )}
 
@@ -2034,7 +2034,7 @@ export default function WebsiteBuilder() {
           isOpen={showUasManager}
           onClose={() => setShowUasManager(false)}
           type="website"
-          referenceId={website?.id || 0}
+          referenceId={user?.id || 0}
         />
       )}
 

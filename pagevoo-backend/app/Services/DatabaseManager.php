@@ -410,6 +410,44 @@ class DatabaseManager
     }
 
     /**
+     * Get list of tables in a database.
+     */
+    public function getTables(DatabaseInstance $instance): array
+    {
+        $tables = DB::select("SHOW TABLES FROM `{$instance->database_name}`");
+        $tableKey = "Tables_in_{$instance->database_name}";
+
+        $result = [];
+        foreach ($tables as $table) {
+            $tableName = $table->$tableKey;
+
+            // Get table info
+            $tableInfo = DB::select(
+                "SELECT
+                    TABLE_ROWS as row_count,
+                    DATA_LENGTH + INDEX_LENGTH as size_bytes,
+                    CREATE_TIME as created_at,
+                    UPDATE_TIME as updated_at
+                 FROM information_schema.TABLES
+                 WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?",
+                [$instance->database_name, $tableName]
+            );
+
+            $info = $tableInfo[0] ?? null;
+
+            $result[] = [
+                "name" => $tableName,
+                "row_count" => $info->row_count ?? 0,
+                "size_bytes" => $info->size_bytes ?? 0,
+                "created_at" => $info->created_at,
+                "updated_at" => $info->updated_at,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
      * Sanitize a string to make it safe for use in a database name.
      * Keeps only alphanumeric characters and underscores, converts to lowercase.
      */

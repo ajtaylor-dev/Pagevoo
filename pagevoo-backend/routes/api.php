@@ -343,6 +343,9 @@ Route::prefix('v1')->group(function () {
 
         // Update size
         Route::post('/{id}/update-size', [DatabaseController::class, 'updateSize']);
+
+        // Get tables
+        Route::get('/{id}/tables', [DatabaseController::class, 'getTables']);
     });
 
     // Public form submission endpoint (no auth required)

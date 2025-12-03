@@ -407,4 +407,40 @@ class DatabaseController extends Controller
             ], 500);
         }
     }
+    /**
+     * Get list of tables in a database.
+     */
+    public function getTables(Request $request, int $id): JsonResponse
+    {
+        $instance = DatabaseInstance::findOrFail($id);
+
+        // Check permissions
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only admins can view template database tables',
+            ], 403);
+        }
+
+        if ($instance->isWebsiteDatabase() && $instance->reference_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only view tables in your own database',
+            ], 403);
+        }
+
+        try {
+            $tables = $this->databaseManager->getTables($instance);
+
+            return response()->json([
+                'success' => true,
+                'data' => $tables,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

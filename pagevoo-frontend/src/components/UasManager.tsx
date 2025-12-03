@@ -17,13 +17,14 @@ import {
   AlertCircle,
   Activity,
 } from 'lucide-react';
-import api from '../services/api';
+import { api } from '../services/api';
+import { databaseService } from '../services/databaseService';
 
 interface UasManagerProps {
   isOpen: boolean;
   onClose: () => void;
-  databaseId: string;
-  pages: Array<{ id: string; name: string; slug: string }>;
+  type: 'template' | 'website';
+  referenceId: number;
 }
 
 interface UasUser {
@@ -78,15 +79,17 @@ type TabType = 'users' | 'groups' | 'page-access' | 'settings';
 const UasManager: React.FC<UasManagerProps> = ({
   isOpen,
   onClose,
-  databaseId,
-  pages,
+  type,
+  referenceId,
 }) => {
+  const [databaseId, setDatabaseId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('users');
   const [users, setUsers] = useState<UasUser[]>([]);
   const [groups, setGroups] = useState<UasGroup[]>([]);
   const [pageAccess, setPageAccess] = useState<UasPageAccess[]>([]);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
   // Edit states
@@ -108,37 +111,59 @@ const UasManager: React.FC<UasManagerProps> = ({
 
   useEffect(() => {
     if (isOpen) {
-      loadData();
+      if (referenceId && referenceId > 0) {
+        loadData();
+      } else {
+        // Invalid reference ID - stop loading and show error
+        setLoading(false);
+        setError('Invalid reference ID. Please ensure you have a valid website or template selected.');
+      }
     }
-  }, [isOpen, databaseId]);
+  }, [isOpen, referenceId, type]);
 
   const loadData = async () => {
     setLoading(true);
+    setError(null);
     try {
+      // First get the database instance
+      const instance = await databaseService.getInstance(type, referenceId);
+      if (!instance) {
+        console.error('No database found for UAS');
+        setError('No database found. Please ensure the User Access System feature is installed.');
+        setLoading(false);
+        return;
+      }
+      const dbId = instance.id;
+      setDatabaseId(dbId);
+
       const [usersRes, groupsRes, pageAccessRes, permissionsRes, statsRes] = await Promise.all([
-        api.get(`/script-features/uas/users?db=${databaseId}`),
-        api.get(`/script-features/uas/groups?db=${databaseId}`),
-        api.get(`/script-features/uas/page-access?db=${databaseId}`),
-        api.get(`/script-features/uas/permissions?db=${databaseId}`),
-        api.get(`/script-features/uas/dashboard?db=${databaseId}`),
+        api.get(`/v1/script-features/uas/users?db=${dbId}`),
+        api.get(`/v1/script-features/uas/groups?db=${dbId}`),
+        api.get(`/v1/script-features/uas/page-access?db=${dbId}`),
+        api.get(`/v1/script-features/uas/permissions?db=${dbId}`),
+        api.get(`/v1/script-features/uas/dashboard?db=${dbId}`),
       ]);
 
-      setUsers(usersRes.data.data || usersRes.data);
-      setGroups(groupsRes.data);
-      setPageAccess(pageAccessRes.data);
-      setPermissions(permissionsRes.data);
-      setStats(statsRes.data);
-
-      // Sync pages
-      await api.post(`/script-features/uas/page-access/sync?db=${databaseId}`, {
-        pages: pages.map(p => ({ page_id: p.id, page_name: p.name })),
+      // Handle paginated users response (has .data property) or direct array
+      setUsers(usersRes.data?.data || usersRes.data || []);
+      // api.get() returns axios response.data, and backend returns arrays directly
+      // So if backend returns [...], then groupsRes IS the array (not groupsRes.data)
+      setGroups(Array.isArray(groupsRes) ? groupsRes : (groupsRes.data || []));
+      setPageAccess(Array.isArray(pageAccessRes) ? pageAccessRes : (pageAccessRes.data || []));
+      setPermissions(Array.isArray(permissionsRes) ? permissionsRes : (permissionsRes.data || []));
+      const statsData = statsRes.data || statsRes;
+      setStats({
+        total_users: statsData?.total_users || 0,
+        active_users: statsData?.active_users || 0,
+        pending_users: statsData?.pending_users || 0,
+        suspended_users: statsData?.suspended_users || 0,
+        total_groups: statsData?.total_groups || 0,
+        locked_pages: statsData?.locked_pages || 0,
+        recent_logins: statsData?.recent_logins || 0,
       });
-
-      // Reload page access after sync
-      const updatedAccess = await api.get(`/script-features/uas/page-access?db=${databaseId}`);
-      setPageAccess(updatedAccess.data);
-    } catch (error) {
-      console.error('Failed to load UAS data:', error);
+    } catch (err) {
+      console.error('Failed to load UAS data:', err);
+      setError('Failed to load UAS data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -147,7 +172,7 @@ const UasManager: React.FC<UasManagerProps> = ({
   // User CRUD
   const handleCreateUser = async (userData: Partial<UasUser> & { password: string }) => {
     try {
-      await api.post(`/script-features/uas/users?db=${databaseId}`, userData);
+      await api.post(`/v1/script-features/uas/users?db=${databaseId}`, userData);
       loadData();
       setShowUserForm(false);
     } catch (error) {
@@ -157,7 +182,7 @@ const UasManager: React.FC<UasManagerProps> = ({
 
   const handleUpdateUser = async (id: number, userData: Partial<UasUser>) => {
     try {
-      await api.put(`/script-features/uas/users/${id}?db=${databaseId}`, userData);
+      await api.put(`/v1/script-features/uas/users/${id}?db=${databaseId}`, userData);
       loadData();
       setEditingUser(null);
     } catch (error) {
@@ -168,7 +193,7 @@ const UasManager: React.FC<UasManagerProps> = ({
   const handleDeleteUser = async (id: number) => {
     if (!confirm('Are you sure you want to delete this user?')) return;
     try {
-      await api.delete(`/script-features/uas/users/${id}?db=${databaseId}`);
+      await api.delete(`/v1/script-features/uas/users/${id}?db=${databaseId}`);
       loadData();
     } catch (error) {
       console.error('Failed to delete user:', error);
@@ -178,7 +203,7 @@ const UasManager: React.FC<UasManagerProps> = ({
   // Group CRUD
   const handleCreateGroup = async (groupData: Partial<UasGroup>) => {
     try {
-      await api.post(`/script-features/uas/groups?db=${databaseId}`, groupData);
+      await api.post(`/v1/script-features/uas/groups?db=${databaseId}`, groupData);
       loadData();
       setShowGroupForm(false);
     } catch (error) {
@@ -188,7 +213,7 @@ const UasManager: React.FC<UasManagerProps> = ({
 
   const handleUpdateGroup = async (id: number, groupData: Partial<UasGroup>) => {
     try {
-      await api.put(`/script-features/uas/groups/${id}?db=${databaseId}`, groupData);
+      await api.put(`/v1/script-features/uas/groups/${id}?db=${databaseId}`, groupData);
       loadData();
       setEditingGroup(null);
     } catch (error) {
@@ -199,7 +224,7 @@ const UasManager: React.FC<UasManagerProps> = ({
   const handleDeleteGroup = async (id: number) => {
     if (!confirm('Are you sure you want to delete this group?')) return;
     try {
-      await api.delete(`/script-features/uas/groups/${id}?db=${databaseId}`);
+      await api.delete(`/v1/script-features/uas/groups/${id}?db=${databaseId}`);
       loadData();
     } catch (error: any) {
       alert(error.response?.data?.error || 'Failed to delete group');
@@ -209,7 +234,7 @@ const UasManager: React.FC<UasManagerProps> = ({
   // Page Access
   const handleTogglePageLock = async (pageId: string, isLocked: boolean) => {
     try {
-      await api.put(`/script-features/uas/page-access/${pageId}?db=${databaseId}`, {
+      await api.put(`/v1/script-features/uas/page-access/${pageId}?db=${databaseId}`, {
         is_locked: isLocked,
       });
       loadData();
@@ -220,7 +245,7 @@ const UasManager: React.FC<UasManagerProps> = ({
 
   const handleUpdatePageAccess = async (pageId: string, data: Partial<UasPageAccess>) => {
     try {
-      await api.put(`/script-features/uas/page-access/${pageId}?db=${databaseId}`, data);
+      await api.put(`/v1/script-features/uas/page-access/${pageId}?db=${databaseId}`, data);
       loadData();
     } catch (error) {
       console.error('Failed to update page access:', error);
@@ -255,27 +280,27 @@ const UasManager: React.FC<UasManagerProps> = ({
         {/* Stats Bar */}
         <div className="px-6 py-3 bg-[#252525] border-b border-gray-700 flex gap-6">
           <div className="text-center">
-            <div className="text-2xl font-bold text-white">{stats.total_users}</div>
+            <div className="text-2xl font-bold text-white">{stats?.total_users ?? 0}</div>
             <div className="text-xs text-gray-400">Total Users</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-green-400">{stats.active_users}</div>
+            <div className="text-2xl font-bold text-green-400">{stats?.active_users ?? 0}</div>
             <div className="text-xs text-gray-400">Active</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-yellow-400">{stats.pending_users}</div>
+            <div className="text-2xl font-bold text-yellow-400">{stats?.pending_users ?? 0}</div>
             <div className="text-xs text-gray-400">Pending</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-red-400">{stats.suspended_users}</div>
+            <div className="text-2xl font-bold text-red-400">{stats?.suspended_users ?? 0}</div>
             <div className="text-xs text-gray-400">Suspended</div>
           </div>
           <div className="border-l border-gray-600 pl-6 text-center">
-            <div className="text-2xl font-bold text-white">{stats.total_groups}</div>
+            <div className="text-2xl font-bold text-white">{stats?.total_groups ?? 0}</div>
             <div className="text-xs text-gray-400">Groups</div>
           </div>
           <div className="text-center">
-            <div className="text-2xl font-bold text-orange-400">{stats.locked_pages}</div>
+            <div className="text-2xl font-bold text-orange-400">{stats?.locked_pages ?? 0}</div>
             <div className="text-xs text-gray-400">Locked Pages</div>
           </div>
         </div>
@@ -308,6 +333,18 @@ const UasManager: React.FC<UasManagerProps> = ({
           {loading ? (
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <AlertCircle className="w-12 h-12 text-red-400 mb-4" />
+              <h3 className="text-lg font-medium text-white mb-2">Unable to Load</h3>
+              <p className="text-gray-400 max-w-md">{error}</p>
+              <button
+                onClick={loadData}
+                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-white text-sm transition-colors"
+              >
+                Try Again
+              </button>
             </div>
           ) : (
             <>
@@ -780,10 +817,13 @@ const SettingsTab: React.FC<{ databaseId: string }> = ({ databaseId }) => {
 
   const loadSettings = async () => {
     try {
-      const res = await api.get(`/script-features/uas/settings?db=${databaseId}`);
-      setSettings(res.data);
+      const res = await api.get(`/v1/script-features/uas/settings?db=${databaseId}`);
+      // Handle both wrapped response and direct object
+      const settingsData = res.data || res || {};
+      setSettings(typeof settingsData === 'object' ? settingsData : {});
     } catch (error) {
       console.error('Failed to load settings:', error);
+      setSettings({});
     } finally {
       setLoading(false);
     }
@@ -791,7 +831,7 @@ const SettingsTab: React.FC<{ databaseId: string }> = ({ databaseId }) => {
 
   const updateSetting = async (key: string, value: string) => {
     try {
-      await api.put(`/script-features/uas/settings?db=${databaseId}`, { [key]: value });
+      await api.put(`/v1/script-features/uas/settings?db=${databaseId}`, { [key]: value });
       setSettings({ ...settings, [key]: value });
     } catch (error) {
       console.error('Failed to update setting:', error);
@@ -944,9 +984,17 @@ const UserFormModal: React.FC<{
     first_name: user?.first_name || '',
     last_name: user?.last_name || '',
     display_name: user?.display_name || '',
-    group_id: user?.group_id || groups.find(g => g.is_default)?.id || groups[0]?.id,
+    group_id: user?.group_id || groups.find(g => g.is_default)?.id || groups[0]?.id || 0,
     status: user?.status || 'active',
   });
+
+  // Update group_id when groups load if not set
+  useEffect(() => {
+    if (groups.length > 0 && !formData.group_id) {
+      const defaultGroup = groups.find(g => g.is_default) || groups[0];
+      setFormData(prev => ({ ...prev, group_id: defaultGroup.id }));
+    }
+  }, [groups]);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
@@ -1187,3 +1235,4 @@ const GroupFormModal: React.FC<{
 };
 
 export default UasManager;
+

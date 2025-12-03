@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import type { DatabaseInstance, InstalledFeature } from '@/services/databaseService'
+import type { DatabaseInstance, InstalledFeature, TableInfo } from '@/services/databaseService'
 
 interface DatabaseManagementModalProps {
   isOpen: boolean
@@ -17,11 +17,13 @@ export const DatabaseManagementModal: React.FC<DatabaseManagementModalProps> = (
 }) => {
   const [database, setDatabase] = useState<DatabaseInstance | null>(null)
   const [installedFeatures, setInstalledFeatures] = useState<InstalledFeature[]>([])
+  const [tables, setTables] = useState<TableInfo[]>([])
   const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'overview' | 'features' | 'backup'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'features' | 'tables' | 'backup'>('overview')
   const [creating, setCreating] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [backingUp, setBackingUp] = useState(false)
+  const [loadingTables, setLoadingTables] = useState(false)
 
   // Check if the template/website has been saved (has a valid ID)
   const isUnsaved = !referenceId || referenceId === 0
@@ -135,6 +137,29 @@ export const DatabaseManagementModal: React.FC<DatabaseManagementModalProps> = (
     }
   }
 
+
+  const loadTables = async () => {
+    if (!database) return
+
+    setLoadingTables(true)
+    try {
+      const tablesList = await databaseService.getTables(database.id)
+      setTables(tablesList)
+    } catch (error: any) {
+      console.error('Failed to load tables:', error)
+      alert(error.message || 'Failed to load tables')
+    } finally {
+      setLoadingTables(false)
+    }
+  }
+
+  // Load tables when switching to tables tab
+  useEffect(() => {
+    if (activeTab === 'tables' && database && tables.length === 0) {
+      loadTables()
+    }
+  }, [activeTab, database])
+
   if (!isOpen) return null
 
   return (
@@ -217,6 +242,7 @@ export const DatabaseManagementModal: React.FC<DatabaseManagementModalProps> = (
                 {[
                   { id: 'overview', label: 'Overview' },
                   { id: 'features', label: 'Installed Features' },
+                  { id: 'tables', label: 'Tables' },
                   { id: 'backup', label: 'Backup & Restore' }
                 ].map(tab => (
                   <button
@@ -326,6 +352,58 @@ export const DatabaseManagementModal: React.FC<DatabaseManagementModalProps> = (
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+
+              {/* Tables Tab */}
+              {activeTab === 'tables' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-gray-700">
+                      Database Tables ({tables.length})
+                    </h3>
+                    <button
+                      onClick={loadTables}
+                      disabled={loadingTables}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 rounded hover:bg-gray-200 disabled:opacity-50"
+                    >
+                      {loadingTables ? 'Loading...' : 'Refresh'}
+                    </button>
+                  </div>
+                  {loadingTables ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">Loading tables...</p>
+                    </div>
+                  ) : tables.length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-gray-500">No tables found</p>
+                      <p className="text-sm text-gray-400 mt-1">
+                        Install features to create database tables
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-gray-200">
+                            <th className="text-left py-2 px-3 font-medium text-gray-700">Table Name</th>
+                            <th className="text-right py-2 px-3 font-medium text-gray-700">Rows</th>
+                            <th className="text-right py-2 px-3 font-medium text-gray-700">Size</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {tables.map((table, index) => (
+                            <tr key={index} className="border-b border-gray-100 hover:bg-gray-50">
+                              <td className="py-2 px-3 font-mono text-gray-900">{table.name}</td>
+                              <td className="py-2 px-3 text-right text-gray-600">{table.row_count.toLocaleString()}</td>
+                              <td className="py-2 px-3 text-right text-gray-600">{databaseService.formatSize(table.size_bytes)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>
