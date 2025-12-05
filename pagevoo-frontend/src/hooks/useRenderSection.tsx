@@ -11,6 +11,8 @@ import { EventsWrapPreview } from '@/components/script-features/events/EventsWra
 import LoginBoxPreview from '@/components/script-features/uas/LoginBoxPreview'
 import RegisterFormPreview from '@/components/script-features/uas/RegisterFormPreview'
 import UserDashboardPreview from '@/components/script-features/uas/UserDashboardPreview'
+import ForgotPasswordPreview from '@/components/script-features/uas/ForgotPasswordPreview'
+import VerifyEmailPreview from '@/components/script-features/uas/VerifyEmailPreview'
 
 interface TemplateSection {
   id: number
@@ -20,6 +22,7 @@ interface TemplateSection {
   section_name?: string
   section_id?: string
   is_locked?: boolean
+  lock_type?: string
 }
 
 interface TemplatePage {
@@ -241,6 +244,26 @@ export const useRenderSection = ({
           sectionContent = (
             <UserDashboardPreview
               config={section.content?.dashboardConfig || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        // User Access System - Forgot Password
+        case 'forgot-password':
+          sectionContent = (
+            <ForgotPasswordPreview
+              config={section.content?.forgotPasswordConfig || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        // User Access System - Verify Email
+        case 'verify-email':
+          sectionContent = (
+            <VerifyEmailPreview
+              config={section.content?.verifyEmailConfig || {}}
               isPreview={true}
             />
           )

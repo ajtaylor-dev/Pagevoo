@@ -14,13 +14,24 @@ class UserSection extends Model
         'section_id',
         'content',
         'css',
-        'order'
+        'order',
+        'is_locked',
+        'lock_type',
     ];
 
     protected $casts = [
         'content' => 'array',
-        'css' => 'array'
+        'css' => 'array',
+        'is_locked' => 'boolean',
     ];
+
+    /**
+     * Check if this section is locked and cannot be deleted.
+     */
+    public function isLocked(): bool
+    {
+        return $this->is_locked === true;
+    }
 
     public function userPage()
     {

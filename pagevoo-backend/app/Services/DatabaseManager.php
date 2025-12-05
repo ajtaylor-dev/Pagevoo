@@ -3,6 +3,8 @@
 namespace App\Services;
 
 use App\Models\DatabaseInstance;
+use App\Models\Template;
+use App\Models\UserWebsite;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Artisan;
@@ -10,6 +12,12 @@ use Exception;
 
 class DatabaseManager
 {
+    protected SystemPageService $systemPageService;
+
+    public function __construct()
+    {
+        $this->systemPageService = new SystemPageService();
+    }
     /**
      * Create a new database for a template.
      */
@@ -386,6 +394,9 @@ class DatabaseManager
         // Add to installed features
         $instance->addInstalledFeature($featureType, $config);
 
+        // Create system pages for features that require them
+        $this->createSystemPagesForFeature($instance, $featureType);
+
         // Update size
         $this->updateDatabaseSize($instance);
 
@@ -397,6 +408,9 @@ class DatabaseManager
      */
     public function uninstallFeature(DatabaseInstance $instance, string $featureType): bool
     {
+        // Remove system pages for this feature
+        $this->removeSystemPagesForFeature($instance, $featureType);
+
         // Remove from installed features
         $instance->removeInstalledFeature($featureType);
 
@@ -407,6 +421,52 @@ class DatabaseManager
         $this->updateDatabaseSize($instance);
 
         return true;
+    }
+
+    /**
+     * Create system pages when a feature is installed.
+     */
+    protected function createSystemPagesForFeature(DatabaseInstance $instance, string $featureType): void
+    {
+        // Only create system pages for features that have them defined
+        if (!in_array($featureType, $this->systemPageService->getSupportedFeatures())) {
+            return;
+        }
+
+        if ($instance->isTemplateDatabase()) {
+            $template = Template::find($instance->reference_id);
+            if ($template) {
+                $this->systemPageService->createTemplateSystemPages($template, $featureType);
+            }
+        } elseif ($instance->isWebsiteDatabase()) {
+            $website = UserWebsite::find($instance->reference_id);
+            if ($website) {
+                $this->systemPageService->createUserWebsiteSystemPages($website, $featureType);
+            }
+        }
+    }
+
+    /**
+     * Remove system pages when a feature is uninstalled.
+     */
+    protected function removeSystemPagesForFeature(DatabaseInstance $instance, string $featureType): void
+    {
+        // Only remove system pages for features that have them defined
+        if (!in_array($featureType, $this->systemPageService->getSupportedFeatures())) {
+            return;
+        }
+
+        if ($instance->isTemplateDatabase()) {
+            $template = Template::find($instance->reference_id);
+            if ($template) {
+                $this->systemPageService->removeTemplateSystemPages($template, $featureType);
+            }
+        } elseif ($instance->isWebsiteDatabase()) {
+            $website = UserWebsite::find($instance->reference_id);
+            if ($website) {
+                $this->systemPageService->removeUserWebsiteSystemPages($website, $featureType);
+            }
+        }
     }
 
     /**
@@ -445,6 +505,125 @@ class DatabaseManager
         }
 
         return $result;
+    }
+
+    /**
+     * Get columns for a specific table.
+     */
+    public function getTableColumns(DatabaseInstance $instance, string $tableName): array
+    {
+        // Sanitize table name to prevent SQL injection
+        $safeTableName = preg_replace('/[^a-zA-Z0-9_]/', '', $tableName);
+
+        // Validate table exists by checking information_schema
+        $tableExists = DB::select(
+            "SELECT TABLE_NAME FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?",
+            [$instance->database_name, $safeTableName]
+        );
+
+        if (empty($tableExists)) {
+            throw new Exception("Table '{$safeTableName}' not found in database");
+        }
+
+        $columns = DB::select(
+            "SELECT
+                COLUMN_NAME as name,
+                COLUMN_TYPE as type,
+                IS_NULLABLE as nullable,
+                COLUMN_KEY as `key`,
+                COLUMN_DEFAULT as `default`,
+                EXTRA as extra,
+                COLUMN_COMMENT as comment
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?
+             ORDER BY ORDINAL_POSITION",
+            [$instance->database_name, $safeTableName]
+        );
+
+        return array_map(function ($col) {
+            return [
+                'name' => $col->name,
+                'type' => $col->type,
+                'nullable' => $col->nullable === 'YES',
+                'key' => $col->key, // PRI, UNI, MUL, or empty
+                'default' => $col->default,
+                'extra' => $col->extra, // auto_increment, etc.
+                'comment' => $col->comment,
+            ];
+        }, $columns);
+    }
+
+    /**
+     * Get rows from a specific table with pagination.
+     */
+    public function getTableRows(DatabaseInstance $instance, string $tableName, int $page = 1, int $perPage = 50, ?string $orderBy = null, string $orderDir = 'ASC'): array
+    {
+        // Sanitize table name to prevent SQL injection
+        $safeTableName = preg_replace('/[^a-zA-Z0-9_]/', '', $tableName);
+
+        // Validate table exists by checking information_schema
+        $tableExists = DB::select(
+            "SELECT TABLE_NAME FROM information_schema.TABLES
+             WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ?",
+            [$instance->database_name, $safeTableName]
+        );
+
+        if (empty($tableExists)) {
+            throw new Exception("Table '{$safeTableName}' not found in database");
+        }
+
+        // Set up dynamic connection for this database
+        $connectionName = "user_db_{$instance->id}";
+        Config::set("database.connections.{$connectionName}", [
+            'driver' => 'mysql',
+            'host' => config('database.connections.mysql.host'),
+            'port' => config('database.connections.mysql.port'),
+            'database' => $instance->database_name,
+            'username' => config('database.connections.mysql.username'),
+            'password' => config('database.connections.mysql.password'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+        ]);
+
+        // Purge the connection to force a fresh one
+        DB::purge($connectionName);
+        $connection = DB::connection($connectionName);
+
+        // Get total count
+        $countResult = $connection->select("SELECT COUNT(*) as total FROM `{$safeTableName}`");
+        $total = $countResult[0]->total ?? 0;
+
+        // Build query
+        $offset = ($page - 1) * $perPage;
+
+        // Default to primary key or first column for ordering
+        if (!$orderBy) {
+            $columns = $this->getTableColumns($instance, $safeTableName);
+            $primaryKey = collect($columns)->firstWhere('key', 'PRI');
+            $orderBy = $primaryKey ? $primaryKey['name'] : ($columns[0]['name'] ?? 'id');
+        }
+
+        // Sanitize orderBy to prevent SQL injection
+        $orderBy = preg_replace('/[^a-zA-Z0-9_]/', '', $orderBy);
+        $orderDir = strtoupper($orderDir) === 'DESC' ? 'DESC' : 'ASC';
+
+        $rows = $connection->select(
+            "SELECT * FROM `{$safeTableName}` ORDER BY `{$orderBy}` {$orderDir} LIMIT ? OFFSET ?",
+            [$perPage, $offset]
+        );
+
+        return [
+            'rows' => array_map(function ($row) {
+                return (array) $row;
+            }, $rows),
+            'pagination' => [
+                'total' => (int) $total,
+                'per_page' => $perPage,
+                'current_page' => $page,
+                'last_page' => (int) ceil($total / $perPage),
+            ],
+        ];
     }
 
     /**

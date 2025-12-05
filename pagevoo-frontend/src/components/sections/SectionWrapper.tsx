@@ -9,6 +9,7 @@ interface TemplateSection {
   section_name?: string
   section_id?: string
   is_locked?: boolean
+  lock_type?: string
 }
 
 interface TemplatePage {
@@ -96,6 +97,9 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
     section.type.startsWith('footer-') ||
     section.type.startsWith('header-') ||
     section.type.startsWith('sidebar-nav-')
+
+  // Feature-locked sections (from UAS, Booking, etc.) cannot be unlocked or deleted
+  const isFeatureLocked = section.lock_type?.startsWith('uas_') || false
 
   // Track sidebar visibility for menu-click mode
   const [sidebarVisible, setSidebarVisible] = useState(content.positioned !== 'menu-click')
@@ -252,12 +256,16 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
       {/* Locked Section Overlay */}
       {section.is_locked && (
-        <div className="builder-ui absolute inset-0 bg-amber-500 bg-opacity-5 pointer-events-none border-2 border-amber-400 border-dashed rounded z-10">
-          <div className="builder-ui absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1.5">
+        <div className={`builder-ui absolute inset-0 bg-opacity-5 pointer-events-none border-2 border-dashed rounded z-10 ${
+          isFeatureLocked ? 'bg-amber-600 border-amber-500' : 'bg-amber-500 border-amber-400'
+        }`}>
+          <div className={`builder-ui absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1.5 ${
+            isFeatureLocked ? 'bg-amber-200 text-amber-800' : 'bg-amber-100 text-amber-700'
+          }`}>
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            LOCKED
+            {isFeatureLocked ? 'FEATURE SECTION' : 'LOCKED'}
           </div>
         </div>
       )}
@@ -353,23 +361,34 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             </>
           )}
 
-          {/* Edit lock toggle - available for all sections */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handleToggleSectionLock(section.id)
-            }}
-            className={`builder-ui p-1 hover:bg-[#e8f0e6] rounded transition ${section.is_locked ? 'bg-amber-50' : ''}`}
-            title={section.is_locked ? 'Unlock Editing' : 'Lock Editing'}
-          >
-            <svg className={`builder-ui w-4 h-4 ${section.is_locked ? 'text-amber-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              {section.is_locked ? (
+          {/* Edit lock toggle - available for all sections except feature-locked ones */}
+          {isFeatureLocked ? (
+            <div
+              className="builder-ui p-1 bg-amber-100 rounded cursor-not-allowed"
+              title="Feature-locked section cannot be unlocked"
+            >
+              <svg className="builder-ui w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
-              )}
-            </svg>
-          </button>
+              </svg>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleToggleSectionLock(section.id)
+              }}
+              className={`builder-ui p-1 hover:bg-[#e8f0e6] rounded transition ${section.is_locked ? 'bg-amber-50' : ''}`}
+              title={section.is_locked ? 'Unlock Editing' : 'Lock Editing'}
+            >
+              <svg className={`builder-ui w-4 h-4 ${section.is_locked ? 'text-amber-600' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                {section.is_locked ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                )}
+              </svg>
+            </button>
+          )}
 
           {/* Export to Library button - hidden for special sections */}
           {!isSpecialSection && (
@@ -387,18 +406,29 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             </button>
           )}
 
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              handleDeleteSection(section.id)
-            }}
-            className="builder-ui p-1 hover:bg-red-50 rounded transition ml-1"
-            title="Delete"
-          >
-            <svg className="builder-ui w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
+          {isFeatureLocked ? (
+            <div
+              className="builder-ui p-1 opacity-30 cursor-not-allowed ml-1"
+              title="Feature-locked section cannot be deleted"
+            >
+              <svg className="builder-ui w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+          ) : (
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                handleDeleteSection(section.id)
+              }}
+              className="builder-ui p-1 hover:bg-red-50 rounded transition ml-1"
+              title="Delete"
+            >
+              <svg className="builder-ui w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
         </div>
       )}
 

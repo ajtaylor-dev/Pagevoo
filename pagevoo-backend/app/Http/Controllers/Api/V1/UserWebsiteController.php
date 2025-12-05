@@ -106,6 +106,9 @@ class UserWebsiteController extends BaseController
                 'slug' => $templatePage->slug,
                 'is_homepage' => $templatePage->is_homepage,
                 'order' => $templatePage->order,
+                'is_system' => $templatePage->is_system ?? false,
+                'system_type' => $templatePage->system_type,
+                'feature_type' => $templatePage->feature_type,
                 'sections' => [],
             ];
 
@@ -120,6 +123,8 @@ class UserWebsiteController extends BaseController
                     'content' => $templateSection->content,
                     'css' => $templateSection->css,
                     'order' => $templateSection->order,
+                    'is_locked' => $templateSection->is_locked ?? false,
+                    'lock_type' => $templateSection->lock_type,
                 ];
             }
 

@@ -315,6 +315,16 @@ Route::prefix('v1')->group(function () {
 
         // Security questions (for registration)
         Route::get('/security-questions', [UasAuthController::class, 'getSecurityQuestions']);
+
+        // Profile management (requires session token)
+        Route::put('/profile', [UasAuthController::class, 'updateProfile']);
+        Route::post('/change-password', [UasAuthController::class, 'changePassword']);
+        Route::put('/security-questions', [UasAuthController::class, 'updateSecurityQuestions']);
+
+        // Session management (requires session token)
+        Route::get('/sessions', [UasAuthController::class, 'getSessions']);
+        Route::delete('/sessions/{id}', [UasAuthController::class, 'terminateSession']);
+        Route::delete('/sessions', [UasAuthController::class, 'terminateAllOtherSessions']);
     });
 
     // Database Management Routes
@@ -346,6 +356,10 @@ Route::prefix('v1')->group(function () {
 
         // Get tables
         Route::get('/{id}/tables', [DatabaseController::class, 'getTables']);
+
+        // Get table columns and rows (phpMyAdmin-style)
+        Route::get('/{id}/tables/{tableName}/columns', [DatabaseController::class, 'getTableColumns']);
+        Route::get('/{id}/tables/{tableName}/rows', [DatabaseController::class, 'getTableRows']);
     });
 
     // Public form submission endpoint (no auth required)

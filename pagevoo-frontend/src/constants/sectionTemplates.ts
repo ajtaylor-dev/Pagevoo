@@ -534,4 +534,73 @@ export const specialSections = [
       }
     }
   },
+  // UAS Forgot Password
+  {
+    type: 'forgot-password',
+    label: 'Forgot Password',
+    description: 'Password reset form with email verification',
+    category: 'user_access_system',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      forgotPasswordConfig: {
+        name: 'Forgot Password',
+        showTitle: true,
+        title: 'Reset Password',
+        showBackToLogin: true,
+        backToLoginText: 'Back to Login',
+        emailStepTitle: 'Forgot your password?',
+        emailStepDescription: "Enter your email address and we'll send you a link to reset your password.",
+        securityStepTitle: 'Security Verification',
+        securityStepDescription: 'Answer your security questions to verify your identity.',
+        newPasswordStepTitle: 'Create New Password',
+        newPasswordStepDescription: "Enter your new password. Make sure it's at least 8 characters.",
+        successTitle: 'Password Reset Complete!',
+        successMessage: 'Your password has been successfully reset. You can now log in with your new password.',
+        submitButtonText: 'Continue',
+        containerStyle: {
+          padding: '32px',
+          background: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb',
+          maxWidth: '450px',
+          margin: '0 auto'
+        }
+      }
+    }
+  },
+  // UAS Verify Email
+  {
+    type: 'verify-email',
+    label: 'Email Verification',
+    description: 'Email verification page with security questions setup',
+    category: 'user_access_system',
+    cols: 1,
+    rows: 1,
+    colWidths: [12],
+    defaultContent: {
+      verifyEmailConfig: {
+        name: 'Verify Email',
+        verifyingTitle: 'Verifying your email...',
+        verifyingMessage: 'Please wait while we verify your email address.',
+        successTitle: 'Email Verified!',
+        successMessage: 'Your email has been verified. Please complete the security questions below.',
+        expiredTitle: 'Link Expired',
+        expiredMessage: 'This verification link has expired. Please request a new one.',
+        securityQuestionsTitle: 'Set Up Security Questions',
+        securityQuestionsDescription: 'Choose 3 security questions and provide answers. These will be used to verify your identity if you forget your password.',
+        submitButtonText: 'Complete Registration',
+        resendLinkText: 'Resend verification email',
+        containerStyle: {
+          padding: '32px',
+          background: '#ffffff',
+          borderRadius: '8px',
+          border: '1px solid #e5e7eb',
+          maxWidth: '500px',
+          margin: '0 auto'
+        }
+      }
+    }
+  },
 ]

@@ -107,6 +107,7 @@ interface TemplateSection {
   section_name?: string
   section_id?: string
   is_locked?: boolean
+  lock_type?: string
 }
 
 interface ContentCSS {
@@ -124,6 +125,9 @@ interface TemplatePage {
   meta_description?: string
   page_css?: string
   page_id?: string
+  is_system?: boolean
+  system_type?: string
+  feature_type?: string
 }
 
 interface Template {
@@ -372,6 +376,31 @@ export default function TemplateBuilder() {
     } catch (error) {
       console.error('Failed to load installed features:', error)
       setInstalledFeatures([])
+    }
+  }
+
+  // Reload template data from server (used after installing features with system pages)
+  const reloadTemplate = async () => {
+    if (!template?.id) return
+
+    try {
+      const response = await api.getTemplate(template.id)
+      if (response.success && response.data) {
+        const templateData = response.data
+        setTemplate(templateData)
+        templateRef.current = templateData
+
+        // Update current page if it still exists, otherwise default to homepage
+        const updatedCurrentPage = templateData.pages.find((p: TemplatePage) => p.id === currentPage?.id)
+        if (updatedCurrentPage) {
+          setCurrentPage(updatedCurrentPage)
+        } else {
+          const homepage = templateData.pages.find((p: TemplatePage) => p.is_homepage) || templateData.pages[0]
+          setCurrentPage(homepage)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to reload template:', error)
     }
   }
 
@@ -1441,8 +1470,15 @@ export default function TemplateBuilder() {
           setShowFeatureInstallModal(false)
           loadInstalledFeatures() // Reload features when modal closes
         }}
-        onFeatureInstalled={(featureType) => {
+        onFeatureInstalled={async (featureType) => {
           loadInstalledFeatures() // Reload features after installation
+
+          // Features that create system pages need a template reload
+          const featuresWithSystemPages = ['user_access_system', 'booking', 'shop']
+          if (featuresWithSystemPages.includes(featureType)) {
+            await reloadTemplate() // Reload to get the new system pages
+          }
+
           if (featureType === 'contact_form') {
             setShowContactFormModal(true)
           }
@@ -1455,9 +1491,10 @@ export default function TemplateBuilder() {
       {/* Manage Features Modal */}
       {showManageFeaturesModal && (
         <ManageFeaturesModal
-          onClose={() => {
+          onClose={async () => {
             setShowManageFeaturesModal(false)
             loadInstalledFeatures() // Reload features when modal closes
+            await reloadTemplate() // Reload template to refresh system pages
           }}
           referenceId={template?.id || 0}
           referenceType="template"
@@ -1472,9 +1509,15 @@ export default function TemplateBuilder() {
               setShowUasManager(true)
             }
           }}
-          onFeatureUninstalled={(featureType) => {
+          onFeatureUninstalled={async (featureType) => {
             // Remove all sections related to this feature from all pages
             handleRemoveFeatureSections(featureType)
+
+            // Features that have system pages need a template reload to remove them
+            const featuresWithSystemPages = ['user_access_system', 'booking', 'shop']
+            if (featuresWithSystemPages.includes(featureType)) {
+              await reloadTemplate()
+            }
           }}
         />
       )}

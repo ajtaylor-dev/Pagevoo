@@ -67,6 +67,23 @@ export type TableInfo = {
   updated_at: string | null
 }
 
+export type TableColumn = {
+  name: string
+  type: string
+  nullable: boolean
+  key: string // PRI, UNI, MUL, or empty
+  default: string | null
+  extra: string // auto_increment, etc.
+  comment: string
+}
+
+export type Pagination = {
+  total: number
+  per_page: number
+  current_page: number
+  last_page: number
+}
+
 class DatabaseService {
   /**
    * Get database instance for a template or website
@@ -255,6 +272,48 @@ class DatabaseService {
   }
 
   /**
+   * Get columns for a specific table
+   */
+  async getTableColumns(instanceId: number, tableName: string): Promise<TableColumn[]> {
+    const response = await apiClient.get<ApiResponse<TableColumn[]>>(
+      `${API_BASE}/${instanceId}/tables/${encodeURIComponent(tableName)}/columns`
+    )
+
+    return response.data.data || []
+  }
+
+  /**
+   * Get rows from a specific table with pagination
+   */
+  async getTableRows(
+    instanceId: number,
+    tableName: string,
+    options: {
+      page?: number
+      per_page?: number
+      order_by?: string
+      order_dir?: 'ASC' | 'DESC'
+    } = {}
+  ): Promise<{ data: Record<string, any>[]; pagination: Pagination }> {
+    const response = await apiClient.get<ApiResponse<Record<string, any>[]> & { pagination: Pagination }>(
+      `${API_BASE}/${instanceId}/tables/${encodeURIComponent(tableName)}/rows`,
+      {
+        params: {
+          page: options.page || 1,
+          per_page: options.per_page || 50,
+          order_by: options.order_by,
+          order_dir: options.order_dir || 'ASC',
+        }
+      }
+    )
+
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination || { total: 0, per_page: 50, current_page: 1, last_page: 1 },
+    }
+  }
+
+  /**
    * Helper: Format database size for display
    */
   formatSize(bytes: number): string {
@@ -314,4 +373,4 @@ class DatabaseService {
 export const databaseService = new DatabaseService()
 
 // Explicit re-export to ensure types are available
-export type { DatabaseInstance, InstalledFeature, ApiResponse, TableInfo }
+export type { DatabaseInstance, InstalledFeature, ApiResponse, TableInfo, TableColumn, Pagination }

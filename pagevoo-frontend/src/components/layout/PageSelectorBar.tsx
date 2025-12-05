@@ -15,6 +15,9 @@ interface TemplatePage {
   meta_description?: string
   page_css?: string
   page_id?: string
+  is_system?: boolean
+  system_type?: string
+  feature_type?: string
 }
 
 interface PageSelectorBarProps {
@@ -48,6 +51,10 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
 }) => {
   const isDark = theme === 'dark'
 
+  // Separate regular pages from system pages
+  const regularPages = template.pages.filter(p => !p.is_system)
+  const systemPages = template.pages.filter(p => p.is_system)
+
   return (
     <div className={`border-b px-4 py-2 flex items-center justify-between ${
       isDark
@@ -70,11 +77,24 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
               : 'border-gray-300 bg-white text-gray-900'
           }`}
         >
-          {template.pages.map((page) => (
-            <option key={page.id} value={page.id}>
-              {page.name} {page.is_homepage ? '(Home)' : ''}
-            </option>
-          ))}
+          {regularPages.length > 0 && (
+            <optgroup label="Pages">
+              {regularPages.map((page) => (
+                <option key={page.id} value={page.id}>
+                  {page.name} {page.is_homepage ? '(Home)' : ''}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {systemPages.length > 0 && (
+            <optgroup label="System Pages">
+              {systemPages.map((page) => (
+                <option key={page.id} value={page.id}>
+                  {page.name}
+                </option>
+              ))}
+            </optgroup>
+          )}
         </select>
         <button
           onClick={() => {
@@ -110,7 +130,7 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
         </button>
       </div>
       <div className="flex items-center gap-1">
-        {currentPage && template.pages.length > 1 && !currentPage.is_homepage && (
+        {currentPage && template.pages.length > 1 && !currentPage.is_homepage && !currentPage.is_system && (
           <button
             onClick={() => handleDeletePage(currentPage.id)}
             className="px-2 py-1 text-xs bg-red-100 hover:bg-red-200 text-red-700 rounded transition"
@@ -118,6 +138,14 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
           >
             Delete Page
           </button>
+        )}
+        {currentPage?.is_system && (
+          <span className="px-2 py-1 text-xs bg-amber-100 text-amber-700 rounded flex items-center gap-1" title="System pages cannot be deleted">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            System Page
+          </span>
         )}
         <button
           onClick={() => setShowAddPageModal(true)}

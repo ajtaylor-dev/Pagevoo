@@ -10,6 +10,8 @@ import { EventsWrapProperties } from './properties/EventsWrapProperties'
 import LoginBoxProperties from './properties/LoginBoxProperties'
 import RegisterFormProperties from './properties/RegisterFormProperties'
 import UserDashboardProperties from './properties/UserDashboardProperties'
+import ForgotPasswordProperties from './properties/ForgotPasswordProperties'
+import VerifyEmailProperties from './properties/VerifyEmailProperties'
 import type { ThemeColors } from '@/config/themes'
 
 interface TemplateSection {
@@ -20,6 +22,7 @@ interface TemplateSection {
   section_name?: string
   section_id?: string
   is_locked?: boolean
+  lock_type?: string
 }
 
 interface TemplatePage {
@@ -235,24 +238,43 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
           ) : selectedSection ? (
             selectedSection.is_locked ? (
               <div className="space-y-3">
-                <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 text-center">
-                  <svg className="w-12 h-12 text-amber-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                  <h3 className="text-sm font-semibold text-amber-800 mb-1">Section Locked</h3>
-                  <p className="text-xs text-amber-600 mb-3">
-                    This section is locked and cannot be edited.
-                  </p>
-                  <button
-                    onClick={() => handleToggleSectionLock(selectedSection.id)}
-                    className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition"
-                  >
-                    Unlock Section
-                  </button>
-                </div>
+                {/* Check if this is a feature-locked section (cannot be unlocked) */}
+                {selectedSection.lock_type?.startsWith('uas_') ? (
+                  <div className="bg-amber-50 border-2 border-amber-300 rounded-lg p-4 text-center">
+                    <svg className="w-12 h-12 text-amber-600 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <h3 className="text-sm font-semibold text-amber-800 mb-1">Feature Section</h3>
+                    <p className="text-xs text-amber-600 mb-3">
+                      This section is required by the User Access System feature and cannot be removed or unlocked.
+                    </p>
+                    <p className="text-xs text-amber-700 bg-amber-100 rounded px-2 py-1">
+                      You can still customize the content of this section.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4 text-center">
+                    <svg className="w-12 h-12 text-amber-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                    <h3 className="text-sm font-semibold text-amber-800 mb-1">Section Locked</h3>
+                    <p className="text-xs text-amber-600 mb-3">
+                      This section is locked and cannot be edited.
+                    </p>
+                    <button
+                      onClick={() => handleToggleSectionLock(selectedSection.id)}
+                      className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded text-xs transition"
+                    >
+                      Unlock Section
+                    </button>
+                  </div>
+                )}
                 <div className={`text-xs ${theme.helperText} space-y-1`}>
                   <p><strong>Section:</strong> {selectedSection.section_name || selectedSection.type}</p>
                   <p><strong>ID:</strong> {selectedSection.section_id || 'Not set'}</p>
+                  {selectedSection.lock_type && (
+                    <p><strong>Lock Type:</strong> {selectedSection.lock_type}</p>
+                  )}
                 </div>
               </div>
             ) : (
@@ -480,6 +502,22 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
               {/* User Dashboard Section Controls */}
               {selectedSection.type === 'user-dashboard' && (
                 <UserDashboardProperties
+                  section={selectedSection}
+                  onUpdate={handleUpdateSectionContent}
+                />
+              )}
+
+              {/* Forgot Password Section Controls */}
+              {selectedSection.type === 'forgot-password' && (
+                <ForgotPasswordProperties
+                  section={selectedSection}
+                  onUpdate={handleUpdateSectionContent}
+                />
+              )}
+
+              {/* Verify Email Section Controls */}
+              {selectedSection.type === 'verify-email' && (
+                <VerifyEmailProperties
                   section={selectedSection}
                   onUpdate={handleUpdateSectionContent}
                 />

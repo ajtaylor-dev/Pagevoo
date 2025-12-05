@@ -443,4 +443,84 @@ class DatabaseController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Get columns for a specific table.
+     */
+    public function getTableColumns(Request $request, int $id, string $tableName): JsonResponse
+    {
+        $instance = DatabaseInstance::findOrFail($id);
+
+        // Check permissions
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only admins can view template database tables',
+            ], 403);
+        }
+
+        if ($instance->isWebsiteDatabase() && (int) $instance->reference_id !== (int) $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only view tables in your own database',
+            ], 403);
+        }
+
+        try {
+            $columns = $this->databaseManager->getTableColumns($instance, $tableName);
+
+            return response()->json([
+                'success' => true,
+                'data' => $columns,
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Get rows from a specific table with pagination.
+     */
+    public function getTableRows(Request $request, int $id, string $tableName): JsonResponse
+    {
+        $instance = DatabaseInstance::findOrFail($id);
+
+        // Check permissions
+        if ($instance->isTemplateDatabase() && !$request->user()->isAdmin()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only admins can view template database tables',
+            ], 403);
+        }
+
+        if ($instance->isWebsiteDatabase() && (int) $instance->reference_id !== (int) $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You can only view tables in your own database',
+            ], 403);
+        }
+
+        $page = (int) $request->query('page', 1);
+        $perPage = min((int) $request->query('per_page', 50), 100); // Max 100 per page
+        $orderBy = $request->query('order_by');
+        $orderDir = $request->query('order_dir', 'ASC');
+
+        try {
+            $result = $this->databaseManager->getTableRows($instance, $tableName, $page, $perPage, $orderBy, $orderDir);
+
+            return response()->json([
+                'success' => true,
+                'data' => $result['rows'],
+                'pagination' => $result['pagination'],
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
 }

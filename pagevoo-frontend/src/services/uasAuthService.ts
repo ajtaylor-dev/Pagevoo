@@ -300,6 +300,87 @@ class UasAuthService {
     return response.data;
   }
 
+  // ==================== PROFILE MANAGEMENT ====================
+
+  /**
+   * Update user profile
+   */
+  async updateProfile(data: {
+    first_name?: string;
+    last_name?: string;
+    display_name?: string | null;
+    email?: string;
+  }): Promise<{ message: string; user: UasUser }> {
+    const response = await this.client.put('/v1/uas-auth/profile', data);
+    // Update local state with new user data
+    if (response.data.user) {
+      this.state.user = response.data.user;
+      localStorage.setItem(UAS_USER_KEY, JSON.stringify(response.data.user));
+      this.notifyListeners();
+    }
+    return response.data;
+  }
+
+  /**
+   * Change password (while logged in)
+   */
+  async changePassword(data: {
+    current_password: string;
+    password: string;
+    password_confirmation: string;
+  }): Promise<{ message: string }> {
+    const response = await this.client.post('/v1/uas-auth/change-password', data);
+    return response.data;
+  }
+
+  /**
+   * Update security questions
+   */
+  async updateSecurityQuestions(data: {
+    current_password: string;
+    security_answers: Array<{ question_id: number; answer: string }>;
+  }): Promise<{ message: string }> {
+    const response = await this.client.put('/v1/uas-auth/security-questions', data);
+    return response.data;
+  }
+
+  // ==================== SESSION MANAGEMENT ====================
+
+  /**
+   * Get all active sessions
+   */
+  async getSessions(): Promise<{
+    sessions: Array<{
+      id: number;
+      ip_address: string;
+      user_agent: string;
+      device: { browser: string; os: string; device: string };
+      created_at: string;
+      last_activity_at: string;
+      expires_at: string;
+      is_current: boolean;
+    }>;
+  }> {
+    const response = await this.client.get('/v1/uas-auth/sessions');
+    return response.data;
+  }
+
+  /**
+   * Terminate a specific session
+   */
+  async terminateSession(sessionId: number): Promise<{ message: string }> {
+    const response = await this.client.delete(`/v1/uas-auth/sessions/${sessionId}`);
+    return response.data;
+  }
+
+  /**
+   * Terminate all sessions except current
+   */
+  async terminateAllOtherSessions(): Promise<{ message: string; count: number }> {
+    const response = await this.client.delete('/v1/uas-auth/sessions');
+    return response.data;
+  }
+
   // ==================== HELPER METHODS ====================
 
   /**

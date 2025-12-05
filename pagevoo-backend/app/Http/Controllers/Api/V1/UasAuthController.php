@@ -536,4 +536,357 @@ class UasAuthController extends Controller
 
         return response()->json($questions);
     }
+
+    // ==================== PROFILE MANAGEMENT ====================
+
+    /**
+     * Update user profile
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->header('X-Session-Token');
+
+        if (!$token) {
+            return response()->json(['error' => 'No session token provided'], 401);
+        }
+
+        $session = UasSession::on($this->connection)
+            ->where('token', $token)
+            ->with('user')
+            ->first();
+
+        if (!$session || !$session->isValid()) {
+            return response()->json(['error' => 'Invalid or expired session'], 401);
+        }
+
+        $validated = $request->validate([
+            'first_name' => 'sometimes|string|max:255',
+            'last_name' => 'sometimes|string|max:255',
+            'display_name' => 'sometimes|nullable|string|max:255',
+            'email' => 'sometimes|email|max:255',
+        ]);
+
+        $user = $session->user;
+
+        // Check if email is being changed and if it's already taken
+        if (isset($validated['email']) && $validated['email'] !== $user->email) {
+            $exists = UasUser::on($this->connection)
+                ->where('email', $validated['email'])
+                ->where('id', '!=', $user->id)
+                ->exists();
+
+            if ($exists) {
+                return response()->json(['error' => 'Email already in use'], 422);
+            }
+        }
+
+        $user->update($validated);
+
+        UasActivityLog::on($this->connection)->log(
+            'profile_updated',
+            $user->id,
+            $request->ip(),
+            $request->userAgent(),
+            ['fields' => array_keys($validated)]
+        );
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user->fresh()->load('group'),
+        ]);
+    }
+
+    /**
+     * Change password (while logged in)
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->header('X-Session-Token');
+
+        if (!$token) {
+            return response()->json(['error' => 'No session token provided'], 401);
+        }
+
+        $session = UasSession::on($this->connection)
+            ->where('token', $token)
+            ->with('user')
+            ->first();
+
+        if (!$session || !$session->isValid()) {
+            return response()->json(['error' => 'Invalid or expired session'], 401);
+        }
+
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'password' => 'required|min:8|confirmed',
+        ]);
+
+        $user = $session->user;
+
+        // Verify current password
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            UasActivityLog::on($this->connection)->log(
+                'password_change_failed',
+                $user->id,
+                $request->ip(),
+                $request->userAgent()
+            );
+            return response()->json(['error' => 'Current password is incorrect'], 400);
+        }
+
+        // Update password
+        $user->update([
+            'password' => Hash::make($validated['password']),
+        ]);
+
+        UasActivityLog::on($this->connection)->log(
+            'password_changed',
+            $user->id,
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        return response()->json([
+            'message' => 'Password changed successfully',
+        ]);
+    }
+
+    /**
+     * Update security questions
+     */
+    public function updateSecurityQuestions(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->header('X-Session-Token');
+
+        if (!$token) {
+            return response()->json(['error' => 'No session token provided'], 401);
+        }
+
+        $session = UasSession::on($this->connection)
+            ->where('token', $token)
+            ->first();
+
+        if (!$session || !$session->isValid()) {
+            return response()->json(['error' => 'Invalid or expired session'], 401);
+        }
+
+        $validated = $request->validate([
+            'current_password' => 'required|string',
+            'security_answers' => 'required|array|size:3',
+            'security_answers.*.question_id' => 'required|integer',
+            'security_answers.*.answer' => 'required|string|min:2',
+        ]);
+
+        $user = UasUser::on($this->connection)->find($session->user_id);
+
+        // Verify current password
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json(['error' => 'Current password is incorrect'], 400);
+        }
+
+        // Delete existing security answers
+        UasUserSecurityAnswer::on($this->connection)
+            ->where('user_id', $user->id)
+            ->delete();
+
+        // Save new security answers
+        foreach ($validated['security_answers'] as $answer) {
+            $securityAnswer = new UasUserSecurityAnswer();
+            $securityAnswer->setConnection($this->connection);
+            $securityAnswer->user_id = $user->id;
+            $securityAnswer->question_id = $answer['question_id'];
+            $securityAnswer->setAnswer($answer['answer']);
+            $securityAnswer->save();
+        }
+
+        UasActivityLog::on($this->connection)->log(
+            'security_questions_updated',
+            $user->id,
+            $request->ip(),
+            $request->userAgent()
+        );
+
+        return response()->json([
+            'message' => 'Security questions updated successfully',
+        ]);
+    }
+
+    // ==================== SESSION MANAGEMENT ====================
+
+    /**
+     * Get all active sessions for the current user
+     */
+    public function getSessions(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->header('X-Session-Token');
+
+        if (!$token) {
+            return response()->json(['error' => 'No session token provided'], 401);
+        }
+
+        $currentSession = UasSession::on($this->connection)
+            ->where('token', $token)
+            ->first();
+
+        if (!$currentSession || !$currentSession->isValid()) {
+            return response()->json(['error' => 'Invalid or expired session'], 401);
+        }
+
+        $sessions = UasSession::on($this->connection)
+            ->where('user_id', $currentSession->user_id)
+            ->where('expires_at', '>', now())
+            ->orderBy('last_activity_at', 'desc')
+            ->get()
+            ->map(function ($session) use ($token) {
+                return [
+                    'id' => $session->id,
+                    'ip_address' => $session->ip_address,
+                    'user_agent' => $session->user_agent,
+                    'device' => $this->parseUserAgent($session->user_agent),
+                    'created_at' => $session->created_at,
+                    'last_activity_at' => $session->last_activity_at,
+                    'expires_at' => $session->expires_at,
+                    'is_current' => $session->token === $token,
+                ];
+            });
+
+        return response()->json([
+            'sessions' => $sessions,
+        ]);
+    }
+
+    /**
+     * Terminate a specific session
+     */
+    public function terminateSession(Request $request, int $sessionId): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->header('X-Session-Token');
+
+        if (!$token) {
+            return response()->json(['error' => 'No session token provided'], 401);
+        }
+
+        $currentSession = UasSession::on($this->connection)
+            ->where('token', $token)
+            ->first();
+
+        if (!$currentSession || !$currentSession->isValid()) {
+            return response()->json(['error' => 'Invalid or expired session'], 401);
+        }
+
+        // Find the session to terminate
+        $sessionToTerminate = UasSession::on($this->connection)
+            ->where('id', $sessionId)
+            ->where('user_id', $currentSession->user_id)
+            ->first();
+
+        if (!$sessionToTerminate) {
+            return response()->json(['error' => 'Session not found'], 404);
+        }
+
+        // Prevent terminating current session through this endpoint
+        if ($sessionToTerminate->token === $token) {
+            return response()->json(['error' => 'Cannot terminate current session. Use logout instead.'], 400);
+        }
+
+        $sessionToTerminate->delete();
+
+        UasActivityLog::on($this->connection)->log(
+            'session_terminated',
+            $currentSession->user_id,
+            $request->ip(),
+            $request->userAgent(),
+            ['terminated_session_id' => $sessionId]
+        );
+
+        return response()->json([
+            'message' => 'Session terminated successfully',
+        ]);
+    }
+
+    /**
+     * Terminate all sessions except current
+     */
+    public function terminateAllOtherSessions(Request $request): JsonResponse
+    {
+        $token = $request->bearerToken() ?? $request->header('X-Session-Token');
+
+        if (!$token) {
+            return response()->json(['error' => 'No session token provided'], 401);
+        }
+
+        $currentSession = UasSession::on($this->connection)
+            ->where('token', $token)
+            ->first();
+
+        if (!$currentSession || !$currentSession->isValid()) {
+            return response()->json(['error' => 'Invalid or expired session'], 401);
+        }
+
+        $count = UasSession::on($this->connection)
+            ->where('user_id', $currentSession->user_id)
+            ->where('token', '!=', $token)
+            ->delete();
+
+        UasActivityLog::on($this->connection)->log(
+            'all_sessions_terminated',
+            $currentSession->user_id,
+            $request->ip(),
+            $request->userAgent(),
+            ['sessions_count' => $count]
+        );
+
+        return response()->json([
+            'message' => "Terminated {$count} session(s)",
+            'count' => $count,
+        ]);
+    }
+
+    /**
+     * Parse user agent to get device info
+     */
+    private function parseUserAgent(?string $userAgent): array
+    {
+        if (!$userAgent) {
+            return ['browser' => 'Unknown', 'os' => 'Unknown', 'device' => 'Unknown'];
+        }
+
+        $browser = 'Unknown';
+        $os = 'Unknown';
+        $device = 'Desktop';
+
+        // Detect browser
+        if (str_contains($userAgent, 'Firefox')) {
+            $browser = 'Firefox';
+        } elseif (str_contains($userAgent, 'Edg')) {
+            $browser = 'Edge';
+        } elseif (str_contains($userAgent, 'Chrome')) {
+            $browser = 'Chrome';
+        } elseif (str_contains($userAgent, 'Safari')) {
+            $browser = 'Safari';
+        } elseif (str_contains($userAgent, 'Opera') || str_contains($userAgent, 'OPR')) {
+            $browser = 'Opera';
+        }
+
+        // Detect OS
+        if (str_contains($userAgent, 'Windows')) {
+            $os = 'Windows';
+        } elseif (str_contains($userAgent, 'Mac')) {
+            $os = 'macOS';
+        } elseif (str_contains($userAgent, 'Linux')) {
+            $os = 'Linux';
+        } elseif (str_contains($userAgent, 'Android')) {
+            $os = 'Android';
+            $device = 'Mobile';
+        } elseif (str_contains($userAgent, 'iOS') || str_contains($userAgent, 'iPhone') || str_contains($userAgent, 'iPad')) {
+            $os = 'iOS';
+            $device = str_contains($userAgent, 'iPad') ? 'Tablet' : 'Mobile';
+        }
+
+        return [
+            'browser' => $browser,
+            'os' => $os,
+            'device' => $device,
+        ];
+    }
 }

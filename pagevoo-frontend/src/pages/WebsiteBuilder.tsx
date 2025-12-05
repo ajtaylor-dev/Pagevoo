@@ -112,6 +112,7 @@ interface UserSection {
   section_name?: string
   section_id?: string
   is_locked?: boolean
+  lock_type?: string
 }
 
 interface ContentCSS {
@@ -129,6 +130,9 @@ interface UserPage {
   meta_description?: string
   page_css?: string
   page_id?: string
+  is_system?: boolean
+  system_type?: string
+  feature_type?: string
 }
 
 interface UserWebsite {
@@ -394,6 +398,30 @@ export default function WebsiteBuilder() {
     } catch (error) {
       console.error('Failed to load installed features:', error)
       setInstalledFeatures([])
+    }
+  }
+
+  // Reload website data from server (used after installing features with system pages)
+  const reloadWebsite = async () => {
+    if (!website?.id) return
+
+    try {
+      const response = await api.getUserWebsite(website.id)
+      if (response.success && response.data) {
+        setWebsite(response.data)
+        websiteRef.current = response.data
+
+        // Update current page if it still exists, otherwise default to homepage
+        const updatedCurrentPage = response.data.pages.find((p: UserPage) => p.id === currentPage?.id)
+        if (updatedCurrentPage) {
+          setCurrentPage(updatedCurrentPage)
+        } else {
+          const homepage = response.data.pages.find((p: UserPage) => p.is_homepage) || response.data.pages[0]
+          setCurrentPage(homepage)
+        }
+      }
+    } catch (error) {
+      console.error('Failed to reload website:', error)
     }
   }
 
@@ -676,6 +704,9 @@ export default function WebsiteBuilder() {
           order: page.order,
           meta_description: page.meta_description || '',
           page_css: page.page_css || '',
+          is_system: page.is_system,
+          system_type: page.system_type,
+          feature_type: page.feature_type,
           sections: page.sections.map(section => ({
             id: section.id,
             template_section_id: section.template_section_id || null,
@@ -684,7 +715,9 @@ export default function WebsiteBuilder() {
             type: section.type,
             content: section.content,
             css: section.css || {},
-            order: section.order
+            order: section.order,
+            is_locked: section.is_locked,
+            lock_type: section.lock_type
           }))
         })),
         images: [] // Images are handled separately via upload endpoint
@@ -1250,11 +1283,16 @@ export default function WebsiteBuilder() {
           order: page.order,
           meta_description: page.meta_description || '',
           page_css: page.page_css || '',
+          is_system: page.is_system,
+          system_type: page.system_type,
+          feature_type: page.feature_type,
           sections: page.sections.map(section => ({
             id: section.id,
             type: section.type,
             content: section.content,
-            order: section.order
+            order: section.order,
+            is_locked: section.is_locked,
+            lock_type: section.lock_type
           }))
         })),
         images: []
@@ -2122,8 +2160,15 @@ export default function WebsiteBuilder() {
           setShowFeatureInstallModal(false)
           loadInstalledFeatures() // Reload features when modal closes
         }}
-        onFeatureInstalled={(featureType) => {
+        onFeatureInstalled={async (featureType) => {
           loadInstalledFeatures() // Reload features after installation
+
+          // Features that create system pages need a website reload
+          const featuresWithSystemPages = ['user_access_system', 'booking', 'shop']
+          if (featuresWithSystemPages.includes(featureType)) {
+            await reloadWebsite() // Reload to get the new system pages
+          }
+
           if (featureType === 'contact_form') {
             setShowContactFormModal(true)
           }
@@ -2147,9 +2192,10 @@ export default function WebsiteBuilder() {
       {/* Manage Features Modal */}
       {showManageFeaturesModal && (
         <ManageFeaturesModal
-          onClose={() => {
+          onClose={async () => {
             setShowManageFeaturesModal(false)
             loadInstalledFeatures() // Reload features when modal closes
+            await reloadWebsite() // Reload website to refresh system pages
           }}
           referenceId={user?.id || 0}
           referenceType="website"
@@ -2164,9 +2210,15 @@ export default function WebsiteBuilder() {
               setShowUasManager(true)
             }
           }}
-          onFeatureUninstalled={(featureType) => {
+          onFeatureUninstalled={async (featureType) => {
             // Remove all sections related to this feature from all pages
             handleRemoveFeatureSections(featureType)
+
+            // Features that have system pages need a website reload to remove them
+            const featuresWithSystemPages = ['user_access_system', 'booking', 'shop']
+            if (featuresWithSystemPages.includes(featureType)) {
+              await reloadWebsite()
+            }
           }}
         />
       )}

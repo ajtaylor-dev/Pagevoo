@@ -14,12 +14,24 @@ class TemplatePage extends Model
         'meta_description',
         'page_css',
         'is_homepage',
-        'order'
+        'order',
+        'is_system',
+        'system_type',
+        'feature_type',
     ];
 
     protected $casts = [
-        'is_homepage' => 'boolean'
+        'is_homepage' => 'boolean',
+        'is_system' => 'boolean',
     ];
+
+    /**
+     * Check if this is a system page that cannot be deleted.
+     */
+    public function isSystemPage(): bool
+    {
+        return $this->is_system === true;
+    }
 
     public function template()
     {
