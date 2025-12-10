@@ -22,6 +22,9 @@ interface TemplatePage {
   meta_description?: string
   page_css?: string
   page_id?: string
+  is_system?: boolean
+  system_type?: string
+  feature_type?: string
 }
 
 interface Template {
@@ -98,8 +101,8 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
     section.type.startsWith('header-') ||
     section.type.startsWith('sidebar-nav-')
 
-  // Feature-locked sections (from UAS, Booking, etc.) cannot be unlocked or deleted
-  const isFeatureLocked = section.lock_type?.startsWith('uas_') || false
+  // System page sections that are marked as locked cannot be deleted (but can still be styled)
+  const isSystemPageLockedSection = currentPage?.is_system && section.is_locked
 
   // Track sidebar visibility for menu-click mode
   const [sidebarVisible, setSidebarVisible] = useState(content.positioned !== 'menu-click')
@@ -254,18 +257,14 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
 
       {children}
 
-      {/* Locked Section Overlay */}
-      {section.is_locked && (
-        <div className={`builder-ui absolute inset-0 bg-opacity-5 pointer-events-none border-2 border-dashed rounded z-10 ${
-          isFeatureLocked ? 'bg-amber-600 border-amber-500' : 'bg-amber-500 border-amber-400'
-        }`}>
-          <div className={`builder-ui absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1.5 ${
-            isFeatureLocked ? 'bg-amber-200 text-amber-800' : 'bg-amber-100 text-amber-700'
-          }`}>
+      {/* Locked Section Overlay - only show for non-system page locked sections */}
+      {section.is_locked && !isSystemPageLockedSection && (
+        <div className="builder-ui absolute inset-0 bg-opacity-5 pointer-events-none border-2 border-dashed rounded z-10 bg-amber-500 border-amber-400">
+          <div className="builder-ui absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 px-3 py-1.5 rounded-full text-xs font-semibold shadow-lg flex items-center gap-1.5 bg-amber-100 text-amber-700">
             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
             </svg>
-            {isFeatureLocked ? 'FEATURE SECTION' : 'LOCKED'}
+            LOCKED
           </div>
         </div>
       )}
@@ -361,14 +360,14 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             </>
           )}
 
-          {/* Edit lock toggle - available for all sections except feature-locked ones */}
-          {isFeatureLocked ? (
+          {/* Edit lock toggle - hidden for system page locked sections (they can't be unlocked) */}
+          {isSystemPageLockedSection ? (
             <div
-              className="builder-ui p-1 bg-amber-100 rounded cursor-not-allowed"
-              title="Feature-locked section cannot be unlocked"
+              className="builder-ui p-1 bg-blue-100 rounded cursor-not-allowed"
+              title="Required system section - cannot be unlocked or deleted"
             >
-              <svg className="builder-ui w-4 h-4 text-amber-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              <svg className="builder-ui w-4 h-4 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
           ) : (
@@ -406,10 +405,11 @@ export const SectionWrapper: React.FC<SectionWrapperProps> = ({
             </button>
           )}
 
-          {isFeatureLocked ? (
+          {/* Delete button - hidden for system page locked sections */}
+          {isSystemPageLockedSection ? (
             <div
               className="builder-ui p-1 opacity-30 cursor-not-allowed ml-1"
-              title="Feature-locked section cannot be deleted"
+              title="Required system section - cannot be deleted"
             >
               <svg className="builder-ui w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

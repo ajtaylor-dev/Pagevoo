@@ -30,6 +30,7 @@ import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
 import { BlogManager } from '@/components/BlogManager'
 import { EventsManager } from '@/components/EventsManager'
+import { BookingManager } from '@/components/BookingManager'
 import UasManager from '@/components/UasManager'
 import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
@@ -236,7 +237,16 @@ export default function TemplateBuilder() {
   const [showContactFormModal, setShowContactFormModal] = useState(false)
   const [showBlogManager, setShowBlogManager] = useState(false)
   const [showEventsManager, setShowEventsManager] = useState(false)
+  const [showBookingManager, setShowBookingManager] = useState(false)
   const [showUasManager, setShowUasManager] = useState(false)
+  const [bookingType, setBookingType] = useState<'appointments' | 'restaurant' | 'classes' | 'events' | 'rentals'>('appointments')
+  const [bookingServices, setBookingServices] = useState<Array<{
+    id: number
+    name: string
+    duration_minutes: number
+    price: number
+    pricing_type: string
+  }>>([])
   const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
 
   // Undo/Redo and Save state
@@ -355,6 +365,8 @@ export default function TemplateBuilder() {
   useEffect(() => {
     if (template?.id) {
       loadInstalledFeatures()
+      // Also load booking settings directly (in case features check fails)
+      loadBookingSettings()
     }
   }, [template?.id])
 
@@ -372,10 +384,43 @@ export default function TemplateBuilder() {
 
       // Get installed features
       const features = await databaseService.getInstalledFeatures(database.id)
-      setInstalledFeatures(features.map(f => f.type))
+      const featureTypes = features.map(f => f.type)
+      setInstalledFeatures(featureTypes)
+
+      // If booking is installed, load booking settings to get the type
+      if (featureTypes.includes('booking')) {
+        loadBookingSettings()
+      }
     } catch (error) {
       console.error('Failed to load installed features:', error)
       setInstalledFeatures([])
+    }
+  }
+
+  // Load booking settings and services to sync booking type and display
+  const loadBookingSettings = async () => {
+    if (!template?.id) return
+    try {
+      // Load settings
+      const response = await api.get('/v1/script-features/booking/settings', {
+        type: 'template',
+        reference_id: template.id
+      })
+      const settings = response.data || response || {}
+      if (settings.booking_type) {
+        setBookingType(settings.booking_type)
+      }
+
+      // Also load services
+      const servicesResponse = await api.get('/v1/script-features/booking/services/all', {
+        type: 'template',
+        reference_id: template.id
+      })
+      if (servicesResponse.success && servicesResponse.data) {
+        setBookingServices(servicesResponse.data)
+      }
+    } catch (error) {
+      // Settings or services might not exist yet, that's okay
     }
   }
 
@@ -926,7 +971,9 @@ export default function TemplateBuilder() {
     handleMoveSection,
     handleToggleSectionLock,
     handleDeleteSection,
-    handleExportSection
+    handleExportSection,
+    bookingType,
+    bookingServices
   })
 
 
@@ -1023,6 +1070,8 @@ export default function TemplateBuilder() {
         onThemeChange={changeTheme}
         setShowUasManager={setShowUasManager}
         isUasInstalled={installedFeatures.includes('user_access_system')}
+        setShowBookingManager={setShowBookingManager}
+        isBookingInstalled={installedFeatures.includes('booking')}
       />
 
       {/* Toolbar */}
@@ -1179,6 +1228,8 @@ export default function TemplateBuilder() {
               onOpenGallery={() => setShowImageGallery(true)}
               onOpenBlogManager={() => setShowBlogManager(true)}
               onOpenEventsManager={() => setShowEventsManager(true)}
+              onOpenBookingManager={() => setShowBookingManager(true)}
+              bookingType={bookingType}
             />
           </>
         )}
@@ -1376,6 +1427,19 @@ export default function TemplateBuilder() {
         />
       )}
 
+      {/* Booking Manager Modal */}
+      {showBookingManager && (
+        <BookingManager
+          isOpen={showBookingManager}
+          onClose={() => setShowBookingManager(false)}
+          type="template"
+          referenceId={template?.id || 0}
+          onBookingTypeChange={setBookingType}
+          onServicesChange={loadBookingSettings}
+          installedFeatures={installedFeatures}
+        />
+      )}
+
       {/* UAS Manager Modal */}
       {showUasManager && (
         <UasManager
@@ -1507,6 +1571,8 @@ export default function TemplateBuilder() {
               setShowEventsManager(true)
             } else if (featureType === 'user_access_system') {
               setShowUasManager(true)
+            } else if (featureType === 'booking') {
+              setShowBookingManager(true)
             }
           }}
           onFeatureUninstalled={async (featureType) => {

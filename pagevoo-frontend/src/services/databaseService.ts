@@ -52,10 +52,28 @@ export type InstalledFeature = {
   installed_at: string
 }
 
+export type SystemPageDefinition = {
+  system_type: string
+  name: string
+  slug: string
+  sections: Array<{
+    type: string
+    lock_type: string
+    section_name: string
+    content: Record<string, any>
+  }>
+}
+
+export type FeatureInstallResult = {
+  instance: DatabaseInstance
+  system_pages: SystemPageDefinition[]
+}
+
 export type ApiResponse<T = any> = {
   success: boolean
   message?: string
   data?: T
+  system_pages?: SystemPageDefinition[]
   errors?: Record<string, string[]>
 }
 
@@ -208,12 +226,13 @@ class DatabaseService {
 
   /**
    * Install a feature on a database
+   * Returns the updated instance and system page definitions (if any)
    */
   async installFeature(
     instanceId: number,
     featureType: string,
     config: Record<string, any> = {}
-  ): Promise<DatabaseInstance> {
+  ): Promise<FeatureInstallResult> {
     const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
       `${API_BASE}/${instanceId}/features/install`,
       {
@@ -226,7 +245,10 @@ class DatabaseService {
       throw new Error(response.data.message || 'Failed to install feature')
     }
 
-    return response.data.data
+    return {
+      instance: response.data.data,
+      system_pages: response.data.system_pages || []
+    }
   }
 
   /**
@@ -239,7 +261,19 @@ class DatabaseService {
     )
 
     if (!response.data.success || !response.data.data) {
-      throw new Error(response.data.message || 'Failed to uninstall feature')
+      // Create an error object that includes additional response data
+      const error: any = new Error(response.data.message || 'Failed to uninstall feature')
+      // Include error_code and blocking_features for dependency errors
+      if ((response.data as any).error_code) {
+        error.error_code = (response.data as any).error_code
+      }
+      if ((response.data as any).blocking_features) {
+        error.blocking_features = (response.data as any).blocking_features
+      }
+      if ((response.data as any).details) {
+        error.details = (response.data as any).details
+      }
+      throw error
     }
 
     return response.data.data

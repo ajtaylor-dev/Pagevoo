@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api\V1;
 
-use App\Http\Controllers\Controller;
 use App\Models\DatabaseInstance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -10,7 +9,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
-class BlogController extends Controller
+class BlogController extends BaseController
 {
     /**
      * Set up connection to user's database
@@ -48,6 +47,18 @@ class BlogController extends Controller
     }
 
     /**
+     * Check if blog tables exist in the user database
+     */
+    private function checkBlogTablesExist(): bool
+    {
+        try {
+            return DB::connection('user_db')->getSchemaBuilder()->hasTable('blog_posts');
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
      * Get all blog posts
      */
     public function index(Request $request)
@@ -62,6 +73,11 @@ class BlogController extends Controller
         $dbName = $this->connectToUserDatabase($type, $referenceId);
         if (!$dbName) {
             return $this->sendError('Database not found', 404);
+        }
+
+        // Check if blog feature is installed
+        if (!$this->checkBlogTablesExist()) {
+            return $this->sendError('Blog feature is not installed. Please install the Blog feature from the Database Manager.', 400);
         }
 
         try {
@@ -121,6 +137,11 @@ class BlogController extends Controller
         $dbName = $this->connectToUserDatabase($request->type, $request->reference_id);
         if (!$dbName) {
             return $this->sendError('Database not found', 404);
+        }
+
+        // Check if blog feature is installed
+        if (!$this->checkBlogTablesExist()) {
+            return $this->sendError('Blog feature is not installed. Please install the Blog feature from the Database Manager.', 400);
         }
 
         try {
@@ -298,6 +319,11 @@ class BlogController extends Controller
             return $this->sendError('Database not found', 404);
         }
 
+        // Check if blog feature is installed
+        if (!$this->checkBlogTablesExist()) {
+            return $this->sendError('Blog feature is not installed. Please install the Blog feature from the Database Manager.', 400);
+        }
+
         try {
             $categories = DB::connection('user_db')
                 ->table('blog_categories')
@@ -468,6 +494,11 @@ class BlogController extends Controller
         $dbName = $this->connectToUserDatabase($type, $referenceId);
         if (!$dbName) {
             return $this->sendError('Database not found', 404);
+        }
+
+        // Check if blog feature is installed
+        if (!$this->checkBlogTablesExist()) {
+            return $this->sendError('Blog feature is not installed. Please install the Blog feature from the Database Manager.', 400);
         }
 
         try {

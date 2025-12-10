@@ -98,8 +98,8 @@ class ApiService {
   /**
    * Generic DELETE request
    */
-  async delete<T = any>(url: string): Promise<ApiResponse<T>> {
-    const response = await this.client.delete(url);
+  async delete<T = any>(url: string, params?: any): Promise<ApiResponse<T>> {
+    const response = await this.client.delete(url, { params });
     return response.data;
   }
 

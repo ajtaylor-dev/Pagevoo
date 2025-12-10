@@ -51,9 +51,13 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
 }) => {
   const isDark = theme === 'dark'
 
-  // Separate regular pages from system pages
-  const regularPages = template.pages.filter(p => !p.is_system)
-  const systemPages = template.pages.filter(p => p.is_system)
+  // Separate pages into categories: regular, VooPress, and other system pages
+  const regularPages = template.pages?.filter(p => !p.is_system) || []
+  const voopressPages = template.pages?.filter(p => p.is_system && p.feature_type === 'voopress') || []
+  const systemPages = template.pages?.filter(p => p.is_system && p.feature_type !== 'voopress') || []
+
+  // Check if we have any pages at all
+  const hasAnyPages = regularPages.length > 0 || voopressPages.length > 0 || systemPages.length > 0
 
   return (
     <div className={`border-b px-4 py-2 flex items-center justify-between ${
@@ -68,7 +72,7 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
         <select
           value={currentPage?.id || ''}
           onChange={(e) => {
-            const selectedPage = template.pages.find(p => p.id === parseInt(e.target.value))
+            const selectedPage = template.pages?.find(p => p.id === parseInt(e.target.value))
             if (selectedPage) setCurrentPage(selectedPage)
           }}
           className={`px-2 py-1 border rounded text-xs focus:outline-none focus:ring-1 focus:ring-[#98b290] ${
@@ -77,11 +81,23 @@ export const PageSelectorBar: React.FC<PageSelectorBarProps> = ({
               : 'border-gray-300 bg-white text-gray-900'
           }`}
         >
+          {!hasAnyPages && (
+            <option value="">No pages available</option>
+          )}
           {regularPages.length > 0 && (
             <optgroup label="Pages">
               {regularPages.map((page) => (
                 <option key={page.id} value={page.id}>
                   {page.name} {page.is_homepage ? '(Home)' : ''}
+                </option>
+              ))}
+            </optgroup>
+          )}
+          {voopressPages.length > 0 && (
+            <optgroup label="VooPress Pages">
+              {voopressPages.map((page) => (
+                <option key={page.id} value={page.id}>
+                  {page.name} {page.slug === '' ? '(Home)' : ''}
                 </option>
               ))}
             </optgroup>

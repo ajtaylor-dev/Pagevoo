@@ -1,0 +1,142 @@
+{
+  "id": "business",
+  "name": "Business Blog",
+  "description": "Professional corporate style with about/services integration and team sections",
+  "preview_image": "/themes/business-preview.png",
+  "tier_required": "niche",
+  "layout": {
+    "type": "sidebar-right",
+    "sidebar_width": "320px",
+    "content_width": "calc(100% - 340px)",
+    "max_width": "1200px"
+  },
+  "colors": {
+    "primary": "#2563EB",
+    "secondary": "#1D4ED8",
+    "background": "#F8FAFC",
+    "text": "#1E293B",
+    "accent": "#10B981"
+  },
+  "typography": {
+    "heading_font": "Inter, system-ui, sans-serif",
+    "body_font": "Inter, system-ui, sans-serif",
+    "base_size": "16px"
+  },
+  "homepage": {
+    "show_featured": true,
+    "featured_count": 3,
+    "posts_per_page": 6,
+    "excerpt_length": 160,
+    "show_author": true,
+    "show_date": true,
+    "show_categories": true,
+    "grid_columns": 2
+  },
+  "sidebar": {
+    "position": "right",
+    "widgets": ["about_company", "newsletter", "recent_posts", "categories"]
+  },
+  "header": {
+    "style": "business",
+    "show_tagline": false,
+    "show_search": true,
+    "menu_position": "right",
+    "show_cta": true,
+    "cta_text": "Contact Us",
+    "cta_link": "/contact"
+  },
+  "footer": {
+    "style": "business",
+    "columns": 4,
+    "show_copyright": true,
+    "show_social": true,
+    "show_newsletter": true
+  },
+  "pages": {
+    "home": {
+      "title": "Home",
+      "slug": "",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "business" }
+        },
+        {
+          "type": "voopress-hero",
+          "config": { "show_cta": true }
+        },
+        {
+          "type": "voopress-featured-posts",
+          "config": { "count": 3, "layout": "cards" }
+        },
+        {
+          "type": "voopress-blog-listing",
+          "config": { "posts_per_page": 6, "show_sidebar": true, "layout": "grid" }
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    },
+    "about": {
+      "title": "About Us",
+      "slug": "about",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "business" }
+        },
+        {
+          "type": "voopress-page-content",
+          "config": { "default_content": "<h1>About Our Company</h1><p>Learn more about our mission, values, and the team behind our success...</p>" }
+        },
+        {
+          "type": "voopress-team-section",
+          "config": {}
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    },
+    "services": {
+      "title": "Services",
+      "slug": "services",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "business" }
+        },
+        {
+          "type": "voopress-page-content",
+          "config": { "default_content": "<h1>Our Services</h1><p>Discover what we can do for you...</p>" }
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    },
+    "contact": {
+      "title": "Contact",
+      "slug": "contact",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "business" }
+        },
+        {
+          "type": "voopress-contact-page",
+          "config": { "show_map": true, "show_info": true }
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    }
+  },
+  "css_overrides": ""
+}

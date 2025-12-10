@@ -13,6 +13,20 @@ import RegisterFormPreview from '@/components/script-features/uas/RegisterFormPr
 import UserDashboardPreview from '@/components/script-features/uas/UserDashboardPreview'
 import ForgotPasswordPreview from '@/components/script-features/uas/ForgotPasswordPreview'
 import VerifyEmailPreview from '@/components/script-features/uas/VerifyEmailPreview'
+import BookingFormPreview from '@/components/script-features/booking/BookingFormPreview'
+// VooPress section previews
+import {
+  VooPressHeaderPreview,
+  VooPressFeaturedPostPreview,
+  VooPressFeaturedPostsPreview,
+  VooPressBlogListingPreview,
+  VooPressFooterPreview,
+  VooPressPageContentPreview,
+  VooPressContactPagePreview,
+  VooPressHeroPreview,
+  VooPressFeaturedGridPreview,
+  VooPressCategorySectionsPreview
+} from '@/components/voopress/previews'
 
 interface TemplateSection {
   id: number
@@ -70,6 +84,14 @@ interface Template {
   }>
 }
 
+interface BookingService {
+  id: number
+  name: string
+  duration_minutes: number
+  price: number
+  pricing_type: string
+}
+
 interface UseRenderSectionProps {
   selectedSection: TemplateSection | null
   editingText: { sectionId: number; field: string; value: string } | null
@@ -90,6 +112,8 @@ interface UseRenderSectionProps {
   handleToggleSectionLock: (sectionId: number) => void
   handleDeleteSection: (sectionId: number) => void
   handleExportSection?: (section: TemplateSection) => void
+  bookingType?: 'appointments' | 'restaurant' | 'classes' | 'events' | 'rentals'
+  bookingServices?: BookingService[]
 }
 
 export const useRenderSection = ({
@@ -111,7 +135,9 @@ export const useRenderSection = ({
   handleMoveSection,
   handleToggleSectionLock,
   handleDeleteSection,
-  handleExportSection
+  handleExportSection,
+  bookingType,
+  bookingServices
 }: UseRenderSectionProps) => {
 
   const renderSection = (section: TemplateSection, index: number) => {
@@ -219,6 +245,18 @@ export const useRenderSection = ({
           )
           break
 
+        // Booking Form
+        case 'booking-form':
+          sectionContent = (
+            <BookingFormPreview
+              content={section.content || {}}
+              css={section.css}
+              bookingType={bookingType}
+              services={bookingServices}
+            />
+          )
+          break
+
         // User Access System - Login Box
         case 'login-box':
           sectionContent = (
@@ -269,6 +307,23 @@ export const useRenderSection = ({
           )
           break
 
+        // User Access System - Logout Handler
+        case 'logout-handler':
+          sectionContent = (
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-8 text-center">
+              <div className="text-amber-600 mb-3">
+                <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-amber-800 mb-2">Logout Handler</h3>
+              <p className="text-amber-700 text-sm">
+                This system page kills the session and redirects to the home page.
+              </p>
+            </div>
+          )
+          break
+
         // Contact form sections
         case 'contact-form-input':
         case 'contact-form-email':
@@ -284,6 +339,119 @@ export const useRenderSection = ({
               section={section}
               selectedSection={selectedSection}
             />
+          )
+          break
+
+        // VooPress sections
+        case 'voopress-header':
+          sectionContent = (
+            <VooPressHeaderPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              siteName={template?.name || 'My VooPress Site'}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-featured-post':
+          sectionContent = (
+            <VooPressFeaturedPostPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-blog-listing':
+          sectionContent = (
+            <VooPressBlogListingPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-footer':
+          sectionContent = (
+            <VooPressFooterPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              siteName={template?.name || 'My VooPress Site'}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-page-content':
+          sectionContent = (
+            <VooPressPageContentPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-contact-page':
+          sectionContent = (
+            <VooPressContactPagePreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-hero':
+          sectionContent = (
+            <VooPressHeroPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-featured-posts':
+          sectionContent = (
+            <VooPressFeaturedPostsPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        // Magazine theme sections
+        case 'voopress-featured-grid':
+          sectionContent = (
+            <VooPressFeaturedGridPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-category-sections':
+          sectionContent = (
+            <VooPressCategorySectionsPreview
+              config={section.content || {}}
+              themeConfig={section.content || {}}
+              isPreview={true}
+            />
+          )
+          break
+
+        case 'voopress-team-section':
+          sectionContent = (
+            <div className="p-8 bg-gray-50 border-2 border-dashed border-purple-300 rounded-lg">
+              <p className="text-purple-600 text-center font-medium">VooPress Team Section</p>
+              <p className="text-gray-500 text-center text-sm mt-2">Team member profiles</p>
+            </div>
           )
           break
 

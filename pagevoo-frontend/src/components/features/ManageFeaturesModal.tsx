@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary, MdArticle, MdEvent, MdPeople } from 'react-icons/md'
+import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary, MdArticle, MdEvent, MdPeople, MdCalendarMonth, MdEdit } from 'react-icons/md'
 import type { IconType } from 'react-icons'
 
 interface ManageFeaturesModalProps {
@@ -48,8 +48,19 @@ const FEATURE_DETAILS: Record<string, InstalledFeature> = {
     name: 'User Access System',
     description: 'User registration, login, profiles, groups, and role-based permissions',
     icon: MdPeople
+  },
+  booking: {
+    type: 'booking',
+    name: 'Booking System',
+    description: 'Appointments, reservations, classes, events, and rental bookings with scheduling',
+    icon: MdCalendarMonth
+  },
+  voopress: {
+    type: 'voopress',
+    name: 'VooPress',
+    description: 'WordPress-style blog with themes, widgets, menus, and dashboard',
+    icon: MdEdit
   }
-  // Add more features as they're implemented
 }
 
 export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
@@ -65,6 +76,7 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
   const [uninstalling, setUninstalling] = useState<string | null>(null)
   const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null)
   const [databaseId, setDatabaseId] = useState<number | null>(null)
+  const [dependencyError, setDependencyError] = useState<{ feature: string; blocking: string[] } | null>(null)
 
   useEffect(() => {
     loadInstalledFeatures()
@@ -114,6 +126,7 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
 
     try {
       setUninstalling(featureType)
+      setDependencyError(null)
       await databaseService.uninstallFeature(databaseId, featureType)
       // Remove from local state
       setInstalledFeatures(prev => prev.filter(f => f !== featureType))
@@ -124,7 +137,17 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
       }
     } catch (err: any) {
       console.error('Error uninstalling feature:', err)
-      setError(err.message || 'Failed to uninstall feature')
+
+      // Check if this is a dependency error
+      if (err.error_code === 'FEATURE_DEPENDENCY' || err.blocking_features) {
+        setDependencyError({
+          feature: featureType,
+          blocking: err.blocking_features || []
+        })
+        setConfirmUninstall(null)
+      } else {
+        setError(err.message || 'Failed to uninstall feature')
+      }
     } finally {
       setUninstalling(null)
     }
@@ -146,6 +169,42 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
+          {/* Dependency Error Alert */}
+          {dependencyError && (
+            <div className="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+              <div className="flex items-start gap-3">
+                <div className="flex-shrink-0 w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                  <svg className="w-5 h-5 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-amber-800 mb-1">Cannot Uninstall Feature</h4>
+                  <p className="text-sm text-amber-700 mb-2">
+                    <strong>{FEATURE_DETAILS[dependencyError.feature]?.name || dependencyError.feature}</strong> cannot be uninstalled because other features depend on it.
+                  </p>
+                  <p className="text-sm text-amber-600">
+                    Please uninstall the following features first:
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {dependencyError.blocking.map((blockingFeature) => (
+                      <li key={blockingFeature} className="flex items-center gap-2 text-sm text-amber-700">
+                        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                        {FEATURE_DETAILS[blockingFeature]?.name || blockingFeature}
+                      </li>
+                    ))}
+                  </ul>
+                  <button
+                    onClick={() => setDependencyError(null)}
+                    className="mt-3 text-sm text-amber-700 hover:text-amber-800 underline"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {loading ? (
             <div className="flex items-center justify-center py-12">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#98b290]"></div>

@@ -1,145 +1,116 @@
-# Claude Memory File #13 - UAS Bug Fixes & Database Tables Tab
-Date: December 3, 2025
+# PAGEVOO PROJECT - MEMORY FILE #13
+**Date:** December 10, 2025
+**Session:** VooPress Feature Implementation + System Improvements
 
-## What Was Accomplished
+---
 
-### 1. Fixed UAS Manager Issues
+## SESSION SUMMARY
 
-#### Issue: Groups Not Showing in Template Builder UAS Manager
-- **Root Cause**: API returns arrays directly but frontend expected `res.data` format
-- **Fix in UasManager.tsx**: Changed response handling to check `Array.isArray()`:
-```javascript
-setGroups(Array.isArray(groupsRes) ? groupsRes : (groupsRes.data || []));
-setPageAccess(Array.isArray(pageAccessRes) ? pageAccessRes : (pageAccessRes.data || []));
-setPermissions(Array.isArray(permissionsRes) ? permissionsRes : (permissionsRes.data || []));
-```
+This session implemented **VooPress** - a WordPress-style blogging platform with themes, and made significant improvements to the system pages architecture and feature management.
 
-#### Issue: Infinite Spinner in Website Builder UAS Manager
-- **Root Cause**: When `referenceId` was 0/falsy, `loadData()` was never called, leaving `loading=true` forever
-- **Fix**: Added error state and handling for falsy referenceId in useEffect:
-```javascript
-useEffect(() => {
-  if (isOpen) {
-    if (referenceId && referenceId > 0) {
-      loadData();
-    } else {
-      setLoading(false);
-      setError('Invalid reference ID...');
-    }
-  }
-}, [isOpen, referenceId, type]);
-```
+### Major Accomplishments:
+1. **VooPress Feature** - Full implementation with themes, pages, and dashboard
+2. **System Pages Architecture** - Persistent system pages that survive template changes
+3. **Feature Dependency Protection** - Prevents deletion of required features
+4. **Bug Fixes** - Multiple fixes for VooPress rendering, page dropdown, API endpoints
 
-#### Issue: Wrong referenceId for Website Builder
-- **Key Discovery**: Website databases use USER ID not website ID as reference_id
-- DatabaseManager.php line 68-69 confirms: `->where('reference_id', $userId)`
-- Each user has ONE database regardless of website save state
-- **Fix in WebsiteBuilder.tsx**: Changed from `website?.id` to `user?.id`:
-```javascript
-<UasManager referenceId={user?.id || 0} ... />
-<BlogManager referenceId={user?.id || 0} ... />
-<EventsManager referenceId={user?.id || 0} ... />
-```
+---
 
-#### Issue: Settings Tab TypeError
-- **Error**: "Cannot read properties of undefined (reading 'registration_enabled')"
-- **Root Cause**: `settings` was undefined because API response handling was incorrect
-- **Fix**: Updated loadSettings to handle response format and default to empty object:
-```javascript
-const settingsData = res.data || res || {};
-setSettings(typeof settingsData === 'object' ? settingsData : {});
-```
+## VOOPRESS FEATURE - FULLY IMPLEMENTED
 
-### 2. Added Database Tables Tab Feature
+### Overview
+VooPress is a WordPress-style blog management system that enhances the Blog feature with themed presentation, specialized pages, and a dedicated dashboard.
 
-Added a new "Tables" tab to the Database Management modal (Edit > Manage Database) that shows all SQL tables installed in the database.
+### Backend Components
 
-#### Backend Changes:
+#### VooPressController.php
+Location: pagevoo-backend/app/Http/Controllers/Api/V1/VooPressController.php
 
-**DatabaseController.php** - Added `getTables()` method:
-```php
-public function getTables(Request $request, int $id): JsonResponse
-{
-    $instance = DatabaseInstance::findOrFail($id);
-    // Permission checks...
-    $tables = $this->databaseManager->getTables($instance);
-    return response()->json(['success' => true, 'data' => $tables]);
-}
-```
+Full controller with theme management, widget config, menu management, dashboard stats, blog proxying.
 
-**DatabaseManager.php** - Added `getTables()` method:
-```php
-public function getTables(DatabaseInstance $instance): array
-{
-    $tables = DB::select("SHOW TABLES FROM `{$instance->database_name}`");
-    // Queries information_schema.TABLES for each table to get:
-    // - row_count, size_bytes, created_at, updated_at
-    return $result;
-}
-```
+#### VooPressSetupService.php
+Location: pagevoo-backend/app/Services/VooPress/VooPressSetupService.php
 
-**routes/api.php** - Added route:
-```php
-Route::get('/{id}/tables', [DatabaseController::class, 'getTables']);
-```
+Handles VooPress initialization with page creation and sample content.
 
-#### Frontend Changes:
+#### VooPressThemes.php
+Location: pagevoo-backend/app/Services/VooPress/VooPressThemes.php
 
-**databaseService.ts** - Added type and method:
-```typescript
-export type TableInfo = {
-  name: string
-  row_count: number
-  size_bytes: number
-  created_at: string | null
-  updated_at: string | null
-}
+Defines 5 themes: developer, developer-dark, developer-minimal, developer-modern, magazine
 
-async getTables(instanceId: number): Promise<TableInfo[]>
-```
+### Frontend Components - 10 VooPress Previews
+Location: pagevoo-frontend/src/components/voopress/previews/
 
-**DatabaseManagementModal.tsx** - Added Tables tab:
-- New state: `tables`, `loadingTables`
-- Updated `activeTab` type to include `'tables'`
-- Added `loadTables()` function
-- Added useEffect to auto-load tables when switching to tab
-- Added Tables tab UI with table showing: Name, Rows, Size
-- Refresh button to reload table list
+VooPressHeaderPreview, VooPressFeaturedPostPreview, VooPressFeaturedPostsPreview,
+VooPressBlogListingPreview, VooPressFooterPreview, VooPressPageContentPreview,
+VooPressContactPagePreview, VooPressHeroPreview, VooPressFeaturedGridPreview,
+VooPressCategorySectionsPreview
 
-## Files Modified
+---
 
-### Backend:
-- `pagevoo-backend/app/Http/Controllers/Api/V1/DatabaseController.php` - Added getTables endpoint
-- `pagevoo-backend/app/Http/Controllers/Api/V1/UasController.php` - Various UAS fixes
-- `pagevoo-backend/app/Services/DatabaseManager.php` - Added getTables method
-- `pagevoo-backend/routes/api.php` - Added tables route
+## SYSTEM PAGES ARCHITECTURE
 
-### Frontend:
-- `pagevoo-frontend/src/components/UasManager.tsx` - Fixed response handling, error states
-- `pagevoo-frontend/src/components/database/DatabaseManagementModal.tsx` - Added Tables tab
-- `pagevoo-frontend/src/services/databaseService.ts` - Added TableInfo type and getTables method
-- `pagevoo-frontend/src/pages/WebsiteBuilder.tsx` - Changed referenceId to user?.id
-- `pagevoo-frontend/src/components/RightSidebar.tsx` - UAS properties integration
-- `pagevoo-frontend/src/hooks/useRenderSection.tsx` - UAS section rendering
-- `pagevoo-frontend/src/components/properties/LoginBoxProperties.tsx` - Login box config
+System pages persist independently and survive template changes.
+SystemPageController.php handles fetching all system pages for installed features.
+WebsiteBuilder.tsx refactored with persistentSystemPages state and effectivePages computed.
 
-### New Files:
-- `pagevoo-frontend/src/components/properties/RegisterFormProperties.tsx`
-- `pagevoo-frontend/src/components/properties/UserDashboardProperties.tsx`
-- `pagevoo-frontend/src/components/script-features/uas/RegisterFormPreview.tsx`
-- `pagevoo-frontend/src/components/script-features/uas/UserDashboardPreview.tsx`
-- `pagevoo-frontend/src/services/uasAuthService.ts`
+---
 
-## Key Technical Insights
+## FEATURE DEPENDENCY PROTECTION
 
-1. **Database Architecture**: Website databases use `user.id` as `reference_id`, not `website.id`. Each user has ONE database regardless of website save state.
+Prevents uninstalling features that others depend on.
+DatabaseManager.php: featureDependencies array (voopress depends on blog)
+DatabaseController.php: Returns HTTP 409 with blocking_features
+ManageFeaturesModal.tsx: Shows amber warning with features to uninstall first
 
-2. **API Response Pattern**: Backend returns arrays directly from axios, so `api.get()` returns `response.data` which IS the array. Frontend should check `Array.isArray()`.
+---
 
-3. **Multi-tenant Database Access**: Tables tab queries `information_schema.TABLES` to get metadata about tables in user's specific database.
+## BUG FIXES
 
-## Database Modal Tabs Now:
-1. Overview - Status, database name, size, dates, actions
-2. Installed Features - List of installed script features
-3. Tables - All SQL tables with row count and size
-4. Backup & Restore - Backup functionality
+1. VooPress Pages Not Showing in Dropdown - Fixed effectivePages logic
+2. Blog Posts Not Appearing in VooPress Sections - Fixed reference_id lookup
+3. VooPress Dashboard Wrong Post Count - Added website_id filtering
+4. Magazine Theme Sections Not Rendering - Created missing components
+5. voopressThemeConfig Undefined Error - Fixed variable reference
+
+---
+
+## COMPLETED FEATURES
+
+Contact Form (Trial) - Complete
+Image Gallery (Trial) - Complete
+Blog (Brochure) - Complete
+Events Calendar (Brochure) - Complete
+User Access System (Niche) - Complete
+Booking (Niche) - Complete
+VooPress (Niche) - Complete
+Shop (Niche) - Pending
+File Hoster (Pro) - Pending
+
+---
+
+## FILES CREATED (17 new files)
+
+Backend: VooPressController, SystemPageController, BookingController, VooPressSetupService, 
+VooPressThemes, Booking models, voopress migrations, booking migrations
+
+Frontend: 10 VooPress previews, VooPressProperties, systemPageService, BookingManager,
+BookingFormProperties, BookingFormPreview
+
+---
+
+## FILES MODIFIED (22 files)
+
+Backend: DatabaseController, BlogController, DatabaseManager, SystemPageService,
+UserWebsite, UserPage, routes/api.php
+
+Frontend: WebsiteBuilder, TemplateBuilder, useRenderSection, ManageFeaturesModal,
+FeatureInstallModal, databaseService, sectionTemplates, RightSidebar, Header,
+BlogManager, SitemapModal, SectionWrapper, PageSelectorBar, api
+
+---
+
+**End of Memory File #13**
+
+Session completed VooPress and Booking features with system improvements.
+Next feature: Shop (e-commerce).

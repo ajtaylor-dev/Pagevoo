@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom'
 import { api } from '@/services/api'
 import { getAssetUrl } from '@/config/constants'
 import { sectionLibraryApi, pageLibraryApi, fileToBase64 } from '@/services/libraryApi'
-import { databaseService } from '@/services/databaseService'
+import { databaseService, type SystemPageDefinition } from '@/services/databaseService'
+import * as systemPageService from '@/services/systemPageService'
 import { StyleEditor } from '@/components/StyleEditor'
 import { ImageGallery } from '@/components/ImageGallery'
 import { NavigationStylingPanel } from '@/components/NavigationStylingPanel'
@@ -33,7 +34,9 @@ import { ManageFeaturesModal } from '@/components/features/ManageFeaturesModal'
 import { ContactFormConfigModal } from '@/components/script-features/contact-form'
 import { BlogManager } from '@/components/BlogManager'
 import { EventsManager } from '@/components/EventsManager'
+import { BookingManager } from '@/components/BookingManager'
 import UasManager from '@/components/UasManager'
+import { VooPressSetupWizard, VooPressDashboard } from '@/components/voopress'
 import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
 import { FooterProperties } from '../components/properties/FooterProperties'
@@ -317,10 +320,29 @@ export default function WebsiteBuilder() {
   const [showContactFormModal, setShowContactFormModal] = useState(false)
   const [showBlogManager, setShowBlogManager] = useState(false)
   const [showEventsManager, setShowEventsManager] = useState(false)
+  const [showBookingManager, setShowBookingManager] = useState(false)
+  const [showVooPressSetup, setShowVooPressSetup] = useState(false)
+  const [showVooPressDashboard, setShowVooPressDashboard] = useState(false)
+  const [voopressStatus, setVoopressStatus] = useState<{
+    is_voopress: boolean;
+    voopress_theme: string | null;
+    voopress_config: any;
+  } | null>(null)
   const [showUasManager, setShowUasManager] = useState(false)
+  const [bookingType, setBookingType] = useState<'appointments' | 'restaurant' | 'classes' | 'events' | 'rentals'>('appointments')
+  const [bookingServices, setBookingServices] = useState<Array<{
+    id: number
+    name: string
+    duration_minutes: number
+    price: number
+    pricing_type: string
+  }>>([])
 
   // Installed features state
   const [installedFeatures, setInstalledFeatures] = useState<string[]>([])
+
+  // Persistent system pages (stored independently in database)
+  const [persistentSystemPages, setPersistentSystemPages] = useState<systemPageService.SystemPage[]>([])
 
   // Imported sections state (sections imported from library to sidebar)
   const [importedSections, setImportedSections] = useState<any[]>([])
@@ -348,12 +370,28 @@ export default function WebsiteBuilder() {
     setLoading(false)
   }, [])
 
-  // Load installed features when user is available
+  // Load installed features and VooPress status when user is available
   useEffect(() => {
     if (user) {
       loadInstalledFeatures()
+      // Also load booking settings directly (in case features check fails)
+      loadBookingSettings()
+      // Load VooPress status
+      loadVooPressStatus()
     }
   }, [user])
+
+  // Load VooPress status
+  const loadVooPressStatus = async () => {
+    try {
+      const response = await api.get('/v1/script-features/voopress/status')
+      if (response.success && response.data) {
+        setVoopressStatus(response.data)
+      }
+    } catch (error) {
+      console.error('Failed to load VooPress status:', error)
+    }
+  }
 
   const loadWebsite = async (websiteId: number) => {
     try {
@@ -371,6 +409,9 @@ export default function WebsiteBuilder() {
         // Initialize history
         setHistory([JSON.parse(JSON.stringify(response.data))])
         setHistoryIndex(0)
+
+        // Load booking settings if booking feature might be installed
+        loadBookingSettings()
       }
     } catch (error) {
       console.error('Failed to load website:', error)
@@ -389,15 +430,59 @@ export default function WebsiteBuilder() {
 
       if (!database) {
         setInstalledFeatures([])
+        setPersistentSystemPages([])
         return
       }
 
       // Get installed features
       const features = await databaseService.getInstalledFeatures(database.id)
-      setInstalledFeatures(features.map(f => f.type))
+      const featureTypes = features.map(f => f.type)
+      setInstalledFeatures(featureTypes)
+
+      // If booking is installed, load booking settings to get the type
+      if (featureTypes.includes('booking')) {
+        loadBookingSettings()
+      }
+
+      // Load persistent system pages from database (these persist independently of website save state)
+      try {
+        const systemPages = await systemPageService.getSystemPagesForFeatures()
+        setPersistentSystemPages(systemPages)
+      } catch (systemPagesError) {
+        console.error('Failed to load persistent system pages:', systemPagesError)
+        setPersistentSystemPages([])
+      }
     } catch (error) {
       console.error('Failed to load installed features:', error)
       setInstalledFeatures([])
+      setPersistentSystemPages([])
+    }
+  }
+
+  // Load booking settings and services to sync booking type and display
+  const loadBookingSettings = async () => {
+    if (!user?.id) return
+    try {
+      // Load settings
+      const response = await api.get('/v1/script-features/booking/settings', {
+        type: 'website',
+        reference_id: user.id
+      })
+      const settings = response.data || response || {}
+      if (settings.booking_type) {
+        setBookingType(settings.booking_type)
+      }
+
+      // Also load services
+      const servicesResponse = await api.get('/v1/script-features/booking/services/all', {
+        type: 'website',
+        reference_id: user.id
+      })
+      if (servicesResponse.success && servicesResponse.data) {
+        setBookingServices(servicesResponse.data)
+      }
+    } catch (error) {
+      // Settings or services might not exist yet, that's okay
     }
   }
 
@@ -425,6 +510,86 @@ export default function WebsiteBuilder() {
     }
   }
 
+  // Add system pages to in-memory website state (for unsaved websites)
+  const addSystemPagesToWebsite = (systemPages: SystemPageDefinition[], featureType: string) => {
+    if (!website || !systemPages || systemPages.length === 0) return
+
+    // Check if system pages already exist
+    const existingSystemTypes = website.pages
+      .filter((p: UserPage) => p.is_system)
+      .map((p: UserPage) => p.system_type)
+
+    // Get the max order from existing pages
+    const maxOrder = Math.max(0, ...website.pages.map((p: UserPage) => p.order || 0))
+
+    // Convert system page definitions to UserPage format
+    const newPages: UserPage[] = systemPages
+      .filter(pageDef => !existingSystemTypes.includes(pageDef.system_type))
+      .map((pageDef, index) => {
+        // Generate temp IDs for in-memory pages
+        const tempPageId = -Date.now() - index
+        const tempSectionIds = pageDef.sections.map((_, sIdx) => -Date.now() - index * 100 - sIdx)
+
+        return {
+          id: tempPageId,
+          user_website_id: website.id || 0,
+          name: pageDef.name,
+          slug: pageDef.slug,
+          page_id: `page_${Math.random().toString(36).substr(2, 8)}`,
+          is_homepage: false,
+          order: maxOrder + index + 1,
+          is_system: true,
+          system_type: pageDef.system_type,
+          feature_type: featureType,
+          meta_description: null,
+          page_css: null,
+          sections: pageDef.sections.map((sectionDef, sIdx) => ({
+            id: tempSectionIds[sIdx],
+            user_page_id: tempPageId,
+            section_name: sectionDef.section_name,
+            section_id: `section_${Math.random().toString(36).substr(2, 8)}`,
+            type: sectionDef.type,
+            content: sectionDef.content,
+            css: {},
+            order: sIdx,
+            is_locked: false,
+            lock_type: null,
+          })),
+        } as UserPage
+      })
+
+    if (newPages.length > 0) {
+      const updatedWebsite = {
+        ...website,
+        pages: [...website.pages, ...newPages]
+      }
+      setWebsite(updatedWebsite)
+      websiteRef.current = updatedWebsite
+    }
+  }
+
+  // Remove system pages from in-memory website state by feature type
+  const removeSystemPagesFromWebsite = (featureType: string) => {
+    if (!website) return
+
+    const updatedPages = website.pages.filter((p: UserPage) => p.feature_type !== featureType)
+
+    if (updatedPages.length !== website.pages.length) {
+      const updatedWebsite = {
+        ...website,
+        pages: updatedPages
+      }
+      setWebsite(updatedWebsite)
+      websiteRef.current = updatedWebsite
+
+      // If current page was removed, switch to homepage
+      if (currentPage && !updatedPages.find((p: UserPage) => p.id === currentPage.id)) {
+        const homepage = updatedPages.find((p: UserPage) => p.is_homepage) || updatedPages[0]
+        setCurrentPage(homepage)
+      }
+    }
+  }
+
   // Merge special sections with additional form sections (form-wrap first)
   const allSpecialSections = useMemo(() => {
     return [...additionalFormSections, ...specialSections]
@@ -445,6 +610,56 @@ export default function WebsiteBuilder() {
   const hasFormContainer = useMemo(() => {
     return currentPage?.sections?.some((section: any) => section.type === 'form-wrap') || false
   }, [currentPage?.sections])
+
+  // Merge website pages with persistent system pages for display
+  // Persistent system pages (including VooPress) are loaded independently and persist regardless of website save state
+  const effectivePages = useMemo(() => {
+    // Convert persistent system pages to UserPage format (includes VooPress, UAS, etc.)
+    const systemPagesAsUserPages = persistentSystemPages.map(sp => ({
+      id: sp.id,
+      name: sp.name,
+      slug: sp.slug,
+      page_id: sp.page_id,
+      is_homepage: sp.is_homepage,
+      order: sp.order,
+      meta_description: sp.meta_description,
+      page_css: sp.page_css,
+      is_system: true,
+      system_type: sp.system_type,
+      feature_type: sp.feature_type,
+      sections: (sp.sections || []).map(s => ({
+        id: s.id,
+        section_name: s.section_name,
+        section_id: s.section_id,
+        type: s.type,
+        content: s.content,
+        css: s.css,
+        order: s.order,
+        is_locked: s.is_locked,
+        lock_type: s.lock_type
+      }))
+    })) as UserPage[]
+
+    // If no website is loaded, just return system pages
+    if (!website?.pages) {
+      return systemPagesAsUserPages.sort((a, b) => (a.order || 0) - (b.order || 0))
+    }
+
+    // Get website pages that are NOT system pages (regular user-created pages)
+    const regularPages = website.pages.filter((p: UserPage) => !p.is_system)
+
+    // Get IDs of system pages already in persistentSystemPages to avoid duplicates
+    const persistentSystemPageIds = new Set(persistentSystemPages.map(sp => sp.id))
+
+    // Get any system pages from website.pages that aren't already in persistentSystemPages
+    // (this handles edge cases where pages might be in website.pages but not yet synced)
+    const additionalSystemPages = website.pages.filter((p: UserPage) =>
+      p.is_system && !persistentSystemPageIds.has(p.id)
+    )
+
+    // Combine: regular pages + system pages from persistentSystemPages + any additional system pages
+    return [...regularPages, ...systemPagesAsUserPages, ...additionalSystemPages].sort((a, b) => (a.order || 0) - (b.order || 0))
+  }, [website?.pages, persistentSystemPages])
 
   const loadAvailableWebsites = async () => {
     setLoadingWebsites(true)
@@ -1046,6 +1261,83 @@ export default function WebsiteBuilder() {
     addToHistory: addToHistory as any
   })
 
+  // Auto-save system page section changes to database
+  const autoSaveSystemPageSection = useCallback(async (pageId: number, sectionId: number, updates: any) => {
+    // Find if this is a persistent system page
+    const systemPage = persistentSystemPages.find(p => p.id === pageId)
+    if (!systemPage) return
+
+    try {
+      await systemPageService.updateSystemPageSection(pageId, sectionId, updates)
+
+      // Update local state
+      setPersistentSystemPages(prev => prev.map(p => {
+        if (p.id !== pageId) return p
+        return {
+          ...p,
+          sections: p.sections.map(s => {
+            if (s.id !== sectionId) return s
+            return { ...s, ...updates }
+          })
+        }
+      }))
+    } catch (error) {
+      console.error('Failed to auto-save system page section:', error)
+    }
+  }, [persistentSystemPages])
+
+  // Auto-save system page metadata changes to database
+  const autoSaveSystemPage = useCallback(async (pageId: number, updates: systemPageService.SystemPageUpdateData) => {
+    // Find if this is a persistent system page
+    const systemPage = persistentSystemPages.find(p => p.id === pageId)
+    if (!systemPage) return
+
+    try {
+      await systemPageService.updateSystemPage(pageId, updates)
+
+      // Update local state
+      setPersistentSystemPages(prev => prev.map(p => {
+        if (p.id !== pageId) return p
+        return { ...p, ...updates }
+      }))
+    } catch (error) {
+      console.error('Failed to auto-save system page:', error)
+    }
+  }, [persistentSystemPages])
+
+  // Wrapper for section content updates that auto-saves system page changes
+  const handleUpdateSectionContentWithAutoSave = useCallback((sectionId: number, content: any) => {
+    // First update via the standard handler
+    handleUpdateSectionContent(sectionId, content)
+
+    // Check if this is a system page section
+    if (currentPage?.is_system) {
+      const section = currentPage.sections.find(s => s.id === sectionId)
+      if (section) {
+        autoSaveSystemPageSection(currentPage.id, sectionId, { content })
+      }
+    }
+  }, [handleUpdateSectionContent, currentPage, autoSaveSystemPageSection])
+
+  // Wrapper for grid column updates that auto-saves system page changes
+  const handleGridColumnUpdateWithAutoSave = useCallback((sectionId: number, columnIndex: number, updates: any) => {
+    // First update via the standard handler
+    handleGridColumnUpdate(sectionId, columnIndex, updates)
+
+    // Check if this is a system page section
+    if (currentPage?.is_system) {
+      const section = currentPage.sections.find(s => s.id === sectionId)
+      if (section) {
+        // The grid column update changes the section content
+        const updatedContent = { ...section.content }
+        if (updatedContent.columns && updatedContent.columns[columnIndex]) {
+          updatedContent.columns[columnIndex] = { ...updatedContent.columns[columnIndex], ...updates }
+        }
+        autoSaveSystemPageSection(currentPage.id, sectionId, { content: updatedContent })
+      }
+    }
+  }, [handleGridColumnUpdate, currentPage, autoSaveSystemPageSection])
+
   // Section Library Handlers
   const handleExportSection = (section: UserSection) => {
     setExportingSection(section)
@@ -1202,7 +1494,7 @@ export default function WebsiteBuilder() {
     selectedSection,
     editingText,
     handleOpenTextEditor,
-    handleGridColumnUpdate,
+    handleGridColumnUpdate: handleGridColumnUpdateWithAutoSave,
     currentPage,
     template: website as any,
     mobileMenuOpen,
@@ -1217,7 +1509,9 @@ export default function WebsiteBuilder() {
     handleMoveSection,
     handleToggleSectionLock,
     handleDeleteSection,
-    handleExportSection
+    handleExportSection,
+    bookingType,
+    bookingServices
   })
 
   // Publish/Unpublish handlers
@@ -1703,6 +1997,12 @@ export default function WebsiteBuilder() {
         onThemeChange={changeTheme}
         setShowUasManager={setShowUasManager}
         isUasInstalled={installedFeatures.includes('user_access_system')}
+        setShowBookingManager={setShowBookingManager}
+        isBookingInstalled={installedFeatures.includes('booking')}
+        setShowVooPressSetup={setShowVooPressSetup}
+        setShowVooPressDashboard={setShowVooPressDashboard}
+        isVooPress={voopressStatus?.is_voopress || false}
+        isVooPressInstalled={installedFeatures.includes('voopress')}
       />
 
       {/* Toolbar */}
@@ -1797,7 +2097,7 @@ export default function WebsiteBuilder() {
             {/* Page Selector */}
             <PageSelectorBar
               currentPage={currentPage}
-              template={website as any}
+              template={website ? { ...website, pages: effectivePages } as any : { pages: effectivePages } as any}
               setCurrentPage={setCurrentPage}
               setShowCSSPanel={setShowCSSPanel}
               setShowSectionCSS={setShowSectionCSS}
@@ -1848,7 +2148,7 @@ export default function WebsiteBuilder() {
               showSectionCSS={showSectionCSS}
               setShowSectionCSS={setShowSectionCSS}
               setShowContentStyle={setShowContentStyle}
-              handleUpdateSectionContent={handleUpdateSectionContent}
+              handleUpdateSectionContent={handleUpdateSectionContentWithAutoSave}
               showRowStyle={showRowStyle}
               setShowRowStyle={setShowRowStyle}
               expandedColumnIndex={expandedColumnIndex}
@@ -1858,6 +2158,9 @@ export default function WebsiteBuilder() {
               onOpenGallery={() => setShowImageGallery(true)}
               onOpenBlogManager={() => setShowBlogManager(true)}
               onOpenEventsManager={() => setShowEventsManager(true)}
+              onOpenBookingManager={() => setShowBookingManager(true)}
+              onOpenVooPressDashboard={() => setShowVooPressDashboard(true)}
+              bookingType={bookingType}
             />
           </>
         )}
@@ -1890,7 +2193,7 @@ export default function WebsiteBuilder() {
         isOpen={showNavButtonStyleModal}
         onClose={() => setShowNavButtonStyleModal(false)}
         selectedSection={selectedSection}
-        onUpdateContent={handleUpdateSectionContent}
+        onUpdateContent={handleUpdateSectionContentWithAutoSave}
       />
 
       {/* Section Library Modals */}
@@ -2066,6 +2369,19 @@ export default function WebsiteBuilder() {
         />
       )}
 
+      {/* Booking Manager Modal */}
+      {showBookingManager && (
+        <BookingManager
+          isOpen={showBookingManager}
+          onClose={() => setShowBookingManager(false)}
+          type="website"
+          referenceId={user?.id || 0}
+          onBookingTypeChange={setBookingType}
+          onServicesChange={loadBookingSettings}
+          installedFeatures={installedFeatures}
+        />
+      )}
+
       {/* UAS Manager Modal */}
       {showUasManager && (
         <UasManager
@@ -2073,6 +2389,44 @@ export default function WebsiteBuilder() {
           onClose={() => setShowUasManager(false)}
           type="website"
           referenceId={user?.id || 0}
+        />
+      )}
+
+      {/* VooPress Setup Wizard */}
+      <VooPressSetupWizard
+        isOpen={showVooPressSetup}
+        onClose={() => setShowVooPressSetup(false)}
+        onComplete={(websiteId) => {
+          setShowVooPressSetup(false)
+          loadVooPressStatus()
+          loadWebsite(websiteId)
+        }}
+      />
+
+      {/* VooPress Dashboard */}
+      {voopressStatus?.is_voopress && (
+        <VooPressDashboard
+          isOpen={showVooPressDashboard}
+          onClose={() => setShowVooPressDashboard(false)}
+          websiteId={website?.id || 0}
+          voopressConfig={voopressStatus?.voopress_config || {}}
+          voopressTheme={voopressStatus?.voopress_theme || 'classic'}
+          onConfigChange={(config) => {
+            setVoopressStatus(prev => prev ? { ...prev, voopress_config: config } : null)
+          }}
+          onThemeChanged={async () => {
+            // Reload VooPress status and website pages after theme change
+            await loadVooPressStatus()
+            await reloadWebsite()
+          }}
+          onOpenBlogManager={() => {
+            setShowVooPressDashboard(false)
+            setShowBlogManager(true)
+          }}
+          onOpenUasManager={() => {
+            setShowVooPressDashboard(false)
+            setShowUasManager(true)
+          }}
         />
       )}
 
@@ -2160,17 +2514,17 @@ export default function WebsiteBuilder() {
           setShowFeatureInstallModal(false)
           loadInstalledFeatures() // Reload features when modal closes
         }}
-        onFeatureInstalled={async (featureType) => {
-          loadInstalledFeatures() // Reload features after installation
-
-          // Features that create system pages need a website reload
-          const featuresWithSystemPages = ['user_access_system', 'booking', 'shop']
-          if (featuresWithSystemPages.includes(featureType)) {
-            await reloadWebsite() // Reload to get the new system pages
-          }
+        onFeatureInstalled={async (featureType, _systemPages) => {
+          // Reload features and persistent system pages from database
+          // System pages are now stored independently and loaded via loadInstalledFeatures
+          await loadInstalledFeatures()
 
           if (featureType === 'contact_form') {
             setShowContactFormModal(true)
+          } else if (featureType === 'voopress') {
+            // Reload VooPress status and show setup wizard
+            await loadVooPressStatus()
+            setShowVooPressSetup(true)
           }
         }}
         onConfigureFeature={(featureType) => {
@@ -2182,6 +2536,15 @@ export default function WebsiteBuilder() {
             setShowEventsManager(true)
           } else if (featureType === 'user_access_system') {
             setShowUasManager(true)
+          } else if (featureType === 'booking') {
+            setShowBookingManager(true)
+          } else if (featureType === 'voopress') {
+            // Show dashboard if already set up, otherwise show wizard
+            if (voopressStatus?.is_voopress) {
+              setShowVooPressDashboard(true)
+            } else {
+              setShowVooPressSetup(true)
+            }
           }
         }}
         onOpenDatabaseManagement={() => setShowDatabaseModal(true)}
@@ -2208,16 +2571,37 @@ export default function WebsiteBuilder() {
               setShowEventsManager(true)
             } else if (featureType === 'user_access_system') {
               setShowUasManager(true)
+            } else if (featureType === 'booking') {
+              setShowBookingManager(true)
+            } else if (featureType === 'voopress') {
+              // Show dashboard if already set up, otherwise show wizard
+              if (voopressStatus?.is_voopress) {
+                setShowVooPressDashboard(true)
+              } else {
+                setShowVooPressSetup(true)
+              }
             }
           }}
           onFeatureUninstalled={async (featureType) => {
             // Remove all sections related to this feature from all pages
             handleRemoveFeatureSections(featureType)
 
-            // Features that have system pages need a website reload to remove them
-            const featuresWithSystemPages = ['user_access_system', 'booking', 'shop']
+            // Features that have system pages need removal from database
+            const featuresWithSystemPages = ['user_access_system', 'booking', 'shop', 'voopress']
             if (featuresWithSystemPages.includes(featureType)) {
-              await reloadWebsite()
+              try {
+                // Delete system pages from database
+                await systemPageService.deleteSystemPagesForFeature(featureType)
+                // Reload to refresh the persistent system pages state
+                await loadInstalledFeatures()
+              } catch (error) {
+                console.error('Failed to delete system pages for feature:', error)
+              }
+            }
+
+            // Reload VooPress status when VooPress is uninstalled
+            if (featureType === 'voopress') {
+              await loadVooPressStatus()
             }
           }}
         />

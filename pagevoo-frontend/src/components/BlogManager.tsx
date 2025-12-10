@@ -1,8 +1,11 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useCallback } from 'react'
 import {
   Plus, Trash2, Pencil, X, Search, Eye, EyeOff,
   Calendar, User, FolderOpen, Tag, MoreVertical,
-  ChevronLeft, ArrowLeft, FileText, Clock, Loader2
+  ChevronLeft, ArrowLeft, FileText, Clock, Loader2,
+  Bold, Italic, Underline, Strikethrough, List, ListOrdered,
+  Quote, Code, Link2, Image, Heading1, Heading2, Heading3,
+  AlignLeft, AlignCenter, AlignRight, Undo, Redo
 } from 'lucide-react'
 import { api } from '@/services/api'
 import { databaseService } from '@/services/databaseService'
@@ -61,6 +64,7 @@ export function BlogManager({
   const [tags, setTags] = useState<BlogTag[]>([])
   const [loading, setLoading] = useState(true)
   const [databaseId, setDatabaseId] = useState<number | null>(null)
+  const [featureError, setFeatureError] = useState<string | null>(null)
   // State
   const [viewMode, setViewMode] = useState<ViewMode>('posts')
   const [searchQuery, setSearchQuery] = useState('')
@@ -93,6 +97,119 @@ export function BlogManager({
 
   const [postMenuOpen, setPostMenuOpen] = useState<number | null>(null)
 
+  // Rich text editor ref
+  const contentEditorRef = useRef<HTMLTextAreaElement>(null)
+
+  // Rich text formatting helper
+  const insertFormatting = useCallback((before: string, after: string = '') => {
+    const textarea = contentEditorRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = postContent.substring(start, end)
+    const beforeText = postContent.substring(0, start)
+    const afterText = postContent.substring(end)
+
+    const newContent = beforeText + before + selectedText + (after || before) + afterText
+    setPostContent(newContent)
+
+    // Reset cursor position after the inserted content
+    setTimeout(() => {
+      textarea.focus()
+      const newCursorPos = start + before.length + selectedText.length + (after || before).length
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+    }, 0)
+  }, [postContent])
+
+  const insertTag = useCallback((tag: string, attributes: string = '') => {
+    const textarea = contentEditorRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = postContent.substring(start, end)
+    const beforeText = postContent.substring(0, start)
+    const afterText = postContent.substring(end)
+
+    const openTag = attributes ? `<${tag} ${attributes}>` : `<${tag}>`
+    const closeTag = `</${tag}>`
+    const newContent = beforeText + openTag + selectedText + closeTag + afterText
+    setPostContent(newContent)
+
+    setTimeout(() => {
+      textarea.focus()
+      const newCursorPos = start + openTag.length + selectedText.length + closeTag.length
+      textarea.setSelectionRange(newCursorPos, newCursorPos)
+    }, 0)
+  }, [postContent])
+
+  const insertBlockTag = useCallback((tag: string) => {
+    const textarea = contentEditorRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = postContent.substring(start, end)
+    const beforeText = postContent.substring(0, start)
+    const afterText = postContent.substring(end)
+
+    // Add newlines for block elements
+    const prefix = beforeText.endsWith('\n') || beforeText === '' ? '' : '\n'
+    const suffix = afterText.startsWith('\n') || afterText === '' ? '' : '\n'
+
+    const newContent = beforeText + prefix + `<${tag}>${selectedText || 'Text here'}</${tag}>` + suffix + afterText
+    setPostContent(newContent)
+
+    setTimeout(() => {
+      textarea.focus()
+    }, 0)
+  }, [postContent])
+
+  const insertLink = useCallback(() => {
+    const url = prompt('Enter URL:')
+    if (!url) return
+
+    const textarea = contentEditorRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const selectedText = postContent.substring(start, end) || 'Link text'
+    const beforeText = postContent.substring(0, start)
+    const afterText = postContent.substring(end)
+
+    const linkHtml = `<a href="${url}">${selectedText}</a>`
+    const newContent = beforeText + linkHtml + afterText
+    setPostContent(newContent)
+
+    setTimeout(() => {
+      textarea.focus()
+    }, 0)
+  }, [postContent])
+
+  const insertImage = useCallback(() => {
+    const url = prompt('Enter image URL:')
+    if (!url) return
+
+    const alt = prompt('Enter alt text:', 'Image') || 'Image'
+
+    const textarea = contentEditorRef.current
+    if (!textarea) return
+
+    const start = textarea.selectionStart
+    const beforeText = postContent.substring(0, start)
+    const afterText = postContent.substring(start)
+
+    const imgHtml = `<img src="${url}" alt="${alt}" class="max-w-full h-auto rounded-lg" />`
+    const newContent = beforeText + imgHtml + afterText
+    setPostContent(newContent)
+
+    setTimeout(() => {
+      textarea.focus()
+    }, 0)
+  }, [postContent])
+
   // Load data when modal opens
   useEffect(() => {
     if (isOpen && referenceId) {
@@ -109,17 +226,20 @@ export function BlogManager({
       setFilterCategory(null)
       setEditingPost(null)
       setIsNewPost(false)
+      setFeatureError(null)
       resetPostForm()
     }
   }, [isOpen])
 
   const loadData = async () => {
     setLoading(true)
+    setFeatureError(null)
     try {
       // First get the database instance
       const instance = await databaseService.getInstance(type, referenceId)
       if (!instance) {
         console.error('No database found for blog')
+        setFeatureError('No database found. Please create a database first.')
         setLoading(false)
         return
       }
@@ -127,16 +247,29 @@ export function BlogManager({
 
       // Load posts, categories, and tags in parallel
       const [postsRes, categoriesRes, tagsRes] = await Promise.all([
-        api.getBlogPosts(instance.id),
-        api.getBlogCategories(instance.id),
-        api.getBlogTags(instance.id)
+        api.getBlogPosts(type, referenceId),
+        api.getBlogCategories(type, referenceId),
+        api.getBlogTags(type, referenceId)
       ])
+
+      // Check for feature not installed error
+      if (!postsRes.success && postsRes.message?.includes('not installed')) {
+        setFeatureError(postsRes.message)
+        return
+      }
 
       setPosts(postsRes.data || [])
       setCategories(categoriesRes.data || [])
       setTags(tagsRes.data || [])
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to load blog data:', error)
+      // Check if the error message indicates feature not installed
+      const errorMsg = error?.response?.data?.message || error?.message || 'Failed to load blog data'
+      if (errorMsg.includes('not installed') || errorMsg.includes('Base table')) {
+        setFeatureError('Blog feature is not installed. Please install the Blog feature from the Database Manager.')
+      } else {
+        setFeatureError(errorMsg)
+      }
     } finally {
       setLoading(false)
     }
@@ -232,10 +365,32 @@ export function BlogManager({
       }
 
       if (isNewPost) {
-        const result = await api.createBlogPost(databaseId, postData)
+        const result = await api.createBlogPost({
+          type,
+          reference_id: referenceId,
+          title: postData.title!,
+          slug: postData.slug,
+          excerpt: postData.excerpt ?? undefined,
+          content: postData.content!,
+          featured_image: postData.featured_image ?? undefined,
+          author_name: postData.author_name ?? undefined,
+          category_id: postData.category_id ?? undefined,
+          status: postData.status!
+        })
         setPosts([...posts, result.data])
       } else if (editingPost) {
-        await api.updateBlogPost(databaseId, editingPost.id, postData)
+        await api.updateBlogPost(editingPost.id, {
+          type,
+          reference_id: referenceId,
+          title: postData.title,
+          slug: postData.slug,
+          excerpt: postData.excerpt ?? undefined,
+          content: postData.content,
+          featured_image: postData.featured_image ?? undefined,
+          author_name: postData.author_name ?? undefined,
+          category_id: postData.category_id,
+          status: postData.status
+        })
         setPosts(posts.map(p => p.id === editingPost.id ? { ...p, ...postData } as BlogPost : p))
       }
 
@@ -258,7 +413,7 @@ export function BlogManager({
     if (!databaseId) return
 
     try {
-      await api.deleteBlogPost(databaseId, postId)
+      await api.deleteBlogPost(postId, type, referenceId)
       setPosts(posts.filter(p => p.id !== postId))
       setPostMenuOpen(null)
     } catch (error) {
@@ -275,7 +430,12 @@ export function BlogManager({
 
     setCreatingCategory(true)
     try {
-      const result = await api.createBlogCategory(databaseId, newCategoryName, newCategoryDescription || undefined)
+      const result = await api.createBlogCategory({
+        type,
+        reference_id: referenceId,
+        name: newCategoryName,
+        description: newCategoryDescription || undefined
+      })
       setCategories([...categories, result.data])
       setNewCategoryName('')
       setNewCategoryDescription('')
@@ -295,7 +455,7 @@ export function BlogManager({
     if (!databaseId) return
 
     try {
-      await api.deleteBlogCategory(databaseId, categoryId)
+      await api.deleteBlogCategory(categoryId, type, referenceId)
       setCategories(categories.filter(c => c.id !== categoryId))
     } catch (error) {
       console.error('Failed to delete category:', error)
@@ -311,7 +471,11 @@ export function BlogManager({
 
     setCreatingTag(true)
     try {
-      const result = await api.createBlogTag(databaseId, newTagName)
+      const result = await api.createBlogTag({
+        type,
+        reference_id: referenceId,
+        name: newTagName
+      })
       setTags([...tags, result.data])
       setNewTagName('')
       setShowCreateTag(false)
@@ -328,7 +492,7 @@ export function BlogManager({
     if (!databaseId) return
 
     try {
-      await api.deleteBlogTag(databaseId, tagId)
+      await api.deleteBlogTag(tagId, type, referenceId)
       setTags(tags.filter(t => t.id !== tagId))
     } catch (error) {
       console.error('Failed to delete tag:', error)
@@ -571,15 +735,151 @@ export function BlogManager({
             />
           </div>
 
-          {/* Content - WYSIWYG will be enhanced later */}
+          {/* Content with Rich Text Toolbar */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
             <div className="border border-gray-300 rounded-lg overflow-hidden">
-              {/* Simple toolbar placeholder - will be enhanced with WYSIWYG */}
-              <div className="bg-gray-50 border-b border-gray-300 px-3 py-2 flex items-center gap-2">
-                <span className="text-xs text-gray-500">Rich text editor - formatting toolbar coming soon</span>
+              {/* Rich Text Toolbar */}
+              <div className="bg-gray-50 border-b border-gray-300 px-2 py-1.5 flex items-center gap-1 flex-wrap">
+                {/* Heading buttons */}
+                <div className="flex items-center border-r border-gray-300 pr-2 mr-1">
+                  <button
+                    type="button"
+                    onClick={() => insertBlockTag('h1')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Heading 1"
+                  >
+                    <Heading1 className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertBlockTag('h2')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Heading 2"
+                  >
+                    <Heading2 className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertBlockTag('h3')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Heading 3"
+                  >
+                    <Heading3 className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* Text formatting */}
+                <div className="flex items-center border-r border-gray-300 pr-2 mr-1">
+                  <button
+                    type="button"
+                    onClick={() => insertTag('strong')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Bold"
+                  >
+                    <Bold className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertTag('em')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Italic"
+                  >
+                    <Italic className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertTag('u')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Underline"
+                  >
+                    <Underline className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertTag('s')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Strikethrough"
+                  >
+                    <Strikethrough className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* Lists */}
+                <div className="flex items-center border-r border-gray-300 pr-2 mr-1">
+                  <button
+                    type="button"
+                    onClick={() => insertBlockTag('ul')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Bullet List"
+                  >
+                    <List className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertBlockTag('ol')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Numbered List"
+                  >
+                    <ListOrdered className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* Block elements */}
+                <div className="flex items-center border-r border-gray-300 pr-2 mr-1">
+                  <button
+                    type="button"
+                    onClick={() => insertBlockTag('blockquote')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Quote"
+                  >
+                    <Quote className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => insertTag('code')}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Inline Code"
+                  >
+                    <Code className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* Links and Images */}
+                <div className="flex items-center border-r border-gray-300 pr-2 mr-1">
+                  <button
+                    type="button"
+                    onClick={insertLink}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Insert Link"
+                  >
+                    <Link2 className="w-4 h-4 text-gray-600" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={insertImage}
+                    className="p-1.5 hover:bg-gray-200 rounded transition"
+                    title="Insert Image"
+                  >
+                    <Image className="w-4 h-4 text-gray-600" />
+                  </button>
+                </div>
+
+                {/* Paragraph button */}
+                <button
+                  type="button"
+                  onClick={() => insertBlockTag('p')}
+                  className="p-1.5 hover:bg-gray-200 rounded transition"
+                  title="Paragraph"
+                >
+                  <span className="text-xs font-bold text-gray-600">P</span>
+                </button>
+
+                {/* Help text */}
+                <span className="ml-auto text-xs text-gray-400">Select text and click to format</span>
               </div>
               <textarea
+                ref={contentEditorRef}
                 value={postContent}
                 onChange={(e) => setPostContent(e.target.value)}
                 placeholder="Write your post content here... (HTML supported)"
@@ -849,6 +1149,22 @@ export function BlogManager({
             <div className="text-center">
               <Loader2 className="w-8 h-8 animate-spin text-[#98b290] mx-auto mb-4" />
               <p className="text-gray-500">Loading blog data...</p>
+            </div>
+          </div>
+        ) : featureError ? (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="text-center max-w-md px-4">
+              <FileText className="w-16 h-16 text-orange-300 mx-auto mb-4" />
+              <p className="text-gray-700 text-lg font-medium mb-2">Blog Feature Not Available</p>
+              <p className="text-gray-500 mb-4">{featureError}</p>
+              <div className="space-y-2 text-sm text-gray-500">
+                <p>To enable the Blog feature:</p>
+                <ol className="list-decimal list-inside text-left space-y-1">
+                  <li>Go to <strong>Settings</strong> from the left sidebar</li>
+                  <li>Click on <strong>Database</strong></li>
+                  <li>Find the <strong>Blog</strong> feature and click <strong>Install</strong></li>
+                </ol>
+              </div>
             </div>
           </div>
         ) : !databaseId ? (

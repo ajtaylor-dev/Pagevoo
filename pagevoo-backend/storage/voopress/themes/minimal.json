@@ -1,0 +1,106 @@
+{
+  "id": "minimal",
+  "name": "Minimal Writer",
+  "description": "Clean, distraction-free reading experience with centered content",
+  "preview_image": "/themes/minimal-preview.png",
+  "tier_required": "brochure",
+  "layout": {
+    "type": "centered",
+    "content_width": "680px"
+  },
+  "colors": {
+    "primary": "#000000",
+    "secondary": "#374151",
+    "background": "#FFFFFF",
+    "text": "#1F2937",
+    "accent": "#6366F1"
+  },
+  "typography": {
+    "heading_font": "Charter, Georgia, serif",
+    "body_font": "Charter, Georgia, serif",
+    "base_size": "18px"
+  },
+  "homepage": {
+    "show_featured": false,
+    "featured_count": 0,
+    "posts_per_page": 15,
+    "excerpt_length": 300,
+    "show_author": true,
+    "show_date": true,
+    "show_categories": false,
+    "list_style": "minimal"
+  },
+  "sidebar": {
+    "position": "none",
+    "widgets": []
+  },
+  "header": {
+    "style": "minimal",
+    "show_tagline": true,
+    "show_search": false,
+    "menu_position": "inline"
+  },
+  "footer": {
+    "style": "minimal",
+    "columns": 1,
+    "show_copyright": true,
+    "show_social": true
+  },
+  "pages": {
+    "home": {
+      "title": "Home",
+      "slug": "",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "minimal" }
+        },
+        {
+          "type": "voopress-blog-listing",
+          "config": { "posts_per_page": 15, "style": "minimal", "show_sidebar": false }
+        },
+        {
+          "type": "voopress-footer",
+          "config": { "style": "minimal" }
+        }
+      ]
+    },
+    "about": {
+      "title": "About",
+      "slug": "about",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "minimal" }
+        },
+        {
+          "type": "voopress-page-content",
+          "config": { "default_content": "<h1>About</h1><p>A few words about who I am and what I write about...</p>" }
+        },
+        {
+          "type": "voopress-footer",
+          "config": { "style": "minimal" }
+        }
+      ]
+    },
+    "contact": {
+      "title": "Contact",
+      "slug": "contact",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "minimal" }
+        },
+        {
+          "type": "voopress-contact-page",
+          "config": {}
+        },
+        {
+          "type": "voopress-footer",
+          "config": { "style": "minimal" }
+        }
+      ]
+    }
+  },
+  "css_overrides": ""
+}

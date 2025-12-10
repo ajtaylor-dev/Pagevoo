@@ -1,141 +1,305 @@
-# Claude Memory File #12 - User Access System (UAS) Implementation
-Date: November 28, 2025
+# PAGEVOO PROJECT - MEMORY FILE #12
+**Date:** December 9, 2025
+**Session:** Booking System Feature Implementation
 
-## What Was Accomplished
+---
 
-Implemented the User Access System (UAS) feature - the foundational Niche tier feature that other features (Booking, VooPress, Shop, etc.) will depend on.
+## SESSION SUMMARY
 
-## Backend Implementation
+This session implemented the **Booking System** - a Niche tier script feature for appointment booking, reservations, and scheduling.
 
-### Database Migration Files
-Created in `pagevoo-backend/database/migrations/script_features/user_access_system/`:
+### Booking System Feature - FULLY IMPLEMENTED
 
-1. **2025_11_28_000001_create_uas_tables.php**
-   - `uas_groups` - User groups with hierarchical levels (level determines permissions priority)
-   - `uas_users` - End-users with email verification status, group assignment, permission overrides
-   - `uas_email_verifications` - Email verification tokens for registration
-   - `uas_security_questions` - 5 standard security questions
-   - `uas_user_security_answers` - User's selected 3 security questions and hashed answers
-   - `uas_password_resets` - Password reset tokens with security question verification status
-   - `uas_sessions` - User sessions with remember_me support (2 hours vs 30 days)
-   - `uas_page_access` - Page-level access control with allowed_groups, allowed_users, denied_users
-   - `uas_permission_definitions` - Expandable permission system
-   - `uas_settings` - UAS configuration (allow_registration, require_email_verification, etc.)
-   - `uas_activity_log` - Audit trail for all UAS actions
+A comprehensive booking/scheduling system supporting both appointments (1-on-1) and reservations (capacity-based).
 
-2. **2025_11_28_000002_seed_uas_defaults.php**
-   - Seeds default groups: Admins (level 1), Moderators (level 2), Members (level 3), Banned (level 999)
-   - Seeds 5 security questions (mother's maiden name, first pet, birth city, first school, favorite movie)
-   - Seeds core permission definitions
-   - Seeds default settings
+---
 
-### Models
-Created in `pagevoo-backend/app/Models/Uas/`:
-- UasGroup.php, UasUser.php, UasSecurityQuestion.php, UasUserSecurityAnswer.php
-- UasEmailVerification.php, UasPasswordReset.php, UasSession.php
-- UasPageAccess.php, UasPermissionDefinition.php, UasSetting.php, UasActivityLog.php
-- All models use dynamic database connection pattern for multi-tenant architecture
+## BACKEND COMPONENTS
 
-### Controllers
-1. **UasController.php** - Management panel operations:
-   - Dashboard stats
-   - CRUD for users and groups
-   - Page access control (sync/update)
-   - Permission definitions (get/grouped)
-   - Settings management
-   - Activity log viewing
+### BookingController.php
+**Location:** `pagevoo-backend/app/Http/Controllers/Api/V1/BookingController.php`
 
-2. **UasAuthController.php** - Public auth endpoints:
-   - Registration flow: initiateRegistration -> verifyEmail -> completeRegistration
-   - Login/Logout with remember_me support
-   - getCurrentUser
-   - Password reset: requestPasswordReset -> verifyResetToken -> verifySecurityQuestions -> resetPassword
-   - getSecurityQuestions
+Full CRUD operations for:
+- Bookings (create, read, update, delete, confirm, cancel)
+- Services (with duration, price, capacity, staff assignment)
+- Categories (for organizing services)
+- Staff members
+- Resources (rooms, equipment)
+- Business hours
+- Availability overrides
+- Settings
 
-### Routes (in routes/api.php)
-- `/api/v1/script-features/uas/*` - Management panel (auth required)
-- `/api/v1/uas-auth/*` - Public auth endpoints
+Key endpoints:
+- Dashboard stats (`/dashboard`)
+- Calendar events (`/calendar`)
+- Available slots calculation (`/available-slots`)
 
-## Frontend Implementation
+### Booking Migration
+**Location:** `pagevoo-backend/database/migrations/script_features/booking/2025_12_09_000001_create_booking_tables.php`
 
-### UasManager Component
-`pagevoo-frontend/src/components/UasManager.tsx` (~850 lines):
-- Full management panel with tabs: Users, Groups, Page Access, Settings
-- Sub-components: UsersTab, GroupsTab, PageAccessTab, SettingsTab
-- User form modal for create/edit
-- Group form modal with color picker
-- Page access toggle controls
+Tables created:
+- `booking_categories` - Service categories
+- `booking_services` - Services with duration, price, capacity, buffer time
+- `booking_staff` - Staff members with availability
+- `booking_staff_services` - Many-to-many pivot for staff-service relationships
+- `booking_business_hours` - Weekly operating hours
+- `booking_availability` - Date-specific availability overrides
+- `booking_resources` - Bookable resources (rooms, equipment)
+- `bookings` - Main bookings table with all details
+- `booking_settings` - Configuration (currency, timezone, reminders, payments)
 
-### Section Templates (in sectionTemplates.ts)
-Added UAS section templates with category 'user_access_system':
-- `login-box` - Login form that transforms to status box when logged in
-- `register-form` - Registration form with email verification
-- `user-dashboard` - User dashboard with profile and feature integrations
+Default data:
+- Monday-Friday 9AM-5PM business hours
+- Default settings with USD currency
 
-### Preview/Properties Components
-- `LoginBoxPreview.tsx` - Shows login form or logged-in status with toggle in builder
-- `LoginBoxProperties.tsx` - Configuration panel for login box section
+### Booking Models
+**Location:** `pagevoo-backend/app/Models/Booking/`
 
-### Integration Points
-1. **Header.tsx** - Added UAS icon button next to image gallery (visible when UAS installed)
-2. **TemplateBuilder.tsx** - Added state, import, Header props, modal rendering for UasManager
-3. **WebsiteBuilder.tsx** - Same as TemplateBuilder
-4. **FeatureInstallModal.tsx** - Set UAS available: true
-5. **ManageFeaturesModal.tsx** - Added UAS feature details
-6. **useRenderSection.tsx** - Added case for 'login-box' section type
-7. **RightSidebar.tsx** - Added LoginBoxProperties for 'login-box' sections
+- `BookingCategory.php` - Service categories
+- `BookingService.php` - Service definitions with relationships
+- `BookingStaff.php` - Staff with service assignments
+- `BookingBusinessHours.php` - Weekly hours
+- `BookingAvailability.php` - Override availability
+- `BookingResource.php` - Bookable resources
+- `Booking.php` - Main booking model with scopes
+- `BookingSettings.php` - Settings singleton
 
-## Key Design Decisions
+All models use `protected $connection = 'website';` for multi-tenant support.
 
-1. **Hierarchical Groups**: Groups have levels (1=highest privilege, 999=banned). Lower level = more privileges.
+---
 
-2. **Permission Overrides**: Individual user permissions can override their group's permissions.
+## FRONTEND COMPONENTS
 
-3. **Email Verification Required**: Users must verify email before completing registration with security questions.
+### BookingManager.tsx
+**Location:** `pagevoo-frontend/src/components/BookingManager.tsx`
 
-4. **Security Questions**: 5 standard questions, user picks 3 during registration. Used for password reset.
+Full management modal (~1600 lines) with:
 
-5. **Remember Me**: 30 days vs 2 hours session duration.
+**Tabs:**
+- Bookings (list/calendar toggle views)
+- Services (with categories)
+- Staff
+- Settings
 
-6. **Banned Users**: Cannot login at all (level 999).
+**Features:**
+- List view with filtering (status, date range, search)
+- Calendar view with month navigation
+- Service management with pricing, duration, capacity
+- Staff management with service assignments
+- Nested modals for forms (ServiceFormModal, StaffFormModal, BookingDetailModal)
+- Real-time status badges (pending, confirmed, cancelled)
 
-7. **Page Lockdown**: Each page can have access control with allowed groups, specific users, or denied users.
+### BookingFormPreview.tsx
+**Location:** `pagevoo-frontend/src/components/script-features/booking/BookingFormPreview.tsx`
 
-8. **Special UAS Pages**: Login, Register, Dashboard, User Settings, Reset Password - undeletable but stylable.
+Canvas preview component with multiple themes:
+- **default** - Standard form layout
+- **card** - Elevated card style
+- **minimal** - Clean, minimal design
+- **stepped** - Multi-step wizard layout
 
-## Files Modified/Created
+Configurable elements:
+- Title and subtitle
+- Service selector
+- Staff selector
+- Date picker
+- Time picker
+- Party size (for reservations)
+- Notes/special requests
+- Submit button with customizable text
+- Primary color theming
 
-### Backend New Files:
-- database/migrations/script_features/user_access_system/2025_11_28_000001_create_uas_tables.php
-- database/migrations/script_features/user_access_system/2025_11_28_000002_seed_uas_defaults.php
-- app/Models/Uas/*.php (11 model files)
-- app/Http/Controllers/Api/V1/UasController.php
-- app/Http/Controllers/Api/V1/UasAuthController.php
+### BookingFormProperties.tsx
+**Location:** `pagevoo-frontend/src/components/properties/BookingFormProperties.tsx`
 
-### Backend Modified Files:
-- routes/api.php (added UAS routes)
+Dark theme sidebar properties panel with collapsible sections:
+- **Content** - Title, subtitle, button text
+- **Layout and Theme** - Layout style (vertical/stepped/horizontal), theme selection
+- **Form Fields** - Toggle checkboxes for each field
+- **Appearance** - Primary color with presets
+- **Container Style** - Padding, background, border radius
 
-### Frontend New Files:
-- src/components/UasManager.tsx
-- src/components/script-features/uas/LoginBoxPreview.tsx
-- src/components/properties/LoginBoxProperties.tsx
+---
 
-### Frontend Modified Files:
-- src/constants/sectionTemplates.ts (added UAS section templates)
-- src/components/layout/Header.tsx (added UAS icon and props)
-- src/pages/TemplateBuilder.tsx (added UAS state, import, wiring)
-- src/pages/WebsiteBuilder.tsx (added UAS state, import, wiring)
-- src/components/features/FeatureInstallModal.tsx (enabled UAS)
-- src/components/features/ManageFeaturesModal.tsx (added UAS details)
-- src/hooks/useRenderSection.tsx (added login-box case)
-- src/components/RightSidebar.tsx (added LoginBoxProperties case)
+## API ROUTES ADDED
 
-## Remaining Work (Future Sessions)
+### Booking Routes (api.php):
+```php
+Route::prefix('booking')->group(function () {
+    // Dashboard and Calendar
+    Route::get('/dashboard', [BookingController::class, 'dashboard']);
+    Route::get('/calendar', [BookingController::class, 'getCalendarEvents']);
+    Route::get('/available-slots', [BookingController::class, 'getAvailableSlots']);
 
-1. Create actual special UAS pages in page templates
-2. Add Register form preview/properties components
-3. Add User Dashboard preview/properties components
-4. Implement the actual frontend auth service to call UAS API
-5. Test the full registration/login/reset password flows
-6. Add email sending functionality for verification codes
-7. Add frontend route guards for protected pages
+    // Bookings CRUD
+    Route::get('/', [BookingController::class, 'index']);
+    Route::get('/{id}', [BookingController::class, 'show']);
+    Route::post('/', [BookingController::class, 'store']);
+    Route::put('/{id}', [BookingController::class, 'update']);
+    Route::delete('/{id}', [BookingController::class, 'destroy']);
+    Route::patch('/{id}/confirm', [BookingController::class, 'confirm']);
+    Route::patch('/{id}/cancel', [BookingController::class, 'cancel']);
+
+    // Services
+    Route::get('/services/all', [BookingController::class, 'getServices']);
+    Route::post('/services', [BookingController::class, 'storeService']);
+    Route::put('/services/{id}', [BookingController::class, 'updateService']);
+    Route::delete('/services/{id}', [BookingController::class, 'destroyService']);
+
+    // Categories
+    Route::get('/categories/all', [BookingController::class, 'getCategories']);
+    Route::post('/categories', [BookingController::class, 'storeCategory']);
+    Route::put('/categories/{id}', [BookingController::class, 'updateCategory']);
+    Route::delete('/categories/{id}', [BookingController::class, 'destroyCategory']);
+
+    // Staff
+    Route::get('/staff/all', [BookingController::class, 'getStaff']);
+    Route::post('/staff', [BookingController::class, 'storeStaff']);
+    Route::put('/staff/{id}', [BookingController::class, 'updateStaff']);
+    Route::delete('/staff/{id}', [BookingController::class, 'destroyStaff']);
+
+    // Resources
+    Route::get('/resources/all', [BookingController::class, 'getResources']);
+    Route::post('/resources', [BookingController::class, 'storeResource']);
+    Route::put('/resources/{id}', [BookingController::class, 'updateResource']);
+    Route::delete('/resources/{id}', [BookingController::class, 'destroyResource']);
+
+    // Business Hours and Availability
+    Route::get('/business-hours', [BookingController::class, 'getBusinessHours']);
+    Route::put('/business-hours', [BookingController::class, 'updateBusinessHours']);
+    Route::get('/availability', [BookingController::class, 'getAvailability']);
+    Route::post('/availability', [BookingController::class, 'storeAvailability']);
+    Route::delete('/availability/{id}', [BookingController::class, 'destroyAvailability']);
+
+    // Settings
+    Route::get('/settings', [BookingController::class, 'getSettings']);
+    Route::put('/settings', [BookingController::class, 'updateSettings']);
+});
+```
+
+---
+
+## FILES MODIFIED
+
+### Header.tsx
+- Added `setShowBookingManager` and `isBookingInstalled` props
+- Added calendar icon button (only visible when booking feature installed)
+
+### sectionTemplates.ts
+Added booking-form section template with category 'booking'
+
+### useRenderSection.tsx
+- Added import for `BookingFormPreview`
+- Added case for 'booking-form' type
+
+### RightSidebar.tsx
+- Added `BookingFormProperties` import
+- Added `onOpenBookingManager` prop
+- Added booking-form case in JSX
+
+### WebsiteBuilder.tsx
+- Added `BookingManager` import
+- Added `showBookingManager` state
+- Added BookingManager modal rendering
+- Added props to Header and RightSidebar
+- Added booking to onConfigureFeature handlers
+
+### TemplateBuilder.tsx
+- Same changes as WebsiteBuilder.tsx
+
+### FeatureInstallModal.tsx
+- Changed booking feature to `available: true`
+- Changed `requiresUAS: false` (booking doesn't require user login)
+- Updated description
+
+---
+
+## BOOKING SYSTEM FEATURES
+
+### Supported Booking Types:
+1. **Appointments (1-on-1)** - Single customer bookings (capacity = 1)
+2. **Reservations (Capacity-based)** - Multiple customers per slot (capacity > 1)
+
+### Service Configuration:
+- Duration in minutes
+- Buffer time between appointments
+- Pricing (free or paid)
+- Capacity per time slot
+- Staff assignment (optional)
+- Color coding for calendar
+
+### Staff Features:
+- Staff member profiles
+- Service-specific assignments
+- Individual availability settings
+
+### Business Hours:
+- Weekly schedule configuration
+- Day-by-day open/close times
+- Break time support
+
+### Availability Overrides:
+- Date-specific availability changes
+- Holiday closures
+- Special hours
+
+### Booking Status Flow:
+- pending -> confirmed (by admin)
+- pending -> cancelled (by admin or customer)
+- confirmed -> completed (automatic after time passes)
+- confirmed -> cancelled
+
+### Payment Support (Configurable):
+- Free bookings
+- Stripe integration ready
+- PayPal integration ready
+- Pay at venue option
+- Deposit system
+
+---
+
+## DEVELOPMENT SERVERS
+
+Backend: `cd /d/Pagevoo/pagevoo-backend && php artisan serve` (port 8000)
+Frontend: `cd /d/Pagevoo/pagevoo-frontend && npm run dev` (port 5173)
+
+---
+
+## COMPLETED FEATURES (Script Features)
+
+| Feature | Tier | Status |
+|---------|------|--------|
+| Contact Form | Trial | Complete |
+| Image Gallery | Trial | Complete |
+| Blog | Brochure | Complete |
+| Events Calendar | Brochure | Complete |
+| User Access System | Niche | Complete |
+| Booking | Niche | Complete |
+| VooPress | Niche | Next |
+| Shop | Niche | Pending |
+| File Hoster | Pro | Pending |
+| Video Sharing | Pro | Pending |
+| Social Platform | Pro | Pending |
+| Courses | Pro | Pending |
+
+---
+
+## NEXT FEATURE: VOOPRESS
+
+VooPress is a WordPress-style content management system with themes and plugins.
+
+Potential scope:
+- Custom post types
+- Theme system
+- Plugin architecture
+- Media management
+- Page templates
+- Widget areas
+- Menu management
+- SEO tools
+
+---
+
+**End of Memory File #12**
+
+Session completed Booking System feature. Ready for VooPress implementation.

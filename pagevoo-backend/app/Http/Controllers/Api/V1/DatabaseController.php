@@ -311,16 +311,23 @@ class DatabaseController extends Controller
         }
 
         try {
+            $featureType = $request->input('feature_type');
+
             $this->databaseManager->installFeature(
                 $instance,
-                $request->input('feature_type'),
+                $featureType,
                 $request->input('config', [])
             );
+
+            // Get system page definitions for frontend to add locally if website not saved
+            $systemPageService = new \App\Services\SystemPageService();
+            $systemPageDefinitions = $systemPageService->getPageDefinitions($featureType);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Feature installed successfully',
                 'data' => $instance->fresh(),
+                'system_pages' => $systemPageDefinitions,
             ]);
         } catch (Exception $e) {
             return response()->json([
@@ -363,10 +370,30 @@ class DatabaseController extends Controller
             ], 403);
         }
 
+        $featureType = $request->input('feature_type');
+
+        // Check for feature dependencies before allowing uninstall
+        $dependencyCheck = $this->databaseManager->canUninstallFeature($instance, $featureType);
+
+        if (!$dependencyCheck['can_uninstall']) {
+            $blockingFeatures = $dependencyCheck['blocking_features'];
+            $featureNames = array_map(function ($f) {
+                return ucwords(str_replace('_', ' ', $f));
+            }, $blockingFeatures);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot uninstall this feature because other features depend on it.',
+                'error_code' => 'FEATURE_DEPENDENCY',
+                'blocking_features' => $blockingFeatures,
+                'details' => 'The following features must be uninstalled first: ' . implode(', ', $featureNames),
+            ], 409); // 409 Conflict
+        }
+
         try {
             $this->databaseManager->uninstallFeature(
                 $instance,
-                $request->input('feature_type')
+                $featureType
             );
 
             return response()->json([

@@ -18,6 +18,9 @@ use App\Http\Controllers\Api\V1\BlogController;
 use App\Http\Controllers\Api\V1\EventController;
 use App\Http\Controllers\Api\V1\UasController;
 use App\Http\Controllers\Api\V1\UasAuthController;
+use App\Http\Controllers\Api\V1\SystemPageController;
+use App\Http\Controllers\Api\V1\BookingController;
+use App\Http\Controllers\Api\V1\VooPressController;
 
 /*
 |--------------------------------------------------------------------------
@@ -293,6 +296,85 @@ Route::prefix('v1')->group(function () {
             Route::get('/activity-log', [UasController::class, 'getActivityLog']);
         });
 
+        // Booking System Feature
+        Route::prefix('booking')->group(function () {
+            // Dashboard and Calendar
+            Route::get('/dashboard', [BookingController::class, 'dashboard']);
+            Route::get('/calendar', [BookingController::class, 'getCalendarEvents']);
+            Route::get('/available-slots', [BookingController::class, 'getAvailableSlots']);
+
+            // Bookings CRUD
+            Route::get('/', [BookingController::class, 'index']);
+            Route::get('/{id}', [BookingController::class, 'show'])->where('id', '[0-9]+');
+            Route::post('/', [BookingController::class, 'store']);
+            Route::put('/{id}', [BookingController::class, 'update'])->where('id', '[0-9]+');
+            Route::delete('/{id}', [BookingController::class, 'destroy'])->where('id', '[0-9]+');
+            Route::patch('/{id}/confirm', [BookingController::class, 'confirm'])->where('id', '[0-9]+');
+            Route::patch('/{id}/cancel', [BookingController::class, 'cancel'])->where('id', '[0-9]+');
+
+            // Services
+            Route::get('/services/all', [BookingController::class, 'getServices']);
+            Route::post('/services', [BookingController::class, 'storeService']);
+            Route::put('/services/{id}', [BookingController::class, 'updateService']);
+            Route::delete('/services/{id}', [BookingController::class, 'destroyService']);
+
+            // Categories
+            Route::get('/categories/all', [BookingController::class, 'getCategories']);
+            Route::post('/categories', [BookingController::class, 'storeCategory']);
+            Route::put('/categories/{id}', [BookingController::class, 'updateCategory']);
+            Route::delete('/categories/{id}', [BookingController::class, 'destroyCategory']);
+
+            // Staff
+            Route::get('/staff/all', [BookingController::class, 'getStaff']);
+            Route::post('/staff', [BookingController::class, 'storeStaff']);
+            Route::put('/staff/{id}', [BookingController::class, 'updateStaff']);
+            Route::delete('/staff/{id}', [BookingController::class, 'destroyStaff']);
+
+            // Resources (tables, rooms, etc.)
+            Route::get('/resources/all', [BookingController::class, 'getResources']);
+            Route::post('/resources', [BookingController::class, 'storeResource']);
+            Route::put('/resources/{id}', [BookingController::class, 'updateResource']);
+            Route::delete('/resources/{id}', [BookingController::class, 'destroyResource']);
+
+            // Business Hours
+            Route::get('/business-hours', [BookingController::class, 'getBusinessHours']);
+            Route::put('/business-hours', [BookingController::class, 'updateBusinessHours']);
+
+            // Availability overrides
+            Route::get('/availability', [BookingController::class, 'getAvailability']);
+            Route::post('/availability', [BookingController::class, 'storeAvailability']);
+            Route::delete('/availability/{id}', [BookingController::class, 'destroyAvailability']);
+
+            // Settings
+            Route::get('/settings', [BookingController::class, 'getSettings']);
+            Route::put('/settings', [BookingController::class, 'updateSettings']);
+        });
+
+        // VooPress Feature
+        Route::prefix('voopress')->group(function () {
+            // Themes
+            Route::get('/themes', [VooPressController::class, 'getThemes']);
+            Route::get('/themes/{themeId}', [VooPressController::class, 'getTheme']);
+
+            // Site management
+            Route::get('/status', [VooPressController::class, 'getStatus']);
+            Route::post('/create', [VooPressController::class, 'create']);
+            Route::post('/convert', [VooPressController::class, 'convertToVooPress']);
+            Route::put('/config', [VooPressController::class, 'updateConfig']);
+            Route::post('/change-theme', [VooPressController::class, 'changeTheme']);
+
+            // Dashboard
+            Route::get('/dashboard/stats', [VooPressController::class, 'getDashboardStats']);
+
+            // Widgets and Menus
+            Route::put('/widgets', [VooPressController::class, 'updateWidgets']);
+            Route::put('/menus', [VooPressController::class, 'updateMenus']);
+
+            // Blog content (for VooPress previews)
+            Route::get('/blog/posts', [VooPressController::class, 'getBlogPosts']);
+            Route::get('/blog/categories', [VooPressController::class, 'getBlogCategories']);
+        });
+
     });
 
     // UAS Public Auth Routes (for end-user authentication on published sites)
@@ -325,6 +407,16 @@ Route::prefix('v1')->group(function () {
         Route::get('/sessions', [UasAuthController::class, 'getSessions']);
         Route::delete('/sessions/{id}', [UasAuthController::class, 'terminateSession']);
         Route::delete('/sessions', [UasAuthController::class, 'terminateAllOtherSessions']);
+    });
+
+    // System Pages Management Routes (independent of website save state)
+    Route::middleware('auth:sanctum')->prefix('system-pages')->group(function () {
+        Route::get('/', [SystemPageController::class, 'index']);
+        Route::get('/for-features', [SystemPageController::class, 'getForInstalledFeatures']);
+        Route::put('/{pageId}', [SystemPageController::class, 'update']);
+        Route::put('/{pageId}/sections/{sectionId}', [SystemPageController::class, 'updateSection']);
+        Route::post('/bulk-update', [SystemPageController::class, 'bulkUpdate']);
+        Route::delete('/feature/{featureType}', [SystemPageController::class, 'deleteForFeature']);
     });
 
     // Database Management Routes

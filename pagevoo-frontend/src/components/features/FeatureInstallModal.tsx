@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import type { DatabaseInstance } from '@/services/databaseService'
+import type { DatabaseInstance, SystemPageDefinition } from '@/services/databaseService'
 import {
   MdEmail,
   MdPhotoLibrary,
@@ -20,7 +20,7 @@ import type { IconType } from 'react-icons'
 interface FeatureInstallModalProps {
   isOpen: boolean
   onClose: () => void
-  onFeatureInstalled: (featureType: string) => void
+  onFeatureInstalled: (featureType: string, systemPages?: SystemPageDefinition[]) => void
   onConfigureFeature?: (featureType: string) => void
   onOpenDatabaseManagement?: () => void
   type: 'template' | 'website'
@@ -33,6 +33,7 @@ interface Feature {
   description: string
   icon: IconType
   requiresUAS: boolean // Requires User Access System
+  requiresBlog?: boolean // Requires Blog feature
   tier: 'trial' | 'brochure' | 'niche' | 'pro'
   available: boolean
 }
@@ -86,20 +87,21 @@ const AVAILABLE_FEATURES: Feature[] = [
   {
     type: 'booking',
     name: 'Booking System',
-    description: 'Appointment booking, scheduling, and availability management',
+    description: 'Appointment booking, reservations, scheduling, and availability management',
     icon: MdCalendarMonth,
-    requiresUAS: true,
+    requiresUAS: false,
     tier: 'niche',
-    available: false
+    available: true
   },
   {
     type: 'voopress',
     name: 'VooPress',
-    description: 'WordPress-style content management with themes and plugins',
+    description: 'WordPress-style blog with themes, widgets, menus, and dashboard',
     icon: MdEdit,
-    requiresUAS: true,
+    requiresUAS: false,
+    requiresBlog: true,
     tier: 'niche',
-    available: false
+    available: true
   },
   {
     type: 'shop',
@@ -207,6 +209,11 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
       return
     }
 
+    if (feature.requiresBlog && !installedFeatures.includes('blog')) {
+      alert(`${feature.name} requires Blog feature to be installed first`)
+      return
+    }
+
     const confirmed = confirm(
       `Install ${feature.name}?\n\nThis will add the necessary database tables and configuration for this feature.`
     )
@@ -215,10 +222,10 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
 
     setInstalling(feature.type)
     try {
-      await databaseService.installFeature(database.id, feature.type, {})
+      const result = await databaseService.installFeature(database.id, feature.type, {})
       setInstalledFeatures([...installedFeatures, feature.type])
       alert(`${feature.name} installed successfully!`)
-      onFeatureInstalled(feature.type)
+      onFeatureInstalled(feature.type, result.system_pages)
     } catch (error: any) {
       console.error('Failed to install feature:', error)
       alert(error.message || 'Failed to install feature')
@@ -346,6 +353,11 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
                             {feature.requiresUAS && (
                               <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
                                 Requires UAS
+                              </span>
+                            )}
+                            {feature.requiresBlog && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
+                                Requires Blog
                               </span>
                             )}
                           </div>

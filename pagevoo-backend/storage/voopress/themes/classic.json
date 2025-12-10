@@ -1,0 +1,110 @@
+{
+  "id": "classic",
+  "name": "Classic Blog",
+  "description": "Traditional blog layout with sidebar on right, featured posts at top",
+  "preview_image": "/themes/classic-preview.png",
+  "tier_required": "brochure",
+  "layout": {
+    "type": "sidebar-right",
+    "sidebar_width": "300px",
+    "content_width": "calc(100% - 320px)"
+  },
+  "colors": {
+    "primary": "#3B82F6",
+    "secondary": "#1E40AF",
+    "background": "#FFFFFF",
+    "text": "#1F2937",
+    "accent": "#F59E0B"
+  },
+  "typography": {
+    "heading_font": "Georgia, serif",
+    "body_font": "system-ui, -apple-system, sans-serif",
+    "base_size": "16px"
+  },
+  "homepage": {
+    "show_featured": true,
+    "featured_count": 1,
+    "posts_per_page": 10,
+    "excerpt_length": 200,
+    "show_author": true,
+    "show_date": true,
+    "show_categories": true
+  },
+  "sidebar": {
+    "position": "right",
+    "widgets": ["search", "recent_posts", "categories", "tags", "about"]
+  },
+  "header": {
+    "style": "classic",
+    "show_tagline": true,
+    "show_search": false,
+    "menu_position": "below"
+  },
+  "footer": {
+    "style": "simple",
+    "columns": 3,
+    "show_copyright": true,
+    "show_social": true
+  },
+  "pages": {
+    "home": {
+      "title": "Home",
+      "slug": "",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": {}
+        },
+        {
+          "type": "voopress-featured-post",
+          "config": { "count": 1 }
+        },
+        {
+          "type": "voopress-blog-listing",
+          "config": { "posts_per_page": 10, "show_sidebar": true }
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    },
+    "about": {
+      "title": "About",
+      "slug": "about",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": {}
+        },
+        {
+          "type": "voopress-page-content",
+          "config": { "default_content": "<h1>About Us</h1><p>Welcome to our blog. Tell your story here...</p>" }
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    },
+    "contact": {
+      "title": "Contact",
+      "slug": "contact",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": {}
+        },
+        {
+          "type": "voopress-contact-page",
+          "config": {}
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    }
+  },
+  "css_overrides": ""
+}

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class UserPage extends Model
 {
     protected $fillable = [
+        'user_id',
         'user_website_id',
         'template_page_id',
         'name',

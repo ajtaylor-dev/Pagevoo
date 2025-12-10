@@ -15,6 +15,9 @@ class UserWebsite extends Model
         'subdomain',
         'custom_domain',
         'is_published',
+        'is_voopress',
+        'voopress_theme',
+        'voopress_config',
         'last_published_at',
         'published_at',
         'site_css',
@@ -26,6 +29,8 @@ class UserWebsite extends Model
         'published_at' => 'datetime',
         'last_published_at' => 'datetime',
         'is_published' => 'boolean',
+        'is_voopress' => 'boolean',
+        'voopress_config' => 'array',
     ];
 
     // ============ Relationships ============

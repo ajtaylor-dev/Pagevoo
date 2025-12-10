@@ -69,50 +69,6 @@ class SystemPageService
                 ],
             ],
             [
-                'system_type' => 'uas_dashboard',
-                'name' => 'Dashboard',
-                'slug' => 'dashboard',
-                'sections' => [
-                    [
-                        'type' => 'user-dashboard',
-                        'lock_type' => 'uas_dashboard_widget',
-                        'section_name' => 'User Dashboard',
-                        'content' => [
-                            'dashboardConfig' => [
-                                'title' => 'Welcome, {user_name}',
-                                'showProfileLink' => true,
-                                'showLogoutButton' => true,
-                                'widgets' => ['profile_summary', 'recent_activity'],
-                                'theme' => 'default',
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            [
-                'system_type' => 'uas_profile',
-                'name' => 'Profile',
-                'slug' => 'profile',
-                'sections' => [
-                    [
-                        'type' => 'user-dashboard',
-                        'lock_type' => 'uas_profile_editor',
-                        'section_name' => 'Profile Editor',
-                        'content' => [
-                            'dashboardConfig' => [
-                                'title' => 'My Profile',
-                                'allowAvatarUpload' => true,
-                                'allowPasswordChange' => true,
-                                'allowSecurityQuestionsUpdate' => true,
-                                'showSessionManagement' => true,
-                                'theme' => 'default',
-                                'mode' => 'profile',
-                            ],
-                        ],
-                    ],
-                ],
-            ],
-            [
                 'system_type' => 'uas_forgot_password',
                 'name' => 'Forgot Password',
                 'slug' => 'forgot-password',
@@ -161,19 +117,12 @@ class SystemPageService
                 'slug' => 'logout',
                 'sections' => [
                     [
-                        'type' => 'grid-1x1',
+                        'type' => 'logout-handler',
                         'lock_type' => 'uas_logout_handler',
                         'section_name' => 'Logout Handler',
                         'content' => [
-                            'columns' => [
-                                [
-                                    'html' => '<div class="text-center py-12"><h2 class="text-2xl font-bold mb-4">Logging out...</h2><p class="text-gray-600">You are being logged out. Please wait.</p></div>',
-                                ],
-                            ],
                             'logoutConfig' => [
                                 'redirectTo' => '/',
-                                'showConfirmation' => false,
-                                'confirmationMessage' => 'Are you sure you want to log out?',
                             ],
                         ],
                     ],
@@ -232,7 +181,7 @@ class SystemPageService
                 'feature_type' => $featureType,
             ]);
 
-            // Create locked sections
+            // Create sections (locked to prevent deletion, but still editable for styling)
             $sectionOrder = 0;
             foreach ($pageDef['sections'] as $sectionDef) {
                 $page->sections()->create([
@@ -243,7 +192,7 @@ class SystemPageService
                     'css' => [],
                     'order' => $sectionOrder++,
                     'is_locked' => true,
-                    'lock_type' => $sectionDef['lock_type'],
+                    'lock_type' => $sectionDef['lock_type'] ?? 'system_required',
                 ]);
             }
 
@@ -287,7 +236,7 @@ class SystemPageService
                 'feature_type' => $featureType,
             ]);
 
-            // Create locked sections
+            // Create sections (locked to prevent deletion, but still editable for styling)
             $sectionOrder = 0;
             foreach ($pageDef['sections'] as $sectionDef) {
                 $page->sections()->create([
@@ -298,7 +247,7 @@ class SystemPageService
                     'css' => [],
                     'order' => $sectionOrder++,
                     'is_locked' => true,
-                    'lock_type' => $sectionDef['lock_type'],
+                    'lock_type' => $sectionDef['lock_type'] ?? 'system_required',
                 ]);
             }
 
@@ -414,8 +363,6 @@ class SystemPageService
         $names = [
             'uas_login' => 'Login Page',
             'uas_register' => 'Registration Page',
-            'uas_dashboard' => 'User Dashboard',
-            'uas_profile' => 'Profile Page',
             'uas_forgot_password' => 'Password Reset',
             'uas_verify_email' => 'Email Verification',
             'uas_logout' => 'Logout Handler',

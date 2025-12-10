@@ -91,9 +91,10 @@ export const SitemapModal: React.FC<SitemapModalProps> = ({
     }
   }
 
-  // Separate regular pages from system pages
+  // Separate pages into categories: regular, VooPress, and other system pages
   const regularPages = template?.pages.filter(p => !p.is_system) || []
-  const systemPages = template?.pages.filter(p => p.is_system) || []
+  const voopressPages = template?.pages.filter(p => p.is_system && p.feature_type === 'voopress') || []
+  const systemPages = template?.pages.filter(p => p.is_system && p.feature_type !== 'voopress') || []
 
   // Get feature display name
   const getFeatureDisplayName = (featureType?: string): string => {
@@ -101,8 +102,20 @@ export const SitemapModal: React.FC<SitemapModalProps> = ({
       'user_access_system': 'User Access System',
       'booking': 'Booking System',
       'shop': 'E-Commerce Shop',
+      'voopress': 'VooPress',
     }
     return featureType ? names[featureType] || featureType.replace(/_/g, ' ') : 'Feature'
+  }
+
+  // Get VooPress page display name
+  const getVooPressPageDisplayName = (systemType?: string): string => {
+    const names: Record<string, string> = {
+      'voopress_home': 'Home Page',
+      'voopress_about': 'About Page',
+      'voopress_contact': 'Contact Page',
+      'voopress_blog': 'Blog Page',
+    }
+    return systemType ? names[systemType] || systemType.replace('voopress_', '').replace(/_/g, ' ') : 'VooPress Page'
   }
 
   // Get system type display name
@@ -252,6 +265,91 @@ export const SitemapModal: React.FC<SitemapModalProps> = ({
               <span className="font-medium">Add New Page</span>
             </button>
           </div>
+
+          {/* VooPress Pages Section */}
+          {voopressPages.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <h3 className="text-sm font-semibold text-purple-700 mb-3 flex items-center gap-2">
+                <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                </svg>
+                VooPress Pages ({voopressPages.length})
+              </h3>
+              <p className="text-xs text-gray-500 mb-3">
+                VooPress blog pages. Manage content through the VooPress Dashboard.
+              </p>
+              <div className="space-y-2">
+                {voopressPages.map((page) => (
+                  <div
+                    key={page.id}
+                    className={`group flex items-center gap-3 p-3 rounded-lg border-2 transition ${
+                      page.id === currentPage?.id
+                        ? 'border-purple-400 bg-purple-50'
+                        : 'border-purple-200 hover:border-purple-300 bg-purple-50/50'
+                    }`}
+                  >
+                    {/* Sparkle Icon */}
+                    <div className="flex-shrink-0 w-8 flex flex-col items-center">
+                      {page.system_type === 'voopress_home' ? (
+                        <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                        </svg>
+                      )}
+                    </div>
+
+                    {/* Page Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-900 truncate">{page.name}</h3>
+                        <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full">
+                          {getVooPressPageDisplayName(page.system_type)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-gray-500 truncate">/{page.slug || '(homepage)'}</p>
+                      <p className="text-xs text-purple-600 mt-1">
+                        VooPress • {page.sections?.length || 0} sections
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex-shrink-0 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
+                      <button
+                        onClick={() => handleViewPage(page)}
+                        className="p-1.5 hover:bg-purple-100 rounded transition"
+                        title="View Page"
+                      >
+                        <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => handleEditPage(page)}
+                        className="p-1.5 hover:bg-purple-100 rounded transition"
+                        title="Edit Page Settings"
+                      >
+                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                      <div
+                        className="p-1.5 opacity-30 cursor-not-allowed"
+                        title="VooPress pages cannot be deleted. Uninstall VooPress to remove them."
+                      >
+                        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* System Pages Section */}
           {systemPages.length > 0 && (

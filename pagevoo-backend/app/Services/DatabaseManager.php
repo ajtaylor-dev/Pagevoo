@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Models\DatabaseInstance;
 use App\Models\Template;
 use App\Models\UserWebsite;
+use App\Models\UserPage;
+use App\Models\UserSection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Artisan;
@@ -14,9 +16,64 @@ class DatabaseManager
 {
     protected SystemPageService $systemPageService;
 
+    /**
+     * Feature dependency mapping.
+     * Key = feature that depends on other features
+     * Value = array of features it depends on
+     */
+    protected array $featureDependencies = [
+        'voopress' => ['blog'],  // VooPress requires blog feature
+    ];
+
     public function __construct()
     {
         $this->systemPageService = new SystemPageService();
+    }
+
+    /**
+     * Get features that depend on the given feature.
+     *
+     * @param string $featureType The feature being checked
+     * @return array List of features that depend on this feature
+     */
+    public function getDependentFeatures(string $featureType): array
+    {
+        $dependentFeatures = [];
+
+        foreach ($this->featureDependencies as $feature => $dependencies) {
+            if (in_array($featureType, $dependencies)) {
+                $dependentFeatures[] = $feature;
+            }
+        }
+
+        return $dependentFeatures;
+    }
+
+    /**
+     * Check if a feature can be safely uninstalled.
+     * Returns blocking features if any are installed that depend on this feature.
+     *
+     * @param DatabaseInstance $instance
+     * @param string $featureType
+     * @return array ['can_uninstall' => bool, 'blocking_features' => array]
+     */
+    public function canUninstallFeature(DatabaseInstance $instance, string $featureType): array
+    {
+        $installedFeatures = $instance->getInstalledFeatures();
+        $dependentFeatures = $this->getDependentFeatures($featureType);
+
+        // Find which dependent features are currently installed
+        $blockingFeatures = [];
+        foreach ($dependentFeatures as $dependent) {
+            if (isset($installedFeatures[$dependent])) {
+                $blockingFeatures[] = $dependent;
+            }
+        }
+
+        return [
+            'can_uninstall' => empty($blockingFeatures),
+            'blocking_features' => $blockingFeatures,
+        ];
     }
     /**
      * Create a new database for a template.
@@ -404,6 +461,111 @@ class DatabaseManager
     }
 
     /**
+     * Get the tables associated with a feature type.
+     * Tables are listed in the order they should be dropped (children first).
+     */
+    protected function getFeatureTables(string $featureType): array
+    {
+        $tableMap = [
+            'contact_form' => [
+                'support_tickets',
+                'form_submissions',
+                'contact_forms',
+            ],
+            'image_gallery' => [
+                'gallery_image_mappings',
+                'gallery_images',
+                'gallery_albums',
+                'image_galleries',
+            ],
+            'blog' => [
+                'blog_post_tags',
+                'blog_posts',
+                'blog_tags',
+                'blog_categories',
+                'blog_settings',
+            ],
+            'events' => [
+                'events',
+                'event_categories',
+                'event_settings',
+            ],
+            'user_access_system' => [
+                'uas_activity_log',
+                'uas_settings',
+                'uas_permission_definitions',
+                'uas_page_access',
+                'uas_sessions',
+                'uas_password_resets',
+                'uas_user_security_answers',
+                'uas_security_questions',
+                'uas_email_verifications',
+                'uas_users',
+                'uas_groups',
+            ],
+            'booking' => [
+                'booking_settings',
+                'bookings',
+                'booking_resources',
+                'booking_availability',
+                'booking_business_hours',
+                'booking_staff_services',
+                'booking_staff',
+                'booking_services',
+                'booking_categories',
+            ],
+            'voopress' => [
+                // VooPress uses existing feature tables (blog, events, etc.)
+                // Configuration is stored in user_websites table
+            ],
+        ];
+
+        return $tableMap[$featureType] ?? [];
+    }
+
+    /**
+     * Drop feature tables from the database.
+     */
+    protected function dropFeatureTables(DatabaseInstance $instance, string $featureType): void
+    {
+        $tables = $this->getFeatureTables($featureType);
+
+        if (empty($tables)) {
+            return;
+        }
+
+        // Set up temporary connection to feature database
+        Config::set('database.connections.temp', [
+            'driver' => 'mysql',
+            'host' => Config::get('database.connections.mysql.host'),
+            'port' => Config::get('database.connections.mysql.port'),
+            'database' => $instance->database_name,
+            'username' => Config::get('database.connections.mysql.username'),
+            'password' => Config::get('database.connections.mysql.password'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+        ]);
+
+        // Disable foreign key checks to allow dropping tables in any order
+        DB::connection('temp')->statement('SET FOREIGN_KEY_CHECKS = 0');
+
+        foreach ($tables as $table) {
+            try {
+                DB::connection('temp')->statement("DROP TABLE IF EXISTS `{$table}`");
+            } catch (Exception $e) {
+                // Log but continue - table might not exist
+                \Log::warning("Failed to drop table {$table} from {$instance->database_name}: " . $e->getMessage());
+            }
+        }
+
+        // Re-enable foreign key checks
+        DB::connection('temp')->statement('SET FOREIGN_KEY_CHECKS = 1');
+
+        // Purge the temporary connection
+        DB::purge('temp');
+    }
+
+    /**
      * Uninstall a feature from a database.
      */
     public function uninstallFeature(DatabaseInstance $instance, string $featureType): bool
@@ -411,16 +573,55 @@ class DatabaseManager
         // Remove system pages for this feature
         $this->removeSystemPagesForFeature($instance, $featureType);
 
+        // Special handling for VooPress - clean up VooPress pages and config
+        if ($featureType === 'voopress') {
+            $this->cleanupVooPressFeature($instance);
+        }
+
+        // Drop feature tables from the database
+        $this->dropFeatureTables($instance, $featureType);
+
         // Remove from installed features
         $instance->removeInstalledFeature($featureType);
-
-        // Note: We don't automatically rollback migrations as data might be important
-        // This should be handled manually or with confirmation
 
         // Update size
         $this->updateDatabaseSize($instance);
 
         return true;
+    }
+
+    /**
+     * Clean up VooPress pages and configuration when uninstalling.
+     */
+    protected function cleanupVooPressFeature(DatabaseInstance $instance): void
+    {
+        $userId = $instance->reference_id;
+
+        // Delete VooPress sections first (foreign key constraint)
+        $voopressPageIds = UserPage::where('user_id', $userId)
+            ->where('feature_type', 'voopress')
+            ->pluck('id');
+
+        if ($voopressPageIds->isNotEmpty()) {
+            UserSection::whereIn('user_page_id', $voopressPageIds)->delete();
+        }
+
+        // Delete VooPress pages
+        UserPage::where('user_id', $userId)
+            ->where('feature_type', 'voopress')
+            ->delete();
+
+        // Clear VooPress config from website
+        $website = UserWebsite::where('user_id', $userId)->first();
+        if ($website) {
+            $website->update([
+                'is_voopress' => false,
+                'voopress_theme' => null,
+                'voopress_config' => null,
+            ]);
+        }
+
+        \Log::info("Cleaned up VooPress feature for user {$userId}");
     }
 
     /**
@@ -439,7 +640,8 @@ class DatabaseManager
                 $this->systemPageService->createTemplateSystemPages($template, $featureType);
             }
         } elseif ($instance->isWebsiteDatabase()) {
-            $website = UserWebsite::find($instance->reference_id);
+            // reference_id is user_id for website databases, not website_id
+            $website = UserWebsite::where('user_id', $instance->reference_id)->first();
             if ($website) {
                 $this->systemPageService->createUserWebsiteSystemPages($website, $featureType);
             }
@@ -462,7 +664,8 @@ class DatabaseManager
                 $this->systemPageService->removeTemplateSystemPages($template, $featureType);
             }
         } elseif ($instance->isWebsiteDatabase()) {
-            $website = UserWebsite::find($instance->reference_id);
+            // reference_id is user_id for website databases, not website_id
+            $website = UserWebsite::where('user_id', $instance->reference_id)->first();
             if ($website) {
                 $this->systemPageService->removeUserWebsiteSystemPages($website, $featureType);
             }

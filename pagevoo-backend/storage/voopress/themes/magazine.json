@@ -1,0 +1,112 @@
+{
+  "id": "magazine",
+  "name": "Magazine",
+  "description": "Multi-column layout with featured content areas, perfect for news sites",
+  "preview_image": "/themes/magazine-preview.png",
+  "tier_required": "niche",
+  "layout": {
+    "type": "full-width",
+    "max_width": "1400px"
+  },
+  "colors": {
+    "primary": "#DC2626",
+    "secondary": "#991B1B",
+    "background": "#F9FAFB",
+    "text": "#111827",
+    "accent": "#F59E0B"
+  },
+  "typography": {
+    "heading_font": "Inter, system-ui, sans-serif",
+    "body_font": "Inter, system-ui, sans-serif",
+    "base_size": "15px"
+  },
+  "homepage": {
+    "show_featured": true,
+    "featured_count": 5,
+    "posts_per_page": 12,
+    "excerpt_length": 120,
+    "show_author": true,
+    "show_date": true,
+    "show_categories": true,
+    "grid_columns": 3
+  },
+  "sidebar": {
+    "position": "none",
+    "widgets": []
+  },
+  "header": {
+    "style": "magazine",
+    "show_tagline": false,
+    "show_search": true,
+    "menu_position": "top",
+    "show_trending": true
+  },
+  "footer": {
+    "style": "magazine",
+    "columns": 4,
+    "show_copyright": true,
+    "show_social": true,
+    "show_newsletter": true
+  },
+  "pages": {
+    "home": {
+      "title": "Home",
+      "slug": "",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "magazine" }
+        },
+        {
+          "type": "voopress-featured-grid",
+          "config": { "layout": "hero-grid", "count": 5 }
+        },
+        {
+          "type": "voopress-category-sections",
+          "config": { "show_categories": 3, "posts_per_category": 4 }
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    },
+    "about": {
+      "title": "About",
+      "slug": "about",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "magazine" }
+        },
+        {
+          "type": "voopress-page-content",
+          "config": { "default_content": "<h1>About Our Publication</h1><p>Your trusted source for news and articles...</p>" }
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    },
+    "contact": {
+      "title": "Contact",
+      "slug": "contact",
+      "sections": [
+        {
+          "type": "voopress-header",
+          "config": { "style": "magazine" }
+        },
+        {
+          "type": "voopress-contact-page",
+          "config": {}
+        },
+        {
+          "type": "voopress-footer",
+          "config": {}
+        }
+      ]
+    }
+  },
+  "css_overrides": ""
+}
