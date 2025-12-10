@@ -104,13 +104,13 @@ const AVAILABLE_FEATURES: Feature[] = [
     available: true
   },
   {
-    type: 'shop',
-    name: 'E-Commerce Shop',
+    type: 'ecommerce',
+    name: 'E-commerce',
     description: 'Full e-commerce solution with products, cart, checkout, and payments',
     icon: MdShoppingCart,
     requiresUAS: true,
     tier: 'niche',
-    available: false
+    available: true
   },
   {
     type: 'file_hoster',

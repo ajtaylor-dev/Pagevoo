@@ -35,6 +35,7 @@ import { ContactFormConfigModal } from '@/components/script-features/contact-for
 import { BlogManager } from '@/components/BlogManager'
 import { EventsManager } from '@/components/EventsManager'
 import { BookingManager } from '@/components/BookingManager'
+import EcommerceManager from '@/components/EcommerceManager'
 import UasManager from '@/components/UasManager'
 import { VooPressSetupWizard, VooPressDashboard } from '@/components/voopress'
 import { contactFormService } from '@/services/contactFormService'
@@ -321,6 +322,7 @@ export default function WebsiteBuilder() {
   const [showBlogManager, setShowBlogManager] = useState(false)
   const [showEventsManager, setShowEventsManager] = useState(false)
   const [showBookingManager, setShowBookingManager] = useState(false)
+  const [showEcommerceManager, setShowEcommerceManager] = useState(false)
   const [showVooPressSetup, setShowVooPressSetup] = useState(false)
   const [showVooPressDashboard, setShowVooPressDashboard] = useState(false)
   const [voopressStatus, setVoopressStatus] = useState<{
@@ -1999,6 +2001,8 @@ export default function WebsiteBuilder() {
         isUasInstalled={installedFeatures.includes('user_access_system')}
         setShowBookingManager={setShowBookingManager}
         isBookingInstalled={installedFeatures.includes('booking')}
+        setShowEcommerceManager={setShowEcommerceManager}
+        isEcommerceInstalled={installedFeatures.includes('ecommerce')}
         setShowVooPressSetup={setShowVooPressSetup}
         setShowVooPressDashboard={setShowVooPressDashboard}
         isVooPress={voopressStatus?.is_voopress || false}
@@ -2159,6 +2163,7 @@ export default function WebsiteBuilder() {
               onOpenBlogManager={() => setShowBlogManager(true)}
               onOpenEventsManager={() => setShowEventsManager(true)}
               onOpenBookingManager={() => setShowBookingManager(true)}
+              onOpenEcommerceManager={() => setShowEcommerceManager(true)}
               onOpenVooPressDashboard={() => setShowVooPressDashboard(true)}
               bookingType={bookingType}
             />
@@ -2379,6 +2384,16 @@ export default function WebsiteBuilder() {
           onBookingTypeChange={setBookingType}
           onServicesChange={loadBookingSettings}
           installedFeatures={installedFeatures}
+        />
+      )}
+
+      {/* E-commerce Manager Modal */}
+      {showEcommerceManager && (
+        <EcommerceManager
+          isOpen={showEcommerceManager}
+          onClose={() => setShowEcommerceManager(false)}
+          type="website"
+          referenceId={user?.id || 0}
         />
       )}
 

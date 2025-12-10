@@ -14,6 +14,7 @@ import UserDashboardPreview from '@/components/script-features/uas/UserDashboard
 import ForgotPasswordPreview from '@/components/script-features/uas/ForgotPasswordPreview'
 import VerifyEmailPreview from '@/components/script-features/uas/VerifyEmailPreview'
 import BookingFormPreview from '@/components/script-features/booking/BookingFormPreview'
+import ProductGridPreview from '@/components/script-features/ecommerce/ProductGridPreview'
 // VooPress section previews
 import {
   VooPressHeaderPreview,
@@ -253,6 +254,16 @@ export const useRenderSection = ({
               css={section.css}
               bookingType={bookingType}
               services={bookingServices}
+            />
+          )
+          break
+
+        // E-commerce - Product Grid
+        case 'product-grid':
+          sectionContent = (
+            <ProductGridPreview
+              content={section.content || {}}
+              css={section.css}
             />
           )
           break

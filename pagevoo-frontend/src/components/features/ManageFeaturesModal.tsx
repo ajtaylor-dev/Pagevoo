@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { databaseService } from '@/services/databaseService'
-import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary, MdArticle, MdEvent, MdPeople, MdCalendarMonth, MdEdit } from 'react-icons/md'
+import { MdEmail, MdClose, MdSettings, MdDelete, MdPhotoLibrary, MdArticle, MdEvent, MdPeople, MdCalendarMonth, MdEdit, MdShoppingCart } from 'react-icons/md'
 import type { IconType } from 'react-icons'
 
 interface ManageFeaturesModalProps {
@@ -60,6 +60,12 @@ const FEATURE_DETAILS: Record<string, InstalledFeature> = {
     name: 'VooPress',
     description: 'WordPress-style blog with themes, widgets, menus, and dashboard',
     icon: MdEdit
+  },
+  ecommerce: {
+    type: 'ecommerce',
+    name: 'E-commerce',
+    description: 'Full e-commerce solution with products, variants, cart, checkout, and payment processing',
+    icon: MdShoppingCart
   }
 }
 
@@ -76,7 +82,11 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
   const [uninstalling, setUninstalling] = useState<string | null>(null)
   const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null)
   const [databaseId, setDatabaseId] = useState<number | null>(null)
-  const [dependencyError, setDependencyError] = useState<{ feature: string; blocking: string[] } | null>(null)
+  const [dependencyError, setDependencyError] = useState<{
+    feature: string;
+    blocking: string[];
+    reasons?: Record<string, string>;
+  } | null>(null)
 
   useEffect(() => {
     loadInstalledFeatures()
@@ -142,7 +152,8 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
       if (err.error_code === 'FEATURE_DEPENDENCY' || err.blocking_features) {
         setDependencyError({
           feature: featureType,
-          blocking: err.blocking_features || []
+          blocking: err.blocking_features || [],
+          reasons: err.blocking_reasons || {}
         })
         setConfirmUninstall(null)
       } else {
@@ -183,14 +194,25 @@ export const ManageFeaturesModal: React.FC<ManageFeaturesModalProps> = ({
                   <p className="text-sm text-amber-700 mb-2">
                     <strong>{FEATURE_DETAILS[dependencyError.feature]?.name || dependencyError.feature}</strong> cannot be uninstalled because other features depend on it.
                   </p>
-                  <p className="text-sm text-amber-600">
-                    Please uninstall the following features first:
+                  <p className="text-sm text-amber-600 mb-2">
+                    Please uninstall or reconfigure the following features first:
                   </p>
-                  <ul className="mt-2 space-y-1">
+                  <ul className="mt-2 space-y-2">
                     {dependencyError.blocking.map((blockingFeature) => (
-                      <li key={blockingFeature} className="flex items-center gap-2 text-sm text-amber-700">
-                        <span className="w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
-                        {FEATURE_DETAILS[blockingFeature]?.name || blockingFeature}
+                      <li key={blockingFeature} className="text-sm">
+                        <div className="flex items-start gap-2">
+                          <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 flex-shrink-0"></span>
+                          <div>
+                            <span className="font-medium text-amber-800">
+                              {FEATURE_DETAILS[blockingFeature]?.name || blockingFeature}
+                            </span>
+                            {dependencyError.reasons?.[blockingFeature] && (
+                              <p className="text-amber-600 mt-0.5 text-xs">
+                                {dependencyError.reasons[blockingFeature]}
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </li>
                     ))}
                   </ul>

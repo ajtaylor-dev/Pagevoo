@@ -296,7 +296,7 @@ export const LeftSidebar: React.FC<LeftSidebarProps> = ({
                             }
 
                             return (
-                              <DraggableSectionItem key={section.type} section={section}>
+                              <DraggableSectionItem key={section.id} section={section}>
                                 <div
                                   className="group relative w-full cursor-grab active:cursor-grabbing"
                                   title={section.description}

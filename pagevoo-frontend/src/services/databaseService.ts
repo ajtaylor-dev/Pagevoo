@@ -255,28 +255,46 @@ class DatabaseService {
    * Uninstall a feature from a database
    */
   async uninstallFeature(instanceId: number, featureType: string): Promise<DatabaseInstance> {
-    const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
-      `${API_BASE}/${instanceId}/features/uninstall`,
-      { feature_type: featureType }
-    )
+    try {
+      const response = await apiClient.post<ApiResponse<DatabaseInstance>>(
+        `${API_BASE}/${instanceId}/features/uninstall`,
+        { feature_type: featureType }
+      )
 
-    if (!response.data.success || !response.data.data) {
-      // Create an error object that includes additional response data
-      const error: any = new Error(response.data.message || 'Failed to uninstall feature')
-      // Include error_code and blocking_features for dependency errors
-      if ((response.data as any).error_code) {
-        error.error_code = (response.data as any).error_code
+      if (!response.data.success || !response.data.data) {
+        // Create an error object that includes additional response data
+        const error: any = new Error(response.data.message || 'Failed to uninstall feature')
+        // Include error_code and blocking_features for dependency errors
+        if ((response.data as any).error_code) {
+          error.error_code = (response.data as any).error_code
+        }
+        if ((response.data as any).blocking_features) {
+          error.blocking_features = (response.data as any).blocking_features
+        }
+        if ((response.data as any).blocking_reasons) {
+          error.blocking_reasons = (response.data as any).blocking_reasons
+        }
+        if ((response.data as any).details) {
+          error.details = (response.data as any).details
+        }
+        throw error
       }
-      if ((response.data as any).blocking_features) {
-        error.blocking_features = (response.data as any).blocking_features
+
+      return response.data.data
+    } catch (error: any) {
+      // Handle axios errors (like 409 Conflict for dependency errors)
+      if (error.response?.data) {
+        const responseData = error.response.data
+        const customError: any = new Error(responseData.message || 'Failed to uninstall feature')
+        customError.error_code = responseData.error_code
+        customError.blocking_features = responseData.blocking_features
+        customError.blocking_reasons = responseData.blocking_reasons
+        customError.details = responseData.details
+        throw customError
       }
-      if ((response.data as any).details) {
-        error.details = (response.data as any).details
-      }
+      // Re-throw if not an axios error
       throw error
     }
-
-    return response.data.data
   }
 
   /**
@@ -394,7 +412,7 @@ class DatabaseService {
       user_access_system: 'User Access System',
       booking: 'Booking System',
       voopress: 'VooPress',
-      shop: 'E-Commerce Shop',
+      ecommerce: 'E-commerce',
       file_hoster: 'File Hosting',
       video_sharing: 'Video Sharing',
       social_platform: 'Social Platform',

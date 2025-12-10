@@ -349,7 +349,7 @@ class SystemPageService
         $names = [
             'user_access_system' => 'User Access System',
             'booking' => 'Booking System',
-            'shop' => 'E-Commerce Shop',
+            'ecommerce' => 'E-commerce',
         ];
 
         return $names[$featureType] ?? ucwords(str_replace('_', ' ', $featureType));

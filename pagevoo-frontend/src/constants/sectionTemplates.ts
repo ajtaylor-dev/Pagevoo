@@ -568,4 +568,62 @@ export const specialSections = [
       }
     }
   },
+  // E-commerce
+  {
+    id: 'product-grid-1',
+    type: 'product-grid',
+    category: 'ecommerce',
+    name: 'Product Grid - 3 Columns',
+    thumbnail: '/thumbnails/product-grid.png',
+    content: {
+      title: 'Featured Products',
+      subtitle: 'Discover our latest collection',
+      ecommerceConfig: {
+        layout: 'grid',
+        columns: 3,
+        showPrice: true,
+        showAddToCart: true,
+        showCategory: true,
+        primaryColor: '#8B5CF6',
+      }
+    }
+  },
+  {
+    id: 'product-grid-2',
+    type: 'product-grid',
+    category: 'ecommerce',
+    name: 'Product Grid - 4 Columns',
+    thumbnail: '/thumbnails/product-grid.png',
+    content: {
+      title: 'Shop All',
+      subtitle: 'Browse our complete catalog',
+      ecommerceConfig: {
+        layout: 'grid',
+        columns: 4,
+        showPrice: true,
+        showAddToCart: true,
+        showCategory: false,
+        primaryColor: '#8B5CF6',
+      }
+    }
+  },
+  {
+    id: 'product-list-1',
+    type: 'product-grid',
+    category: 'ecommerce',
+    name: 'Product List View',
+    thumbnail: '/thumbnails/product-list.png',
+    content: {
+      title: 'All Products',
+      subtitle: 'Detailed view of our offerings',
+      ecommerceConfig: {
+        layout: 'list',
+        columns: 1,
+        showPrice: true,
+        showAddToCart: true,
+        showCategory: true,
+        primaryColor: '#8B5CF6',
+      }
+    }
+  },
 ]

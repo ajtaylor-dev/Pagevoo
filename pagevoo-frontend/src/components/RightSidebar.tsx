@@ -13,6 +13,7 @@ import UserDashboardProperties from './properties/UserDashboardProperties'
 import ForgotPasswordProperties from './properties/ForgotPasswordProperties'
 import VerifyEmailProperties from './properties/VerifyEmailProperties'
 import BookingFormProperties from './properties/BookingFormProperties'
+import ProductGridProperties from './properties/ProductGridProperties'
 import VooPressProperties from './properties/VooPressProperties'
 import type { ThemeColors } from '@/config/themes'
 
@@ -103,6 +104,7 @@ interface RightSidebarProps {
   onOpenBlogManager?: () => void
   onOpenEventsManager?: () => void
   onOpenBookingManager?: () => void
+  onOpenEcommerceManager?: () => void
   onOpenVooPressDashboard?: () => void
   bookingType?: 'appointments' | 'restaurant' | 'classes' | 'events' | 'rentals'
 }
@@ -139,6 +141,7 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
   onOpenBlogManager,
   onOpenEventsManager,
   onOpenBookingManager,
+  onOpenEcommerceManager,
   onOpenVooPressDashboard,
   bookingType = 'appointments'
 }) => {
@@ -523,6 +526,15 @@ export const RightSidebar: React.FC<RightSidebarProps> = ({
                   onUpdateSection={handleUpdateSectionContent}
                   onOpenBookingManager={onOpenBookingManager}
                   bookingType={bookingType}
+                />
+              )}
+
+              {/* E-commerce Product Grid Section Controls */}
+              {selectedSection.type === 'product-grid' && (
+                <ProductGridProperties
+                  section={selectedSection}
+                  onUpdateSection={handleUpdateSectionContent}
+                  onOpenEcommerceManager={onOpenEcommerceManager}
                 />
               )}
 

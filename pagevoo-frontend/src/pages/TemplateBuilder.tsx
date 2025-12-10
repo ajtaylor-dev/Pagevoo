@@ -31,6 +31,7 @@ import { ContactFormConfigModal } from '@/components/script-features/contact-for
 import { BlogManager } from '@/components/BlogManager'
 import { EventsManager } from '@/components/EventsManager'
 import { BookingManager } from '@/components/BookingManager'
+import EcommerceManager from '@/components/EcommerceManager'
 import UasManager from '@/components/UasManager'
 import { contactFormService } from '@/services/contactFormService'
 import { NavbarProperties } from '../components/properties/NavbarProperties'
@@ -238,6 +239,7 @@ export default function TemplateBuilder() {
   const [showBlogManager, setShowBlogManager] = useState(false)
   const [showEventsManager, setShowEventsManager] = useState(false)
   const [showBookingManager, setShowBookingManager] = useState(false)
+  const [showEcommerceManager, setShowEcommerceManager] = useState(false)
   const [showUasManager, setShowUasManager] = useState(false)
   const [bookingType, setBookingType] = useState<'appointments' | 'restaurant' | 'classes' | 'events' | 'rentals'>('appointments')
   const [bookingServices, setBookingServices] = useState<Array<{
@@ -1072,6 +1074,8 @@ export default function TemplateBuilder() {
         isUasInstalled={installedFeatures.includes('user_access_system')}
         setShowBookingManager={setShowBookingManager}
         isBookingInstalled={installedFeatures.includes('booking')}
+        setShowEcommerceManager={setShowEcommerceManager}
+        isEcommerceInstalled={installedFeatures.includes('ecommerce')}
       />
 
       {/* Toolbar */}
@@ -1229,6 +1233,7 @@ export default function TemplateBuilder() {
               onOpenBlogManager={() => setShowBlogManager(true)}
               onOpenEventsManager={() => setShowEventsManager(true)}
               onOpenBookingManager={() => setShowBookingManager(true)}
+              onOpenEcommerceManager={() => setShowEcommerceManager(true)}
               bookingType={bookingType}
             />
           </>
@@ -1437,6 +1442,16 @@ export default function TemplateBuilder() {
           onBookingTypeChange={setBookingType}
           onServicesChange={loadBookingSettings}
           installedFeatures={installedFeatures}
+        />
+      )}
+
+      {/* E-commerce Manager Modal */}
+      {showEcommerceManager && (
+        <EcommerceManager
+          isOpen={showEcommerceManager}
+          onClose={() => setShowEcommerceManager(false)}
+          type="template"
+          referenceId={template?.id || 0}
         />
       )}
 

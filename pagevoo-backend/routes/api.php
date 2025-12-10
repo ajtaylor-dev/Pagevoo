@@ -21,6 +21,7 @@ use App\Http\Controllers\Api\V1\UasAuthController;
 use App\Http\Controllers\Api\V1\SystemPageController;
 use App\Http\Controllers\Api\V1\BookingController;
 use App\Http\Controllers\Api\V1\VooPressController;
+use App\Http\Controllers\Api\V1\EcommerceController;
 
 /*
 |--------------------------------------------------------------------------
@@ -373,6 +374,45 @@ Route::prefix('v1')->group(function () {
             // Blog content (for VooPress previews)
             Route::get('/blog/posts', [VooPressController::class, 'getBlogPosts']);
             Route::get('/blog/categories', [VooPressController::class, 'getBlogCategories']);
+        });
+
+        // E-commerce Feature
+        Route::prefix('ecommerce')->group(function () {
+            // Dashboard
+            Route::get('/dashboard', [EcommerceController::class, 'dashboard']);
+
+            // Products
+            Route::get('/products', [EcommerceController::class, 'getProducts']);
+            Route::get('/products/{id}', [EcommerceController::class, 'getProduct']);
+            Route::post('/products', [EcommerceController::class, 'storeProduct']);
+            Route::put('/products/{id}', [EcommerceController::class, 'updateProduct']);
+            Route::delete('/products/{id}', [EcommerceController::class, 'destroyProduct']);
+
+            // Variants
+            Route::get('/products/{id}/variants', [EcommerceController::class, 'getVariants']);
+            Route::post('/products/{id}/variants', [EcommerceController::class, 'storeVariant']);
+            Route::delete('/products/{productId}/variants/{variantId}', [EcommerceController::class, 'destroyVariant']);
+
+            // Categories
+            Route::get('/categories/all', [EcommerceController::class, 'getCategories']);
+            Route::post('/categories', [EcommerceController::class, 'storeCategory']);
+            Route::put('/categories/{id}', [EcommerceController::class, 'updateCategory']);
+            Route::delete('/categories/{id}', [EcommerceController::class, 'destroyCategory']);
+
+            // Orders
+            Route::get('/orders', [EcommerceController::class, 'getOrders']);
+            Route::get('/orders/{id}', [EcommerceController::class, 'getOrder']);
+            Route::patch('/orders/{id}/status', [EcommerceController::class, 'updateOrderStatus']);
+
+            // Customers
+            Route::get('/customers', [EcommerceController::class, 'getCustomers']);
+
+            // Inventory
+            Route::get('/inventory/low-stock', [EcommerceController::class, 'getLowStockProducts']);
+
+            // Settings
+            Route::get('/settings', [EcommerceController::class, 'getSettings']);
+            Route::put('/settings', [EcommerceController::class, 'updateSettings']);
         });
 
     });

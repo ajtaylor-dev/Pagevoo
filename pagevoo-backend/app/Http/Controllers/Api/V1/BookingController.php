@@ -68,6 +68,11 @@ class BookingController extends Controller
             return response()->json(['error' => 'Database not found'], 404);
         }
 
+        // Check if booking feature is installed
+        if (!$this->isBookingInstalled()) {
+            return response()->json(['success' => true, 'data' => ['today' => 0, 'pending' => 0, 'upcoming' => 0, 'week' => 0, 'month' => 0]]);
+        }
+
         try {
             $today = Carbon::today()->toDateString();
             $weekStart = Carbon::now()->startOfWeek()->toDateString();
@@ -125,6 +130,11 @@ class BookingController extends Controller
         $dbName = $this->connectToUserDatabase($type, $referenceId);
         if (!$dbName) {
             return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        // Check if booking feature is installed
+        if (!$this->isBookingInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
         }
 
         try {
@@ -732,6 +742,11 @@ class BookingController extends Controller
             return response()->json(['error' => 'Database not found'], 404);
         }
 
+        // Check if booking feature is installed
+        if (!$this->isBookingInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
         try {
             $services = DB::connection('user_db')
                 ->table('booking_services')
@@ -991,6 +1006,11 @@ class BookingController extends Controller
             return response()->json(['error' => 'Database not found'], 404);
         }
 
+        // Check if booking feature is installed
+        if (!$this->isBookingInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
         try {
             $categories = DB::connection('user_db')
                 ->table('booking_categories')
@@ -1170,6 +1190,11 @@ class BookingController extends Controller
         $dbName = $this->connectToUserDatabase($type, $referenceId);
         if (!$dbName) {
             return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        // Check if booking feature is installed
+        if (!$this->isBookingInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
         }
 
         try {
@@ -1403,6 +1428,11 @@ class BookingController extends Controller
             return response()->json(['error' => 'Database not found'], 404);
         }
 
+        // Check if booking feature is installed
+        if (!$this->isBookingInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
         try {
             $resources = DB::connection('user_db')
                 ->table('booking_resources')
@@ -1566,6 +1596,11 @@ class BookingController extends Controller
         $dbName = $this->connectToUserDatabase($type, $referenceId);
         if (!$dbName) {
             return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        // Check if booking feature is installed
+        if (!$this->isBookingInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
         }
 
         try {
@@ -1788,9 +1823,37 @@ class BookingController extends Controller
         }
 
         try {
+            // Check if booking_settings table exists first
+            $tableExists = DB::connection('user_db')
+                ->select("SHOW TABLES LIKE 'booking_settings'");
+
+            if (empty($tableExists)) {
+                // Return default settings if table doesn't exist (booking feature not installed)
+                \Log::info('Booking settings table does not exist for reference_id: ' . $referenceId);
+                return response()->json([
+                    'success' => true,
+                    'data' => [
+                        'currency' => 'USD',
+                        'timezone' => 'America/New_York',
+                        'slot_interval_minutes' => 15,
+                        'min_advance_booking_hours' => 2,
+                        'max_advance_booking_days' => 60,
+                        'require_payment' => false,
+                        'send_confirmation_email' => true,
+                        'send_reminder_email' => true,
+                        'reminder_hours_before' => 24,
+                    ]
+                ]);
+            }
+
             $settings = $this->getSettingsArray($referenceId);
             return response()->json(['success' => true, 'data' => $settings]);
         } catch (\Exception $e) {
+            \Log::error('Booking settings error: ' . $e->getMessage(), [
+                'reference_id' => $referenceId,
+                'type' => $type,
+                'trace' => $e->getTraceAsString()
+            ]);
             return response()->json(['error' => 'Failed to fetch settings: ' . $e->getMessage()], 500);
         }
     }
@@ -1837,6 +1900,21 @@ class BookingController extends Controller
     }
 
     // ==================== HELPERS ====================
+
+    /**
+     * Check if booking feature is installed (tables exist).
+     * Returns false if booking tables don't exist, true otherwise.
+     */
+    private function isBookingInstalled(): bool
+    {
+        try {
+            $tableExists = DB::connection('user_db')
+                ->select("SHOW TABLES LIKE 'booking_services'");
+            return !empty($tableExists);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
 
     /**
      * Get settings as array

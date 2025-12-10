@@ -32,7 +32,7 @@ export const SectionThumbnail: React.FC<SectionThumbnailProps> = ({ section }) =
     return (
       <div className="w-full aspect-video bg-gradient-to-br from-[#e8f0e6] to-[#d4e5d0] rounded border border-[#d4e5d0] flex items-center justify-center">
         <div className="text-2xl font-bold text-[#5a7a54]">
-          {section.label.charAt(0)}
+          {section.label?.charAt(0) || '?'}
         </div>
       </div>
     )

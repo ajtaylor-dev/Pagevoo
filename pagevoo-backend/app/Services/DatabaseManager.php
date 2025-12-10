@@ -20,10 +20,90 @@ class DatabaseManager
      * Feature dependency mapping.
      * Key = feature that depends on other features
      * Value = array of features it depends on
+     *
+     * Example: 'voopress' => ['blog'] means VooPress requires Blog to be installed
      */
     protected array $featureDependencies = [
         'voopress' => ['blog'],  // VooPress requires blog feature
+        'ecommerce' => ['user_access_system'],  // E-commerce requires UAS for customer accounts
+        // Add more static dependencies as features are developed
     ];
+
+    /**
+     * Configuration-based dependencies.
+     * Returns features that are required based on the configuration of another feature.
+     *
+     * @param DatabaseInstance $instance
+     * @param string $featureType The feature being checked for uninstall
+     * @return array Features that depend on this one based on configuration
+     */
+    protected function getConfigurationDependencies(DatabaseInstance $instance, string $featureType): array
+    {
+        $blocking = [];
+
+        // Check if booking feature has payments enabled and depends on e-commerce
+        if ($featureType === 'ecommerce') {
+            $installedFeatures = $this->getInstalledFeatureTypes($instance);
+
+            if (in_array('booking', $installedFeatures)) {
+                // Check if booking has any services with pricing or deposits
+                try {
+                    Config::set('database.connections.temp', [
+                        'driver' => 'mysql',
+                        'host' => Config::get('database.connections.mysql.host'),
+                        'port' => Config::get('database.connections.mysql.port'),
+                        'database' => $instance->database_name,
+                        'username' => Config::get('database.connections.mysql.username'),
+                        'password' => Config::get('database.connections.mysql.password'),
+                        'charset' => 'utf8mb4',
+                        'collation' => 'utf8mb4_unicode_ci',
+                    ]);
+
+                    $hasPaidServices = DB::connection('temp')
+                        ->table('booking_services')
+                        ->where('price', '>', 0)
+                        ->exists();
+
+                    $hasDeposits = DB::connection('temp')
+                        ->table('bookings')
+                        ->where('deposit_paid', '>', 0)
+                        ->orWhere('amount_paid', '>', 0)
+                        ->exists();
+
+                    DB::purge('temp');
+
+                    if ($hasPaidServices || $hasDeposits) {
+                        $blocking[] = 'booking';
+                    }
+                } catch (Exception $e) {
+                    // If we can't check, assume it's safe to uninstall
+                    \Log::warning("Could not check booking payment dependencies: " . $e->getMessage());
+                }
+            }
+        }
+
+        // Check if any feature requires UAS (user access system)
+        if ($featureType === 'user_access_system') {
+            // Future: Check if e-commerce has customer accounts enabled
+            // Future: Check if other features require user authentication
+        }
+
+        return $blocking;
+    }
+
+    /**
+     * Helper method to get just the feature types as a simple array.
+     *
+     * @param DatabaseInstance $instance
+     * @return array Simple array of feature type strings
+     */
+    protected function getInstalledFeatureTypes(DatabaseInstance $instance): array
+    {
+        $features = $instance->getInstalledFeatures();
+        return array_map(function($feature) {
+            return $feature['type'];
+        }, $features);
+    }
 
     public function __construct()
     {
@@ -55,25 +135,75 @@ class DatabaseManager
      *
      * @param DatabaseInstance $instance
      * @param string $featureType
-     * @return array ['can_uninstall' => bool, 'blocking_features' => array]
+     * @return array ['can_uninstall' => bool, 'blocking_features' => array, 'blocking_reasons' => array]
      */
     public function canUninstallFeature(DatabaseInstance $instance, string $featureType): array
     {
-        $installedFeatures = $instance->getInstalledFeatures();
-        $dependentFeatures = $this->getDependentFeatures($featureType);
-
-        // Find which dependent features are currently installed
+        $installedFeatureTypes = $this->getInstalledFeatureTypes($instance);
         $blockingFeatures = [];
+        $blockingReasons = [];
+
+        // Check static dependencies (Feature A requires Feature B)
+        $dependentFeatures = $this->getDependentFeatures($featureType);
         foreach ($dependentFeatures as $dependent) {
-            if (isset($installedFeatures[$dependent])) {
+            if (in_array($dependent, $installedFeatureTypes)) {
                 $blockingFeatures[] = $dependent;
+                $blockingReasons[$dependent] = 'This feature requires ' . $this->getFeatureName($featureType);
+            }
+        }
+
+        // Check configuration-based dependencies
+        $configDependencies = $this->getConfigurationDependencies($instance, $featureType);
+        foreach ($configDependencies as $dependent) {
+            if (!in_array($dependent, $blockingFeatures)) {
+                $blockingFeatures[] = $dependent;
+                $blockingReasons[$dependent] = $this->getConfigurationDependencyReason($featureType, $dependent);
             }
         }
 
         return [
             'can_uninstall' => empty($blockingFeatures),
             'blocking_features' => $blockingFeatures,
+            'blocking_reasons' => $blockingReasons,
         ];
+    }
+
+    /**
+     * Get a human-readable name for a feature type.
+     *
+     * @param string $featureType
+     * @return string
+     */
+    protected function getFeatureName(string $featureType): string
+    {
+        $names = [
+            'contact_form' => 'Contact Form',
+            'image_gallery' => 'Image Gallery',
+            'blog' => 'Blog',
+            'events' => 'Events Calendar',
+            'user_access_system' => 'User Access System',
+            'booking' => 'Booking System',
+            'voopress' => 'VooPress',
+            'ecommerce' => 'E-commerce',
+        ];
+
+        return $names[$featureType] ?? ucwords(str_replace('_', ' ', $featureType));
+    }
+
+    /**
+     * Get the reason why a feature is blocking uninstallation due to configuration.
+     *
+     * @param string $featureType The feature being uninstalled
+     * @param string $dependent The feature blocking the uninstallation
+     * @return string
+     */
+    protected function getConfigurationDependencyReason(string $featureType, string $dependent): string
+    {
+        if ($featureType === 'ecommerce' && $dependent === 'booking') {
+            return 'Booking System has paid services or received payments that depend on the E-commerce feature';
+        }
+
+        return $this->getFeatureName($dependent) . ' is configured to use ' . $this->getFeatureName($featureType);
     }
     /**
      * Create a new database for a template.
@@ -517,6 +647,19 @@ class DatabaseManager
             'voopress' => [
                 // VooPress uses existing feature tables (blog, events, etc.)
                 // Configuration is stored in user_websites table
+            ],
+            'ecommerce' => [
+                'ecommerce_settings',
+                'ecommerce_cart_items',
+                'ecommerce_carts',
+                'ecommerce_order_items',
+                'ecommerce_orders',
+                'ecommerce_customer_addresses',
+                'ecommerce_customers',
+                'ecommerce_digital_files',
+                'ecommerce_product_variants',
+                'ecommerce_products',
+                'ecommerce_categories',
             ],
         ];
 
