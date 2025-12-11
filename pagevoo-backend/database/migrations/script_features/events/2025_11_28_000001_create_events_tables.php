@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         // Event Categories Table
-        Schema::create('event_categories', function (Blueprint $table) {
+        Schema::connection('user_db')->create('event_categories', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('name');
@@ -32,7 +32,7 @@ return new class extends Migration
         });
 
         // Events Table
-        Schema::create('events', function (Blueprint $table) {
+        Schema::connection('user_db')->create('events', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('title');
@@ -97,7 +97,7 @@ return new class extends Migration
         });
 
         // Event Settings Table (per-website configuration)
-        Schema::create('event_settings', function (Blueprint $table) {
+        Schema::connection('user_db')->create('event_settings', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id')->unique();
             $table->integer('events_per_page')->default(10);
@@ -124,8 +124,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('events');
-        Schema::dropIfExists('event_categories');
-        Schema::dropIfExists('event_settings');
+        Schema::connection('user_db')->dropIfExists('events');
+        Schema::connection('user_db')->dropIfExists('event_categories');
+        Schema::connection('user_db')->dropIfExists('event_settings');
     }
 };

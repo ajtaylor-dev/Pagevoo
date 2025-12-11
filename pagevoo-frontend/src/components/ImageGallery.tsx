@@ -35,25 +35,25 @@ export interface Album {
 interface ImageGalleryProps {
   isOpen: boolean
   onClose: () => void
-  templateId: number
-  images: ImageItem[]
-  albums: Album[]
+  templateId?: number
+  images?: ImageItem[]
+  albums?: Album[]
   onUpload: (file: File, albumId: string | null) => Promise<void>
   onDelete: (imageId: string) => Promise<void>
   onRename: (imageId: string, newName: string) => Promise<void>
   onUpdateImage?: (imageId: string, updates: Partial<ImageItem>) => Promise<void>
   onMoveImage?: (imageId: string, albumId: string | null) => Promise<void>
-  onCreateAlbum: (name: string, description?: string) => Promise<Album>
-  onUpdateAlbum: (albumId: string, updates: Partial<Album>) => Promise<void>
-  onDeleteAlbum: (albumId: string) => Promise<void>
+  onCreateAlbum?: (name: string, description?: string) => Promise<Album>
+  onUpdateAlbum?: (albumId: string, updates: Partial<Album>) => Promise<void>
+  onDeleteAlbum?: (albumId: string) => Promise<void>
   onSetAlbumCover?: (albumId: string, imageId: string) => Promise<void>
 }
 
 export function ImageGallery({
   isOpen,
   onClose,
-  images,
-  albums,
+  images = [],
+  albums = [],
   onUpload,
   onDelete,
   onRename,
@@ -238,6 +238,7 @@ export function ImageGallery({
       alert('Album name cannot be empty')
       return
     }
+    if (!onUpdateAlbum) return
     try {
       await onUpdateAlbum(albumId, { name: editName.trim(), description: editDescription.trim() })
       setEditingAlbumId(null)
@@ -252,6 +253,7 @@ export function ImageGallery({
       alert('Album name cannot be empty')
       return
     }
+    if (!onCreateAlbum) return
     setCreatingAlbum(true)
     try {
       await onCreateAlbum(newAlbumName.trim(), newAlbumDescription.trim())
@@ -269,6 +271,7 @@ export function ImageGallery({
   const handleDeleteAlbum = async (albumId: string) => {
     const album = albums.find(a => a.id === albumId)
     if (!album) return
+    if (!onDeleteAlbum) return
 
     const hasImages = images.some(img => img.album_id === albumId)
     const message = hasImages

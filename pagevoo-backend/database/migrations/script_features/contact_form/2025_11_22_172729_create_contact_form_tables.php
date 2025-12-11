@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         // Contact Forms Configuration Table
-        Schema::create('contact_forms', function (Blueprint $table) {
+        Schema::connection('user_db')->create('contact_forms', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('name'); // Admin reference name
@@ -35,7 +35,7 @@ return new class extends Migration
         });
 
         // Form Submissions Table
-        Schema::create('form_submissions', function (Blueprint $table) {
+        Schema::connection('user_db')->create('form_submissions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('contact_form_id')->constrained('contact_forms')->onDelete('cascade');
             $table->json('data'); // Submitted field values
@@ -52,7 +52,7 @@ return new class extends Migration
         });
 
         // Support Tickets Table (extends form_submissions)
-        Schema::create('support_tickets', function (Blueprint $table) {
+        Schema::connection('user_db')->create('support_tickets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('form_submission_id')->constrained('form_submissions')->onDelete('cascade');
             $table->string('ticket_number', 50)->unique(); // TICK-YYYYMMDD-XXXX format
@@ -75,8 +75,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('support_tickets');
-        Schema::dropIfExists('form_submissions');
-        Schema::dropIfExists('contact_forms');
+        Schema::connection('user_db')->dropIfExists('support_tickets');
+        Schema::connection('user_db')->dropIfExists('form_submissions');
+        Schema::connection('user_db')->dropIfExists('contact_forms');
     }
 };

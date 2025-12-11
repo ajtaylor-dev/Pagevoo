@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // Groups table - hierarchical user groups
-        Schema::create('uas_groups', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_groups', function (Blueprint $table) {
             $table->id();
             $table->string('name'); // Admins, Moderators, Members, Banned
             $table->string('slug')->unique();
@@ -26,7 +26,7 @@ return new class extends Migration
         });
 
         // Users table - site visitors who register
-        Schema::create('uas_users', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_users', function (Blueprint $table) {
             $table->id();
             $table->foreignId('group_id')->constrained('uas_groups')->onDelete('restrict');
             $table->string('email')->unique();
@@ -47,7 +47,7 @@ return new class extends Migration
         });
 
         // Email verification tokens
-        Schema::create('uas_email_verifications', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_email_verifications', function (Blueprint $table) {
             $table->id();
             $table->string('email');
             $table->string('token', 64)->unique();
@@ -57,7 +57,7 @@ return new class extends Migration
         });
 
         // Security questions - predefined questions
-        Schema::create('uas_security_questions', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_security_questions', function (Blueprint $table) {
             $table->id();
             $table->string('question');
             $table->integer('order')->default(0);
@@ -66,7 +66,7 @@ return new class extends Migration
         });
 
         // User security answers - each user answers 3 questions
-        Schema::create('uas_user_security_answers', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_user_security_answers', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('uas_users')->onDelete('cascade');
             $table->foreignId('question_id')->constrained('uas_security_questions')->onDelete('cascade');
@@ -77,7 +77,7 @@ return new class extends Migration
         });
 
         // Password reset tokens
-        Schema::create('uas_password_resets', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_password_resets', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('uas_users')->onDelete('cascade');
             $table->string('token', 64)->unique();
@@ -88,7 +88,7 @@ return new class extends Migration
         });
 
         // User sessions for "remember me" functionality
-        Schema::create('uas_sessions', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_sessions', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('uas_users')->onDelete('cascade');
             $table->string('token', 64)->unique();
@@ -101,7 +101,7 @@ return new class extends Migration
         });
 
         // Page access control - which pages are locked
-        Schema::create('uas_page_access', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_page_access', function (Blueprint $table) {
             $table->id();
             $table->string('page_id'); // References page in website JSON
             $table->string('page_name'); // For display in manager
@@ -117,7 +117,7 @@ return new class extends Migration
         });
 
         // Permission definitions - expandable as features are installed
-        Schema::create('uas_permission_definitions', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_permission_definitions', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique(); // e.g., 'page.view', 'booking.create', 'shop.purchase'
             $table->string('name'); // Human readable name
@@ -129,7 +129,7 @@ return new class extends Migration
         });
 
         // UAS Settings
-        Schema::create('uas_settings', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_settings', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
             $table->text('value')->nullable();
@@ -137,7 +137,7 @@ return new class extends Migration
         });
 
         // Activity log for auditing
-        Schema::create('uas_activity_log', function (Blueprint $table) {
+        Schema::connection('user_db')->create('uas_activity_log', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->nullable()->constrained('uas_users')->onDelete('set null');
             $table->string('action'); // login, logout, register, password_reset, etc.
@@ -153,16 +153,16 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('uas_activity_log');
-        Schema::dropIfExists('uas_settings');
-        Schema::dropIfExists('uas_permission_definitions');
-        Schema::dropIfExists('uas_page_access');
-        Schema::dropIfExists('uas_sessions');
-        Schema::dropIfExists('uas_password_resets');
-        Schema::dropIfExists('uas_user_security_answers');
-        Schema::dropIfExists('uas_security_questions');
-        Schema::dropIfExists('uas_email_verifications');
-        Schema::dropIfExists('uas_users');
-        Schema::dropIfExists('uas_groups');
+        Schema::connection('user_db')->dropIfExists('uas_activity_log');
+        Schema::connection('user_db')->dropIfExists('uas_settings');
+        Schema::connection('user_db')->dropIfExists('uas_permission_definitions');
+        Schema::connection('user_db')->dropIfExists('uas_page_access');
+        Schema::connection('user_db')->dropIfExists('uas_sessions');
+        Schema::connection('user_db')->dropIfExists('uas_password_resets');
+        Schema::connection('user_db')->dropIfExists('uas_user_security_answers');
+        Schema::connection('user_db')->dropIfExists('uas_security_questions');
+        Schema::connection('user_db')->dropIfExists('uas_email_verifications');
+        Schema::connection('user_db')->dropIfExists('uas_users');
+        Schema::connection('user_db')->dropIfExists('uas_groups');
     }
 };

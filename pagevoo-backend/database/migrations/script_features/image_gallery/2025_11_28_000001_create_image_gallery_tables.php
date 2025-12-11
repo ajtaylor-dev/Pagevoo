@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         // Image Galleries Configuration Table
-        Schema::create('image_galleries', function (Blueprint $table) {
+        Schema::connection('user_db')->create('image_galleries', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('name'); // Admin reference name
@@ -37,7 +37,7 @@ return new class extends Migration
         });
 
         // Gallery Albums/Categories Table
-        Schema::create('gallery_albums', function (Blueprint $table) {
+        Schema::connection('user_db')->create('gallery_albums', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('name');
@@ -53,7 +53,7 @@ return new class extends Migration
         });
 
         // Gallery Images Table
-        Schema::create('gallery_images', function (Blueprint $table) {
+        Schema::connection('user_db')->create('gallery_images', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->uuid('album_id')->nullable(); // Can be null (uncategorized)
@@ -83,7 +83,7 @@ return new class extends Migration
         });
 
         // Gallery to Image mapping for multi-gallery support
-        Schema::create('gallery_image_mappings', function (Blueprint $table) {
+        Schema::connection('user_db')->create('gallery_image_mappings', function (Blueprint $table) {
             $table->id();
             $table->foreignId('gallery_id')->constrained('image_galleries')->onDelete('cascade');
             $table->uuid('image_id');
@@ -107,9 +107,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('gallery_image_mappings');
-        Schema::dropIfExists('gallery_images');
-        Schema::dropIfExists('gallery_albums');
-        Schema::dropIfExists('image_galleries');
+        Schema::connection('user_db')->dropIfExists('gallery_image_mappings');
+        Schema::connection('user_db')->dropIfExists('gallery_images');
+        Schema::connection('user_db')->dropIfExists('gallery_albums');
+        Schema::connection('user_db')->dropIfExists('image_galleries');
     }
 };

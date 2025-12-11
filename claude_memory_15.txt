@@ -1,0 +1,320 @@
+===========================================
+PAGEVOO DEVELOPMENT SESSION - MEMORY FILE #15
+Date: December 11, 2025
+Feature: E-commerce Marketplaces Refactor + Migration Bug Fixes
+===========================================
+
+SESSION OVERVIEW:
+-----------------
+Refactored E-commerce system from "Categories" to "Marketplaces" with sub-market support. Fixed critical multi-tenant migration bugs across ALL feature migrations. Applied rename migration to correct user database.
+
+CRITICAL BUG FIXED - DATABASE MISMATCH:
+---------------------------------------
+**Issue:** Migration was applied to wrong database (pagevoo_website_9b07f514) but actual user database for reference_id=5 was (pagevoo_website_fa6a0c46)
+
+**Error Messages:**
+- "SQLSTATE[42S02]: Base table or view not found: 1146 Table 'pagevoo_website_fa6a0c46.ecommerce_marketplaces' doesn't exist"
+- Products API returned 500 error
+- Marketplaces API returned 500 error
+
+**Root Cause:** DatabaseInstance record for website reference_id=5 pointed to different database than what I was testing with.
+
+**Fix Applied:**
+- Created PHP script to apply rename migration to correct database
+- Renamed table: ecommerce_categories -> ecommerce_marketplaces
+- Renamed column: category_id -> marketplace_id in ecommerce_products
+- Dropped and re-added foreign keys with correct references
+
+MARKETPLACES REFACTOR (100% Complete):
+======================================
+
+BACKEND CHANGES:
+----------------
+
+1. **New Migration Created:**
+   Location: pagevoo-backend/database/migrations/script_features/ecommerce/2025_12_10_000003_rename_categories_to_marketplaces.php
+
+   Actions:
+   - Drops foreign keys on category_id and parent_id
+   - Renames ecommerce_categories -> ecommerce_marketplaces
+   - Renames category_id -> marketplace_id in ecommerce_products
+   - Re-adds foreign keys with new references
+
+2. **EcommerceController.php Updates (~1250 lines):**
+
+   Renamed Methods:
+   - getCategories() -> getMarketplaces() (lines 520-561)
+     * Added submarkets_count and products_count aggregates
+   - storeCategory() -> storeMarketplace() (lines 566-649)
+     * Creates gallery album on marketplace creation
+   - updateCategory() -> updateMarketplace() (lines 654-715)
+     * Regenerates slug if name changes
+   - destroyCategory() -> destroyMarketplace() (lines 720-781)
+     * Moves sub-markets to parent on deletion
+     * Cleans up gallery album
+   - getCategoryGalleryImages() -> getMarketplaceGalleryImages() (lines 786-826)
+
+   Products Methods Updated:
+   - getProducts() (line 217): joins ecommerce_marketplaces, returns marketplace_name
+   - storeProduct() (line 364): uses marketplace_id
+   - updateProduct() (line 445): $fields array has marketplace_id
+
+3. **API Routes Updated (api.php lines 396-401):**
+
+   Old Routes:
+   - GET /categories/all
+   - POST /categories
+   - PUT /categories/{id}
+   - DELETE /categories/{id}
+   - GET /categories/{id}/gallery-images
+
+   New Routes:
+   - GET /marketplaces/all -> getMarketplaces
+   - POST /marketplaces -> storeMarketplace
+   - PUT /marketplaces/{id} -> updateMarketplace
+   - DELETE /marketplaces/{id} -> destroyMarketplace
+   - GET /marketplaces/{id}/gallery-images -> getMarketplaceGalleryImages
+
+FRONTEND CHANGES:
+-----------------
+
+1. **EcommerceManager.tsx (~1170 lines) - FULLY REFACTORED:**
+
+   Imports (line 2):
+   - Added MdStorefront, MdSubdirectoryArrowRight icons
+
+   Types (line 5):
+   - TabType: 'products' | 'marketplaces' | 'orders' | 'customers' | 'settings'
+
+   Interfaces:
+   - Product interface (lines 14-30): marketplace_id, marketplace_name
+   - Marketplace interface (lines 32-41): id, parent_id, name, slug, description, image, gallery_album_id, products_count, submarkets_count, is_active
+
+   State (lines 74-103):
+   - marketplaces: Marketplace[]
+   - showMarketplaceModal: boolean
+   - editingMarketplace: Marketplace | null
+   - marketplaceForm: { name, description, parent_id, is_active }
+
+   Load Functions:
+   - loadMarketplaces() (lines 148-159): GET /marketplaces/all
+
+   CRUD Handlers (lines 265-328):
+   - handleCreateMarketplace(parentId?): Opens modal, sets parent_id for sub-markets
+   - handleEditMarketplace(marketplace): Populates form for editing
+   - handleSaveMarketplace(): POST or PUT based on editingMarketplace
+   - handleDeleteMarketplace(id): Confirms and deletes
+
+   Helper Functions:
+   - getTopLevelMarketplaces(): Filters marketplaces where parent_id is null
+   - getSubmarkets(parentId): Filters marketplaces by parent_id
+
+   UI Components:
+   - Marketplaces tab button (lines 374-383): Between Products and Orders
+   - Products table "Marketplace" column (line 455, 481): Shows marketplace_name
+   - Marketplaces tab content (lines 529-637):
+     * Hierarchical display with cards for top-level marketplaces
+     * Sub-markets nested with indentation + arrow icon
+     * "Add Sub-market" button on each marketplace
+     * Edit/Delete buttons + Active/Inactive badges
+   - Product Modal marketplace dropdown (lines 942-954):
+     * Shows all marketplaces with sub-market indent (-- prefix)
+   - Marketplace Modal (lines 1044-1125):
+     * Dynamic title based on editing state and parent_id
+     * Name input with context-aware placeholder
+     * Description textarea
+     * Parent Marketplace dropdown (only for top-level create)
+     * Active checkbox
+     * Create/Update button with dynamic text
+
+2. **FeatureInstallModal.tsx Updates:**
+
+   Interface (line 37):
+   - Added requiresImageGallery?: boolean
+
+   E-commerce Config (line 113):
+   - Added requiresImageGallery: true
+
+   Dependencies Display (lines 411-418):
+   - Removed colored badges from header
+   - Added plain text "Dependencies: UAS, Image Gallery" below "Click to Install"
+   - Uses filter/join pattern for dynamic list
+
+   Dependency Validation (lines 209-224):
+   - Refactored to unified missingDependencies[] array
+   - Single alert message listing all missing dependencies
+   - Checks: UAS, Blog, Image Gallery
+
+3. **ImageGallery.tsx Crash Fix:**
+
+   Error: "Cannot read properties of undefined (reading 'length')" at line 346
+
+   Root Cause: WebsiteBuilder.tsx did NOT pass albums prop to ImageGallery
+
+   Fix (3 edits):
+   - Interface: Made templateId?, images?, albums?, onCreateAlbum?, onUpdateAlbum?, onDeleteAlbum? all optional
+   - Destructuring: Added default values images = [], albums = []
+   - Handler guards: Added if (!onUpdateAlbum) return, if (!onCreateAlbum) return, if (!onDeleteAlbum) return
+
+MIGRATION BUG FIXES (All Feature Migrations):
+=============================================
+
+**Pattern Applied to ALL migrations:**
+- Schema::create() -> Schema::connection('user_db')->create()
+- Schema::dropIfExists() -> Schema::connection('user_db')->dropIfExists()
+- DB::table() -> DB::connection('user_db')->table()
+
+**Files Fixed:**
+
+1. ecommerce/2025_12_10_000001_create_ecommerce_tables.php
+   - Line 339: DB::table() -> DB::connection('user_db')->table() (settings insert)
+
+2. user_access_system/2025_11_28_000001_create_uas_tables.php
+   - All 11 Schema::create() and Schema::dropIfExists() calls fixed
+
+3. user_access_system/2025_11_28_000002_seed_uas_defaults.php
+   - All 8 DB::table() calls fixed
+
+4. booking/2025_12_09_000001_create_booking_tables.php
+   - All 10 Schema::create and 9 Schema::dropIfExists fixed
+
+5. image_gallery/2025_11_28_000001_create_image_gallery_tables.php
+   - Schema::create AND dropIfExists fixed
+
+6. blog/2025_11_28_000001_create_blog_tables.php
+   - Schema::create AND dropIfExists fixed
+
+7. contact_form/2025_11_22_172729_create_contact_form_tables.php
+   - Schema::create AND dropIfExists fixed
+
+8. events/2025_11_28_000001_create_events_tables.php
+   - Schema::create AND dropIfExists fixed
+
+**DatabaseManager.php installFeature() Fix (lines 574-585):**
+Added user_db connection configuration alongside temp connection:
+```php
+Config::set('database.connections.user_db', [
+    'driver' => 'mysql',
+    'host' => Config::get('database.connections.mysql.host'),
+    'port' => Config::get('database.connections.mysql.port'),
+    'database' => $instance->database_name,
+    'username' => Config::get('database.connections.mysql.username'),
+    'password' => Config::get('database.connections.mysql.password'),
+    'charset' => 'utf8mb4',
+    'collation' => 'utf8mb4_unicode_ci',
+]);
+DB::purge('user_db');
+```
+
+DATABASE STATE (pagevoo_website_fa6a0c46):
+==========================================
+
+E-commerce Tables (11):
+- ecommerce_marketplaces (renamed from ecommerce_categories)
+- ecommerce_products (has marketplace_id column)
+- ecommerce_product_variants
+- ecommerce_digital_files
+- ecommerce_customers
+- ecommerce_customer_addresses
+- ecommerce_orders
+- ecommerce_order_items
+- ecommerce_carts
+- ecommerce_cart_items
+- ecommerce_settings
+
+UAS Tables (11):
+- uas_groups
+- uas_users
+- uas_email_verifications
+- uas_security_questions
+- uas_user_security_answers
+- uas_password_resets
+- uas_sessions
+- uas_page_access
+- uas_permission_definitions
+- uas_settings
+- uas_activity_log
+
+Image Gallery Tables (3):
+- gallery_albums
+- gallery_images
+- gallery_image_mappings
+
+ecommerce_marketplaces Columns (13):
+- id (bigint unsigned)
+- parent_id (bigint unsigned, nullable) - for sub-markets
+- gallery_album_id (char(36), UUID) - links to gallery_albums
+- name (varchar(255))
+- slug (varchar(255))
+- description (text)
+- image (varchar(255))
+- meta_title (varchar(255))
+- meta_description (text)
+- order (int)
+- is_active (tinyint)
+- created_at (timestamp)
+- updated_at (timestamp)
+
+FILES CHANGED THIS SESSION:
+===========================
+
+Backend (11 files):
+- pagevoo-backend/app/Http/Controllers/Api/V1/EcommerceController.php (+281 lines refactored)
+- pagevoo-backend/app/Services/DatabaseManager.php (+17 lines)
+- pagevoo-backend/routes/api.php (+14 lines routes updated)
+- pagevoo-backend/database/migrations/script_features/ecommerce/2025_12_10_000001_create_ecommerce_tables.php (+2 lines)
+- pagevoo-backend/database/migrations/script_features/ecommerce/2025_12_10_000002_add_gallery_album_to_ecommerce.php (NEW)
+- pagevoo-backend/database/migrations/script_features/ecommerce/2025_12_10_000003_rename_categories_to_marketplaces.php (NEW)
+- pagevoo-backend/database/migrations/script_features/user_access_system/*.php (connection fixes)
+- pagevoo-backend/database/migrations/script_features/booking/*.php (connection fixes)
+- pagevoo-backend/database/migrations/script_features/blog/*.php (connection fixes)
+- pagevoo-backend/database/migrations/script_features/events/*.php (connection fixes)
+- pagevoo-backend/database/migrations/script_features/image_gallery/*.php (connection fixes)
+- pagevoo-backend/database/migrations/script_features/contact_form/*.php (connection fixes)
+
+Frontend (3 files):
+- pagevoo-frontend/src/components/EcommerceManager.tsx (+456 lines, major refactor)
+- pagevoo-frontend/src/components/ImageGallery.tsx (+19 lines, crash fix)
+- pagevoo-frontend/src/components/features/FeatureInstallModal.tsx (+44 lines)
+
+KEY LEARNINGS:
+==============
+
+1. **Always verify database instance reference:**
+   - DatabaseInstance.where(type, reference_id) returns the ACTUAL database
+   - Don't assume database names - always query to confirm
+
+2. **Multi-tenant connection pattern:**
+   - Migrations MUST use Schema::connection('user_db')
+   - Seed data MUST use DB::connection('user_db')
+   - installFeature() must configure BOTH temp AND user_db connections
+
+3. **Marketplace hierarchy design:**
+   - Top-level marketplaces have parent_id = null
+   - Sub-markets have parent_id pointing to parent marketplace
+   - On parent deletion, sub-markets are moved up (parent_id set to parent's parent)
+
+4. **Frontend optional props pattern:**
+   - Make callback props optional when component used in different contexts
+   - Add default values for array props
+   - Guard handlers with if (!callback) return
+
+SERVERS RUNNING:
+================
+- Backend (Laravel): http://localhost:8000 (background)
+- Frontend (React/Vite): http://localhost:5173 (background)
+
+COMPLETED FEATURES STATUS:
+==========================
+- Contact Form (Trial)
+- Image Gallery (Trial)
+- Blog (Brochure)
+- Events Calendar (Brochure)
+- User Access System - UAS (Niche)
+- Booking System (Niche)
+- VooPress (Niche)
+- E-commerce (Niche) - 100% COMPLETE with Marketplaces
+
+===========================================
+END OF MEMORY FILE #15
+===========================================

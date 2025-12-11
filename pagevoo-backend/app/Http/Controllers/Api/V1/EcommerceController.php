@@ -65,6 +65,20 @@ class EcommerceController extends Controller
     }
 
     /**
+     * Check if image gallery feature is installed (tables exist)
+     */
+    private function isImageGalleryInstalled(): bool
+    {
+        try {
+            $tableExists = DB::connection('user_db')
+                ->select("SHOW TABLES LIKE 'gallery_albums'");
+            return !empty($tableExists);
+        } catch (\Exception $e) {
+            return false;
+        }
+    }
+
+    /**
      * Get settings as array
      */
     private function getSettingsArray(int $referenceId): array
@@ -200,12 +214,12 @@ class EcommerceController extends Controller
         try {
             $query = DB::connection('user_db')
                 ->table('ecommerce_products')
-                ->leftJoin('ecommerce_categories', 'ecommerce_products.category_id', '=', 'ecommerce_categories.id')
-                ->select('ecommerce_products.*', 'ecommerce_categories.name as category_name');
+                ->leftJoin('ecommerce_marketplaces', 'ecommerce_products.marketplace_id', '=', 'ecommerce_marketplaces.id')
+                ->select('ecommerce_products.*', 'ecommerce_marketplaces.name as marketplace_name');
 
-            // Filter by category
-            if ($request->has('category_id') && $request->category_id) {
-                $query->where('ecommerce_products.category_id', $request->category_id);
+            // Filter by marketplace
+            if ($request->has('marketplace_id') && $request->marketplace_id) {
+                $query->where('ecommerce_products.marketplace_id', $request->marketplace_id);
             }
 
             // Filter by status
@@ -213,9 +227,9 @@ class EcommerceController extends Controller
                 $query->where('ecommerce_products.is_active', $request->is_active);
             }
 
-            // Filter by type
-            if ($request->has('type') && $request->type) {
-                $query->where('ecommerce_products.type', $request->type);
+            // Filter by product type (physical/digital) - use 'product_type' to avoid conflict with 'type' (database type)
+            if ($request->has('product_type') && $request->product_type) {
+                $query->where('ecommerce_products.type', $request->product_type);
             }
 
             // Search
@@ -237,9 +251,9 @@ class EcommerceController extends Controller
                     ->where('product_id', $product->id)
                     ->count();
 
-                $product->category = $product->category_name ? (object) [
-                    'id' => $product->category_id,
-                    'name' => $product->category_name,
+                $product->marketplace = $product->marketplace_name ? (object) [
+                    'id' => $product->marketplace_id,
+                    'name' => $product->marketplace_name,
                 ] : null;
             }
 
@@ -273,9 +287,9 @@ class EcommerceController extends Controller
         try {
             $product = DB::connection('user_db')
                 ->table('ecommerce_products')
-                ->leftJoin('ecommerce_categories', 'ecommerce_products.category_id', '=', 'ecommerce_categories.id')
+                ->leftJoin('ecommerce_marketplaces', 'ecommerce_products.marketplace_id', '=', 'ecommerce_marketplaces.id')
                 ->where('ecommerce_products.id', $id)
-                ->select('ecommerce_products.*', 'ecommerce_categories.name as category_name')
+                ->select('ecommerce_products.*', 'ecommerce_marketplaces.name as marketplace_name')
                 ->first();
 
             if (!$product) {
@@ -289,9 +303,9 @@ class EcommerceController extends Controller
                 ->orderBy('order')
                 ->get();
 
-            $product->category = $product->category_name ? (object) [
-                'id' => $product->category_id,
-                'name' => $product->category_name,
+            $product->marketplace = $product->marketplace_name ? (object) [
+                'id' => $product->marketplace_id,
+                'name' => $product->marketplace_name,
             ] : null;
 
             return response()->json(['success' => true, 'data' => $product]);
@@ -347,7 +361,7 @@ class EcommerceController extends Controller
                 ->insertGetId([
                     'name' => $request->name,
                     'slug' => $slug,
-                    'category_id' => $request->category_id,
+                    'marketplace_id' => $request->marketplace_id,
                     'description' => $request->description,
                     'long_description' => $request->long_description,
                     'type' => $request->product_type,
@@ -428,7 +442,7 @@ class EcommerceController extends Controller
                 $updateData['slug'] = $slug;
             }
 
-            $fields = ['name', 'category_id', 'description', 'long_description', 'type', 'featured_image',
+            $fields = ['name', 'marketplace_id', 'description', 'long_description', 'featured_image',
                 'gallery_images', 'sku', 'has_variants', 'price', 'compare_at_price', 'cost_price',
                 'track_inventory', 'stock_quantity', 'low_stock_threshold', 'weight', 'weight_unit',
                 'dimensions', 'requires_shipping', 'is_featured', 'is_active', 'order',
@@ -442,6 +456,11 @@ class EcommerceController extends Controller
                     }
                     $updateData[$field] = $value;
                 }
+            }
+
+            // Handle product_type separately (maps to 'type' column)
+            if ($request->has('product_type')) {
+                $updateData['type'] = $request->product_type;
             }
 
             DB::connection('user_db')
@@ -493,12 +512,12 @@ class EcommerceController extends Controller
         }
     }
 
-    // ==================== CATEGORIES CRUD ====================
+    // ==================== MARKETPLACES CRUD ====================
 
     /**
-     * Get all categories
+     * Get all marketplaces
      */
-    public function getCategories(Request $request): JsonResponse
+    public function getMarketplaces(Request $request): JsonResponse
     {
         $type = $request->query('type', 'template');
         $referenceId = $request->query('reference_id');
@@ -518,29 +537,33 @@ class EcommerceController extends Controller
         }
 
         try {
-            $categories = DB::connection('user_db')
-                ->table('ecommerce_categories')
+            $marketplaces = DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
                 ->orderBy('order')
                 ->get();
 
-            // Add products count
-            foreach ($categories as $category) {
-                $category->products_count = DB::connection('user_db')
+            // Add products count and sub-market count
+            foreach ($marketplaces as $marketplace) {
+                $marketplace->products_count = DB::connection('user_db')
                     ->table('ecommerce_products')
-                    ->where('category_id', $category->id)
+                    ->where('marketplace_id', $marketplace->id)
+                    ->count();
+                $marketplace->submarkets_count = DB::connection('user_db')
+                    ->table('ecommerce_marketplaces')
+                    ->where('parent_id', $marketplace->id)
                     ->count();
             }
 
-            return response()->json(['success' => true, 'data' => $categories]);
+            return response()->json(['success' => true, 'data' => $marketplaces]);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to fetch categories: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to fetch marketplaces: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Create category
+     * Create marketplace
      */
-    public function storeCategory(Request $request): JsonResponse
+    public function storeMarketplace(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:template,website',
@@ -566,19 +589,42 @@ class EcommerceController extends Controller
             $slug = Str::slug($request->name);
             $baseSlug = $slug;
             $counter = 1;
-            while (DB::connection('user_db')->table('ecommerce_categories')->where('slug', $slug)->exists()) {
+            while (DB::connection('user_db')->table('ecommerce_marketplaces')->where('slug', $slug)->exists()) {
                 $slug = $baseSlug . '-' . $counter++;
             }
 
             // Get max order
             $maxOrder = DB::connection('user_db')
-                ->table('ecommerce_categories')
+                ->table('ecommerce_marketplaces')
                 ->max('order') ?? -1;
 
-            $categoryId = DB::connection('user_db')
-                ->table('ecommerce_categories')
+            // Auto-create a gallery album for this marketplace (if image_gallery is installed)
+            $galleryAlbumId = null;
+            if ($this->isImageGalleryInstalled()) {
+                $galleryAlbumId = (string) Str::uuid();
+                $albumOrder = DB::connection('user_db')
+                    ->table('gallery_albums')
+                    ->max('order') ?? -1;
+
+                DB::connection('user_db')
+                    ->table('gallery_albums')
+                    ->insert([
+                        'id' => $galleryAlbumId,
+                        'website_id' => $request->reference_id,
+                        'name' => 'Products: ' . $request->name,
+                        'description' => 'Product images for marketplace: ' . $request->name,
+                        'image_count' => 0,
+                        'order' => $albumOrder + 1,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+            }
+
+            $marketplaceId = DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
                 ->insertGetId([
                     'parent_id' => $request->parent_id,
+                    'gallery_album_id' => $galleryAlbumId,
                     'name' => $request->name,
                     'slug' => $slug,
                     'description' => $request->description,
@@ -591,21 +637,21 @@ class EcommerceController extends Controller
                     'updated_at' => now(),
                 ]);
 
-            $category = DB::connection('user_db')
-                ->table('ecommerce_categories')
-                ->where('id', $categoryId)
+            $marketplace = DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
+                ->where('id', $marketplaceId)
                 ->first();
 
-            return response()->json(['success' => true, 'data' => $category, 'message' => 'Category created successfully'], 201);
+            return response()->json(['success' => true, 'data' => $marketplace, 'message' => 'Marketplace created successfully'], 201);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to create category: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to create marketplace: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Update category
+     * Update marketplace
      */
-    public function updateCategory(Request $request, int $id): JsonResponse
+    public function updateMarketplace(Request $request, int $id): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'type' => 'required|in:template,website',
@@ -622,23 +668,23 @@ class EcommerceController extends Controller
         }
 
         try {
-            $category = DB::connection('user_db')
-                ->table('ecommerce_categories')
+            $marketplace = DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
                 ->where('id', $id)
                 ->first();
 
-            if (!$category) {
-                return response()->json(['error' => 'Category not found'], 404);
+            if (!$marketplace) {
+                return response()->json(['error' => 'Marketplace not found'], 404);
             }
 
             $updateData = ['updated_at' => now()];
 
             // Update slug if name changed
-            if ($request->has('name') && $request->name !== $category->name) {
+            if ($request->has('name') && $request->name !== $marketplace->name) {
                 $slug = Str::slug($request->name);
                 $baseSlug = $slug;
                 $counter = 1;
-                while (DB::connection('user_db')->table('ecommerce_categories')->where('slug', $slug)->where('id', '!=', $id)->exists()) {
+                while (DB::connection('user_db')->table('ecommerce_marketplaces')->where('slug', $slug)->where('id', '!=', $id)->exists()) {
                     $slug = $baseSlug . '-' . $counter++;
                 }
                 $updateData['slug'] = $slug;
@@ -653,25 +699,25 @@ class EcommerceController extends Controller
             }
 
             DB::connection('user_db')
-                ->table('ecommerce_categories')
+                ->table('ecommerce_marketplaces')
                 ->where('id', $id)
                 ->update($updateData);
 
-            $category = DB::connection('user_db')
-                ->table('ecommerce_categories')
+            $marketplace = DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
                 ->where('id', $id)
                 ->first();
 
-            return response()->json(['success' => true, 'data' => $category, 'message' => 'Category updated successfully']);
+            return response()->json(['success' => true, 'data' => $marketplace, 'message' => 'Marketplace updated successfully']);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to update category: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to update marketplace: ' . $e->getMessage()], 500);
         }
     }
 
     /**
-     * Delete category
+     * Delete marketplace
      */
-    public function destroyCategory(Request $request, int $id): JsonResponse
+    public function destroyMarketplace(Request $request, int $id): JsonResponse
     {
         $type = $request->query('type', 'template');
         $referenceId = $request->query('reference_id');
@@ -686,24 +732,133 @@ class EcommerceController extends Controller
         }
 
         try {
+            // Get marketplace first to retrieve gallery_album_id
+            $marketplace = DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
+                ->where('id', $id)
+                ->first();
+
+            if (!$marketplace) {
+                return response()->json(['error' => 'Marketplace not found'], 404);
+            }
+
             // Orphan products instead of deleting them
             DB::connection('user_db')
                 ->table('ecommerce_products')
-                ->where('category_id', $id)
-                ->update(['category_id' => null, 'updated_at' => now()]);
+                ->where('marketplace_id', $id)
+                ->update(['marketplace_id' => null, 'updated_at' => now()]);
 
-            $deleted = DB::connection('user_db')
-                ->table('ecommerce_categories')
+            // Move sub-markets to parent or orphan them
+            DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
+                ->where('parent_id', $id)
+                ->update(['parent_id' => $marketplace->parent_id, 'updated_at' => now()]);
+
+            // Delete associated gallery album if it exists
+            if ($marketplace->gallery_album_id && $this->isImageGalleryInstalled()) {
+                // First delete all images in the album
+                DB::connection('user_db')
+                    ->table('gallery_images')
+                    ->where('album_id', $marketplace->gallery_album_id)
+                    ->delete();
+
+                // Then delete the album
+                DB::connection('user_db')
+                    ->table('gallery_albums')
+                    ->where('id', $marketplace->gallery_album_id)
+                    ->delete();
+            }
+
+            DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
                 ->where('id', $id)
                 ->delete();
 
-            if (!$deleted) {
-                return response()->json(['error' => 'Category not found'], 404);
+            return response()->json(['success' => true, 'message' => 'Marketplace deleted successfully']);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to delete marketplace: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get gallery images for a marketplace
+     */
+    public function getMarketplaceGalleryImages(Request $request, int $marketplaceId): JsonResponse
+    {
+        $type = $request->query('type', 'template');
+        $referenceId = $request->query('reference_id');
+
+        if (!$referenceId) {
+            return response()->json(['error' => 'Reference ID is required'], 400);
+        }
+
+        $dbName = $this->connectToUserDatabase($type, $referenceId);
+        if (!$dbName) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        if (!$this->isImageGalleryInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        try {
+            // Get marketplace to find the album_id
+            $marketplace = DB::connection('user_db')
+                ->table('ecommerce_marketplaces')
+                ->where('id', $marketplaceId)
+                ->first();
+
+            if (!$marketplace || !$marketplace->gallery_album_id) {
+                return response()->json(['success' => true, 'data' => []]);
             }
 
-            return response()->json(['success' => true, 'message' => 'Category deleted successfully']);
+            // Get images from the album
+            $images = DB::connection('user_db')
+                ->table('gallery_images')
+                ->where('album_id', $marketplace->gallery_album_id)
+                ->orderBy('order')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $images]);
         } catch (\Exception $e) {
-            return response()->json(['error' => 'Failed to delete category: ' . $e->getMessage()], 500);
+            return response()->json(['error' => 'Failed to get gallery images: ' . $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Get all gallery images (for product image picker)
+     */
+    public function getAllGalleryImages(Request $request): JsonResponse
+    {
+        $type = $request->query('type', 'template');
+        $referenceId = $request->query('reference_id');
+
+        if (!$referenceId) {
+            return response()->json(['error' => 'Reference ID is required'], 400);
+        }
+
+        $dbName = $this->connectToUserDatabase($type, $referenceId);
+        if (!$dbName) {
+            return response()->json(['error' => 'Database not found'], 404);
+        }
+
+        if (!$this->isImageGalleryInstalled()) {
+            return response()->json(['success' => true, 'data' => []]);
+        }
+
+        try {
+            // Get all images, grouped by album
+            $images = DB::connection('user_db')
+                ->table('gallery_images')
+                ->leftJoin('gallery_albums', 'gallery_images.album_id', '=', 'gallery_albums.id')
+                ->select('gallery_images.*', 'gallery_albums.name as album_name')
+                ->orderBy('gallery_albums.name')
+                ->orderBy('gallery_images.order')
+                ->get();
+
+            return response()->json(['success' => true, 'data' => $images]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Failed to get gallery images: ' . $e->getMessage()], 500);
         }
     }
 

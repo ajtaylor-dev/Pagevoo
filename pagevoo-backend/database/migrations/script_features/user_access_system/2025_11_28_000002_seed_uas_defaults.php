@@ -13,7 +13,7 @@ return new class extends Migration
         $now = now();
 
         // Default Groups
-        DB::table('uas_groups')->insert([
+        DB::connection('user_db')->table('uas_groups')->insert([
             [
                 'name' => 'Admins',
                 'slug' => 'admins',
@@ -66,7 +66,7 @@ return new class extends Migration
         ]);
 
         // Security Questions
-        DB::table('uas_security_questions')->insert([
+        DB::connection('user_db')->table('uas_security_questions')->insert([
             [
                 'question' => 'What is your mother\'s maiden name?',
                 'order' => 1,
@@ -105,7 +105,7 @@ return new class extends Migration
         ]);
 
         // Core Permission Definitions (UAS base permissions)
-        DB::table('uas_permission_definitions')->insert([
+        DB::connection('user_db')->table('uas_permission_definitions')->insert([
             [
                 'key' => 'page.view_locked',
                 'name' => 'View Locked Pages',
@@ -139,7 +139,7 @@ return new class extends Migration
         ]);
 
         // Default Settings
-        DB::table('uas_settings')->insert([
+        DB::connection('user_db')->table('uas_settings')->insert([
             [
                 'key' => 'registration_enabled',
                 'value' => 'true',
@@ -196,9 +196,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::table('uas_settings')->truncate();
-        DB::table('uas_permission_definitions')->where('feature', null)->delete();
-        DB::table('uas_security_questions')->truncate();
-        DB::table('uas_groups')->where('is_system', true)->delete();
+        DB::connection('user_db')->table('uas_settings')->truncate();
+        DB::connection('user_db')->table('uas_permission_definitions')->where('feature', null)->delete();
+        DB::connection('user_db')->table('uas_security_questions')->truncate();
+        DB::connection('user_db')->table('uas_groups')->where('is_system', true)->delete();
     }
 };

@@ -393,11 +393,15 @@ Route::prefix('v1')->group(function () {
             Route::post('/products/{id}/variants', [EcommerceController::class, 'storeVariant']);
             Route::delete('/products/{productId}/variants/{variantId}', [EcommerceController::class, 'destroyVariant']);
 
-            // Categories
-            Route::get('/categories/all', [EcommerceController::class, 'getCategories']);
-            Route::post('/categories', [EcommerceController::class, 'storeCategory']);
-            Route::put('/categories/{id}', [EcommerceController::class, 'updateCategory']);
-            Route::delete('/categories/{id}', [EcommerceController::class, 'destroyCategory']);
+            // Marketplaces (with sub-markets support)
+            Route::get('/marketplaces/all', [EcommerceController::class, 'getMarketplaces']);
+            Route::post('/marketplaces', [EcommerceController::class, 'storeMarketplace']);
+            Route::put('/marketplaces/{id}', [EcommerceController::class, 'updateMarketplace']);
+            Route::delete('/marketplaces/{id}', [EcommerceController::class, 'destroyMarketplace']);
+            Route::get('/marketplaces/{id}/gallery-images', [EcommerceController::class, 'getMarketplaceGalleryImages']);
+
+            // Gallery Images (for product image picker)
+            Route::get('/gallery-images', [EcommerceController::class, 'getAllGalleryImages']);
 
             // Orders
             Route::get('/orders', [EcommerceController::class, 'getOrders']);

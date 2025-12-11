@@ -13,7 +13,7 @@ return new class extends Migration
     public function up(): void
     {
         // Booking Categories (for organizing services)
-        Schema::create('booking_categories', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_categories', function (Blueprint $table) {
             $table->id();
             $table->string('name');
             $table->string('slug')->unique();
@@ -25,7 +25,7 @@ return new class extends Migration
         });
 
         // Booking Services (what can be booked)
-        Schema::create('booking_services', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_services', function (Blueprint $table) {
             $table->id();
             $table->foreignId('category_id')->nullable()->constrained('booking_categories')->nullOnDelete();
             $table->string('name');
@@ -78,7 +78,7 @@ return new class extends Migration
         });
 
         // Booking Staff (people who can be assigned to bookings)
-        Schema::create('booking_staff', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_staff', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('uas_user_id')->nullable(); // Link to UAS user if applicable
             $table->string('name');
@@ -94,7 +94,7 @@ return new class extends Migration
         });
 
         // Staff-Service pivot (which staff can provide which services)
-        Schema::create('booking_staff_services', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_staff_services', function (Blueprint $table) {
             $table->id();
             $table->foreignId('staff_id')->constrained('booking_staff')->cascadeOnDelete();
             $table->foreignId('service_id')->constrained('booking_services')->cascadeOnDelete();
@@ -102,7 +102,7 @@ return new class extends Migration
         });
 
         // Business Hours (default availability)
-        Schema::create('booking_business_hours', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_business_hours', function (Blueprint $table) {
             $table->id();
             $table->foreignId('staff_id')->nullable()->constrained('booking_staff')->cascadeOnDelete();
             // null staff_id = business-wide hours
@@ -118,7 +118,7 @@ return new class extends Migration
         });
 
         // Custom Availability (overrides for specific dates)
-        Schema::create('booking_availability', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_availability', function (Blueprint $table) {
             $table->id();
             $table->foreignId('staff_id')->nullable()->constrained('booking_staff')->cascadeOnDelete();
             $table->date('date');
@@ -132,7 +132,7 @@ return new class extends Migration
         });
 
         // Resources (for reservations - tables, rooms, equipment)
-        Schema::create('booking_resources', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_resources', function (Blueprint $table) {
             $table->id();
             $table->foreignId('service_id')->nullable()->constrained('booking_services')->cascadeOnDelete();
             $table->string('name'); // e.g., "Table 1", "Room A"
@@ -145,7 +145,7 @@ return new class extends Migration
         });
 
         // Bookings (actual appointments/reservations)
-        Schema::create('bookings', function (Blueprint $table) {
+        Schema::connection('user_db')->create('bookings', function (Blueprint $table) {
             $table->id();
             $table->string('booking_reference')->unique(); // e.g., "BK-ABC123"
             $table->foreignId('service_id')->constrained('booking_services')->cascadeOnDelete();
@@ -213,7 +213,7 @@ return new class extends Migration
         });
 
         // Booking Settings
-        Schema::create('booking_settings', function (Blueprint $table) {
+        Schema::connection('user_db')->create('booking_settings', function (Blueprint $table) {
             $table->id();
             $table->string('key')->unique();
             $table->text('value')->nullable();
@@ -289,14 +289,14 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('booking_settings');
-        Schema::dropIfExists('bookings');
-        Schema::dropIfExists('booking_resources');
-        Schema::dropIfExists('booking_availability');
-        Schema::dropIfExists('booking_business_hours');
-        Schema::dropIfExists('booking_staff_services');
-        Schema::dropIfExists('booking_staff');
-        Schema::dropIfExists('booking_services');
-        Schema::dropIfExists('booking_categories');
+        Schema::connection('user_db')->dropIfExists('booking_settings');
+        Schema::connection('user_db')->dropIfExists('bookings');
+        Schema::connection('user_db')->dropIfExists('booking_resources');
+        Schema::connection('user_db')->dropIfExists('booking_availability');
+        Schema::connection('user_db')->dropIfExists('booking_business_hours');
+        Schema::connection('user_db')->dropIfExists('booking_staff_services');
+        Schema::connection('user_db')->dropIfExists('booking_staff');
+        Schema::connection('user_db')->dropIfExists('booking_services');
+        Schema::connection('user_db')->dropIfExists('booking_categories');
     }
 };

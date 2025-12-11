@@ -25,7 +25,7 @@ class DatabaseManager
      */
     protected array $featureDependencies = [
         'voopress' => ['blog'],  // VooPress requires blog feature
-        'ecommerce' => ['user_access_system'],  // E-commerce requires UAS for customer accounts
+        'ecommerce' => ['user_access_system', 'image_gallery'],  // E-commerce requires UAS for customer accounts and Image Gallery for product photos
         // Add more static dependencies as features are developed
     ];
 
@@ -559,7 +559,7 @@ class DatabaseManager
             throw new Exception("Feature migrations not found: {$featureType}");
         }
 
-        // Create temporary connection
+        // Create temporary connection for Artisan migrate command
         Config::set('database.connections.temp', [
             'driver' => 'mysql',
             'host' => Config::get('database.connections.mysql.host'),
@@ -570,6 +570,19 @@ class DatabaseManager
             'charset' => 'utf8mb4',
             'collation' => 'utf8mb4_unicode_ci',
         ]);
+
+        // ALSO configure user_db connection - migrations use Schema::connection('user_db')
+        Config::set('database.connections.user_db', [
+            'driver' => 'mysql',
+            'host' => Config::get('database.connections.mysql.host'),
+            'port' => Config::get('database.connections.mysql.port'),
+            'database' => $instance->database_name,
+            'username' => Config::get('database.connections.mysql.username'),
+            'password' => Config::get('database.connections.mysql.password'),
+            'charset' => 'utf8mb4',
+            'collation' => 'utf8mb4_unicode_ci',
+        ]);
+        DB::purge('user_db');
 
         // Run migrations
         Artisan::call('migrate', [

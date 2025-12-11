@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         // Blog Categories Table
-        Schema::create('blog_categories', function (Blueprint $table) {
+        Schema::connection('user_db')->create('blog_categories', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('name');
@@ -31,7 +31,7 @@ return new class extends Migration
         });
 
         // Blog Tags Table
-        Schema::create('blog_tags', function (Blueprint $table) {
+        Schema::connection('user_db')->create('blog_tags', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('name');
@@ -45,7 +45,7 @@ return new class extends Migration
         });
 
         // Blog Posts Table
-        Schema::create('blog_posts', function (Blueprint $table) {
+        Schema::connection('user_db')->create('blog_posts', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id'); // References user_websites in main DB
             $table->string('title');
@@ -72,7 +72,7 @@ return new class extends Migration
         });
 
         // Blog Post Tags Pivot Table
-        Schema::create('blog_post_tags', function (Blueprint $table) {
+        Schema::connection('user_db')->create('blog_post_tags', function (Blueprint $table) {
             $table->id();
             $table->foreignId('post_id')->constrained('blog_posts')->onDelete('cascade');
             $table->foreignId('tag_id')->constrained('blog_tags')->onDelete('cascade');
@@ -83,7 +83,7 @@ return new class extends Migration
         });
 
         // Blog Settings Table (per-website configuration)
-        Schema::create('blog_settings', function (Blueprint $table) {
+        Schema::connection('user_db')->create('blog_settings', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('website_id')->unique();
             $table->string('default_author_name')->nullable();
@@ -108,10 +108,10 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('blog_post_tags');
-        Schema::dropIfExists('blog_posts');
-        Schema::dropIfExists('blog_tags');
-        Schema::dropIfExists('blog_categories');
-        Schema::dropIfExists('blog_settings');
+        Schema::connection('user_db')->dropIfExists('blog_post_tags');
+        Schema::connection('user_db')->dropIfExists('blog_posts');
+        Schema::connection('user_db')->dropIfExists('blog_tags');
+        Schema::connection('user_db')->dropIfExists('blog_categories');
+        Schema::connection('user_db')->dropIfExists('blog_settings');
     }
 };

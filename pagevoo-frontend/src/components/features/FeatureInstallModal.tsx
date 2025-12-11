@@ -34,6 +34,7 @@ interface Feature {
   icon: IconType
   requiresUAS: boolean // Requires User Access System
   requiresBlog?: boolean // Requires Blog feature
+  requiresImageGallery?: boolean // Requires Image Gallery feature
   tier: 'trial' | 'brochure' | 'niche' | 'pro'
   available: boolean
 }
@@ -109,6 +110,7 @@ const AVAILABLE_FEATURES: Feature[] = [
     description: 'Full e-commerce solution with products, cart, checkout, and payments',
     icon: MdShoppingCart,
     requiresUAS: true,
+    requiresImageGallery: true,
     tier: 'niche',
     available: true
   },
@@ -204,13 +206,20 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
       return
     }
 
+    // Check all dependencies
+    const missingDependencies: string[] = []
     if (feature.requiresUAS && !installedFeatures.includes('user_access_system')) {
-      alert(`${feature.name} requires User Access System to be installed first`)
-      return
+      missingDependencies.push('User Access System')
+    }
+    if (feature.requiresBlog && !installedFeatures.includes('blog')) {
+      missingDependencies.push('Blog')
+    }
+    if (feature.requiresImageGallery && !installedFeatures.includes('image_gallery')) {
+      missingDependencies.push('Image Gallery')
     }
 
-    if (feature.requiresBlog && !installedFeatures.includes('blog')) {
-      alert(`${feature.name} requires Blog feature to be installed first`)
+    if (missingDependencies.length > 0) {
+      alert(`${feature.name} requires the following features to be installed first: ${missingDependencies.join(', ')}`)
       return
     }
 
@@ -350,16 +359,6 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
                             <span className={`text-xs px-2 py-0.5 rounded-full ${getTierBadgeColor(feature.tier)}`}>
                               {feature.tier.charAt(0).toUpperCase() + feature.tier.slice(1)}
                             </span>
-                            {feature.requiresUAS && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 text-blue-800">
-                                Requires UAS
-                              </span>
-                            )}
-                            {feature.requiresBlog && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-800">
-                                Requires Blog
-                              </span>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -412,8 +411,19 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
                         Installing...
                       </div>
                     ) : (
-                      <div className="text-sm font-medium text-[#98b290]">
-                        Click to Install
+                      <div>
+                        <div className="text-sm font-medium text-[#98b290]">
+                          Click to Install
+                        </div>
+                        {(feature.requiresUAS || feature.requiresBlog || feature.requiresImageGallery) && (
+                          <div className="text-xs text-gray-500 mt-1">
+                            Dependencies: {[
+                              feature.requiresUAS && 'UAS',
+                              feature.requiresBlog && 'Blog',
+                              feature.requiresImageGallery && 'Image Gallery'
+                            ].filter(Boolean).join(', ')}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -427,7 +437,7 @@ export const FeatureInstallModal: React.FC<FeatureInstallModalProps> = ({
               <ul className="text-sm text-blue-800 space-y-1">
                 <li>• Script features add dynamic functionality to your {type === 'template' ? 'template' : 'website'}</li>
                 <li>• Each feature has its own database tables and configuration</li>
-                <li>• Features marked "Requires UAS" need User Access System installed first</li>
+                <li>• Some features have dependencies - install required features first</li>
                 <li>• Installed features: {installedFeatures.length} / {AVAILABLE_FEATURES.filter(f => f.available).length}</li>
               </ul>
             </div>

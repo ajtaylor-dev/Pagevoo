@@ -336,7 +336,7 @@ return new class extends Migration
         ];
 
         foreach ($defaultSettings as $setting) {
-            DB::table('ecommerce_settings')->insert(array_merge($setting, [
+            DB::connection('user_db')->table('ecommerce_settings')->insert(array_merge($setting, [
                 'created_at' => now(),
                 'updated_at' => now(),
             ]));
